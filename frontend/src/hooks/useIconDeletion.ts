@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import axiosInstance from "../api/axiosInstance";
-import { AxiosError } from "axios";
 import logger from "../utils/logger";
+import useApi from "./useApi"; // Import the new hook
+import getErrorMessage from "../utils/getErrorMessage";
 
 interface UseIconDeletionProps {
   paymentId?: string;
@@ -9,46 +10,42 @@ interface UseIconDeletionProps {
   onIconChange: (iconInfo: null) => void; // Only null is expected
 }
 
+const deleteIconApi = async (paymentId: string) => {
+  await axiosInstance.delete(`/files/icon/${paymentId}`); // Эндпоинт DELETE /api/files/icon/:paymentId
+};
+
 const useIconDeletion = ({
   paymentId,
   onError,
   onIconChange,
 }: UseIconDeletionProps) => {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const {
+    isLoading: isDeleting,
+    error: deleteError,
+    execute: executeDeleteIcon,
+  } = useApi<void>(deleteIconApi, {
+    onSuccess: () => {
+      onIconChange(null);
+      logger.info(`Custom icon deleted for payment ${paymentId}`);
+    },
+    onError: (error) => {
+      const msg = getErrorMessage(error);
+      logger.error(
+        `Failed to delete icon for payment ${paymentId}:`,
+        msg,
+        error
+      );
+      onError?.(msg);
+    },
+  });
 
-  const handleDeleteIcon = useCallback(async () => {
+  const handleDeleteIcon = useCallback(() => {
     if (!paymentId) {
       console.warn("Cannot delete icon without paymentId");
       return;
     }
-
-    setIsDeleting(true);
-    setDeleteError(null);
-
-    try {
-      // Отправляем DELETE запрос на бэкенд для удаления пользовательской иконки
-      await axiosInstance.delete(`/files/icon/${paymentId}`); // Эндпоинт DELETE /api/files/icon/:paymentId
-      onIconChange(null); // Сбрасываем выбранную иконку на null (без иконки)
-      logger.info(`Custom icon deleted for payment ${paymentId}`);
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof AxiosError && error.response?.data?.message
-          ? error.response.data.message
-          : error instanceof Error
-          ? error.message
-          : "Не удалось удалить иконку.";
-      logger.error(
-        `Failed to delete icon for payment ${paymentId}:`,
-        errorMessage,
-        error
-      );
-      setDeleteError(errorMessage);
-      onError?.(errorMessage);
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [paymentId, onIconChange, onError]);
+    executeDeleteIcon(paymentId);
+  }, [paymentId, executeDeleteIcon]);
 
   return { isDeleting, deleteError, handleDeleteIcon };
 };

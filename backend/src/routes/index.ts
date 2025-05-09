@@ -5,6 +5,7 @@ import categoryRoutes from "./categoryRoutes"; // !!! Импорт маршру�
 import fileRoutes from "./fileRoutes";
 import archiveRoutes from "./archiveRoutes"; // !!! Импорт маршрутов архива
 import statsRoutes from "./statsRoutes"; // !!! Импорт маршрутов статистики
+import seriesRoutes from "./seriesRoutes"; // Import recurring series routes
 // Импортируйте другие маршруты
 
 const router = Router();
@@ -15,6 +16,7 @@ router.use("/categories", categoryRoutes); // !!! Использование м�
 router.use("/files", fileRoutes); // Используйте маршруты файлов
 router.use("/archive", archiveRoutes); // !!! Использование маршрутов архива
 router.use("/stats", statsRoutes); // !!! Использование маршрутов статистики
+router.use("/series", seriesRoutes); // Use recurring series routes
 // Используйте другие маршруты:
 // router.use('/notifications', notificationRoutes);
 // router.use('/notifications', notificationRoutes);

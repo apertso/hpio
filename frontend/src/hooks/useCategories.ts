@@ -1,43 +1,30 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
-import { AxiosError } from "axios";
-import logger from "../utils/logger";
+import useApi from "./useApi"; // Import the new hook
 
 interface Category {
   id: string;
   name: string;
 }
 
-const useCategories = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const fetchCategoriesApi = async (): Promise<Category[]> => {
+  const res = await axiosInstance.get("/categories");
+  return res.data;
+};
 
-  const fetchCategories = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await axiosInstance.get("/categories");
-      setCategories(res.data);
-      setIsLoading(false);
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof AxiosError && error.response?.data?.message
-          ? error.response.data.message
-          : error instanceof Error
-          ? error.message
-          : "Failed to load categories.";
-      logger.error("Failed to fetch categories:", errorMessage, error);
-      setError(errorMessage);
-      setIsLoading(false);
-    }
-  }, []);
+const useCategories = () => {
+  const {
+    data: categories,
+    isLoading,
+    error,
+    execute: fetchCategories,
+  } = useApi<Category[]>(fetchCategoriesApi);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
 
-  return { categories, isLoading, error };
+  return { categories, isLoading, error, fetchCategories };
 };
 
 export default useCategories;

@@ -8,7 +8,7 @@ import PaymentIconDisplay, {
 import useIconUpload from "../hooks/useIconUpload";
 import useIconDeletion from "../hooks/useIconDeletion";
 
-interface PaymentIconInfo {
+export interface PaymentIconInfo {
   iconType: "builtin" | "custom" | null;
   builtinIconName?: keyof typeof iconTranslations | null;
   iconPath?: string | null;
@@ -22,7 +22,10 @@ interface IconPickerProps {
   isFormSubmitting?: boolean;
 }
 
-const iconTranslations: Record<keyof typeof builtinIconComponents, string> = {
+export const iconTranslations: Record<
+  keyof typeof builtinIconComponents,
+  string
+> = {
   "credit-card": "Кредитная карта",
   home: "Дом",
   truck: "Машина",
@@ -59,10 +62,29 @@ const IconPicker: React.FC<IconPickerProps> = ({
 
   // Уведомляем родительскую форму об изменении иконки
   useEffect(() => {
-    if (JSON.stringify(selectedIcon) !== JSON.stringify(initialIcon)) {
-      onIconChange(selectedIcon || { iconType: null });
+    const areEqual = (
+      icon1?: PaymentIconInfo | null,
+      icon2?: PaymentIconInfo | null
+    ) => {
+      if (!icon1 && !icon2) return true;
+      if (!icon1 || !icon2) return false;
+
+      // Compare iconType
+      if (icon1.iconType !== icon2.iconType) return false;
+
+      // Compare builtinIconName, handling null/undefined
+      if (icon1.builtinIconName !== icon2.builtinIconName) return false;
+
+      // Compare iconPath, handling null/undefined
+      if (icon1.iconPath !== icon2.iconPath) return false;
+
+      return true;
+    };
+
+    if (!areEqual(selectedIcon, initialIcon)) {
+      onIconChange(selectedIcon);
     }
-  }, [selectedIcon, onIconChange, initialIcon]);
+  }, [selectedIcon, onIconChange]);
 
   const handleSelectBuiltinIcon = (iconName: BuiltinIcon) => {
     if (isFormSubmitting) return;

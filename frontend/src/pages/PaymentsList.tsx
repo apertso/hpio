@@ -1,11 +1,11 @@
 // src/pages/PaymentsList.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 import PaymentForm from "../components/PaymentForm"; // Форма для редактирования
-import Modal from "../components/Modal"; // Модальное окно
 import { getPaymentColorClass } from "../utils/paymentColors"; // Для цветовой индикации в таблице
 import PaymentIconDisplay from "../components/PaymentIconDisplay"; // !!! Импорт компонента отображения иконки
+import useApi from "../hooks/useApi"; // Import useApi
 // Импортируем иконки (пример с Heroicons - нужно установить иконки, если еще не сделали)
 // npm install @heroicons/react
 import {
@@ -14,30 +14,11 @@ import {
   TrashIcon,
   PaperClipIcon, // Import PaperClipIcon
 } from "@heroicons/react/24/outline";
-import { ArrowPathIcon } from "@heroicons/react/24/outline"; // Иконка повторения
-
-// Интерфейс для данных платежа (должен совпадать с тем, что возвращает бэкенд /api/payments/list)
-interface PaymentData {
-  id: string;
-  title: string;
-  amount: number; // number после преобразования
-  dueDate: string; // YYYY-MM-DD
-  status: "upcoming" | "overdue" | "completed" | "deleted";
-  isRecurrent: boolean; // !!! Добавлено
-  recurrencePattern?: "daily" | "weekly" | "monthly" | "yearly" | null; // !!! Добавлено
-  recurrenceEndDate?: string | null; // !!! Добавлено
-  createdAt: string; // Дата создания
-  filePath?: string | null; // !!! Добавлено поле для пути к файлу
-  fileName?: string | null; // !!! Добавлено поле для имени файла
-  // !!! Добавлены поля иконки
-  iconType?: "builtin" | "custom" | null;
-  builtinIconName?: string | null;
-  iconPath?: string | null;
-  category?: { id: string; name: string } | null; // !!! Может быть объект категории или null
-}
+import { ArrowPathIcon } from "@heroicons/react/24/outline"; // Recurrence icon
+import { PaymentData } from "../types/paymentData";
 
 // TODO: Хелпер для форматирования шаблона повторения на русский
-const formatRecurrencePattern = (
+export const formatRecurrencePattern = (
   pattern: "daily" | "weekly" | "monthly" | "yearly" | null | undefined
 ) => {
   switch (pattern) {
@@ -54,11 +35,47 @@ const formatRecurrencePattern = (
   }
 };
 
+// Define the raw API fetch function for all payments
+const fetchAllPaymentsApi = async (): Promise<PaymentData[]> => {
+  // TODO: Передать параметры фильтрации, сортировки и пагинации в запрос
+  // const res = await axiosInstance.get('/payments/list', { params: { ...filters, ...sort, ...pagination } });
+  const res = await axiosInstance.get("/payments/list"); // Пока без параметров
+  return res.data;
+};
+
 const PaymentsList: React.FC = () => {
-  // Состояние для хранения списка всех платежей
+  // Use useApi for fetching all payments
+  const {
+    data: rawAllPayments,
+    isLoading: isLoadingPayments,
+    error: errorPayments,
+    execute: executeFetchAllPayments,
+  } = useApi<PaymentData[]>(fetchAllPaymentsApi);
+
+  // State for transformed all payments data
   const [allPayments, setAllPayments] = useState<PaymentData[]>([]);
-  const [isLoadingPayments, setIsLoadingPayments] = useState(true);
-  const [errorPayments, setErrorPayments] = useState<string | null>(null);
+
+  // Effect to transform data when raw all payments data changes
+  useEffect(() => {
+    if (rawAllPayments) {
+      // Преобразуем amount в number
+      const payments = rawAllPayments.map((p: any) => ({
+        ...p,
+        amount: parseFloat(p.amount),
+      }));
+      setAllPayments(payments);
+      logger.info(
+        `Successfully fetched and processed ${payments.length} all payments.`
+      );
+    } else {
+      setAllPayments([]); // Clear payments if raw data is null (e.g., on error)
+    }
+  }, [rawAllPayments]);
+
+  // Effect to trigger the fetch on mount
+  useEffect(() => {
+    executeFetchAllPayments();
+  }, [executeFetchAllPayments]); // Dependency on executeFetchAllPayments
 
   // Состояние для модального окна редактирования
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,39 +87,6 @@ const PaymentsList: React.FC = () => {
   // const [filters, setFilters] = useState({ status: '', categoryId: '', search: '' });
   // const [sort, setSort] = useState({ field: 'dueDate', order: 'asc' });
   // const [pagination, setPagination] = useState({ page: 1, limit: 10 }); // Пагинация
-
-  // Функция для загрузки всех платежей
-  const fetchAllPayments = useCallback(async () => {
-    setIsLoadingPayments(true);
-    setErrorPayments(null);
-    try {
-      // TODO: Передать параметры фильтрации, сортировки и пагинации в запрос
-      // const res = await axiosInstance.get('/payments/list', { params: { ...filters, ...sort, ...pagination } });
-      const res = await axiosInstance.get("/payments/list"); // Пока без параметров
-
-      // Преобразуем amount в number
-      const payments = res.data.map((p: any) => ({
-        ...p,
-        amount: parseFloat(p.amount),
-      }));
-      setAllPayments(payments);
-      logger.info(`Successfully fetched ${payments.length} all payments.`);
-    } catch (error: any) {
-      logger.error(
-        "Failed to fetch all payments:",
-        error.response?.data?.message || error.message
-      );
-      setErrorPayments("Не удалось загрузить список платежей.");
-    } finally {
-      setIsLoadingPayments(false);
-    }
-  }, []); // TODO: Добавить в зависимости: filters, sort, pagination (когда будут реализованы)
-
-  // Эффект для загрузки данных при монтировании компонента
-  useEffect(() => {
-    fetchAllPayments();
-    // NOTE: fetchAllPayments добавлена в зависимости
-  }, [fetchAllPayments]);
 
   // Обработчики модального окна
   const handleOpenModal = (paymentId?: string) => {
@@ -119,7 +103,7 @@ const PaymentsList: React.FC = () => {
   // Обработчик успешного сохранения/редактирования платежа
   const handlePaymentSaved = () => {
     handleCloseModal();
-    fetchAllPayments(); // Перезагружаем список после сохранения/редактирования
+    executeFetchAllPayments(); // Перезагружаем список после сохранения/редактирования using the execute function from useApi
     alert("Платеж успешно сохранен!"); // Временное уведомление
   };
 
@@ -131,7 +115,7 @@ const PaymentsList: React.FC = () => {
       try {
         await axiosInstance.put(`/payments/${paymentId}/complete`);
         logger.info(`Payment marked as completed: ${paymentId}`);
-        fetchAllPayments(); // Перезагружаем список после выполнения
+        executeFetchAllPayments(); // Перезагружаем список после выполнения using the execute function from useApi
       } catch (error: any) {
         logger.error(
           `Failed to complete payment ${paymentId}:`,
@@ -156,7 +140,7 @@ const PaymentsList: React.FC = () => {
       try {
         await axiosInstance.delete(`/payments/${paymentId}`);
         logger.info(`Payment soft-deleted: ${paymentId}`);
-        fetchAllPayments(); // Перезагружаем список после удаления
+        executeFetchAllPayments(); // Перезагружаем список после удаления using the execute function from useApi
       } catch (error: any) {
         logger.error(
           `Failed to soft-delete payment ${paymentId}:`,
@@ -190,7 +174,7 @@ const PaymentsList: React.FC = () => {
       {/* <div className="mb-4 p-4 bg-gray-200 dark:bg-gray-700 rounded-md">
            <h3 className="text-lg font-semibold mb-2">Фильтры</h3>
             // Формы для фильтров
-      </div> */}
+       </div> */}
 
       {/* Отображение состояния загрузки или ошибки */}
       {isLoadingPayments && (
@@ -203,7 +187,7 @@ const PaymentsList: React.FC = () => {
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
           role="alert"
         >
-          <span className="block sm:inline">{errorPayments}</span>
+          <span className="block sm:inline">{errorPayments.message}</span>
         </div>
       )}
 
@@ -312,17 +296,25 @@ const PaymentsList: React.FC = () => {
 
                     {/* !!! Ячейка для типа повторения */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {payment.isRecurrent ? (
+                      {/* Повторение */}
+                      {payment.seriesId && payment.series?.isActive ? ( // Платеж является частью АКТИВНОЙ серии
                         <span className="flex items-center">
-                          <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />{" "}
-                          {/* Иконка */}
-                          {formatRecurrencePattern(payment.recurrencePattern)}
-                          {payment.recurrenceEndDate &&
+                          <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
+                          {formatRecurrencePattern(
+                            payment.series.recurrencePattern
+                          )}
+                          {payment.series.recurrenceEndDate &&
                             ` до ${new Date(
-                              payment.recurrenceEndDate
+                              payment.series.recurrenceEndDate
                             ).toLocaleDateString()}`}
                         </span>
+                      ) : payment.seriesId && !payment.series?.isActive ? ( // Платеж является частью НЕАКТИВНОЙ серии
+                        <span className="flex items-center text-gray-400 italic">
+                          <ArrowPathIcon className="h-4 w-4 mr-1" />
+                          Шаблон неактивен
+                        </span>
                       ) : (
+                        // Разовый платеж
                         "Разовый"
                       )}
                     </td>
@@ -422,17 +414,14 @@ const PaymentsList: React.FC = () => {
       )}
 
       {/* ... Модальное окно с формой ... */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={editingPaymentId ? "Редактировать платеж" : "Добавить платеж"}
-      >
-        <PaymentForm
-          paymentId={editingPaymentId}
-          onSuccess={handlePaymentSaved}
-          onCancel={handleCloseModal}
-        />
-      </Modal>
+      {/* The Modal component is now handled internally by UseFormModal */}
+      {/* We only need to render PaymentForm and pass the modal state and handlers */}
+      <PaymentForm
+        isOpen={isModalOpen} // Pass isOpen state
+        onClose={handleCloseModal} // Pass onClose handler
+        paymentId={editingPaymentId}
+        onSuccess={handlePaymentSaved}
+      />
     </div>
   );
 };

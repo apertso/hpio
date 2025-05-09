@@ -5,7 +5,8 @@ import PaymentForm from "../components/PaymentForm"; // Наша форма
 import Modal from "../components/Modal"; // Наше модальное окно
 import axiosInstance from "../api/axiosInstance"; // Для получения данных
 import logger from "../utils/logger";
-import { useAuth } from "../context/AuthContext"; // Если нужно userId (хотя axiosInstance с ним работает)
+import useApi from "../hooks/useApi"; // Import useApi
+// import { useAuth } from "../context/AuthContext"; // Если нужно userId (хотя axiosInstance с ним работает)
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import {
@@ -21,6 +22,7 @@ import {
   LineElement,
 } from "chart.js"; // Импорт нужных элементов
 import { Pie, Line } from "react-chartjs-2"; // Или Bar/Line, если нужно
+import { PaymentData } from "../types/paymentData";
 
 // Регистрация необходимых элементов Chart.js
 ChartJS.register(
@@ -33,34 +35,23 @@ ChartJS.register(
   ChartTitle,
   PointElement,
   LineElement
-); // Добавил элементы для Bar и Line графиков
-
-// Интерфейс для данных платежа, получаемых с бэкенда (уточнить при необходимости)
-interface PaymentData {
-  id: string;
-  title: string;
-  amount: number; // number, т.к. бэкенд возвращает DECIMAL как string, но мы конвертируем на фронте
-  dueDate: string; // YYYY-MM-DD
-  status: "upcoming" | "overdue" | "completed" | "deleted"; // Статусы из ТЗ
-  isRecurrent: boolean;
-  filePath?: string | null; // !!! Добавлено поле для пути к файлу
-  fileName?: string | null; // !!! Добавлено поле для имени файла
-  // !!! Добавлены поля иконки
-  iconType?: "builtin" | "custom" | null;
-  builtinIconName?: string | null;
-  iconPath?: string | null;
-  // TODO: Добавить другие поля: category
-}
+);
 
 // Интерфейс для данных статистики, получаемых с бэкенда
 interface DashboardStats {
   month: string; // Например, '2023-11'
   totalUpcomingAmount: string; // Строка, т.к. DECIMAL с бэкенда
   totalCompletedAmount: string; // Строка
-  categoriesDistribution: { id?: string; name: string; amount: number }[]; // id опционален для "Без категории"
+  categoriesDistribution: { id?: string; name: string; amount: number }[]; // id is optional for "No Category"
   dailyPaymentLoad: { date: string; amount: number }[];
   // TODO: Добавить другие поля, если бэкенд их возвращает
 }
+
+// Define the raw API fetch function for upcoming payments
+const fetchUpcomingPaymentsApi = async (): Promise<PaymentData[]> => {
+  const res = await axiosInstance.get("/payments/upcoming");
+  return res.data;
+};
 
 const HomePage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,10 +59,37 @@ const HomePage: React.FC = () => {
     undefined
   ); // ID платежа для редактирования
 
-  // Состояние для хранения списка платежей, статуса загрузки и ошибки
+  const {
+    data: rawUpcomingPayments,
+    isLoading: isLoadingPayments,
+    error: errorPayments,
+    execute: executeFetchUpcomingPayments,
+  } = useApi<PaymentData[]>(fetchUpcomingPaymentsApi);
+
+  // State for transformed upcoming payments data
   const [upcomingPayments, setUpcomingPayments] = useState<PaymentData[]>([]);
-  const [isLoadingPayments, setIsLoadingPayments] = useState(true);
-  const [errorPayments, setErrorPayments] = useState<string | null>(null);
+
+  // Effect to transform data when raw upcoming payments data changes
+  useEffect(() => {
+    if (rawUpcomingPayments) {
+      // Преобразуем amount из string (DECIMAL) в number при получении
+      const payments = rawUpcomingPayments.map((p: any) => ({
+        ...p,
+        amount: parseFloat(p.amount), // Преобразуем в число
+      }));
+      setUpcomingPayments(payments);
+      logger.info(
+        `Successfully fetched and processed ${payments.length} upcoming payments.`
+      );
+    } else {
+      setUpcomingPayments([]); // Clear payments if raw data is null (e.g., on error)
+    }
+  }, [rawUpcomingPayments]);
+
+  // Effect to trigger the fetch on mount
+  useEffect(() => {
+    executeFetchUpcomingPayments();
+  }, [executeFetchUpcomingPayments]); // Dependency on executeFetchUpcomingPayments
 
   // --- Состояние для данных дашборда ---
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -79,34 +97,7 @@ const HomePage: React.FC = () => {
   const [errorStats, setErrorStats] = useState<string | null>(null);
   // TODO: Состояние для фильтров дашборда (если будет реализовано)
   // const [filterMonth, setFilterMonth] = useState(new Date()); // Текущий месяц по умолчанию
-
   // const { user } = useAuth(); // Получаем данные пользователя, если нужно (не напрямую для API, а для логирования/отображения)
-
-  // Функция для загрузки предстоящих платежей
-  // Используем useCallback, чтобы функция не пересоздавалась при каждом рендере,
-  // если она используется как зависимость в useEffect или передается дочерним компонентам
-  const fetchUpcomingPayments = useCallback(async () => {
-    setIsLoadingPayments(true);
-    setErrorPayments(null); // Сбрасываем предыдущие ошибки
-    try {
-      const res = await axiosInstance.get("/payments/upcoming");
-      // Преобразуем amount из string (DECIMAL) в number при получении
-      const payments = res.data.map((p: any) => ({
-        ...p,
-        amount: parseFloat(p.amount), // Преобразуем в число
-      }));
-      setUpcomingPayments(payments);
-      logger.info(`Successfully fetched ${payments.length} upcoming payments.`);
-    } catch (error: any) {
-      logger.error(
-        "Failed to fetch upcoming payments:",
-        error.response?.data?.message || error.message
-      );
-      setErrorPayments("Не удалось загрузить предстоящие платежи.");
-    } finally {
-      setIsLoadingPayments(false);
-    }
-  }, []); // Пустой массив зависимостей, т.к. функция не зависит от состояния компонента или пропсов, которые могут меняться
 
   // --- Функция для загрузки статистики (из Dashboard.tsx) ---
   const fetchDashboardStats = useCallback(async () => {
@@ -139,12 +130,6 @@ const HomePage: React.FC = () => {
     }
   }, []); // TODO: Добавить в зависимости: filterMonth (если будут фильтры)
 
-  // Эффект для загрузки данных при монтировании компонента
-  useEffect(() => {
-    fetchUpcomingPayments();
-    // NOTE: fetchUpcomingPayments добавлена в зависимости, т.к. она обернута useCallback
-  }, [fetchUpcomingPayments]); // Зависимость от fetchUpcomingPayments
-
   // --- Эффект для загрузки статистики при монтировании компонента (из Dashboard.tsx) ---
   useEffect(() => {
     fetchDashboardStats();
@@ -165,7 +150,7 @@ const HomePage: React.FC = () => {
   const handlePaymentSaved = () => {
     handleCloseModal();
     // После сохранения платежа, перезагружаем список предстоящих платежей И статистику
-    fetchUpcomingPayments();
+    executeFetchUpcomingPayments();
     fetchDashboardStats(); // !!! Добавили перезагрузку статистики
     alert("Платеж успешно сохранен!"); // Временное уведомление
   };
@@ -334,7 +319,7 @@ const HomePage: React.FC = () => {
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
           role="alert"
         >
-          <span className="block sm:inline">{errorPayments}</span>
+          <span className="block sm:inline">{errorPayments.message}</span>
         </div>
       )}
 
@@ -466,17 +451,12 @@ const HomePage: React.FC = () => {
       </div>
 
       {/* Модальное окно с формой */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={editingPaymentId ? "Редактировать платеж" : "Добавить платеж"}
-      >
-        <PaymentForm
-          paymentId={editingPaymentId} // Передаем ID для режима редактирования
-          onSuccess={handlePaymentSaved} // Обработчик успеха
-          onCancel={handleCloseModal} // Обработчик отмены
-        />
-      </Modal>
+      <PaymentForm
+        isOpen={isModalOpen} // Pass isOpen state
+        onClose={handleCloseModal} // Обработчик отмены
+        paymentId={editingPaymentId} // Передаем ID для режима редактирования
+        onSuccess={handlePaymentSaved} // Обработчик успеха
+      />
     </div>
   );
 };

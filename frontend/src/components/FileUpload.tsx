@@ -180,10 +180,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* Отображение ошибок загрузки или удаления */}
       {uploadError && (
-        <p className="mt-1 text-sm text-red-600">{uploadError}</p>
+        <p className="mt-1 text-sm text-red-600">{uploadError.message}</p>
       )}
       {deleteError && (
-        <p className="mt-1 text-sm text-red-600">{deleteError}</p>
+        <p className="mt-1 text-sm text-red-600">{deleteError.message}</p>
       )}
     </div>
   );

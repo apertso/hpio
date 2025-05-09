@@ -4,6 +4,8 @@ import logger from "../config/logger";
 import User from "./User";
 import Payment from "./Payment";
 import Category from "./Category"; // Import Category model
+import RecurringSeries from "./RecurringSeries"; // Import RecurringSeries model
+import SystemTaskLog from "./SystemTaskLog";
 
 const sequelize = new Sequelize(
   config.database.database,
@@ -36,6 +38,8 @@ interface Db {
   User: Model & Associate; // Assuming User model has an associate method
   Payment: Model & Associate; // Assuming Payment model has an associate method
   Category: Model & Associate; // Add Category to the Db interface
+  RecurringSeries: Model & Associate; // Add RecurringSeries to the Db interface
+  SystemTaskLog: Model;
   // Add other models here with & Associate if they have an associate method
   [key: string]: any; // Allow indexing with strings for other potential properties
 }
@@ -46,6 +50,8 @@ const db = {
   User: User(sequelize, DataTypes), // Pass DataTypes
   Payment: Payment(sequelize, DataTypes), // Pass DataTypes
   Category: Category(sequelize, DataTypes), // Add Category model to db object
+  RecurringSeries: RecurringSeries(sequelize, DataTypes), // Add RecurringSeries model to db object
+  SystemTaskLog: SystemTaskLog(sequelize),
   // Сюда же можно добавить Category, Notification и другие модели
 };
 

@@ -1,5 +1,5 @@
 // src/pages/CategoriesPage.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 import Modal from "../components/Modal"; // Используем наше модальное окно
@@ -7,6 +7,7 @@ import { useForm, SubmitHandler } from "react-hook-form"; // Для формы �
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline"; // Иконки действий
+import useApi from "../hooks/useApi"; // Import useApi
 
 // Интерфейс для данных категории
 interface Category {
@@ -27,11 +28,25 @@ const categoryFormSchema = z.object({
 // Тип данных формы категории
 type CategoryFormInputs = z.infer<typeof categoryFormSchema>;
 
+// Define the raw API fetch function for categories list
+const fetchCategoriesApi = async (): Promise<Category[]> => {
+  const res = await axiosInstance.get("/categories");
+  return res.data;
+};
+
 const CategoriesPage: React.FC = () => {
-  // Состояние для хранения списка категорий
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
-  const [errorCategories, setErrorCategories] = useState<string | null>(null);
+  // Use useApi for fetching the categories list
+  const {
+    data: categories,
+    isLoading: isLoadingCategories,
+    error: errorCategories,
+    execute: executeFetchCategories,
+  } = useApi<Category[]>(fetchCategoriesApi);
+
+  // Effect to trigger the fetch on mount
+  useEffect(() => {
+    executeFetchCategories();
+  }, [executeFetchCategories]); // Dependency on executeFetchCategories
 
   // Состояние для модального окна формы категории
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,30 +69,6 @@ const CategoriesPage: React.FC = () => {
   // Состояние для общей ошибки формы (с бэкенда)
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoadingForm, setIsLoadingForm] = useState(false); // Флаг загрузки формы (при редактировании)
-
-  // Функция для загрузки категорий
-  const fetchCategories = useCallback(async () => {
-    setIsLoadingCategories(true);
-    setErrorCategories(null);
-    try {
-      const res = await axiosInstance.get("/categories");
-      setCategories(res.data);
-      logger.info(`Successfully fetched ${res.data.length} categories.`);
-    } catch (error: any) {
-      logger.error(
-        "Failed to fetch categories:",
-        error.response?.data?.message || error.message
-      );
-      setErrorCategories("Не удалось загрузить список категорий.");
-    } finally {
-      setIsLoadingCategories(false);
-    }
-  }, []);
-
-  // Эффект для загрузки категорий при монтировании
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
 
   // --- Обработчики модального окна и формы ---
 
@@ -139,7 +130,7 @@ const CategoriesPage: React.FC = () => {
         alert("Категория успешно добавлена!"); // Временное уведомление
       }
       handleCloseModal(); // Закрыть модалку
-      fetchCategories(); // Перезагрузить список категорий
+      executeFetchCategories(); // Перезагрузить список категорий using the execute function from useApi
     } catch (error: any) {
       logger.error(
         "Failed to save category:",
@@ -167,7 +158,7 @@ const CategoriesPage: React.FC = () => {
       try {
         await axiosInstance.delete(`/categories/${categoryId}`);
         logger.info(`Category deleted: ${categoryId}`);
-        fetchCategories(); // Перезагрузить список
+        executeFetchCategories(); // Перезагрузить список using the execute function from useApi
         alert("Категория успешно удалена."); // Временное уведомление
       } catch (error: any) {
         logger.error(
@@ -210,14 +201,14 @@ const CategoriesPage: React.FC = () => {
           role="alert"
         >
           {" "}
-          {errorCategories}{" "}
+          {errorCategories.message}{" "}
         </div>
       )}
 
       {/* Список категорий */}
       {!isLoadingCategories && !errorCategories && (
         <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
-          {categories.length > 0 ? (
+          {categories && categories.length > 0 ? ( // Check if categories is not null and has length
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>

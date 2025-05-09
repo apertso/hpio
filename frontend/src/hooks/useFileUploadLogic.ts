@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
 import axiosInstance from "../api/axiosInstance";
-import { AxiosError } from "axios";
 import logger from "../utils/logger";
+import useApi from "./useApi"; // Import the new hook
+import getErrorMessage from "../utils/getErrorMessage";
 
 interface UseFileUploadLogicProps {
   paymentId?: string;
@@ -12,6 +13,13 @@ interface UseFileUploadLogicProps {
   }) => void;
   onError?: (message: string) => void;
   isSubmitting?: boolean;
+}
+
+interface UploadResponse {
+  file: {
+    filePath: string;
+    fileName: string;
+  };
 }
 
 const allowedMimeTypes = [
@@ -25,6 +33,24 @@ const allowedMimeTypes = [
 ];
 const maxFileSize = 5 * 1024 * 1024; // 5 МБ
 
+const uploadFileApi = async (
+  paymentId: string,
+  formData: FormData,
+  onUploadProgress: (progressEvent: any) => void
+): Promise<UploadResponse> => {
+  const res = await axiosInstance.post(
+    `/files/upload/payment/${paymentId}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      onUploadProgress,
+    }
+  );
+  return res.data;
+};
+
 const useFileUploadLogic = ({
   paymentId,
   onFileUploadSuccess,
@@ -32,92 +58,65 @@ const useFileUploadLogic = ({
   isSubmitting,
 }: UseFileUploadLogicProps) => {
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const {
+    isLoading: isUploading,
+    error: uploadError,
+    execute: executeUpload,
+  } = useApi<UploadResponse>(uploadFileApi, {
+    onSuccess: (result) => {
+      if (result?.file) {
+        onFileUploadSuccess?.(result.file);
+        logger.info("File uploaded successfully:", result.file);
+      }
+    },
+    onError: (error) => {
+      const msg = getErrorMessage(error);
+      logger.error("File upload failed:", msg, error);
+      onError?.(msg);
+    },
+  });
 
   const onDrop = useCallback(
     async (acceptedFiles: File[], fileRejections: FileRejection[]) => {
-      setUploadError(null);
-
       if (!paymentId) {
-        onError?.("Невозможно загрузить файл без ID платежа.");
+        const msg = "Невозможно загрузить файл без ID платежа.";
+        onError?.(msg);
         return;
       }
 
       if (fileRejections.length > 0) {
-        const rejection = fileRejections[0];
-        const error = rejection.errors[0];
-        let errorMessage = "Неверный файл.";
-        if (error.code === "file-too-large") {
-          errorMessage = `Размер файла превышает ${
-            maxFileSize / 1024 / 1024
-          } МБ.`;
-        } else if (error.code === "file-invalid-type") {
-          errorMessage = "Недопустимый тип файла.";
-        }
-        setUploadError(errorMessage);
-        onError?.(errorMessage);
+        const code = fileRejections[0].errors[0]?.code;
+        const msg =
+          code === "file-too-large"
+            ? `Размер файла превышает ${maxFileSize / 1024 / 1024} МБ.`
+            : code === "file-invalid-type"
+            ? "Недопустимый тип файла."
+            : "Неверный файл.";
+        onError?.(msg);
         return;
       }
 
-      if (acceptedFiles.length === 0) {
-        return;
-      }
+      if (acceptedFiles.length === 0) return;
 
-      const fileToUpload = acceptedFiles[0];
-
-      setIsUploading(true);
       setUploadProgress(0);
-
       const formData = new FormData();
-      formData.append("paymentFile", fileToUpload);
+      formData.append("paymentFile", acceptedFiles[0]);
 
-      try {
-        const res = await axiosInstance.post(
-          `/files/upload/payment/${paymentId}`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-            onUploadProgress: (progressEvent) => {
-              const percentCompleted = Math.round(
-                (progressEvent.loaded * 100) / (progressEvent.total || 1)
-              );
-              setUploadProgress(percentCompleted);
-            },
-          }
-        );
+      await executeUpload(paymentId, formData, (e: any) => {
+        const percent = Math.round((e.loaded * 100) / (e.total || 1));
+        setUploadProgress(percent);
+      });
 
-        const uploadedFileInfo = res.data.file;
-        onFileUploadSuccess?.(uploadedFileInfo);
-        logger.info("File uploaded successfully:", uploadedFileInfo);
-      } catch (error: unknown) {
-        const errorMessage =
-          error instanceof AxiosError && error.response?.data?.message
-            ? error.response.data.message
-            : error instanceof Error
-            ? error.message
-            : "Не удалось загрузить файл.";
-        logger.error("File upload failed:", errorMessage, error);
-        setUploadError(errorMessage);
-        onError?.(errorMessage);
-      } finally {
-        setIsUploading(false);
-        setUploadProgress(0);
-      }
+      setUploadProgress(0);
     },
-    [paymentId, onFileUploadSuccess, onError]
+    [paymentId, executeUpload, onError]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     multiple: false,
     accept: allowedMimeTypes.reduce(
-      (acc: { [key: string]: string[] }, mime) => {
-        acc[mime] = [];
-        return acc;
-      },
+      (acc, type) => ({ ...acc, [type]: [] }),
       {}
     ),
     maxSize: maxFileSize,

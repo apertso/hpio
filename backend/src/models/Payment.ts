@@ -16,9 +16,6 @@ interface PaymentAttributes {
   categoryId?: string | null; // Add categoryId to attributes
   status: "upcoming" | "overdue" | "completed" | "deleted";
   completedAt?: Date | null | Literal;
-  isRecurrent: boolean;
-  recurrencePattern?: "daily" | "weekly" | "monthly" | "yearly" | null;
-  recurrenceEndDate?: string | null;
   filePath?: string | null;
   fileName?: string | null;
   fileMimeType?: string | null; // MIME type of the uploaded file
@@ -29,7 +26,7 @@ interface PaymentAttributes {
   builtinIconName?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  parentId?: string | null; // !!! Добавим поле для связи экземпляров с их "родительским" шаблоном/первым экземпляром
+  seriesId?: string | null; // Link to RecurringSeries
 }
 
 interface PaymentCreationAttributes
@@ -38,8 +35,6 @@ interface PaymentCreationAttributes
     | "id"
     | "categoryId" // Add categoryId to optional fields
     | "completedAt"
-    | "recurrencePattern"
-    | "recurrenceEndDate"
     | "filePath"
     | "fileName"
     | "fileMimeType"
@@ -50,7 +45,7 @@ interface PaymentCreationAttributes
     | "builtinIconName"
     | "createdAt"
     | "updatedAt"
-    | "parentId" // Add parentId to optional fields
+    | "seriesId" // Add seriesId to optional fields
   > {}
 
 export interface PaymentInstance
@@ -106,20 +101,6 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.DATE, // Дата и время выполнения (для статуса 'completed')
         allowNull: true,
       },
-      isRecurrent: {
-        type: dataTypes.BOOLEAN,
-        defaultValue: false,
-      },
-      recurrencePattern: {
-        // Шаблон повторения
-        type: dataTypes.ENUM("daily", "weekly", "monthly", "yearly"),
-        allowNull: true, // Разрешено NULL для разовых платежей
-      },
-      recurrenceEndDate: {
-        // Дата окончания серии повторений
-        type: dataTypes.DATEONLY,
-        allowNull: true,
-      },
       // Поля для файлов (будут реализованы в Части 11)
       filePath: {
         type: dataTypes.STRING, // Относительный путь к файлу
@@ -158,14 +139,14 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.STRING,
         allowNull: true,
       },
-      parentId: {
+      seriesId: {
         type: dataTypes.UUID,
-        allowNull: true, // NULL для разовых платежей и первого экземпляра серии
+        allowNull: true, // NULL for non-recurring payments
         references: {
-          model: "payments", // Ссылка на ту же таблицу
+          model: "reccuringSeries", // Link to reccuringSeries table
           key: "id",
         },
-        onDelete: "SET NULL", // Если родительский платеж удаляется (например, перманентно), потомки не должны удаляться, но связь теряется.
+        onDelete: "SET NULL", // If reccuringSeries is deleted, seriesId in payments becomes NULL
       },
       createdAt: {
         type: dataTypes.DATE,
@@ -177,37 +158,34 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       },
     },
     {
-      tableName: "payments", // Имя таблицы
-      // Индексы для оптимизации запросов
+      tableName: "payments", // Table name
+      // Indexes for query optimization
       indexes: [
         { fields: ["userId"] },
         { fields: ["dueDate"] },
         { fields: ["status"] },
-        { fields: ["categoryId"] }, // !!! Добавляем индекс для быстрого поиска по категории
-        { fields: ["parentId"] }, // !!! Индекс для поиска потомков
+        { fields: ["categoryId"] }, // Add index for category
+        { fields: ["seriesId"] }, // Add index for seriesId
       ],
     }
   );
 
-  // Ассоциации
+  // Associations
   (Payment as any).associate = (models: any) => {
     Payment.belongsTo(models.User, {
       foreignKey: "userId",
       as: "user",
     });
-    // !!! Добавляем ассоциацию Payment принадлежит Category
+    // Add association Payment belongs to Category
     Payment.belongsTo(models.Category, {
       foreignKey: "categoryId",
-      as: "category", // Название ассоциации для запросов (например, Payment.findOne({ include: 'category' }))
+      as: "category", // Association name for queries (e.g., Payment.findOne({ include: 'category' }))
     });
-    // !!! Добавляем само-ассоциацию (один Payment имеет много Payment'ов-потомков)
-    Payment.hasMany(models.Payment, {
-      foreignKey: "parentId",
-      as: "instances", // Название ассоциации для получения потомков
+    // Add association Payment belongs to RecurringSeries
+    Payment.belongsTo(models.RecurringSeries, {
+      foreignKey: "seriesId",
+      as: "series", // Association name for queries
     });
-    // Связь many-to-one с родителем уже описана через parentId + belongsTo не нужна,
-    // т.к. поле parentId уже является foreignKey.
-    // Payment.belongsTo(models.Payment, { foreignKey: 'parentId', as: 'parent' }); // Можно добавить для удобства, но уже есть через parentId reference
   };
 
   return Payment;

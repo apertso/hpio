@@ -1,5 +1,5 @@
 // src/pages/ArchivePage.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 // Переиспользуем компоненты для отображения платежа и иконки
@@ -7,48 +7,35 @@ import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import { getPaymentColorClass } from "../utils/paymentColors";
 // Импортируем иконки действий
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline"; // Иконка восстановления и удаления
+import { PaperClipIcon } from "@heroicons/react/24/outline"; // Add import
+import { PaymentData } from "../types/paymentData";
+import useApi from "../hooks/useApi"; // Import useApi
+import { formatRecurrencePattern } from "./PaymentsList";
 
-// Интерфейс для данных платежа (должен совпадать с другими списками)
-interface PaymentData {
-  id: string;
-  title: string;
-  amount: number; // number после преобразования
-  dueDate: string; // YYYY-MM-DD
-  status: "upcoming" | "overdue" | "completed" | "deleted"; // В архиве ожидаем 'completed' или 'deleted'
-  isRecurrent: boolean;
-  createdAt: string; // Дата создания
-  completedAt?: string | null; // Дата выполнения (есть для completed)
-  category?: { id: string; name: string } | null;
-  filePath?: string | null;
-  fileName?: string | null; // Информация о файле
-  iconType?: "builtin" | "custom" | null;
-  builtinIconName?: string | null;
-  iconPath?: string | null; // Информация об иконке
-  parentId?: string | null; // Связь для повторяющихся
-  updatedAt: string; // Добавлено для отображения даты удаления
-}
+// Define the raw API fetch function
+const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
+  // TODO: Передать параметры фильтрации и сортировки
+  // const res = await axiosInstance.get('/archive', { params: { ...filters, ...sort } });
+  const res = await axiosInstance.get("/archive"); // Пока без параметров
+  return res.data;
+};
 
 const ArchivePage: React.FC = () => {
-  // Состояние для хранения списка архивных платежей
+  // Use useApi for the raw fetch
+  const {
+    data: rawArchivedPayments,
+    isLoading: isLoadingArchive,
+    error: errorArchive,
+    execute: executeFetchArchivedPayments,
+  } = useApi<PaymentData[]>(fetchArchivedPaymentsApi);
+
+  // State for transformed data
   const [archivedPayments, setArchivedPayments] = useState<PaymentData[]>([]);
-  const [isLoadingArchive, setIsLoadingArchive] = useState(true);
-  const [errorArchive, setErrorArchive] = useState<string | null>(null);
 
-  // TODO: Состояние для фильтров и сортировки архива (если реализовано на бэкенде)
-  // const [filters, setFilters] = useState({ status: '', categoryId: '', search: '' });
-  // const [sort, setSort] = useState({ field: 'completedAt', order: 'desc' });
-
-  // Функция для загрузки архивных платежей
-  const fetchArchivedPayments = useCallback(async () => {
-    setIsLoadingArchive(true);
-    setErrorArchive(null);
-    try {
-      // TODO: Передать параметры фильтрации и сортировки
-      // const res = await axiosInstance.get('/archive', { params: { ...filters, ...sort } });
-      const res = await axiosInstance.get("/archive"); // Пока без параметров
-
-      // Преобразуем amount в number
-      const payments = res.data.map((p: any) => ({
+  // Effect to transform data when raw data changes
+  useEffect(() => {
+    if (rawArchivedPayments) {
+      const payments = rawArchivedPayments.map((p: any) => ({
         ...p,
         amount: parseFloat(p.amount),
         // completedAt может прийти как строка, Date.parse() или new Date()
@@ -58,24 +45,26 @@ const ArchivePage: React.FC = () => {
         updatedAt: p.updatedAt ? new Date(p.updatedAt).toLocaleString() : null, // Форматируем дату обновления для отображения удаленных
       }));
       setArchivedPayments(payments);
-      logger.info(`Successfully fetched ${payments.length} archived payments.`);
-    } catch (error: any) {
-      logger.error(
-        "Failed to fetch archived payments:",
-        error.response?.data?.message || error.message
+      logger.info(
+        `Successfully fetched and processed ${payments.length} archived payments.`
       );
-      setErrorArchive("Не удалось загрузить архив платежей.");
-    } finally {
-      setIsLoadingArchive(false);
+    } else {
+      setArchivedPayments([]); // Clear payments if raw data is null (e.g., on error)
     }
-  }, []); // TODO: Добавить в зависимости: filters, sort (когда будут реализованы)
+  }, [rawArchivedPayments]);
 
-  // Эффект для загрузки данных при монтировании компонента
+  // Effect to trigger the fetch on mount
   useEffect(() => {
-    fetchArchivedPayments();
-  }, [fetchArchivedPayments]);
+    executeFetchArchivedPayments();
+  }, [executeFetchArchivedPayments]); // Dependency on executeFetchArchivedPayments
+
+  // TODO: Состояние для фильтров и сортировки архива (если реализовано на бэкенде)
+  // const [filters, setFilters] = useState({ status: '', categoryId: '', search: '' });
+  // const [sort, setSort] = useState({ field: 'completedAt', order: 'desc' });
 
   // --- Обработчики действий над платежами в архиве ---
+  // These handlers should ideally also use useApi, but the current task is only about the main data fetch.
+  // Keeping them as is for now.
 
   // Обработчик восстановления платежа
   const handleRestorePayment = async (paymentId: string) => {
@@ -88,7 +77,7 @@ const ArchivePage: React.FC = () => {
         // Отправляем PUT запрос на эндпоинт восстановления
         await axiosInstance.put(`/archive/${paymentId}/restore`);
         logger.info(`Payment restored: ${paymentId}`);
-        fetchArchivedPayments(); // Перезагружаем список архива после восстановления
+        executeFetchArchivedPayments(); // Перезагружаем список архива после восстановления
         alert("Платеж успешно восстановлен."); // Временное уведомление
       } catch (error: any) {
         logger.error(
@@ -115,7 +104,7 @@ const ArchivePage: React.FC = () => {
         // Отправляем DELETE запрос на эндпоинт перманентного удаления
         await axiosInstance.delete(`/archive/${paymentId}/permanent`);
         logger.info(`Payment permanently deleted: ${paymentId}`);
-        fetchArchivedPayments(); // Перезагружаем список архива после удаления
+        executeFetchArchivedPayments(); // Перезагружаем список архива после удаления
         alert("Платеж полностью удален."); // Временное уведомление
       } catch (error: any) {
         logger.error(
@@ -131,6 +120,32 @@ const ArchivePage: React.FC = () => {
     }
   };
 
+  const handleDownloadFile = async (paymentId: string, fileName: string) => {
+    try {
+      const res = await axiosInstance.get(`/files/payment/${paymentId}`, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      logger.info(`File downloaded for archived payment ${paymentId}`);
+    } catch (error: any) {
+      logger.error(
+        `Failed to download file for archived payment ${paymentId}:`,
+        error.response?.data?.message || error.message
+      );
+      alert(
+        `Не удалось скачать файл: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
+  };
   return (
     <div className="dark:text-gray-100">
       <div className="flex justify-between items-center mb-6">
@@ -155,7 +170,7 @@ const ArchivePage: React.FC = () => {
           role="alert"
         >
           {" "}
-          {errorArchive}{" "}
+          {errorArchive?.message}{" "}
         </div>
       )}
 
@@ -259,13 +274,19 @@ const ArchivePage: React.FC = () => {
                       {/* Название */} {payment.title}{" "}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {" "}
                       {/* Повторение */}
-                      {payment.isRecurrent ? (
+                      {payment.seriesId && payment.series ? ( // Check for series data
                         <span className="flex items-center">
-                          {/* TODO: Иконка повторения ArrowPathIcon */}
-                          {/* formatRecurrencePattern(payment.recurrencePattern) */}{" "}
-                          Повтор
+                          <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
+                          {/* Ensure formatRecurrencePattern is available or defined */}
+                          {/* Assuming formatRecurrencePattern is defined elsewhere or needs to be added */}
+                          {formatRecurrencePattern(
+                            payment.series.recurrencePattern
+                          )}
+                          {payment.series.recurrenceEndDate &&
+                            ` до ${new Date(
+                              payment.series.recurrenceEndDate
+                            ).toLocaleDateString()}`}
                         </span>
                       ) : (
                         "Разовый"
@@ -294,13 +315,18 @@ const ArchivePage: React.FC = () => {
                       {payment.category ? payment.category.name : "-"}{" "}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {" "}
                       {/* Файл */}
                       {payment.filePath && payment.fileName ? (
-                        // TODO: Использовать handleDownloadFile из PaymentsList или адаптировать
-                        <span className="text-blue-500 dark:text-blue-400">
-                          Файл прикреплен
-                        </span> // Пока просто текст
+                        <button
+                          onClick={() =>
+                            handleDownloadFile(payment.id, payment.fileName!)
+                          } // Ensure handleDownloadFile is defined/imported
+                          className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600"
+                          title={`Скачать ${payment.fileName}`}
+                        >
+                          <PaperClipIcon className="h-5 w-5 inline-block mr-1" />
+                          {/* Можно добавить имя файла payment.fileName, если нужно */}
+                        </button>
                       ) : (
                         "-"
                       )}

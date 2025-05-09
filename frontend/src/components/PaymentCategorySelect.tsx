@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  UseFormRegister,
-  UseFormSetValue,
-  FieldErrors,
-  UseFormWatch,
-} from "react-hook-form";
+import { UseFormRegister, UseFormSetValue, FieldErrors } from "react-hook-form";
 import { PaymentFormInputs } from "./PaymentForm";
 import useCategories from "../hooks/useCategories";
 
@@ -38,7 +33,7 @@ const PaymentCategorySelect: React.FC<PaymentCategorySelectProps> = ({
           Загрузка категорий...
         </p>
       )}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-red-600">{error.message}</p>}
       {!isLoading && !error && (
         <select
           id="categoryId"
@@ -46,7 +41,7 @@ const PaymentCategorySelect: React.FC<PaymentCategorySelectProps> = ({
           className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 ${
             errors.categoryId ? "border-red-500" : ""
           }`}
-          disabled={isSubmitting || categories.length === 0}
+          disabled={isSubmitting || categories?.length === 0}
           value={watchCategoryId === null ? "" : watchCategoryId}
           onChange={(e) =>
             setValue(
@@ -57,7 +52,7 @@ const PaymentCategorySelect: React.FC<PaymentCategorySelectProps> = ({
           }
         >
           <option value="">-- Без категории --</option>
-          {categories.map((category) => (
+          {categories?.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
             </option>

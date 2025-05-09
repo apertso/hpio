@@ -39,4 +39,25 @@ axiosInstance.interceptors.request.use(
 //   }
 // );
 
+// Add functions for recurring series API
+export const seriesApi = {
+  getSeriesById: async (id: string) => {
+    const response = await axiosInstance.get(`/series/${id}`);
+    return response.data;
+  },
+  updateSeries: async (id: string, data: any) => {
+    // TODO: Define a more specific type for data
+    const response = await axiosInstance.put(`/series/${id}`, data);
+    return response.data;
+  },
+  getAllSeries: async () => {
+    const response = await axiosInstance.get("/series");
+    return response.data;
+  },
+  deleteSeries: async (id: string) => {
+    const response = await axiosInstance.delete(`/series/${id}`);
+    return response.data;
+  },
+};
+
 export default axiosInstance;

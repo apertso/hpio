@@ -5,6 +5,7 @@ import { config } from "./config/config";
 import apiRoutes from "./routes";
 import { setupCronJobs } from "./utils/cronJobs";
 import logger from "./config/logger";
+import { actualizeDataMiddleware } from "./middleware/actualizeDataMiddleware"; // <-- Добавить
 import path from "path"; // Для работы с путями файлов
 
 const app = express();
@@ -30,7 +31,7 @@ app.use(express.urlencoded({ extended: false })); // Для парсинга URL
 // app.use('/uploads', express.static(path.join(__dirname, '..', config.uploadDir)));
 
 // Маршруты API
-app.use("/api", apiRoutes);
+app.use("/api", actualizeDataMiddleware, apiRoutes);
 
 // Тестовый маршрут (не защищенный)
 app.get("/", (req, res) => {

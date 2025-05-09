@@ -2,8 +2,9 @@
 import React from "react";
 import PaymentIconDisplay from "./PaymentIconDisplay"; // !!! Импорт компонента отображения иконки
 
-import { ArrowPathIcon } from "@heroicons/react/24/outline"; // Иконка повторения
+import { ArrowPathIcon } from "@heroicons/react/24/outline"; // Recurrence icon
 import { getPaymentColorClass } from "../utils/paymentColors";
+import { BuiltinIcon } from "../utils/builtinIcons"; // Import BuiltinIcon type
 
 interface PaymentCardProps {
   payment: {
@@ -12,14 +13,19 @@ interface PaymentCardProps {
     amount: number;
     dueDate: string;
     status: "upcoming" | "overdue" | "completed" | "deleted";
-    isRecurrent: boolean;
-    // !!! Поля иконки
+    seriesId?: string | null; // Link to RecurringSeries
+    series?: {
+      // Include series data for checking isActive
+      id: string;
+      isActive: boolean;
+    } | null;
+    // !!! Icon fields
     iconType?: "builtin" | "custom" | null;
-    builtinIconName?: string | null;
+    builtinIconName?: BuiltinIcon | null; // Use BuiltinIcon type
     iconPath?: string | null;
-    // Добавьте другие поля по необходимости (категория, файл)
-    // filePath?: string | null; // Добавлено поле для пути к файлу
-    // fileName?: string | null; // Добавлено поле для имени файла
+    // Add other fields as needed (category, file)
+    // filePath?: string | null; // Added field for file path
+    // fileName?: string | null; // Added field for file name
   };
   onClick?: () => void;
   colorClass?: string; // Add colorClass prop
@@ -32,6 +38,10 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, onClick }) => {
     style: "currency",
     currency: "RUB",
   }).format(payment.amount);
+
+  // Check if the payment is part of an ACTIVE recurring series
+  const isEffectivelyRecurring =
+    payment.seriesId !== null && payment.series?.isActive !== false; // Считаем активным, если series.isActive не false (true или undefined)
 
   return (
     <div
@@ -53,10 +63,15 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment, onClick }) => {
             {payment.title}
           </div>
           <div className="text-xs mt-1">
-            {payment.isRecurrent ? (
+            {isEffectivelyRecurring ? (
               <div className="flex items-center text-white/60">
                 <ArrowPathIcon className="h-4 w-4 mr-1" />
                 Повторяющийся
+              </div>
+            ) : payment.seriesId && !payment.series?.isActive ? ( // Если серия есть, но неактивна
+              <div className="flex items-center text-gray-300 italic">
+                <ArrowPathIcon className="h-4 w-4 mr-1" />
+                Шаблон неактивен
               </div>
             ) : (
               <div className="text-gray-300">Разовый</div>

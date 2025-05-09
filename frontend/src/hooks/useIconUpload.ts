@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
 import axiosInstance from "../api/axiosInstance";
-import { AxiosError } from "axios";
 import logger from "../utils/logger";
 import { BuiltinIcon } from "../utils/builtinIcons";
+import useApi from "./useApi";
+import getErrorMessage from "../utils/getErrorMessage";
 
 interface PaymentIconInfo {
   iconType: "builtin" | "custom" | null;
@@ -18,9 +19,30 @@ interface UseIconUploadProps {
   onIconChange: (iconInfo: PaymentIconInfo | null) => void;
 }
 
+interface UploadIconResponse {
+  icon: PaymentIconInfo;
+}
+
 // TODO: Определить разрешенные типы и размер для иконок (должны совпадать с бэкендом)
 const allowedMimeTypesIcons = ["image/svg+xml"];
 const maxFileSizeIcon = 0.5 * 1024 * 1024; // 0.5 МБ
+
+const uploadIconApi = async (
+  paymentId: string,
+  formData: FormData
+): Promise<UploadIconResponse> => {
+  // Отправляем иконку на бэкенд
+  const res = await axiosInstance.post(
+    `/files/upload/icon/${paymentId}`,
+    formData,
+    {
+      // Эндпоинт из Части 13
+      headers: { "Content-Type": "multipart/form-data" },
+      // TODO: onUploadProgress для прогресса загрузки иконки (если нужно)
+    }
+  );
+  return res.data;
+};
 
 const useIconUpload = ({
   paymentId,
@@ -28,78 +50,50 @@ const useIconUpload = ({
   isFormSubmitting,
   onIconChange,
 }: UseIconUploadProps) => {
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const {
+    isLoading: isUploading,
+    error: uploadError,
+    execute: executeUploadIcon,
+  } = useApi<UploadIconResponse>(uploadIconApi, {
+    onSuccess: (res) => {
+      onIconChange(res.icon);
+      logger.info("Custom icon uploaded successfully:", res.icon);
+    },
+    onError: (error) => {
+      const msg = getErrorMessage(error);
+      logger.error("Custom icon upload failed:", msg, error);
+      onError?.(msg);
+    },
+  });
 
   const onDrop = useCallback(
-    async (acceptedFiles: File[], fileRejections: FileRejection[]) => {
-      setUploadError(null); // Сбросить ошибки загрузки
-
+    (acceptedFiles: File[], fileRejections: FileRejection[]) => {
       if (!paymentId) {
         onError?.("Невозможно загрузить иконку без ID платежа.");
         return;
       }
 
       if (fileRejections.length > 0) {
-        const rejection = fileRejections[0];
-        const error = rejection.errors[0];
-        let errorMessage = "Неверный файл иконки.";
-        if (error.code === "file-too-large") {
-          errorMessage = `Размер иконки превышает ${
-            maxFileSizeIcon / 1024
-          } КБ.`;
-        } else if (error.code === "file-invalid-type") {
-          errorMessage = "Недопустимый тип иконки. Разрешен только SVG.";
-        }
-        setUploadError(errorMessage);
-        onError?.(errorMessage);
+        const errorCode = fileRejections[0].errors[0].code;
+        const message =
+          errorCode === "file-too-large"
+            ? `Размер иконки превышает ${maxFileSizeIcon / 1024} КБ.`
+            : errorCode === "file-invalid-type"
+            ? "Недопустимый тип иконки. Разрешен только SVG."
+            : "Неверный файл иконки.";
+        onError?.(message);
         return;
       }
 
-      if (acceptedFiles.length === 0) {
-        return;
-      }
-
-      const iconToUpload = acceptedFiles[0];
-
-      setIsUploading(true);
+      if (acceptedFiles.length === 0) return;
 
       const formData = new FormData();
-      formData.append("paymentIcon", iconToUpload); // 'paymentIcon' - имя поля, как в Multer на бэкенде
-
-      try {
-        // Отправляем иконку на бэкенд
-        const res = await axiosInstance.post(
-          `/files/upload/icon/${paymentId}`,
-          formData,
-          {
-            // Эндпоинт из Части 13
-            headers: { "Content-Type": "multipart/form-data" },
-            // TODO: onUploadProgress для прогресса загрузки иконки (если нужно)
-          }
-        );
-
-        const uploadedIconInfo = res.data.icon; // Ожидаем { iconPath, iconType } из ответа бэкенда
-        onIconChange(uploadedIconInfo); // Устанавливаем новую пользовательскую иконку
-        logger.info("Custom icon uploaded successfully:", uploadedIconInfo);
-      } catch (error: unknown) {
-        const errorMessage =
-          error instanceof AxiosError && error.response?.data?.message
-            ? error.response.data.message
-            : error instanceof Error
-            ? error.message
-            : "Не удалось загрузить иконку.";
-        logger.error("Custom icon upload failed:", errorMessage, error);
-        setUploadError(errorMessage);
-        onError?.(errorMessage);
-      } finally {
-        setIsUploading(false);
-      }
+      formData.append("paymentIcon", acceptedFiles[0]);
+      executeUploadIcon(paymentId, formData);
     },
-    [paymentId, onIconChange, onError]
+    [paymentId, executeUploadIcon, onError]
   );
 
-  // Настройка dropzone для иконок
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     multiple: false,
@@ -111,7 +105,7 @@ const useIconUpload = ({
       {}
     ),
     maxSize: maxFileSizeIcon,
-    disabled: isUploading || !paymentId || isFormSubmitting, // Отключаем, если идет загрузка, нет paymentId, или форма отправляется
+    disabled: isUploading || !paymentId || isFormSubmitting,
   });
 
   return {

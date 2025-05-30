@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Настройки
-PROJECT_ROOT="/c/Users/ArturPertsevCSDev/Projects/demo-service/payment-service"
+PROJECT_ROOT="."
 BACKEND_DIR="$PROJECT_ROOT/backend"
 OUTPUT_FILE="$PROJECT_ROOT/be_code.tmp"
 FINAL_OUTPUT="$PROJECT_ROOT/be_code.txt"

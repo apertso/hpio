@@ -1,11 +1,7 @@
 import db from "../models"; // Доступ к моделям
 import { Op, Sequelize } from "sequelize"; // Для операторов запросов
 import logger from "../config/logger";
-import path from "path"; // Import path module
-import { config } from "../config/config"; // Import config
-import { deleteFileFromFS, detachIconFromPayment } from "./fileService"; // Переиспользуем удаление из ФС и открепление иконки
-
-// import { Payment } from '../models/Payment'; // Импортируем тип Payment (если созданы типы)
+import { deleteFileFromFS } from "./fileService"; // Переиспользуем удаление из ФС и открепление иконки
 
 // Пример интерфейса для данных платежа (опционально, для строгой типизации)
 interface PaymentData {
@@ -538,7 +534,6 @@ export const deletePayment = async (paymentId: string, userId: string) => {
     await payment.update({
       status: "deleted",
       // completedAt = null? No, if it was completed, status changes to deleted, completedAt remains
-      seriesId: null, // Dissociate from the recurring series upon logical deletion
     });
 
     logger.info(
@@ -768,12 +763,12 @@ export const completePayment = async (paymentId: string, userId: string) => {
     `Attempting to complete payment (ID: ${paymentId}, User: ${userId})`
   );
   try {
-    // Find the payment to ensure it belongs to the user and has status 'upcoming' or 'overdue'
+    // Находим платеж, чтобы убедиться, что он принадлежит пользователю и имеет статус 'upcoming' или 'overdue'
     const payment = await db.Payment.findOne({
       where: {
         id: paymentId,
         userId: userId,
-        status: { [Op.in]: ["upcoming", "overdue"] }, // Only upcoming or overdue can be completed
+        status: { [Op.in]: ["upcoming", "overdue"] }, // Завершить можно только предстоящие или просроченные
       },
     });
 
@@ -781,54 +776,128 @@ export const completePayment = async (paymentId: string, userId: string) => {
       logger.warn(
         `Payment not found for completion or invalid status (ID: ${paymentId}, User: ${userId})`
       );
-      return null; // Payment not found, does not belong to the user, or already completed/deleted
+      return null; // Платеж не найден, не принадлежит пользователю или уже выполнен/удален
     }
 
-    // Store the original seriesId before updating
-    const originalSeriesId = payment.seriesId;
+    const originalSeriesId = payment.seriesId; // Сохраняем ID серии до обновления
 
-    // Update status to 'completed' and set completion date, and dissociate from series
+    // Обновляем статус на 'completed' и устанавливаем дату выполнения
     await payment.update({
       status: "completed",
-      completedAt: Sequelize.literal("GETDATE()"), // Set current date and time of completion
-      seriesId: null, // Dissociate from the recurring series upon completion
+      completedAt: Sequelize.literal("GETDATE()"),
     });
+    logger.info(`Payment completed (ID: ${payment.id}, User: ${userId}).`);
 
-    logger.info(
-      `Payment completed (ID: ${payment.id}, User: ${userId}). Dissociated from series ${originalSeriesId}.`
-    );
-
-    // If the payment was part of a recurring series, check if the series should be deleted
+    // Начало новой логики для генерации следующего платежа в серии
     if (originalSeriesId) {
-      // Check if there are any remaining payments linked to this series
-      const remainingCount = await db.Payment.count({
-        where: {
-          seriesId: originalSeriesId,
-          // Consider only non-deleted payments for counting remaining instances
-          status: { [Op.ne]: "deleted" },
-        },
+      const series = await db.RecurringSeries.findOne({
+        where: { id: originalSeriesId },
+        // Не проверяем isActive здесь сразу, чтобы обработать деактивацию если нужно
       });
 
-      if (remainingCount === 0) {
-        // If no remaining payments, delete the recurring series
-        await db.RecurringSeries.destroy({
-          where: { id: originalSeriesId },
-        });
-        logger.info(
-          `Recurring series with ID ${originalSeriesId} deleted as it has no remaining payments.`
-        );
+      if (series) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Для сравнения дат
+
+        const completedPaymentDueDate = new Date(payment.dueDate); // Дата выполненного платежа
+        completedPaymentDueDate.setHours(0, 0, 0, 0);
+
+        let canGenerateNext = series.isActive; // По умолчанию, генерируем если серия активна
+
+        // Проверяем, не завершилась ли серия с этим выполненным платежом
+        if (series.recurrenceEndDate) {
+          const seriesEndDate = new Date(series.recurrenceEndDate);
+          seriesEndDate.setHours(0, 0, 0, 0); // Нормализуем дату окончания серии
+
+          if (completedPaymentDueDate >= seriesEndDate) {
+            // Если выполненный платеж был на дату окончания серии или позже
+            canGenerateNext = false;
+            if (series.isActive) {
+              // Деактивируем серию, если она еще активна
+              await series.update({ isActive: false });
+              logger.info(
+                `Recurring series ${series.id} deactivated as completed payment ${payment.id} was on/after recurrenceEndDate.`
+              );
+            }
+          }
+        }
+
+        if (canGenerateNext) {
+          // Рассчитываем дату следующего платежа
+          const nextDueDate = calculateNextDueDate(
+            completedPaymentDueDate,
+            series.recurrencePattern
+          );
+
+          // Еще одна проверка на дату окончания серии для *следующего* вычисленного платежа
+          if (series.recurrenceEndDate) {
+            const seriesEndDate = new Date(series.recurrenceEndDate);
+            seriesEndDate.setHours(0, 0, 0, 0);
+            if (new Date(nextDueDate) > seriesEndDate) {
+              // Следующий платеж выходит за дату окончания серии
+              canGenerateNext = false;
+              if (series.isActive) {
+                // Деактивируем, если активна
+                await series.update({ isActive: false });
+                logger.info(
+                  `Recurring series ${series.id} deactivated as next payment date after completing ${payment.id} would exceed recurrenceEndDate.`
+                );
+              }
+            }
+          }
+
+          if (canGenerateNext) {
+            const nextDueDateString = nextDueDate.toISOString().split("T")[0];
+            // Проверяем, не существует ли уже следующий платеж
+            const existingNextPayment = await db.Payment.findOne({
+              where: {
+                seriesId: series.id,
+                dueDate: nextDueDateString,
+                status: { [Op.ne]: "deleted" }, // Не считаем логически удаленные существующими
+              },
+            });
+
+            if (!existingNextPayment) {
+              // Определяем статус нового платежа (просрочен или предстоящий)
+              const newPaymentStatus =
+                new Date(nextDueDateString) < today ? "overdue" : "upcoming";
+
+              // Создаем новый платеж
+              await db.Payment.create({
+                userId: series.userId,
+                categoryId: series.categoryId,
+                title: series.title, // Используем данные из серии
+                amount: series.amount, // Используем данные из серии
+                dueDate: nextDueDateString,
+                status: newPaymentStatus,
+                seriesId: series.id,
+                // Копируем детали иконки из серии
+                iconType: series.iconType,
+                builtinIconName: series.builtinIconName,
+                iconPath: series.iconPath,
+              });
+              logger.info(
+                `Generated next recurring payment (Series ID: ${series.id}, Due Date: ${nextDueDateString}) by completePayment for ${payment.id}.`
+              );
+            } else {
+              logger.info(
+                `Next payment for series ${series.id} on ${nextDueDateString} already exists. Not generated by completePayment.`
+              );
+            }
+          }
+        }
       } else {
-        logger.info(
-          `Recurring series with ID ${originalSeriesId} still has ${remainingCount} remaining payments.`
+        logger.warn(
+          `Series ${originalSeriesId} not found for completed payment ${payment.id}. Cannot generate next.`
         );
       }
     }
+    // Конец новой логики для генерации следующего платежа
 
-    // Note: The logic for generating the next recurring payment instance
-    // is now handled by the separate generateNextRecurrentPayments cron job,
-    // which iterates through active series and creates upcoming payments as needed.
+    // Старая логика удаления серии на основе remainingCount удалена.
+    // Деактивация серии теперь обрабатывается выше на основе recurrenceEndDate.
 
-    return payment; // Return the completed payment
+    return payment; // Возвращаем обновленный (выполненный) платеж
   } catch (error: any) {
     logger.error(
       `Error completing payment (ID: ${paymentId}, User: ${userId}):`,

@@ -1,8 +1,7 @@
 // src/pages/HomePage.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import PaymentCard from "../components/PaymentCard"; // Для отображения карточек
 import PaymentForm from "../components/PaymentForm"; // Наша форма
-import Modal from "../components/Modal"; // Наше модальное окно
 import axiosInstance from "../api/axiosInstance"; // Для получения данных
 import logger from "../utils/logger";
 import useApi from "../hooks/useApi"; // Import useApi
@@ -17,12 +16,29 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
-  Title as ChartTitle,
+  Title,
   PointElement,
   LineElement,
+  ChartOptions,
+  TooltipItem,
 } from "chart.js"; // Импорт нужных элементов
 import { Pie, Line } from "react-chartjs-2"; // Или Bar/Line, если нужно
 import { PaymentData } from "../types/paymentData";
+
+const monthNames = [
+  "Январь",
+  "Февраль",
+  "Март",
+  "Апрель",
+  "Май",
+  "Июнь",
+  "Июль",
+  "Август",
+  "Сентябрь",
+  "Октябрь",
+  "Ноябрь",
+  "Декабрь",
+];
 
 // Регистрация необходимых элементов Chart.js
 ChartJS.register(
@@ -32,7 +48,7 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  ChartTitle,
+  Title,
   PointElement,
   LineElement
 );
@@ -73,9 +89,9 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     if (rawUpcomingPayments) {
       // Преобразуем amount из string (DECIMAL) в number при получении
-      const payments = rawUpcomingPayments.map((p: any) => ({
+      const payments = rawUpcomingPayments.map((p) => ({
         ...p,
-        amount: parseFloat(p.amount), // Преобразуем в число
+        amount: typeof p.amount === "string" ? parseFloat(p.amount) : p.amount,
       }));
       setUpcomingPayments(payments);
       logger.info(
@@ -119,11 +135,14 @@ const HomePage: React.FC = () => {
 
       setStats(formattedStats);
       logger.info("Successfully fetched dashboard stats.");
-    } catch (error: any) {
-      logger.error(
-        "Failed to fetch dashboard stats:",
-        error.response?.data?.message || error.message
-      );
+    } catch (error: unknown) {
+      let errorMessage = "Неизвестная ошибка";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+      logger.error("Failed to fetch dashboard stats:", errorMessage);
       setErrorStats("Не удалось загрузить статистику.");
     } finally {
       setIsLoadingStats(false);
@@ -134,6 +153,12 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     fetchDashboardStats();
   }, [fetchDashboardStats]); // Зависимость от fetchDashboardStats
+
+  const formattedMonth = useMemo(() => {
+    if (!stats || !stats.month) return "";
+    const [year, month] = stats.month.split("-");
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  }, [stats]);
 
   const handleOpenModal = (paymentId?: string) => {
     setEditingPaymentId(paymentId);
@@ -190,7 +215,7 @@ const HomePage: React.FC = () => {
   };
 
   // Опции для круговой диаграммы
-  const categoriesChartOptions = {
+  const categoriesChartOptions: ChartOptions<"pie"> = {
     responsive: true, // Адаптивность
     plugins: {
       legend: {
@@ -209,16 +234,32 @@ const HomePage: React.FC = () => {
       tooltip: {
         // Настройки всплывающих подсказок
         callbacks: {
-          label: (context: any) => {
+          label: (context: TooltipItem<"pie">) => {
             const label = context.label || "";
-            const value = context.raw as number;
-            const total = context.chart.data.datasets[0].data.reduce(
-              (sum: number, val: number) => sum + val,
-              0
-            );
+            const value = typeof context.raw === "number" ? context.raw : 0;
+            const dataset = context.chart.data.datasets[context.datasetIndex];
+            // Accept Chart.js data types: number | { raw: number } | { y: number } | [number, number]
+            const total = Array.isArray(dataset.data)
+              ? dataset.data.reduce((sum: number, v: unknown) => {
+                  if (typeof v === "number") return sum + v;
+                  if (v && typeof v === "object") {
+                    // Use type assertion to a generic object
+                    const obj = v as Record<string, unknown>;
+                    if ("raw" in obj && typeof obj.raw === "number")
+                      return sum + obj.raw;
+                    if ("y" in obj && typeof obj.y === "number")
+                      return sum + obj.y;
+                  }
+                  if (Array.isArray(v) && typeof v[1] === "number")
+                    return sum + v[1];
+                  return sum;
+                }, 0)
+              : 0;
             const percentage =
-              total > 0 ? ((value / total) * 100).toFixed(1) + "%" : "0%";
-            return `${label}: ${value.toFixed(2)} (${percentage})`; // Форматирование всплывающей подсказки
+              typeof total === "number" && total > 0
+                ? ((value / total) * 100).toFixed(1) + "%"
+                : "0%";
+            return `${label}: ${value.toFixed(2)} (${percentage})`;
           },
         },
       },
@@ -242,7 +283,7 @@ const HomePage: React.FC = () => {
   };
 
   // Опции для графика платежной нагрузки
-  const dailyLoadChartOptions = {
+  const dailyLoadChartOptions: ChartOptions<"line"> = {
     responsive: true,
     plugins: {
       legend: {
@@ -257,10 +298,10 @@ const HomePage: React.FC = () => {
       tooltip: {
         // Настройки всплывающих подсказок
         callbacks: {
-          label: (context: any) => {
+          label: (context: TooltipItem<"line">) => {
             const label = context.dataset.label || "";
-            const value = context.raw as number;
-            return `${label}: ${value.toFixed(2)}`; // Форматирование
+            const value = typeof context.raw === "number" ? context.raw : 0;
+            return `${label}: ${value.toFixed(2)}`;
           },
         },
       },
@@ -373,7 +414,7 @@ const HomePage: React.FC = () => {
           <div className="space-y-6">
             {/* Заголовок текущего месяца */}
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              Статистика за {stats.month}
+              Статистика за {formattedMonth}
             </h3>{" "}
             {/* TODO: Форматировать месяц на русский */}
             {/* Блоки с общими суммами */}

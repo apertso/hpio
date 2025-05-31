@@ -20,6 +20,6 @@ export function getPaymentColorClass(payment: {
 
   if (daysLeft <= 1) return "bg-green-700 text-white"; // Срочно
   if (daysLeft <= 3) return "bg-green-600 text-white"; // Скоро
-  if (daysLeft <= 7) return "bg-green-500 text-white"; // На горизонте
+  if (daysLeft <= 7) return "bg-[#35605a] text-white"; // На горизонте
   return "bg-gray-600 text-gray-200"; // Спокойный цвет
 }

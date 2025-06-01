@@ -176,170 +176,173 @@ const CategoriesPage: React.FC = () => {
   };
 
   return (
-    <div className="dark:text-gray-100">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Управление категориями
-        </h2>
-        <button
-          onClick={() => handleOpenModal()} // Открываем модалку для создания (без ID)
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200"
-        >
-          Добавить категорию
-        </button>
-      </div>
-
-      {/* Состояния загрузки/ошибки списка */}
-      {isLoadingCategories && (
-        /* ... */ <div className="text-center text-gray-700 dark:text-gray-300">
-          Загрузка категорий...
+    <>
+      <title>Мои Платежи - Категории</title>
+      <div className="dark:text-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Управление категориями
+          </h2>
+          <button
+            onClick={() => handleOpenModal()} // Открываем модалку для создания (без ID)
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200"
+          >
+            Добавить категорию
+          </button>
         </div>
-      )}
-      {errorCategories && (
-        /* ... */ <div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-          role="alert"
-        >
-          {" "}
-          {errorCategories.message}{" "}
-        </div>
-      )}
 
-      {/* Список категорий */}
-      {!isLoadingCategories && !errorCategories && (
-        <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
-          {categories && categories.length > 0 ? ( // Check if categories is not null and has length
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Название
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Действия
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {categories.map((category) => (
-                  <tr
-                    key={category.id}
-                    className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {category.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
-                      <button
-                        onClick={() => handleOpenModal(category.id)} // Редактировать категорию
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1"
-                        title="Редактировать"
-                      >
-                        <PencilIcon className="h-5 w-5" />{" "}
-                        {/* Иконка редактирования */}
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleDeleteCategory(category.id, category.name)
-                        } // Удалить категорию
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1"
-                        title="Удалить"
-                      >
-                        <TrashIcon className="h-5 w-5" />{" "}
-                        {/* Иконка удаления */}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-4 text-center text-gray-700 dark:text-gray-300">
-              Нет категорий. Добавьте первую!
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Модальное окно для формы категории */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={
-          editingCategoryId ? "Редактировать категорию" : "Добавить категорию"
-        }
-      >
-        {/* Форма категории внутри модалки */}
-        {isLoadingForm ? ( // Пока загружаются данные категории для редактирования
-          <div className="text-center dark:text-gray-200">
-            Загрузка данных категории...
+        {/* Состояния загрузки/ошибки списка */}
+        {isLoadingCategories && (
+          /* ... */ <div className="text-center text-gray-700 dark:text-gray-300">
+            Загрузка категорий...
           </div>
-        ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {formError && ( // Общая ошибка формы
-              <div
-                className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-                role="alert"
-              >
-                <span className="block sm:inline">{formError}</span>
+        )}
+        {errorCategories && (
+          /* ... */ <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+            role="alert"
+          >
+            {" "}
+            {errorCategories.message}{" "}
+          </div>
+        )}
+
+        {/* Список категорий */}
+        {!isLoadingCategories && !errorCategories && (
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+            {categories && categories.length > 0 ? ( // Check if categories is not null and has length
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Название
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Действия
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {categories.map((category) => (
+                    <tr
+                      key={category.id}
+                      className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {category.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
+                        <button
+                          onClick={() => handleOpenModal(category.id)} // Редактировать категорию
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1"
+                          title="Редактировать"
+                        >
+                          <PencilIcon className="h-5 w-5" />{" "}
+                          {/* Иконка редактирования */}
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleDeleteCategory(category.id, category.name)
+                          } // Удалить категорию
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1"
+                          title="Удалить"
+                        >
+                          <TrashIcon className="h-5 w-5" />{" "}
+                          {/* Иконка удаления */}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-4 text-center text-gray-700 dark:text-gray-300">
+                Нет категорий. Добавьте первую!
               </div>
             )}
-            <div>
-              <label
-                htmlFor="category-name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-              >
-                Название категории
-              </label>
-              <input
-                id="category-name"
-                type="text"
-                {...register("name")}
-                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 ${
-                  errors.name ? "border-red-500" : ""
-                }`}
-                disabled={isSubmitting}
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            {/* TODO: Добавить поля для иконки/цвета категории */}
-
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200"
-                disabled={isSubmitting}
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isSubmitting}
-              >
-                {isSubmitting
-                  ? "Сохранение..."
-                  : editingCategoryId
-                  ? "Сохранить изменения"
-                  : "Добавить категорию"}
-              </button>
-            </div>
-          </form>
+          </div>
         )}
-      </Modal>
-    </div>
+
+        {/* Модальное окно для формы категории */}
+        <Modal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          title={
+            editingCategoryId ? "Редактировать категорию" : "Добавить категорию"
+          }
+        >
+          {/* Форма категории внутри модалки */}
+          {isLoadingForm ? ( // Пока загружаются данные категории для редактирования
+            <div className="text-center dark:text-gray-200">
+              Загрузка данных категории...
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {formError && ( // Общая ошибка формы
+                <div
+                  className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                  role="alert"
+                >
+                  <span className="block sm:inline">{formError}</span>
+                </div>
+              )}
+              <div>
+                <label
+                  htmlFor="category-name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                >
+                  Название категории
+                </label>
+                <input
+                  id="category-name"
+                  type="text"
+                  {...register("name")}
+                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 ${
+                    errors.name ? "border-red-500" : ""
+                  }`}
+                  disabled={isSubmitting}
+                />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+
+              {/* TODO: Добавить поля для иконки/цвета категории */}
+
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200"
+                  disabled={isSubmitting}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? "Сохранение..."
+                    : editingCategoryId
+                    ? "Сохранить изменения"
+                    : "Добавить категорию"}
+                </button>
+              </div>
+            </form>
+          )}
+        </Modal>
+      </div>
+    </>
   );
 };
 

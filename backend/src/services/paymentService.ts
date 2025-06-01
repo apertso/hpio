@@ -1232,15 +1232,35 @@ export const getDashboardStats = async (userId: string) => {
       const amount = parseFloat(payment.amount.toString()); // Убедимся, что работаем с числом
 
       // Sum statistics by status
-      if (payment.status === "upcoming") {
-        totalUpcomingAmount += amount;
-      } else if (payment.status === "completed") {
-        totalCompletedAmount += amount;
-      } else if (payment.status === "overdue") {
-        // Include overdue in total stats
+      const paymentDueDate = new Date(payment.dueDate);
+      const isDueInCurrentMonth =
+        paymentDueDate.getMonth() === now.getMonth() &&
+        paymentDueDate.getFullYear() === now.getFullYear();
+
+      if (
+        (payment.status === "upcoming" || payment.status === "overdue") &&
+        isDueInCurrentMonth
+      ) {
+        totalUpcomingAmount += amount; // Sum upcoming and overdue payments for the current month
+      }
+
+      if (payment.status === "completed") {
+        const completedDate = payment.completedAt
+          ? new Date(payment.completedAt)
+          : null;
+        if (
+          completedDate &&
+          completedDate.getMonth() === now.getMonth() &&
+          completedDate.getFullYear() === now.getFullYear()
+        ) {
+          totalCompletedAmount += amount;
+        }
+      }
+
+      // Separate sums for overdue and deleted, regardless of whether they are included in totalUpcomingAmount
+      if (payment.status === "overdue") {
         totalOverdueAmount += amount;
       } else if (payment.status === "deleted") {
-        // Include deleted in total stats
         totalDeletedAmount += amount;
       }
 
@@ -1255,16 +1275,26 @@ export const getDashboardStats = async (userId: string) => {
           amount: 0,
         };
       }
-      categoriesStats[categoryId].amount += amount;
+      // Убедимся, что платеж не "удален" перед добавлением в распределение по категориям
+      if (payment.status !== "deleted") {
+        categoriesStats[categoryId].amount += amount;
+      }
 
       // Distribution by days (include all payments from the month selection)
       // Use dueDate for payment load graph
       const dueDateStr = payment.dueDate; // Format YYYY-MM-DD
 
-      if (!dailyStats[dueDateStr]) {
-        dailyStats[dueDateStr] = { date: dueDateStr, amount: 0 };
+      // Убедимся, что платеж не "удален" перед добавлением в платежную нагрузку
+      if (
+        payment.status === "upcoming" ||
+        payment.status === "overdue" ||
+        payment.status === "completed"
+      ) {
+        if (!dailyStats[dueDateStr]) {
+          dailyStats[dueDateStr] = { date: dueDateStr, amount: 0 };
+        }
+        dailyStats[dueDateStr].amount += amount;
       }
-      dailyStats[dueDateStr].amount += amount;
     }
 
     // Convert dailyStats to an array, sort by date

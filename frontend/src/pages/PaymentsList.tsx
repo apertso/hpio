@@ -156,273 +156,276 @@ const PaymentsList: React.FC = () => {
   };
 
   return (
-    <div className="dark:text-gray-100">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Все платежи
-        </h2>
-        {/* Кнопка добавления платежа также на этой странице */}
-        <button
-          onClick={() => handleOpenModal()} // Открываем модалку для создания (без ID)
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200"
-        >
-          Добавить платеж
-        </button>
-      </div>
+    <>
+      <title>Мои Платежи - Список платежей</title>
+      <div className="dark:text-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Все платежи
+          </h2>
+          {/* Кнопка добавления платежа также на этой странице */}
+          <button
+            onClick={() => handleOpenModal()} // Открываем модалку для создания (без ID)
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200"
+          >
+            Добавить платеж
+          </button>
+        </div>
 
-      {/* TODO: Добавить секцию для фильтров, поиска и пагинации (Часть 6+) */}
-      {/* <div className="mb-4 p-4 bg-gray-200 dark:bg-gray-700 rounded-md">
+        {/* TODO: Добавить секцию для фильтров, поиска и пагинации (Часть 6+) */}
+        {/* <div className="mb-4 p-4 bg-gray-200 dark:bg-gray-700 rounded-md">
            <h3 className="text-lg font-semibold mb-2">Фильтры</h3>
             // Формы для фильтров
        </div> */}
 
-      {/* Отображение состояния загрузки или ошибки */}
-      {isLoadingPayments && (
-        <div className="text-center text-gray-700 dark:text-gray-300">
-          Загрузка платежей... {/* TODO: Добавить спиннер */}
-        </div>
-      )}
-      {errorPayments && (
-        <div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-          role="alert"
-        >
-          <span className="block sm:inline">{errorPayments.message}</span>
-        </div>
-      )}
+        {/* Отображение состояния загрузки или ошибки */}
+        {isLoadingPayments && (
+          <div className="text-center text-gray-700 dark:text-gray-300">
+            Загрузка платежей... {/* TODO: Добавить спиннер */}
+          </div>
+        )}
+        {errorPayments && (
+          <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+            role="alert"
+          >
+            <span className="block sm:inline">{errorPayments.message}</span>
+          </div>
+        )}
 
-      {/* Таблица платежей */}
-      {!isLoadingPayments && !errorPayments && (
-        <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
-          {allPayments.length > 0 ? (
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  {/* !!! Новый столбец для иконки */}
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Иконка
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Статус
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Название
-                  </th>
-                  {/* !!! Новый столбец для типа повторения */}
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Повторение
-                  </th>
-                  {/* ... другие заголовки ... */}
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Сумма
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Срок оплаты
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Категория {/* TODO: Отображать категорию (Часть 10) */}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Файл
-                  </th>{" "}
-                  {/* Новый столбец */}
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
-                    Действия
-                  </th>{" "}
-                  {/* Выравнивание вправо для кнопок */}
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {allPayments.map((payment) => (
-                  <tr
-                    key={payment.id}
-                    className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100"
-                  >
-                    {/* !!! Ячейка для иконки */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                      <PaymentIconDisplay
-                        payment={payment}
-                        sizeClass="h-6 w-6"
-                      />
-                    </td>
-                    {/* ... остальные ячейки (статус, название, сумма, срок, категория) ... */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                      {" "}
-                      {/* Статус */}
-                      {/* Цветовой индикатор статуса */}
-                      {/* Передаем весь объект payment, если утилита это поддерживает (см. Часть 5) */}
-                      <span
-                        className={`inline-block w-3 h-3 rounded-full mr-2 ${getPaymentColorClass(
-                          payment
-                        )}`}
-                      ></span>
-                      {/* Текстовое обозначение статуса */}
-                      {payment.status === "upcoming" && "Предстоящий"}
-                      {payment.status === "overdue" && "Просрочен"}
-                      {payment.status === "completed" && "Выполнен"}
-                      {payment.status === "deleted" && "Удален"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
-                      {" "}
-                      {/* Название */} {payment.title}{" "}
-                    </td>
-
-                    {/* !!! Ячейка для типа повторения */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {/* Повторение */}
-                      {payment.seriesId && payment.series?.isActive ? ( // Платеж является частью АКТИВНОЙ серии
-                        <span className="flex items-center">
-                          <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
-                          {formatRecurrencePattern(
-                            payment.series.recurrencePattern
-                          )}
-                          {payment.series.recurrenceEndDate &&
-                            ` до ${new Date(
-                              payment.series.recurrenceEndDate
-                            ).toLocaleDateString()}`}
-                        </span>
-                      ) : payment.seriesId && !payment.series?.isActive ? ( // Платеж является частью НЕАКТИВНОЙ серии
-                        <span className="flex items-center text-gray-400 italic">
-                          <ArrowPathIcon className="h-4 w-4 mr-1" />
-                          Шаблон неактивен
-                        </span>
-                      ) : (
-                        // Разовый платеж
-                        "Разовый"
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {" "}
-                      {/* Сумма */} {payment.amount.toFixed(2)}{" "}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {" "}
-                      {/* Срок оплаты */}{" "}
-                      {new Date(payment.dueDate).toLocaleDateString()}{" "}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {" "}
-                      {/* Категория */}{" "}
-                      {payment.category ? payment.category.name : "-"}{" "}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {" "}
-                      {/* Файл */}
-                      {/* Отображаем иконку, если есть файл */}
-                      {payment.filePath && payment.fileName ? (
-                        <button
-                          onClick={() =>
-                            handleDownloadFile(payment.id, payment.fileName!)
-                          } // Вызываем функцию скачивания
-                          className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 disabled:opacity-50"
-                          title={payment.fileName}
-                          // disabled={isDeleting || isSubmitting} // Отключаем, если платеж удаляется или форма отправляется - isSubmitting не определен здесь
-                          disabled={false} // Временно отключаем disabled
-                        >
-                          <PaperClipIcon className="h-5 w-5 inline-block mr-1" />
-                        </button>
-                      ) : (
-                        "-" // Если файла нет
-                      )}
-                    </td>
-                    {/* ... ячейка с действиями ... */}
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
-                      {" "}
-                      {/* Действия */}
-                      {/* Кнопка Редактировать - доступна для всех, кроме перманентно удаленных (которых нет в списке) */}
-                      {/* Также можно запретить редактирование completed/deleted, если это бизнес-требование */}
-                      {payment.status !== "deleted" && ( // Например, разрешим редактирование completed
-                        <button
-                          onClick={() => handleOpenModal(payment.id)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1" // mx-1 для отступов между кнопками
-                          title="Редактировать"
-                        >
-                          <PencilIcon className="h-5 w-5" />{" "}
-                          {/* Иконка редактирования */}
-                        </button>
-                      )}
-                      {/* Кнопки действий в зависимости от статуса для активных платежей */}
-                      {payment.status === "upcoming" ||
-                      payment.status === "overdue" ? (
-                        <>
-                          {/* Кнопка Выполнить */}
-                          <button
-                            onClick={() => handleCompletePayment(payment.id)}
-                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 mx-1"
-                            title="Отметить как выполненный"
-                          >
-                            <CheckCircleIcon className="h-5 w-5" />{" "}
-                            {/* Иконка выполнения */}
-                          </button>
-                          {/* Кнопка Удалить (логически) */}
-                          <button
-                            onClick={() => handleDeletePayment(payment.id)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1"
-                            title="Удалить (переместить в архив)"
-                          >
-                            <TrashIcon className="h-5 w-5" />{" "}
-                            {/* Иконка удаления */}
-                          </button>
-                        </>
-                      ) : (
-                        // Действия для выполненных и удаленных платежей (в этом списке, но основные в Архиве)
-                        // TODO: В Архиве будут другие действия (Восстановить, Перманентно удалить) (Часть 18)
-                        <span className="text-gray-500 dark:text-gray-400 mx-1">
-                          {payment.status === "completed" && "Выполнен"}
-                          {payment.status === "deleted" && "Удален"}
-                        </span>
-                      )}
-                    </td>
+        {/* Таблица платежей */}
+        {!isLoadingPayments && !errorPayments && (
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+            {allPayments.length > 0 ? (
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    {/* !!! Новый столбец для иконки */}
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Иконка
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Статус
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Название
+                    </th>
+                    {/* !!! Новый столбец для типа повторения */}
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Повторение
+                    </th>
+                    {/* ... другие заголовки ... */}
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Сумма
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Срок оплаты
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Категория {/* TODO: Отображать категорию (Часть 10) */}
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Файл
+                    </th>{" "}
+                    {/* Новый столбец */}
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
+                      Действия
+                    </th>{" "}
+                    {/* Выравнивание вправо для кнопок */}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-4 text-center text-gray-700 dark:text-gray-300">
-              Нет платежей для отображения.
-            </div>
-          )}
-        </div>
-      )}
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {allPayments.map((payment) => (
+                    <tr
+                      key={payment.id}
+                      className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100"
+                    >
+                      {/* !!! Ячейка для иконки */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        <PaymentIconDisplay
+                          payment={payment}
+                          sizeClass="h-6 w-6"
+                        />
+                      </td>
+                      {/* ... остальные ячейки (статус, название, сумма, срок, категория) ... */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        {" "}
+                        {/* Статус */}
+                        {/* Цветовой индикатор статуса */}
+                        {/* Передаем весь объект payment, если утилита это поддерживает (см. Часть 5) */}
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full mr-2 ${getPaymentColorClass(
+                            payment
+                          )}`}
+                        ></span>
+                        {/* Текстовое обозначение статуса */}
+                        {payment.status === "upcoming" && "Предстоящий"}
+                        {payment.status === "overdue" && "Просрочен"}
+                        {payment.status === "completed" && "Выполнен"}
+                        {payment.status === "deleted" && "Удален"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
+                        {" "}
+                        {/* Название */} {payment.title}{" "}
+                      </td>
 
-      {/* ... Модальное окно с формой ... */}
-      {/* The Modal component is now handled internally by UseFormModal */}
-      {/* We only need to render PaymentForm and pass the modal state and handlers */}
-      <PaymentForm
-        isOpen={isModalOpen} // Pass isOpen state
-        onClose={handleCloseModal} // Pass onClose handler
-        paymentId={editingPaymentId}
-        onSuccess={handlePaymentSaved}
-      />
-    </div>
+                      {/* !!! Ячейка для типа повторения */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {/* Повторение */}
+                        {payment.seriesId && payment.series?.isActive ? ( // Платеж является частью АКТИВНОЙ серии
+                          <span className="flex items-center">
+                            <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
+                            {formatRecurrencePattern(
+                              payment.series.recurrencePattern
+                            )}
+                            {payment.series.recurrenceEndDate &&
+                              ` до ${new Date(
+                                payment.series.recurrenceEndDate
+                              ).toLocaleDateString()}`}
+                          </span>
+                        ) : payment.seriesId && !payment.series?.isActive ? ( // Платеж является частью НЕАКТИВНОЙ серии
+                          <span className="flex items-center text-gray-400 italic">
+                            <ArrowPathIcon className="h-4 w-4 mr-1" />
+                            Шаблон неактивен
+                          </span>
+                        ) : (
+                          // Разовый платеж
+                          "Разовый"
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {" "}
+                        {/* Сумма */} {payment.amount.toFixed(2)}{" "}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {" "}
+                        {/* Срок оплаты */}{" "}
+                        {new Date(payment.dueDate).toLocaleDateString()}{" "}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {" "}
+                        {/* Категория */}{" "}
+                        {payment.category ? payment.category.name : "-"}{" "}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {" "}
+                        {/* Файл */}
+                        {/* Отображаем иконку, если есть файл */}
+                        {payment.filePath && payment.fileName ? (
+                          <button
+                            onClick={() =>
+                              handleDownloadFile(payment.id, payment.fileName!)
+                            } // Вызываем функцию скачивания
+                            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 disabled:opacity-50"
+                            title={payment.fileName}
+                            // disabled={isDeleting || isSubmitting} // Отключаем, если платеж удаляется или форма отправляется - isSubmitting не определен здесь
+                            disabled={false} // Временно отключаем disabled
+                          >
+                            <PaperClipIcon className="h-5 w-5 inline-block mr-1" />
+                          </button>
+                        ) : (
+                          "-" // Если файла нет
+                        )}
+                      </td>
+                      {/* ... ячейка с действиями ... */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
+                        {" "}
+                        {/* Действия */}
+                        {/* Кнопка Редактировать - доступна для всех, кроме перманентно удаленных (которых нет в списке) */}
+                        {/* Также можно запретить редактирование completed/deleted, если это бизнес-требование */}
+                        {payment.status !== "deleted" && ( // Например, разрешим редактирование completed
+                          <button
+                            onClick={() => handleOpenModal(payment.id)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1" // mx-1 для отступов между кнопками
+                            title="Редактировать"
+                          >
+                            <PencilIcon className="h-5 w-5" />{" "}
+                            {/* Иконка редактирования */}
+                          </button>
+                        )}
+                        {/* Кнопки действий в зависимости от статуса для активных платежей */}
+                        {payment.status === "upcoming" ||
+                        payment.status === "overdue" ? (
+                          <>
+                            {/* Кнопка Выполнить */}
+                            <button
+                              onClick={() => handleCompletePayment(payment.id)}
+                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 mx-1"
+                              title="Отметить как выполненный"
+                            >
+                              <CheckCircleIcon className="h-5 w-5" />{" "}
+                              {/* Иконка выполнения */}
+                            </button>
+                            {/* Кнопка Удалить (логически) */}
+                            <button
+                              onClick={() => handleDeletePayment(payment.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1"
+                              title="Удалить (переместить в архив)"
+                            >
+                              <TrashIcon className="h-5 w-5" />{" "}
+                              {/* Иконка удаления */}
+                            </button>
+                          </>
+                        ) : (
+                          // Действия для выполненных и удаленных платежей (в этом списке, но основные в Архиве)
+                          // TODO: В Архиве будут другие действия (Восстановить, Перманентно удалить) (Часть 18)
+                          <span className="text-gray-500 dark:text-gray-400 mx-1">
+                            {payment.status === "completed" && "Выполнен"}
+                            {payment.status === "deleted" && "Удален"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-4 text-center text-gray-700 dark:text-gray-300">
+                Нет платежей для отображения.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ... Модальное окно с формой ... */}
+        {/* The Modal component is now handled internally by UseFormModal */}
+        {/* We only need to render PaymentForm and pass the modal state and handlers */}
+        <PaymentForm
+          isOpen={isModalOpen} // Pass isOpen state
+          onClose={handleCloseModal} // Pass onClose handler
+          paymentId={editingPaymentId}
+          onSuccess={handlePaymentSaved}
+        />
+      </div>
+    </>
   );
 };
 

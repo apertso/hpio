@@ -6,11 +6,16 @@ import logger from "../utils/logger";
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import { getPaymentColorClass } from "../utils/paymentColors";
 // Импортируем иконки действий
-import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline"; // Иконка восстановления и удаления
+import {
+  ArrowPathIcon,
+  TrashIcon,
+  PencilIcon,
+} from "@heroicons/react/24/outline"; // Иконка восстановления, удаления и редактирования
 import { PaperClipIcon } from "@heroicons/react/24/outline"; // Add import
 import { PaymentData } from "../types/paymentData";
 import useApi from "../hooks/useApi"; // Import useApi
 import { formatRecurrencePattern } from "./PaymentsList";
+import PaymentForm from "../components/PaymentForm"; // <-- ДОБАВИТЬ ИМПОРТ ФОРМЫ
 
 // Define the raw API fetch function
 const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
@@ -31,6 +36,12 @@ const ArchivePage: React.FC = () => {
 
   // State for transformed data
   const [archivedPayments, setArchivedPayments] = useState<PaymentData[]>([]);
+
+  // НОВОЕ: Состояние для модального окна редактирования
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | undefined>(
+    undefined
+  );
 
   // Effect to transform data when raw data changes
   useEffect(() => {
@@ -146,6 +157,25 @@ const ArchivePage: React.FC = () => {
       );
     }
   };
+
+  // НОВОЕ: Обработчики для открытия/закрытия модального окна
+  const handleOpenModal = (paymentId: string) => {
+    setEditingPaymentId(paymentId);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingPaymentId(undefined);
+  };
+
+  // НОВОЕ: Обработчик для успешного сохранения (обновляет список)
+  const handlePaymentSaved = () => {
+    handleCloseModal();
+    executeFetchArchivedPayments(); // Обновляем список архива
+    alert("Платеж успешно обновлен.");
+  };
+
   return (
     <>
       <title>Мои Платежи - Архив</title>
@@ -335,9 +365,14 @@ const ArchivePage: React.FC = () => {
                       </td>
                       {/* Ячейка с кнопками действий */}
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
-                        {/* Кнопка Редактировать (если разрешено редактировать в архиве) */}
-                        {/* TODO: Добавить модалку редактирования в Архив, если нужно */}
-                        {/* <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1"> <PencilIcon className="h-5 w-5" /> </button> */}
+                        {/* НОВАЯ КНОПКА "РЕДАКТИРОВАТЬ" */}
+                        <button
+                          onClick={() => handleOpenModal(payment.id)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1"
+                          title="Редактировать"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
 
                         {/* Кнопка Восстановить */}
                         <button
@@ -371,9 +406,13 @@ const ArchivePage: React.FC = () => {
           </div>
         )}
 
-        {/* Модальное окно редактирования не нужно на этой странице, если редактирование не предусмотрено ТЗ для архива */}
-        {/* Если редактирование из архива нужно (2.5 ТЗ): добавить модалку и логику handleOpenModal здесь */}
-        {/* <Modal> ... PaymentForm ... </Modal> */}
+        {/* НОВАЯ МОДАЛКА РЕДАКТИРОВАНИЯ */}
+        <PaymentForm
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          paymentId={editingPaymentId}
+          onSuccess={handlePaymentSaved}
+        />
       </div>
     </>
   );

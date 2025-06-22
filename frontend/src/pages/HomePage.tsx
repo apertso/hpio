@@ -116,15 +116,50 @@ const HomePage: React.FC = () => {
   // const [filterMonth, setFilterMonth] = useState(new Date()); // Текущий месяц по умолчанию
   // const { user } = useAuth(); // Получаем данные пользователя, если нужно (не напрямую для API, а для логирования/отображения)
 
+  // НОВОЕ: Состояние для выбора периода статистики
+  type PeriodType = "month" | "quarter" | "year" | "custom";
+  const [periodType, setPeriodType] = useState<PeriodType>("month");
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth()); // 0-11
+  const [quarter, setQuarter] = useState(Math.floor(new Date().getMonth() / 3)); // 0-3
+  const [customDateFrom, setCustomDateFrom] = useState(
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  );
+  const [customDateTo, setCustomDateTo] = useState(new Date());
+
   // --- Функция для загрузки статистики (из Dashboard.tsx) ---
   const fetchDashboardStats = useCallback(async () => {
     setIsLoadingStats(true);
     setErrorStats(null);
+
+    // НОВОЕ: Логика для определения startDate и endDate
+    let startDate, endDate;
+    switch (periodType) {
+      case "month":
+        startDate = new Date(year, month, 1);
+        endDate = new Date(year, month + 1, 0);
+        break;
+      case "quarter":
+        startDate = new Date(year, quarter * 3, 1);
+        endDate = new Date(year, quarter * 3 + 3, 0);
+        break;
+      case "year":
+        startDate = new Date(year, 0, 1);
+        endDate = new Date(year, 11, 31);
+        break;
+      case "custom":
+        startDate = customDateFrom;
+        endDate = customDateTo;
+        break;
+    }
+
+    const params = {
+      startDate: startDate.toISOString().split("T")[0],
+      endDate: endDate.toISOString().split("T")[0],
+    };
+
     try {
-      // TODO: Передать параметры фильтрации, если они будут
-      // const month = filterMonth.toISOString().split('T')[0].substring(0, 7); // YYYY-MM
-      // const res = await axiosInstance.get('/stats', { params: { month } }); // Пример с параметром месяца
-      const res = await axiosInstance.get("/stats/current-month"); // Получаем только текущий месяц по фиксированному эндпоинту
+      const res = await axiosInstance.get("/stats", { params }); // Используем новый эндпоинт с параметрами
 
       // Преобразование сумм в числа для графиков
       const formattedStats = {
@@ -148,7 +183,7 @@ const HomePage: React.FC = () => {
     } finally {
       setIsLoadingStats(false);
     }
-  }, []); // TODO: Добавить в зависимости: filterMonth (если будут фильтры)
+  }, [periodType, year, month, quarter, customDateFrom, customDateTo]);
 
   // --- Эффект для загрузки статистики при монтировании компонента (из Dashboard.tsx) ---
   useEffect(() => {
@@ -179,6 +214,43 @@ const HomePage: React.FC = () => {
     executeFetchUpcomingPayments();
     fetchDashboardStats(); // !!! Добавили перезагрузку статистики
     alert("Платеж успешно сохранен!"); // Временное уведомление
+  };
+
+  // --- Обработчики действий для карточек платежей ---
+  const handleCompletePayment = async (paymentId: string) => {
+    if (
+      window.confirm(
+        "Вы уверены, что хотите отметить этот платеж как выполненный?"
+      )
+    ) {
+      try {
+        await axiosInstance.put(`/payments/${paymentId}/complete`);
+        alert("Платеж выполнен.");
+        executeFetchUpcomingPayments();
+        fetchDashboardStats();
+      } catch (error) {
+        logger.error(`Failed to complete payment ${paymentId}:`, error);
+        alert("Не удалось выполнить платеж.");
+      }
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (
+      window.confirm(
+        "Вы уверены, что хотите удалить этот платеж? Он будет перемещен в архив."
+      )
+    ) {
+      try {
+        await axiosInstance.delete(`/payments/${paymentId}`);
+        alert("Платеж перемещен в архив.");
+        executeFetchUpcomingPayments();
+        fetchDashboardStats();
+      } catch (error) {
+        logger.error(`Failed to delete payment ${paymentId}:`, error);
+        alert("Не удалось удалить платеж.");
+      }
+    }
   };
 
   // --- Данные для графиков (из Dashboard.tsx) ---
@@ -230,7 +302,7 @@ const HomePage: React.FC = () => {
         },
       ],
     };
-  }, [stats, resolvedTheme]);
+  }, [stats, resolvedTheme]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Опции для круговой диаграммы
   const categoriesChartOptions: ChartOptions<"pie"> = useMemo(
@@ -451,9 +523,10 @@ const HomePage: React.FC = () => {
               upcomingPayments.map((payment) => (
                 <PaymentCard
                   key={payment.id}
-                  payment={payment} // Передаем реальные данные
-                  onClick={() => handleOpenModal(payment.id)} // Открываем модалку редактирования с реальным ID
-                  colorClass="text-white"
+                  payment={payment}
+                  onEdit={() => handleOpenModal(payment.id)}
+                  onComplete={() => handleCompletePayment(payment.id)}
+                  onDelete={() => handleDeletePayment(payment.id)}
                 />
               ))
             ) : (
@@ -471,6 +544,126 @@ const HomePage: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
             Статистика
           </h2>
+          {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button
+                className={`px-4 py-2 rounded ${
+                  periodType === "month"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                }`}
+                onClick={() => setPeriodType("month")}
+              >
+                Месяц
+              </button>
+              <button
+                className={`px-4 py-2 rounded ${
+                  periodType === "quarter"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                }`}
+                onClick={() => setPeriodType("quarter")}
+              >
+                Квартал
+              </button>
+              <button
+                className={`px-4 py-2 rounded ${
+                  periodType === "year"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                }`}
+                onClick={() => setPeriodType("year")}
+              >
+                Год
+              </button>
+              <button
+                className={`px-4 py-2 rounded ${
+                  periodType === "custom"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                }`}
+                onClick={() => setPeriodType("custom")}
+              >
+                Произвольный
+              </button>
+            </div>
+            {/* Селекторы для года, месяца, квартала, даты */}
+            {periodType === "month" && (
+              <div className="flex gap-2 items-center">
+                <label>Год:</label>
+                <input
+                  type="number"
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="border rounded px-2 py-1 w-24 dark:bg-gray-700 dark:text-gray-100"
+                />
+                <label>Месяц:</label>
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(Number(e.target.value))}
+                  className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
+                >
+                  {monthNames.map((name, idx) => (
+                    <option key={idx} value={idx}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {periodType === "quarter" && (
+              <div className="flex gap-2 items-center">
+                <label>Год:</label>
+                <input
+                  type="number"
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="border rounded px-2 py-1 w-24 dark:bg-gray-700 dark:text-gray-100"
+                />
+                <label>Квартал:</label>
+                <select
+                  value={quarter}
+                  onChange={(e) => setQuarter(Number(e.target.value))}
+                  className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
+                >
+                  <option value={0}>1</option>
+                  <option value={1}>2</option>
+                  <option value={2}>3</option>
+                  <option value={3}>4</option>
+                </select>
+              </div>
+            )}
+            {periodType === "year" && (
+              <div className="flex gap-2 items-center">
+                <label>Год:</label>
+                <input
+                  type="number"
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="border rounded px-2 py-1 w-24 dark:bg-gray-700 dark:text-gray-100"
+                />
+              </div>
+            )}
+            {periodType === "custom" && (
+              <div className="flex gap-2 items-center">
+                <label>С:</label>
+                <input
+                  type="date"
+                  value={customDateFrom.toISOString().split("T")[0]}
+                  onChange={(e) => setCustomDateFrom(new Date(e.target.value))}
+                  className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
+                />
+                <label>По:</label>
+                <input
+                  type="date"
+                  value={customDateTo.toISOString().split("T")[0]}
+                  onChange={(e) => setCustomDateTo(new Date(e.target.value))}
+                  className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
+                />
+              </div>
+            )}
+          </div>
           {/* Состояния загрузки или ошибки для статистики */}
           {isLoadingStats && (
             <div className="text-center text-gray-700 dark:text-gray-300">

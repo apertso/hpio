@@ -8,13 +8,28 @@ const router = Router();
 // Все маршруты статистики должны быть защищены
 router.use(protect);
 
-// GET /api/stats/current-month - Получить статистику для дашборда за текущий месяц
-router.get("/current-month", async (req: Request, res: Response) => {
+// GET /api/stats - Получить статистику для дашборда за указанный период
+router.get("/", async (req: Request, res: Response) => {
   try {
-    const stats = await getDashboardStats(req.user!.id);
+    // Получаем startDate и endDate из query параметров
+    const { startDate, endDate } = req.query;
+
+    // Проверяем, что параметры являются строками
+    if (startDate && typeof startDate !== "string") {
+      return res
+        .status(400)
+        .json({ message: "Параметр startDate должен быть строкой." });
+    }
+    if (endDate && typeof endDate !== "string") {
+      return res
+        .status(400)
+        .json({ message: "Параметр endDate должен быть строкой." });
+    }
+
+    const stats = await getDashboardStats(req.user!.id, startDate, endDate);
     res.json(stats);
   } catch (error: any) {
-    logger.error("Error in GET /api/stats/current-month:", error);
+    logger.error("Error in GET /api/stats:", error);
     res.status(500).json({ message: "Ошибка сервера", error: error.message });
   }
 });

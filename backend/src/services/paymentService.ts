@@ -2,6 +2,8 @@ import db from "../models"; // Доступ к моделям
 import { Op, Sequelize } from "sequelize"; // Для операторов запросов
 import logger from "../config/logger";
 import { deleteFileFromFS } from "./fileService"; // Переиспользуем удаление из ФС и открепление иконки
+import { PaymentInstance } from "../models/Payment";
+import { CategoryInstance } from "../models/Category";
 
 // Пример интерфейса для данных платежа (опционально, для строгой типизации)
 interface PaymentData {
@@ -1083,109 +1085,56 @@ export const updateOverdueStatuses = async () => {
 // TODO: В Части 15 реализовать generateNextRecurrentPayments (также связана со статусом 'completed' и isRecurrent)
 
 // --- Новая функция: Получить статистику для дашборда за текущий месяц (2.3, 2.5) ---
-export const getDashboardStats = async (userId: string) => {
+export const getDashboardStats = async (
+  userId: string,
+  startDate?: string,
+  endDate?: string
+) => {
   try {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // Первое число текущего месяца
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Последнее число текущего месяца
+    // Определяем начало и конец периода
+    const periodStart = startDate
+      ? new Date(startDate)
+      : new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = endDate
+      ? new Date(endDate)
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    // Важно: В статистику по текущему месяцу включаются:
-    // - Платежи со статусом 'upcoming' или 'overdue', у которых срок оплаты в текущем месяце.
-    // - Платежи со статусом 'completed', у которых срок оплаты ИЛИ дата выполнения в текущем месяце.
-    // - Платежи со статусом 'deleted', у которых срок оплаты ИЛИ дата удаления в текущем месяце.
-    // Согласно ТЗ 2.5: "основной вид - текущий месяц... Включает активные платежи И платежи, завершенные в текущем месяце."
-    // Исключает просроченные из прошлых месяцев, если они не были завершены в текущем.
-    // Давайте считать, что в статистику попадают платежи, у которых:
-    // 1. Срок оплаты (dueDate) находится в текущем месяце.
-    // 2. ИЛИ (для completed/deleted) дата выполнения/удаления (completedAt/updatedAt) находится в текущем месяце.
+    // Устанавливаем время для корректного сравнения
+    periodStart.setHours(0, 0, 0, 0);
+    periodEnd.setHours(23, 59, 59, 999);
 
-    // Находим ВСЕ платежи пользователя, которые попадают в текущий месяц по dueDate
-    const paymentsInMonthByDueDate = await db.Payment.findAll({
+    // Один запрос для получения всех платежей, релевантных для статистики
+    const relevantPayments: (PaymentInstance & {
+      category?: CategoryInstance;
+    })[] = await db.Payment.findAll({
       where: {
         userId: userId,
-        dueDate: {
-          [Op.between]: [
-            startOfMonth.toISOString().split("T")[0],
-            endOfMonth.toISOString().split("T")[0],
-          ], // Диапазон дат YYYY-MM-DD
-        },
-        // Исключаем перманентно удаленные (их нет в БД)
-        status: { [Op.not]: "some_non_existent_status" }, // Всегда показываем все статусы, если дата в месяце
-      },
-      include: [
-        {
-          // Включаем категорию для группировки
-          model: db.Category,
-          as: "category",
-          attributes: ["id", "name"],
-        },
-      ],
-      attributes: [
-        // Выбираем нужные поля для агрегации
-        "id",
-        "title",
-        "amount",
-        "dueDate",
-        "status",
-        "categoryId",
-        "completedAt",
-        "updatedAt",
-        "seriesId", // Include seriesId
-      ],
-    });
-
-    // Находим платежи со статусом 'completed' или 'deleted', у которых completedAt/updatedAt в текущем месяце,
-    // НО dueDate НЕ ОБЯЗАТЕЛЬНО в текущем месяце (например, просроченный из прошлого месяца, выполненный сегодня).
-    const completedOrDeletedInMonthByDate = await db.Payment.findAll({
-      where: {
-        userId: userId,
-        status: { [Op.in]: ["completed", "deleted"] },
         [Op.or]: [
-          // Дата выполнения ИЛИ дата обновления (для удаленных) в текущем месяце
           {
-            completedAt: {
+            // Платежи, у которых СРОК ОПЛАТЫ в периоде
+            dueDate: {
               [Op.between]: [
-                startOfMonth,
-                new Date(
-                  endOfMonth.getFullYear(),
-                  endOfMonth.getMonth(),
-                  endOfMonth.getDate(),
-                  23,
-                  59,
-                  59
-                ),
-              ], // Диапазон дат с учетом времени
+                periodStart.toISOString().split("T")[0],
+                periodEnd.toISOString().split("T")[0],
+              ],
             },
           },
           {
-            // updatedAt используется как дата логического удаления для статуса 'deleted'
-            updatedAt: {
-              [Op.between]: [
-                startOfMonth,
-                new Date(
-                  endOfMonth.getFullYear(),
-                  endOfMonth.getMonth(),
-                  endOfMonth.getDate(),
-                  23,
-                  59,
-                  59
-                ),
-              ],
-            },
-            status: "deleted", // Применяем updatedAt только для удаленных
+            // ИЛИ платежи, которые были ЗАВЕРШЕНЫ в периоде
+            status: "completed",
+            completedAt: { [Op.between]: [periodStart, periodEnd] },
           },
         ],
       },
       include: [
         {
-          // Включаем категорию
           model: db.Category,
           as: "category",
           attributes: ["id", "name"],
         },
       ],
       attributes: [
-        // Выбираем нужные поля
         "id",
         "title",
         "amount",
@@ -1193,81 +1142,40 @@ export const getDashboardStats = async (userId: string) => {
         "status",
         "categoryId",
         "completedAt",
-        "updatedAt",
-        "seriesId", // Include seriesId
       ],
     });
 
-    // Объединяем два списка и удаляем дубликаты (если один платеж попал по dueDate И по completedAt/updatedAt)
-    // Удобнее использовать Set или Map для уникализации по ID
-    const allPaymentsInMonthMap = new Map<string, any>(); // Map для уникализации по ID
-
-    paymentsInMonthByDueDate.forEach((p) =>
-      allPaymentsInMonthMap.set(p.id, p.toJSON())
-    );
-    completedOrDeletedInMonthByDate.forEach((p) =>
-      allPaymentsInMonthMap.set(p.id, p.toJSON())
-    );
-
-    const allPaymentsInMonth = Array.from(allPaymentsInMonthMap.values());
-
-    // --- Расчет статистики ---
-
     let totalUpcomingAmount = 0;
     let totalCompletedAmount = 0;
-    // Игнорируем просроченные и удаленные для сумм "предстоящих" и "выполненных"
-    // Но включаем их для других видов статистики (распределение по категориям/дням), если они в месяце
-    let totalOverdueAmount = 0; // Add overdue to stats
-    let totalDeletedAmount = 0; // Add deleted to stats
-
-    // Агрегация по категориям и дням
     const categoriesStats: {
       [key: string]: { id?: string; name: string; amount: number };
-    } = {
-      "no-category": { name: "Без категории", amount: 0 }, // Изначально добавляем "Без категории"
-    };
-    const dailyStats: { [key: string]: { date: string; amount: number } } = {}; // Дата в формате YYYY-MM-DD
+    } = {};
+    const dailyStats: { [key: string]: { date: string; amount: number } } = {};
 
-    for (const payment of allPaymentsInMonth) {
-      const amount = parseFloat(payment.amount.toString()); // Убедимся, что работаем с числом
-
-      // Sum statistics by status
+    for (const payment of relevantPayments) {
+      const amount = parseFloat(payment.amount.toString());
       const paymentDueDate = new Date(payment.dueDate);
-      const isDueInCurrentMonth =
-        paymentDueDate.getMonth() === now.getMonth() &&
-        paymentDueDate.getFullYear() === now.getFullYear();
 
+      // Рассчитываем "Предстоящие" - это upcoming и overdue с dueDate в периоде
       if (
         (payment.status === "upcoming" || payment.status === "overdue") &&
-        isDueInCurrentMonth
+        paymentDueDate >= periodStart &&
+        paymentDueDate <= periodEnd
       ) {
-        totalUpcomingAmount += amount; // Sum upcoming and overdue payments for the current month
+        totalUpcomingAmount += amount;
       }
 
-      if (payment.status === "completed") {
-        const completedDate = payment.completedAt
-          ? new Date(payment.completedAt)
-          : null;
-        if (
-          completedDate &&
-          completedDate.getMonth() === now.getMonth() &&
-          completedDate.getFullYear() === now.getFullYear()
-        ) {
+      // Рассчитываем "Выполненные" - это completed с completedAt в периоде
+      if (payment.status === "completed" && payment.completedAt) {
+        const completedDate = new Date(payment.completedAt.toString());
+        if (completedDate >= periodStart && completedDate <= periodEnd) {
           totalCompletedAmount += amount;
         }
       }
 
-      // Separate sums for overdue and deleted, regardless of whether they are included in totalUpcomingAmount
-      if (payment.status === "overdue") {
-        totalOverdueAmount += amount;
-      } else if (payment.status === "deleted") {
-        totalDeletedAmount += amount;
-      }
-
-      // Distribution by categories (include all payments from the month selection)
+      // Распределение по категориям (для всех платежей в выборке)
       const categoryId = payment.category?.id || "no-category";
       const categoryName = payment.category?.name || "Без категории";
-
       if (!categoriesStats[categoryId]) {
         categoriesStats[categoryId] = {
           id: categoryId !== "no-category" ? categoryId : undefined,
@@ -1275,59 +1183,43 @@ export const getDashboardStats = async (userId: string) => {
           amount: 0,
         };
       }
-      // Убедимся, что платеж не "удален" перед добавлением в распределение по категориям
+      // Суммируем в категорию, только если платеж не "удален"
       if (payment.status !== "deleted") {
         categoriesStats[categoryId].amount += amount;
       }
 
-      // Distribution by days (include all payments from the month selection)
-      // Use dueDate for payment load graph
-      const dueDateStr = payment.dueDate; // Format YYYY-MM-DD
-
-      // Убедимся, что платеж не "удален" перед добавлением в платежную нагрузку
-      if (
-        payment.status === "upcoming" ||
-        payment.status === "overdue" ||
-        payment.status === "completed"
-      ) {
-        if (!dailyStats[dueDateStr]) {
-          dailyStats[dueDateStr] = { date: dueDateStr, amount: 0 };
-        }
-        dailyStats[dueDateStr].amount += amount;
+      // Статистика по дням (для всех платежей в выборке)
+      const dueDateKey = payment.dueDate; // YYYY-MM-DD
+      if (!dailyStats[dueDateKey]) {
+        dailyStats[dueDateKey] = { date: dueDateKey, amount: 0 };
+      }
+      if (payment.status !== "deleted") {
+        dailyStats[dueDateKey].amount += amount;
       }
     }
 
-    // Convert dailyStats to an array, sort by date
-    const dailyStatsArray = Object.values(dailyStats).sort((a, b) =>
-      a.date.localeCompare(b.date)
+    const categoriesDistribution = Object.values(categoriesStats).filter(
+      (c) => c.amount > 0
     );
-
-    // Convert categoriesStats to an array (excluding temporary 'no-category' key)
-    const categoriesStatsArray = Object.values(categoriesStats); // .filter(cat => cat.id !== undefined); // If you want to exclude "No Category" from the list, but it's usually needed
-
-    // TODO: Add calculation of other metrics if needed (e.g., number of payments by status)
-
-    logger.info(
-      `Calculated dashboard stats for user ${userId} for month ${startOfMonth.getFullYear()}-${
-        startOfMonth.getMonth() + 1
-      }`
+    const dailyPaymentLoad = Object.values(dailyStats).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
     return {
-      month: `${startOfMonth.getFullYear()}-${startOfMonth.getMonth() + 1}`,
-      totalUpcomingAmount: totalUpcomingAmount.toFixed(2), // Return as string with 2 decimal places
+      month: `${periodStart.getFullYear()}-${(periodStart.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}`,
+      totalUpcomingAmount: totalUpcomingAmount.toFixed(2),
       totalCompletedAmount: totalCompletedAmount.toFixed(2),
-      totalOverdueAmount: totalOverdueAmount.toFixed(2), // Include overdue in response
-      totalDeletedAmount: totalDeletedAmount.toFixed(2), // Include deleted in response
-      categoriesDistribution: categoriesStatsArray, // Array { name, amount, id? }
-      dailyPaymentLoad: dailyStatsArray, // Array { date, amount }
-      // TODO: Add other aggregated data
+      categoriesDistribution,
+      dailyPaymentLoad,
+      allPaymentsInMonth: relevantPayments, // Возвращаем для фильтрации на фронте
     };
   } catch (error) {
     logger.error(
       `Error calculating dashboard stats for user ${userId}:`,
       error
     );
-    throw new Error("Failed to calculate dashboard stats.");
+    throw new Error("Не удалось рассчитать статистику.");
   }
 };

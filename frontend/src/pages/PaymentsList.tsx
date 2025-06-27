@@ -15,6 +15,7 @@ import {
   PaperClipIcon, // Import PaperClipIcon
 } from "@heroicons/react/24/outline";
 import { ArrowPathIcon } from "@heroicons/react/24/outline"; // Recurrence icon
+import { Button } from "../components/Button"; // Import the Button component
 import { PaymentData } from "../types/paymentData";
 
 // TODO: Хелпер для форматирования шаблона повторения на русский
@@ -157,19 +158,13 @@ const PaymentsList: React.FC = () => {
 
   return (
     <>
-      <title>Мои Платежи - Список платежей</title>
+      <title>Хочу Плачу - Список платежей</title>
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Все платежи
           </h2>
-          {/* Кнопка добавления платежа также на этой странице */}
-          <button
-            onClick={() => handleOpenModal()} // Открываем модалку для создания (без ID)
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200"
-          >
-            Добавить платеж
-          </button>
+          <Button onClick={() => handleOpenModal()} label="Добавить платеж" />
         </div>
 
         {/* TODO: Добавить секцию для фильтров, поиска и пагинации (Часть 6+) */}

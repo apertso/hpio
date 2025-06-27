@@ -1119,11 +1119,19 @@ export const getDashboardStats = async (
                 periodEnd.toISOString().split("T")[0],
               ],
             },
+            status: {
+              [Op.ne]: "deleted",
+            },
           },
           {
             // ИЛИ платежи, которые были ЗАВЕРШЕНЫ в периоде
             status: "completed",
-            completedAt: { [Op.between]: [periodStart, periodEnd] },
+            completedAt: {
+              [Op.between]: [
+                periodStart.toISOString().split("T")[0],
+                periodEnd.toISOString().split("T")[0],
+              ],
+            },
           },
         ],
       },

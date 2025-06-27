@@ -7,6 +7,7 @@ import { useForm, SubmitHandler } from "react-hook-form"; // Для формы �
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline"; // Иконки действий
+import { Button } from "../components/Button"; // Import the Button component
 import useApi from "../hooks/useApi"; // Import useApi
 
 // Интерфейс для данных категории
@@ -177,18 +178,16 @@ const CategoriesPage: React.FC = () => {
 
   return (
     <>
-      <title>Мои Платежи - Категории</title>
+      <title>Хочу Плачу - Категории</title>
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Управление категориями
           </h2>
-          <button
-            onClick={() => handleOpenModal()} // Открываем модалку для создания (без ID)
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200"
-          >
-            Добавить категорию
-          </button>
+          <Button
+            onClick={() => handleOpenModal()}
+            label="Добавить категорию"
+          />
         </div>
 
         {/* Состояния загрузки/ошибки списка */}

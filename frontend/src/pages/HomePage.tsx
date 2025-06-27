@@ -6,6 +6,9 @@ import axiosInstance from "../api/axiosInstance"; // Для получения �
 import logger from "../utils/logger";
 import useApi from "../hooks/useApi"; // Import useApi
 import { useTheme } from "../context/ThemeContext"; // Import useTheme
+import { Button } from "../components/Button";
+import { DropdownButton } from "../components/DropdownButton";
+import { YearSelectorDropdown } from "../components/YearSelectorDropdown";
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import {
@@ -24,6 +27,14 @@ import {
 } from "chart.js"; // Импорт нужных элементов
 import { Pie, Line } from "react-chartjs-2"; // Или Bar/Line, если нужно
 import { PaymentData } from "../types/paymentData";
+
+// Utility function to format date in local timezone (YYYY-MM-DD)
+const formatDateToLocal = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const monthNames = [
   "Январь",
@@ -154,8 +165,8 @@ const HomePage: React.FC = () => {
     }
 
     const params = {
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: endDate.toISOString().split("T")[0],
+      startDate: formatDateToLocal(startDate),
+      endDate: formatDateToLocal(endDate),
     };
 
     try {
@@ -484,18 +495,13 @@ const HomePage: React.FC = () => {
 
   return (
     <>
-      <title>Мои Платежи - Главная</title>
+      <title>Хочу Плачу - Главная</title>
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Платежи на ближайшие 10 дней
           </h2>
-          <button
-            onClick={() => handleOpenModal()} // Открываем модалку для создания (без ID)
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors duration-200"
-          >
-            Добавить платеж
-          </button>
+          <Button onClick={() => handleOpenModal()} label="Добавить платеж" />
         </div>
 
         {/* Отображение состояния загрузки или ошибки */}
@@ -516,7 +522,7 @@ const HomePage: React.FC = () => {
         {/* Горизонтальная лента платежей */}
         {/* Условие для отображения ленты только при успешной загрузке и отсутствии ошибок */}
         {!isLoadingPayments && !errorPayments && (
-          <div className="flex overflow-x-auto pb-4 -mx-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-700">
+          <div className="flex overflow-x-auto pb-4 -mx-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-700 gap-x-4">
             {" "}
             {/* Tailwind классы для стилизации скроллбара */}
             {upcomingPayments.length > 0 ? (
@@ -545,123 +551,82 @@ const HomePage: React.FC = () => {
             Статистика
           </h2>
           {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
-            <div className="flex flex-wrap gap-2 mb-4">
-              <button
-                className={`px-4 py-2 rounded ${
-                  periodType === "month"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                }`}
-                onClick={() => setPeriodType("month")}
-              >
-                Месяц
-              </button>
-              <button
-                className={`px-4 py-2 rounded ${
-                  periodType === "quarter"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                }`}
-                onClick={() => setPeriodType("quarter")}
-              >
-                Квартал
-              </button>
-              <button
-                className={`px-4 py-2 rounded ${
-                  periodType === "year"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                }`}
-                onClick={() => setPeriodType("year")}
-              >
-                Год
-              </button>
-              <button
-                className={`px-4 py-2 rounded ${
-                  periodType === "custom"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                }`}
-                onClick={() => setPeriodType("custom")}
-              >
-                Произвольный
-              </button>
-            </div>
-            {/* Селекторы для года, месяца, квартала, даты */}
+          <div className="flex flex-wrap gap-2 items-center mb-6">
+            <DropdownButton
+              label={
+                periodType === "month"
+                  ? "Месяц"
+                  : periodType === "quarter"
+                  ? "Квартал"
+                  : periodType === "year"
+                  ? "Год"
+                  : "Произвольный"
+              }
+              options={[
+                { label: "Месяц", onClick: () => setPeriodType("month") },
+                { label: "Квартал", onClick: () => setPeriodType("quarter") },
+                { label: "Год", onClick: () => setPeriodType("year") },
+                {
+                  label: "Произвольный",
+                  onClick: () => setPeriodType("custom"),
+                },
+              ]}
+            />
+            {/* Month dropdown */}
             {periodType === "month" && (
-              <div className="flex gap-2 items-center">
-                <label>Год:</label>
-                <input
-                  type="number"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                  className="border rounded px-2 py-1 w-24 dark:bg-gray-700 dark:text-gray-100"
+              <>
+                <DropdownButton
+                  label={monthNames[month]}
+                  options={monthNames.map((name, idx) => ({
+                    label: name,
+                    onClick: () => setMonth(idx),
+                  }))}
                 />
-                <label>Месяц:</label>
-                <select
-                  value={month}
-                  onChange={(e) => setMonth(Number(e.target.value))}
-                  className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
-                >
-                  {monthNames.map((name, idx) => (
-                    <option key={idx} value={idx}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              </>
             )}
+            {/* Quarter dropdown */}
             {periodType === "quarter" && (
-              <div className="flex gap-2 items-center">
-                <label>Год:</label>
-                <input
-                  type="number"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                  className="border rounded px-2 py-1 w-24 dark:bg-gray-700 dark:text-gray-100"
+              <>
+                <DropdownButton
+                  label={String(quarter + 1)}
+                  options={Array.from({ length: 4 }, (_, idx) => ({
+                    label: String(idx + 1),
+                    onClick: () => setQuarter(idx),
+                  }))}
                 />
-                <label>Квартал:</label>
-                <select
-                  value={quarter}
-                  onChange={(e) => setQuarter(Number(e.target.value))}
-                  className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
-                >
-                  <option value={0}>1</option>
-                  <option value={1}>2</option>
-                  <option value={2}>3</option>
-                  <option value={3}>4</option>
-                </select>
-              </div>
+              </>
             )}
-            {periodType === "year" && (
-              <div className="flex gap-2 items-center">
-                <label>Год:</label>
-                <input
-                  type="number"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                  className="border rounded px-2 py-1 w-24 dark:bg-gray-700 dark:text-gray-100"
+            {/* Year input (not for custom) */}
+            {periodType !== "custom" && (
+              <>
+                <YearSelectorDropdown
+                  years={Array.from(
+                    { length: 21 },
+                    (_, i) => new Date().getFullYear() - 10 + i
+                  )}
+                  selectedYear={year}
+                  onChange={setYear}
                 />
-              </div>
+              </>
             )}
+            {/* Custom date range */}
             {periodType === "custom" && (
-              <div className="flex gap-2 items-center">
-                <label>С:</label>
+              <>
+                <label className="ml-2">С:</label>
                 <input
                   type="date"
                   value={customDateFrom.toISOString().split("T")[0]}
                   onChange={(e) => setCustomDateFrom(new Date(e.target.value))}
                   className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
                 />
-                <label>По:</label>
+                <label className="ml-2">По:</label>
                 <input
                   type="date"
                   value={customDateTo.toISOString().split("T")[0]}
                   onChange={(e) => setCustomDateTo(new Date(e.target.value))}
                   className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
                 />
-              </div>
+              </>
             )}
           </div>
           {/* Состояния загрузки или ошибки для статистики */}
@@ -682,25 +647,21 @@ const HomePage: React.FC = () => {
           {/* Отображение статистики, если данные загружены */}
           {!isLoadingStats && !errorStats && stats && (
             <div className="space-y-6">
-              {/* Заголовок текущего месяца */}
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Статистика за {formattedMonth}
-              </h3>{" "}
               {/* TODO: Форматировать месяц на русский */}
               {/* Блоки с общими суммами */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-700 rounded-lg shadow p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                   <p className="text-lg font-medium text-gray-500 dark:text-gray-300">
-                    Предстоящие платежи (месяц)
+                    Предстоящие платежи
                   </p>
                   <p className="mt-1 text-3xl font-bold text-blue-600 dark:text-blue-400">
                     {/* TODO: Форматировать сумму */}
                     {parseFloat(stats.totalUpcomingAmount).toFixed(2)}
                   </p>
                 </div>
-                <div className="bg-white dark:bg-gray-700 rounded-lg shadow p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                   <p className="text-lg font-medium text-gray-500 dark:text-gray-300">
-                    Выполненные платежи (месяц)
+                    Выполненные платежи
                   </p>
                   <p className="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
                     {/* TODO: Форматировать сумму */}
@@ -712,7 +673,10 @@ const HomePage: React.FC = () => {
               {/* Блоки с графиками */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Круговая диаграмма (распределение по категориям) */}
-                <div className="bg-white dark:bg-gray-700 rounded-lg shadow p-6 flex flex-col items-center">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col">
+                  <p className="text-lg font-medium text-gray-500 dark:text-gray-300 mb-6">
+                    Распределение по категориям
+                  </p>
                   {noCategoriesData ? (
                     <div className="text-center text-gray-700 dark:text-gray-300 py-10">
                       Нет данных по категориям за этот месяц.
@@ -720,18 +684,25 @@ const HomePage: React.FC = () => {
                   ) : (
                     // Высота контейнера для графика
                     <div className="relative h-80 w-full">
-                      {" "}
-                      {/* Задаем фиксированную высоту */}
                       <Pie
                         data={categoriesChartData}
-                        options={categoriesChartOptions}
+                        options={{
+                          ...categoriesChartOptions,
+                          plugins: {
+                            ...categoriesChartOptions.plugins,
+                            title: { display: false },
+                          },
+                        }}
                       />
                     </div>
                   )}
                 </div>
 
                 {/* График платежной нагрузки по дням */}
-                <div className="bg-white dark:bg-gray-700 rounded-lg shadow p-6 flex flex-col items-center">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col">
+                  <p className="text-lg font-medium text-gray-500 dark:text-gray-300 mb-6">
+                    Платежная нагрузка по дням
+                  </p>
                   {noDailyData ? (
                     <div className="text-center text-gray-700 dark:text-gray-300 py-10">
                       Нет данных о платежной нагрузке за этот месяц.
@@ -739,12 +710,15 @@ const HomePage: React.FC = () => {
                   ) : (
                     // Высота контейнера для графика
                     <div className="relative h-80 w-full">
-                      {" "}
-                      {/* Задаем фиксированную высоту */}
-                      {/* Используем Line график для платежной нагрузки */}
                       <Line
                         data={dailyLoadChartData}
-                        options={dailyLoadChartOptions}
+                        options={{
+                          ...dailyLoadChartOptions,
+                          plugins: {
+                            ...dailyLoadChartOptions.plugins,
+                            title: { display: false },
+                          },
+                        }}
                       />
                     </div>
                   )}

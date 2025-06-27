@@ -178,7 +178,7 @@ const ArchivePage: React.FC = () => {
 
   return (
     <>
-      <title>Мои Платежи - Архив</title>
+      <title>Хочу Плачу - Архив</title>
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">

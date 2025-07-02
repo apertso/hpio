@@ -9,6 +9,7 @@ import { z } from "zod";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline"; // Иконки действий
 import { Button } from "../components/Button"; // Import the Button component
 import useApi from "../hooks/useApi"; // Import useApi
+import Spinner from "../components/Spinner";
 
 // Интерфейс для данных категории
 interface Category {
@@ -132,14 +133,23 @@ const CategoriesPage: React.FC = () => {
       }
       handleCloseModal(); // Закрыть модалку
       executeFetchCategories(); // Перезагрузить список категорий using the execute function from useApi
-    } catch (error: any) {
-      logger.error(
-        "Failed to save category:",
-        error.response?.data?.message || error.message
-      );
-      setFormError(
-        error.response?.data?.message || "Произошла ошибка при сохранении."
-      ); // Отобразить ошибку с бэкенда
+    } catch (error: unknown) {
+      if (error && typeof error === "object" && "response" in error) {
+        const errObj = error as {
+          response?: { data?: { message?: string } };
+          message?: string;
+        };
+        logger.error(
+          "Failed to save category:",
+          errObj.response?.data?.message || errObj.message
+        );
+        setFormError(
+          errObj.response?.data?.message || "Произошла ошибка при сохранении."
+        );
+      } else {
+        logger.error("Failed to save category:", String(error));
+        setFormError("Произошла ошибка при сохранении.");
+      }
     }
   };
 
@@ -161,17 +171,31 @@ const CategoriesPage: React.FC = () => {
         logger.info(`Category deleted: ${categoryId}`);
         executeFetchCategories(); // Перезагрузить список using the execute function from useApi
         alert("Категория успешно удалена."); // Временное уведомление
-      } catch (error: any) {
-        logger.error(
-          `Failed to delete category ${categoryId}:`,
-          error.response?.data?.message || error.message
-        );
-        // Обработка ошибки, если удаление запрещено из-за связанных платежей
-        alert(
-          `Не удалось удалить категорию "${categoryName}": ${
-            error.response?.data?.message || error.message
-          }`
-        );
+      } catch (error: unknown) {
+        if (error && typeof error === "object" && "response" in error) {
+          const errObj = error as {
+            response?: { data?: { message?: string } };
+            message?: string;
+          };
+          logger.error(
+            `Failed to delete category ${categoryId}:`,
+            errObj.response?.data?.message || errObj.message
+          );
+          // Обработка ошибки, если удаление запрещено из-за связанных платежей
+          alert(
+            `Не удалось удалить категорию "${categoryName}": ${
+              errObj.response?.data?.message || errObj.message
+            }`
+          );
+        } else {
+          logger.error(
+            `Failed to delete category ${categoryId}:`,
+            String(error)
+          );
+          alert(
+            `Не удалось удалить категорию "${categoryName}": Произошла ошибка.`
+          );
+        }
       }
     }
   };
@@ -192,13 +216,13 @@ const CategoriesPage: React.FC = () => {
 
         {/* Состояния загрузки/ошибки списка */}
         {isLoadingCategories && (
-          /* ... */ <div className="text-center text-gray-700 dark:text-gray-300">
-            Загрузка категорий...
+          <div className="flex justify-center items-center py-10">
+            <Spinner />
           </div>
         )}
         {errorCategories && (
-          /* ... */ <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+          <div
+            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
           >
             {" "}
@@ -239,7 +263,7 @@ const CategoriesPage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
                         <button
                           onClick={() => handleOpenModal(category.id)} // Редактировать категорию
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1"
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1 cursor-pointer"
                           title="Редактировать"
                         >
                           <PencilIcon className="h-5 w-5" />{" "}
@@ -249,7 +273,7 @@ const CategoriesPage: React.FC = () => {
                           onClick={() =>
                             handleDeleteCategory(category.id, category.name)
                           } // Удалить категорию
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1"
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1 cursor-pointer"
                           title="Удалить"
                         >
                           <TrashIcon className="h-5 w-5" />{" "}
@@ -278,14 +302,14 @@ const CategoriesPage: React.FC = () => {
         >
           {/* Форма категории внутри модалки */}
           {isLoadingForm ? ( // Пока загружаются данные категории для редактирования
-            <div className="text-center dark:text-gray-200">
-              Загрузка данных категории...
+            <div className="flex justify-center items-center h-40">
+              <Spinner />
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {formError && ( // Общая ошибка формы
                 <div
-                  className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+                  className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
                   role="alert"
                 >
                   <span className="block sm:inline">{formError}</span>
@@ -320,21 +344,23 @@ const CategoriesPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200"
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200 cursor-pointer"
                   disabled={isSubmitting}
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-44 cursor-pointer"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting
-                    ? "Сохранение..."
-                    : editingCategoryId
-                    ? "Сохранить изменения"
-                    : "Добавить категорию"}
+                  {isSubmitting ? (
+                    <Spinner size="sm" />
+                  ) : editingCategoryId ? (
+                    "Сохранить изменения"
+                  ) : (
+                    "Добавить категорию"
+                  )}
                 </button>
               </div>
             </form>

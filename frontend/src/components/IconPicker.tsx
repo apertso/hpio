@@ -7,6 +7,7 @@ import PaymentIconDisplay, {
 } from "./PaymentIconDisplay";
 import useIconUpload from "../hooks/useIconUpload";
 import useIconDeletion from "../hooks/useIconDeletion";
+import Spinner from "./Spinner";
 
 export interface PaymentIconInfo {
   iconType: "builtin" | "custom" | null;
@@ -188,11 +189,11 @@ const IconPicker: React.FC<IconPickerProps> = ({
             type="button"
             onClick={handleClearIcon}
             disabled={isUploading || isDeleting || isFormSubmitting}
-            className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-600 disabled:opacity-50"
+            className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-600 disabled:opacity-50 cursor-pointer"
             title={isDeleting ? "Удаление иконки..." : "Удалить иконку"}
           >
             {isDeleting ? (
-              <span>...</span>
+              <Spinner size="sm" />
             ) : (
               <XCircleIcon className="h-5 w-5" />
             )}
@@ -212,7 +213,7 @@ const IconPicker: React.FC<IconPickerProps> = ({
               type="button"
               onClick={() => handleSelectBuiltinIcon(iconName)}
               disabled={isUploading || isDeleting || isFormSubmitting}
-              className={`p-2 border rounded-md transition-colors duration-100 disabled:opacity-50
+              className={`p-2 border rounded-md transition-colors duration-100 disabled:opacity-50 cursor-pointer
                                   ${
                                     selectedIcon?.iconType === "builtin" &&
                                     selectedIcon.builtinIconName === iconName
@@ -267,10 +268,12 @@ const IconPicker: React.FC<IconPickerProps> = ({
           <input {...getInputProps()} />
           {isUploading ? (
             <div>
-              <PhotoIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-300 animate-bounce" />
-              <p className="mt-2 text-sm text-gray-900 dark:text-gray-100">
-                Загрузка иконки...
-              </p>
+              <div className="flex flex-col items-center justify-center">
+                <Spinner />
+                <p className="mt-2 text-sm text-gray-900 dark:text-gray-100">
+                  Загрузка иконки...
+                </p>
+              </div>
             </div>
           ) : (
             <div>

@@ -135,6 +135,54 @@ const uploadIcon = multer({
   fileFilter: fileFilterIcon,
 }).single("paymentIcon"); // Имя поля для иконки платежа
 
+// --- Настройки для фото профиля пользователя ---
+const allowedMimeTypesUserPhoto = ["image/jpeg", "image/png", "image/webp"];
+const maxFileSizeUserPhoto = 2 * 1024 * 1024; // 2 МБ
+
+const storageUserPhoto = multer.diskStorage({
+  destination: async (req: Request, file, cb) => {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return cb(new Error("User ID is missing for photo upload."), "");
+    }
+    // Фото профиля хранятся в отдельной папке
+    const uploadPath = path.join(config.uploadDir, "users", userId, "profile");
+    try {
+      await fs.mkdir(uploadPath, { recursive: true });
+      cb(null, uploadPath);
+    } catch (error: any) {
+      logger.error("Error creating upload directory for user photo:", error);
+      cb(new Error("Не удалось создать папку для загрузки фото."), "");
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const fileExtension = path.extname(file.originalname);
+    const newFileName = `profile-${uniqueSuffix}${fileExtension}`;
+    cb(null, newFileName);
+  },
+});
+
+const fileFilterUserPhoto = (
+  req: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (!allowedMimeTypesUserPhoto.includes(file.mimetype)) {
+    logger.warn(
+      `User photo upload rejected: Invalid mime type ${file.mimetype}`
+    );
+    return cb(new Error("Недопустимый тип файла. Разрешены JPEG, PNG, WEBP."));
+  }
+  cb(null, true);
+};
+
+const uploadUserPhoto = multer({
+  storage: storageUserPhoto,
+  limits: { fileSize: maxFileSizeUserPhoto },
+  fileFilter: fileFilterUserPhoto,
+}).single("userPhoto"); // Имя поля для фото профиля
+
 // --- Сервисные функции для работы с файлами платежей ---
 
 // Функция для привязки загруженного файла к платежу в БД
@@ -626,6 +674,7 @@ const detachIconFromPayment = async (paymentId: string, userId: string) => {
 export {
   uploadFile, // Для файлов платежей
   uploadIcon, // Для иконок платежей
+  uploadUserPhoto, // <-- ADD THIS
   attachFileToPayment,
   getPaymentFileInfo,
   detachFileFromPayment,

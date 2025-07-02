@@ -2,6 +2,7 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import Spinner from "./Spinner";
 
 // Компонент для защиты маршрутов
 // Требует, чтобы пользователь был аутентифицирован для доступа к вложенным маршрутам (Outlet)
@@ -10,8 +11,11 @@ const ProtectedRoute: React.FC = () => {
 
   // Пока загружается состояние аутентификации, ничего не рендерим или показываем спиннер
   if (loading) {
-    // TODO: Заменить на реальный спиннер загрузки
-    return <div>Проверка аутентификации...</div>;
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   // Если пользователь не аутентифицирован, перенаправляем его на страницу входа

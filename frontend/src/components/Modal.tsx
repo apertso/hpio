@@ -18,12 +18,12 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {title && (
           <div className="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-600">
-            <h3 className="text-lg font-semibold dark:text-gray-100">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               {title}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
             >
               {/* Простой крестик SVG или символ */}
               <svg
@@ -46,7 +46,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
           <div className="flex justify-end">
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-4"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-4 cursor-pointer"
             >
               <svg
                 className="h-6 w-6"

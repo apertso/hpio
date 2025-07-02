@@ -16,6 +16,7 @@ import { PaymentData } from "../types/paymentData";
 import useApi from "../hooks/useApi"; // Import useApi
 import { formatRecurrencePattern } from "./PaymentsList";
 import PaymentForm from "../components/PaymentForm"; // <-- ДОБАВИТЬ ИМПОРТ ФОРМЫ
+import Spinner from "../components/Spinner";
 
 // Define the raw API fetch function
 const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
@@ -192,13 +193,13 @@ const ArchivePage: React.FC = () => {
 
         {/* Состояния загрузки или ошибки */}
         {isLoadingArchive && (
-          /* ... */ <div className="text-center text-gray-700 dark:text-gray-300">
-            Загрузка архива... {/* TODO: Добавить спиннер */}
+          <div className="flex justify-center items-center py-10">
+            <Spinner />
           </div>
         )}
         {errorArchive && (
-          /* ... */ <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+          <div
+            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
           >
             {" "}
@@ -353,7 +354,7 @@ const ArchivePage: React.FC = () => {
                             onClick={() =>
                               handleDownloadFile(payment.id, payment.fileName!)
                             } // Ensure handleDownloadFile is defined/imported
-                            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600"
+                            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 cursor-pointer"
                             title={`Скачать ${payment.fileName}`}
                           >
                             <PaperClipIcon className="h-5 w-5 inline-block mr-1" />
@@ -368,7 +369,7 @@ const ArchivePage: React.FC = () => {
                         {/* НОВАЯ КНОПКА "РЕДАКТИРОВАТЬ" */}
                         <button
                           onClick={() => handleOpenModal(payment.id)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1"
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1 cursor-pointer"
                           title="Редактировать"
                         >
                           <PencilIcon className="h-5 w-5" />
@@ -377,7 +378,7 @@ const ArchivePage: React.FC = () => {
                         {/* Кнопка Восстановить */}
                         <button
                           onClick={() => handleRestorePayment(payment.id)}
-                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 mx-1"
+                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 mx-1 cursor-pointer"
                           title="Восстановить"
                         >
                           <ArrowPathIcon className="h-5 w-5" />
@@ -388,7 +389,7 @@ const ArchivePage: React.FC = () => {
                           onClick={() =>
                             handlePermanentDeletePayment(payment.id)
                           }
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1"
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1 cursor-pointer"
                           title="Удалить полностью"
                         >
                           <TrashIcon className="h-5 w-5" />

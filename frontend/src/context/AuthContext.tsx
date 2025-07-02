@@ -10,10 +10,12 @@ import React, {
 import axiosInstance from "../api/axiosInstance"; // Ваш настроенный экземпляр axios
 import { useNavigate } from "react-router-dom";
 import logger from "../utils/logger"; // Используем простой логгер на фронтенде
+import userApi from "../api/userApi"; // <-- ADD THIS
 
-interface User {
+export interface User {
   id: string;
   email: string;
+  photoPath?: string | null; // <-- ADD THIS
   // Добавьте другие поля пользователя, если они будут возвращаться с бэкенда
 }
 
@@ -25,10 +27,24 @@ interface AuthContextProps {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>; // <-- ADD THIS
   //forgotPassword: (email: string) => Promise<void>; // Можно добавить сюда, но пока оставим на странице
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+
+// Type guard for error with response
+function isAxiosErrorWithMessage(
+  error: unknown
+): error is { response: { data: { message: string } } } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof (error as unknown as { response?: { data?: { message?: unknown } } })
+      .response?.data?.message === "string"
+  );
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -96,6 +112,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [navigate, logout]); // Зависимости от navigate и logout
 
+  // Функция для обновления данных пользователя из бэкенда
+  const refreshUser = useCallback(async () => {
+    try {
+      const freshUser = await userApi.getProfile();
+      setUser(freshUser);
+      localStorage.setItem("user", JSON.stringify(freshUser));
+      logger.info("User data refreshed.");
+    } catch (error) {
+      logger.error("Failed to refresh user data, logging out.", error);
+      // Если не удалось обновить данные (например, токен невалиден), выходим
+      logout();
+    }
+  }, []); // <-- ADD `logout` to dependency array if it's not already stable
+
   // Функция входа
   const login = useCallback(
     async (email: string, password: string) => {
@@ -105,25 +135,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email,
           password,
         });
-        const { token, id, email: userEmail } = res.data;
+        const { token, id, email: userEmail, photoPath } = res.data;
 
         localStorage.setItem("jwtToken", token);
-        localStorage.setItem("user", JSON.stringify({ id, email: userEmail })); // Храним базовые данные пользователя
+        const userData = { id, email: userEmail, photoPath };
+        localStorage.setItem("user", JSON.stringify(userData));
 
         setToken(token);
-        setUser({ id, email: userEmail });
+        setUser(userData);
         axiosInstance.defaults.headers.common[
           "Authorization"
         ] = `Bearer ${token}`; // Настраиваем Axios заголовок
         logger.info("Login successful");
-        navigate("/"); // Перенаправить на главную страницу после входа
-      } catch (error: any) {
-        logger.error(
-          "Login failed:",
-          error.response?.data?.message || error.message
-        );
+        navigate("/dashboard"); // Перенаправить на главную страницу после входа
+      } catch (error: unknown) {
+        let message = "Ошибка входа";
+        if (isAxiosErrorWithMessage(error)) {
+          message = error.response.data.message;
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+        logger.error("Login failed:", message);
         setLoading(false);
-        throw new Error(error.response?.data?.message || "Ошибка входа"); // Пробросить ошибку для отображения в UI
+        throw new Error(message); // Пробросить ошибку для отображения в UI
       } finally {
         // setLoading(false); // Уже сделано в catch или можно здесь, если нет ошибки
       }
@@ -140,25 +174,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email,
           password,
         });
-        const { token, id, email: userEmail } = res.data;
+        const {
+          token,
+          id: regId,
+          email: regEmail,
+          photoPath: regPhotoPath,
+        } = res.data;
 
         localStorage.setItem("jwtToken", token);
-        localStorage.setItem("user", JSON.stringify({ id, email: userEmail }));
+        const regUserData = {
+          id: regId,
+          email: regEmail,
+          photoPath: regPhotoPath,
+        };
+        localStorage.setItem("user", JSON.stringify(regUserData));
 
         setToken(token);
-        setUser({ id, email: userEmail });
+        setUser(regUserData);
         axiosInstance.defaults.headers.common[
           "Authorization"
         ] = `Bearer ${token}`;
         logger.info("Registration successful");
-        navigate("/"); // Перенаправить на главную страницу после регистрации
-      } catch (error: any) {
-        logger.error(
-          "Registration failed:",
-          error.response?.data?.message || error.message
-        );
+        navigate("/dashboard"); // Перенаправить на главную страницу после регистрации
+      } catch (error: unknown) {
+        let message = "Ошибка регистрации";
+        if (isAxiosErrorWithMessage(error)) {
+          message = error.response.data.message;
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+        logger.error("Registration failed:", message);
         setLoading(false);
-        throw new Error(error.response?.data?.message || "Ошибка регистрации");
+        throw new Error(message);
       } finally {
         // setLoading(false);
       }
@@ -178,8 +225,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       login,
       register,
       logout,
+      refreshUser, // <-- ADD THIS
     }),
-    [user, token, isAuthenticated, loading, login, register, logout]
+    [
+      user,
+      token,
+      isAuthenticated,
+      loading,
+      login,
+      register,
+      logout,
+      refreshUser,
+    ] // <-- ADD refreshUser
   );
 
   return (

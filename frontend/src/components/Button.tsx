@@ -16,23 +16,23 @@ export const Button: React.FC<ButtonProps> = ({
   ...rest
 }) => {
   const base =
-    "flex items-center justify-center rounded-full text-white cursor-pointer overflow-hidden";
+    "flex items-center justify-center rounded-lg shadow-md hover:shadow-lg transition duration-150 cursor-pointer";
 
   const variants: Record<string, string> = {
-    default: "h-10 px-4 text-sm font-bold tracking-[0.015em]",
-    small: "h-8 px-4 text-sm font-medium",
-    icon: "h-10 w-10 p-2",
+    default: "py-2 px-4",
+    small: "py-1 px-3 text-sm",
+    icon: "p-2",
   };
 
-  const classes = `${base} ${variants[variant] || ""} ${className}`.trim();
+  const colorScheme = "bg-indigo-500 text-white hover:bg-[#4036e2]";
+
+  const classes = `${base} ${
+    variants[variant] || ""
+  } ${colorScheme} ${className}`.trim();
 
   return (
-    <button
-      className={classes}
-      style={{ backgroundColor: "var(--color-dark-gray)" }}
-      {...rest}
-    >
-      {icon && <span className="mr-2">{icon}</span>}
+    <button className={classes} {...rest}>
+      {icon && <span className="material-icons mr-2">{icon}</span>}
       {label || children}
     </button>
   );

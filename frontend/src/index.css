@@ -10,3 +10,38 @@
   --color-text-secondary: #ababab;
   --color-dark-gray: #303030;
 }
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+*::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+* {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden; /* Prevent scrolling on the body */
+}
+
+body {
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+:root {
+  font-size: 12px;
+}

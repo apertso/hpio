@@ -1,7 +1,7 @@
 // src/App.tsx
-import React, { useState, useEffect, useRef } from "react"; // Добавляем useState, useEffect, useRef
-import { Routes, Route, Link, useLocation } from "react-router-dom"; // Добавляем useLocation
-import HomePage from "./pages/HomePage"; // Импорт HomePage
+import React, { useState, useEffect } from "react";
+import { Routes, Route, Link, useLocation } from "react-router-dom";
+import HomePage from "./pages/HomePage";
 import PaymentsList from "./pages/PaymentsList";
 import CategoriesPage from "./pages/CategoriesPage";
 import ArchivePage from "./pages/ArchivePage";
@@ -9,19 +9,33 @@ import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import PasswordResetPage from "./pages/PasswordResetPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import LandingPage from "./pages/LandingPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
-import { useTheme } from "./context/ThemeContext"; // Убедитесь, что импортировано и добавляем useTheme
-import { AuthProvider, useAuth } from "./context/AuthContext"; // Импорт AuthProvider и useAuth
-import ProtectedRoute from "./components/ProtectedRoute"; // Импорт ProtectedRoute
+import { useTheme } from "./context/ThemeContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Scrollbar from "./components/Scrollbar";
+import { useDropdown } from "./hooks/useDropdown";
+import DropdownOverlay from "./components/DropdownOverlay";
+import {
+  Cog6ToothIcon,
+  SunIcon,
+  MoonIcon,
+  ArrowRightOnRectangleIcon,
+  UserIcon,
+} from "@heroicons/react/24/outline";
+import axiosInstance from "./api/axiosInstance";
+import { PHOTO_URL } from "./api/userApi";
 
 // TODO: Создать компонент ThemeSwitcher
 const ThemeSwitcher = () => {
-  const { setTheme, resolvedTheme } = useTheme(); // Используем хук темы
+  const { setTheme, resolvedTheme } = useTheme();
   return (
     <button
       onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-      className="p-2 rounded-md bg-gray-200 dark:bg-card-bg text-gray-800 dark:text-gray-200"
+      className="p-2 rounded-md bg-gray-200 dark:bg-card-bg text-gray-800 dark:text-gray-200 cursor-pointer"
     >
       {resolvedTheme === "light" ? "🌙" : "☀️"}{" "}
     </button>
@@ -30,31 +44,20 @@ const ThemeSwitcher = () => {
 
 // Компонент навигации, который зависит от статуса аутентификации
 const Navigation: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuth(); // user should contain email
-  const location = useLocation(); // Хук для определения текущего пути
-  const [isUserPopoverOpen, setIsUserPopoverOpen] = useState(false);
-  const popoverRef = useRef<HTMLDivElement>(null); // For detecting outside clicks
+  const { isAuthenticated, user, logout } = useAuth();
+  const location = useLocation();
+  const {
+    isOpen: isUserPopoverOpen,
+    setIsOpen: setIsUserPopoverOpen,
+    containerRef: popoverRef,
+  } = useDropdown();
+  const { setTheme, resolvedTheme } = useTheme();
+  const [avatarKey, setAvatarKey] = useState(Date.now());
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(event.target as Node)
-      ) {
-        setIsUserPopoverOpen(false);
-      }
-    };
-
-    if (isUserPopoverOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isUserPopoverOpen]);
+    // Обновляем ключ при изменении фото, чтобы `img` перезагрузился
+    setAvatarKey(Date.now());
+  }, [user?.photoPath]);
 
   // Скрываем навигацию на страницах аутентификации
   const authPaths = ["/login", "/register", "/forgot-password"];
@@ -68,7 +71,7 @@ const Navigation: React.FC = () => {
         <>
           <div className="hidden md:flex items-center gap-9">
             <Link
-              to="/"
+              to="/dashboard"
               className="text-black dark:text-white text-sm font-medium leading-normal"
             >
               Главная
@@ -93,64 +96,84 @@ const Navigation: React.FC = () => {
             </Link>
           </div>
           <div className="flex items-center space-x-3 md:space-x-4">
-            <div className="relative">
+            <div className="relative" ref={popoverRef}>
               <button
                 onClick={() => setIsUserPopoverOpen(!isUserPopoverOpen)}
-                className="flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-card-bg focus:outline-none"
+                className="flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-card-bg focus:outline-none cursor-pointer"
                 aria-label="Открыть меню пользователя"
                 aria-expanded={isUserPopoverOpen}
               >
-                <div
-                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-                  style={{
-                    backgroundImage: `url('https://i.pravatar.cc/40?u=${user?.email}')`,
-                  }}
-                ></div>
+                {user?.photoPath ? (
+                  <img
+                    key={avatarKey}
+                    src={`${axiosInstance.defaults.baseURL}${PHOTO_URL}`}
+                    alt="User Avatar"
+                    className="size-10 rounded-full object-cover bg-gray-300 dark:bg-card-bg"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 size-10 shadow-sm">
+                    <UserIcon className="w-6 h-6 text-white" />
+                  </div>
+                )}
               </button>
 
-              {isUserPopoverOpen && (
+              <DropdownOverlay
+                isOpen={isUserPopoverOpen}
+                align="right"
+                widthClass="w-72"
+              >
                 <div
-                  ref={popoverRef}
-                  className="absolute right-0 mt-2 w-60 origin-top-right bg-white dark:bg-card-bg rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5 dark:ring-border-dark focus:outline-none"
                   role="menu"
                   aria-orientation="vertical"
                   aria-labelledby="user-menu-button"
-                  tabIndex={-1}
                 >
                   {user?.email && (
-                    <div className="px-4 py-3 border-b border-gray-200 dark:border-border-dark">
-                      <p className="text-sm text-gray-700 dark:text-text-secondary">
-                        Вы вошли как:
-                      </p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex items-center">
+                      <p className="text-sm font-medium text-gray-700 dark:text-slate-300 truncate">
                         {user.email}
                       </p>
                     </div>
                   )}
-                  <div className="py-1" role="none">
-                    <div className="px-2 py-2">
-                      {" "}
-                      <p className="block px-2 py-1 text-xs text-gray-500 dark:text-text-secondary">
-                        Тема
-                      </p>
-                      <ThemeSwitcher />{" "}
-                    </div>
+                  <div className="py-2 px-4">
+                    <Link
+                      to="/settings"
+                      onClick={() => setIsUserPopoverOpen(false)}
+                      className="w-full text-left text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-1.5 px-3 rounded-md transition-colors flex items-center text-sm cursor-pointer"
+                      role="menuitem"
+                    >
+                      <Cog6ToothIcon className="mr-3 h-5 w-5 text-gray-500 dark:text-slate-400" />
+                      Настройки
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setTheme(resolvedTheme === "light" ? "dark" : "light");
+                      }}
+                      className="w-full text-left text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-1.5 px-3 rounded-md transition-colors flex items-center text-sm mt-0.5 cursor-pointer"
+                      role="menuitem"
+                    >
+                      {resolvedTheme === "light" ? (
+                        <MoonIcon className="mr-3 h-5 w-5 text-gray-500 dark:text-slate-400" />
+                      ) : (
+                        <SunIcon className="mr-3 h-5 w-5 text-gray-500 dark:text-slate-400" />
+                      )}
+                      Тема
+                    </button>
                   </div>
-                  <div className="border-t border-gray-200 dark:border-border-dark"></div>
-                  <button
-                    onClick={() => {
-                      logout();
-                      setIsUserPopoverOpen(false);
-                    }}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-red-500"
-                    role="menuitem"
-                    tabIndex={-1}
-                    id="user-menu-item-2"
-                  >
-                    Выйти
-                  </button>
+                  <div className="py-2 px-4 border-t border-gray-200 dark:border-slate-700">
+                    <button
+                      onClick={() => {
+                        logout();
+                        setIsUserPopoverOpen(false);
+                      }}
+                      className="w-full text-left text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 py-1.5 px-3 rounded-md transition-colors flex items-center text-sm font-medium cursor-pointer"
+                      role="menuitem"
+                    >
+                      <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-red-500" />
+                      Выйти
+                    </button>
+                  </div>
                 </div>
-              )}
+              </DropdownOverlay>
             </div>
           </div>
         </>
@@ -162,11 +185,12 @@ const Navigation: React.FC = () => {
 };
 
 function App() {
+  const scrollableContainerRef = React.useRef<HTMLDivElement>(null);
   return (
     // AuthProvider должен быть внутри BrowserRouter и ThemeProvider
     <AuthProvider>
-      <div className="relative flex size-full min-h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-x-hidden font-sans">
-        <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-gray-200 dark:border-border-dark px-4 sm:px-10 py-3">
+      <div className="relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans">
+        <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20">
           <div className="flex items-center gap-4 text-black dark:text-white">
             <div className="size-4 text-black dark:text-white">
               <svg
@@ -189,61 +213,65 @@ function App() {
           <Navigation /> {/* Используем компонент навигации */}
         </header>
 
-        {/* Основное содержимое с роутингом */}
-        <main className="px-10 flex flex-1 justify-center py-5">
-          <div className="flex flex-col flex-1">
-            <Routes>
-              {/* Маршруты без защиты (доступны всем) */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<PasswordResetPage />} />
-              {/* Группа защищенных маршрутов */}
-              <Route element={<ProtectedRoute />}>
-                {/* Главная страница - горизонтальная лента */}
-                <Route path="/" element={<HomePage />} />{" "}
-                {/* Используем HomePage */}
-                {/* Полный список платежей */}
-                <Route path="/payments" element={<PaymentsList />} />
-                {/* Дашборд */}
-                {/* Категории */}
-                <Route path="/categories" element={<CategoriesPage />} />
-                {/* Архив */}
-                <Route path="/archive" element={<ArchivePage />} />
-                {/* Настройки пользователя */}
-                <Route path="/settings" element={<SettingsPage />} />
-                {/* TODO: Добавить роуты для добавления/редактирования платежа */}
-                {/* <Route path="/payments/new" element={<PaymentForm />} /> */}
-                {/* <Route path="/payments/:id/edit" element={<PaymentForm />} /> */}
-              </Route>{" "}
-              {/* Конец ProtectedRoute */}
-              {/* 404 Страница - может быть внутри или вне ProtectedRoute в зависимости от логики */}
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </div>
-        </main>
+        <div className="flex-1 relative overflow-hidden">
+          <Scrollbar containerRef={scrollableContainerRef} />
+          <div
+            ref={scrollableContainerRef}
+            className="absolute inset-0 overflow-y-auto scrollbar-hide flex flex-col"
+          >
+            {/* Основное содержимое с роутингом */}
+            <main className="px-13 flex flex-1 justify-center py-5">
+              <div className="flex flex-col flex-1">
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route
+                    path="/forgot-password"
+                    element={<PasswordResetPage />}
+                  />
+                  <Route
+                    path="/reset-password"
+                    element={<ResetPasswordPage />}
+                  />
+                  {/* Protected routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard" element={<HomePage />} />
+                    <Route path="/payments" element={<PaymentsList />} />
+                    <Route path="/categories" element={<CategoriesPage />} />
+                    <Route path="/archive" element={<ArchivePage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                  </Route>
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </div>
+            </main>
 
-        <footer className="border-t border-solid border-gray-200 dark:border-border-dark mt-auto p-6 text-center">
-          <div className="container mx-auto text-sm text-gray-600 dark:text-text-secondary">
-            <p>
-              &copy; {new Date().getFullYear()} Хочу Плачу. Все права защищены.
-            </p>
-            <div className="mt-2 space-x-4">
-              <Link to="/about" className="hover:underline">
-                О нас
-              </Link>{" "}
-              {/* TODO: Create /about page or remove */}
-              <Link to="/privacy" className="hover:underline">
-                Политика конфиденциальности
-              </Link>{" "}
-              {/* TODO: Create /privacy page or remove */}
-              <Link to="/terms" className="hover:underline">
-                Условия использования
-              </Link>{" "}
-              {/* TODO: Create /terms page or remove */}
-            </div>
-            {/* Optional: Add social media icons or other relevant links */}
+            <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-6 text-center">
+              <div className="container mx-auto text-sm text-gray-600 dark:text-text-secondary">
+                <p>
+                  © {new Date().getFullYear()} Хочу Плачу. Все права защищены.
+                </p>
+                <div className="mt-2 space-x-4">
+                  <Link to="/about" className="hover:underline">
+                    О нас
+                  </Link>{" "}
+                  {/* TODO: Create /about page or remove */}
+                  <Link to="/privacy" className="hover:underline">
+                    Политика конфиденциальности
+                  </Link>{" "}
+                  {/* TODO: Create /privacy page or remove */}
+                  <Link to="/terms" className="hover:underline">
+                    Условия использования
+                  </Link>{" "}
+                  {/* TODO: Create /terms page or remove */}
+                </div>
+                {/* Optional: Add social media icons or other relevant links */}
+              </div>
+            </footer>
           </div>
-        </footer>
+        </div>
       </div>
     </AuthProvider>
   );

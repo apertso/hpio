@@ -4,6 +4,7 @@ import {
   registerUser,
   loginUser,
   forgotPassword,
+  resetPassword,
 } from "../services/authService"; // Импорт реализованных сервисов
 import logger from "../config/logger";
 
@@ -48,12 +49,23 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error("Forgot password request error:", error);
     // В этом случае ошибка, скорее всего, внутренняя сервера или валидации запроса
-    res
-      .status(500)
-      .json({
-        message: "Произошла ошибка при обработке запроса.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Произошла ошибка при обработке запроса.",
+      error: error.message,
+    });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post("/reset-password", async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+    const result = await resetPassword(token, password);
+    res.json(result);
+  } catch (error: any) {
+    logger.error("Password reset error:", error);
+    // Ошибка может быть из-за невалидного токена или других проблем
+    res.status(400).json({ message: error.message });
   }
 });
 

@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import useFileUploadLogic from "../hooks/useFileUploadLogic";
 import useFileDeletionLogic from "../hooks/useFileDeletionLogic";
+import Spinner from "./Spinner";
 
 const maxFileSize = 5 * 1024 * 1024; // 5 МБ
 
@@ -102,8 +103,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             title={isDeleting ? "Удаление..." : "Удалить файл"}
           >
             {isDeleting ? (
-              // TODO: Добавить спиннер
-              <span>...</span>
+              <Spinner size="sm" />
             ) : (
               <XCircleIcon className="h-5 w-5" /> // Иконка удаления
             )}
@@ -139,10 +139,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
           {isUploading ? (
             // Индикатор загрузки
             <div>
-              <PaperClipIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-300" />
-              <p className="mt-2 text-sm text-gray-900 dark:text-gray-100">
-                Загрузка файла...
-              </p>
+              <div className="flex flex-col items-center justify-center">
+                <Spinner />
+                <p className="mt-2 text-sm text-gray-900 dark:text-gray-100">
+                  Загрузка файла...
+                </p>
+              </div>
               {/* TODO: Реализовать визуальный прогресс-бар */}
               <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-600 mt-2">
                 <div

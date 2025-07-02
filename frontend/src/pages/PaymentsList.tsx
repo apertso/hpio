@@ -17,6 +17,7 @@ import {
 import { ArrowPathIcon } from "@heroicons/react/24/outline"; // Recurrence icon
 import { Button } from "../components/Button"; // Import the Button component
 import { PaymentData } from "../types/paymentData";
+import Spinner from "../components/Spinner";
 
 // TODO: Хелпер для форматирования шаблона повторения на русский
 export const formatRecurrencePattern = (
@@ -175,13 +176,13 @@ const PaymentsList: React.FC = () => {
 
         {/* Отображение состояния загрузки или ошибки */}
         {isLoadingPayments && (
-          <div className="text-center text-gray-700 dark:text-gray-300">
-            Загрузка платежей... {/* TODO: Добавить спиннер */}
+          <div className="flex justify-center items-center py-10">
+            <Spinner />
           </div>
         )}
         {errorPayments && (
           <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
           >
             <span className="block sm:inline">{errorPayments.message}</span>
@@ -339,7 +340,7 @@ const PaymentsList: React.FC = () => {
                             onClick={() =>
                               handleDownloadFile(payment.id, payment.fileName!)
                             } // Вызываем функцию скачивания
-                            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 disabled:opacity-50"
+                            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 disabled:opacity-50 cursor-pointer"
                             title={payment.fileName}
                             // disabled={isDeleting || isSubmitting} // Отключаем, если платеж удаляется или форма отправляется - isSubmitting не определен здесь
                             disabled={false} // Временно отключаем disabled
@@ -359,7 +360,7 @@ const PaymentsList: React.FC = () => {
                         {payment.status !== "deleted" && ( // Например, разрешим редактирование completed
                           <button
                             onClick={() => handleOpenModal(payment.id)}
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1" // mx-1 для отступов между кнопками
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1 cursor-pointer" // mx-1 для отступов между кнопками
                             title="Редактировать"
                           >
                             <PencilIcon className="h-5 w-5" />{" "}
@@ -373,7 +374,7 @@ const PaymentsList: React.FC = () => {
                             {/* Кнопка Выполнить */}
                             <button
                               onClick={() => handleCompletePayment(payment.id)}
-                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 mx-1"
+                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 mx-1 cursor-pointer"
                               title="Отметить как выполненный"
                             >
                               <CheckCircleIcon className="h-5 w-5" />{" "}
@@ -382,7 +383,7 @@ const PaymentsList: React.FC = () => {
                             {/* Кнопка Удалить (логически) */}
                             <button
                               onClick={() => handleDeletePayment(payment.id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1"
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1 cursor-pointer"
                               title="Удалить (переместить в архив)"
                             >
                               <TrashIcon className="h-5 w-5" />{" "}

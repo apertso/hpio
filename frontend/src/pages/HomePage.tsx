@@ -9,23 +9,10 @@ import { useTheme } from "../context/ThemeContext"; // Import useTheme
 import { Button } from "../components/Button";
 import { DropdownButton } from "../components/DropdownButton";
 import { YearSelectorDropdown } from "../components/YearSelectorDropdown";
+import Spinner from "../components/Spinner";
+import CategoryDistributionBars from "../components/CategoryDistributionBars";
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  PointElement,
-  LineElement,
-  ChartOptions,
-  TooltipItem,
-} from "chart.js"; // Импорт нужных элементов
-import { Pie, Line } from "react-chartjs-2"; // Или Bar/Line, если нужно
 import { PaymentData } from "../types/paymentData";
 
 // Utility function to format date in local timezone (YYYY-MM-DD)
@@ -51,19 +38,34 @@ const monthNames = [
   "Декабрь",
 ];
 
-// Регистрация необходимых элементов Chart.js
-ChartJS.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  PointElement,
-  LineElement
-);
+// Define color palettes for charts
+const categoryColorsLight = [
+  "rgba(255, 99, 132, 0.6)", // Red
+  "rgba(54, 162, 235, 0.6)", // Blue
+  "rgba(255, 206, 86, 0.6)", // Yellow
+  "rgba(75, 192, 192, 0.6)", // Green
+  "rgba(153, 102, 255, 0.6)", // Purple
+  "rgba(255, 159, 64, 0.6)", // Orange
+  "rgba(199, 199, 199, 0.6)", // Gray
+  "rgba(255, 99, 132, 0.8)",
+  "rgba(54, 162, 235, 0.8)",
+  "rgba(255, 206, 86, 0.8)",
+];
 
+const categoryColorsDark = [
+  "#374151", // gray-700
+  "#4B5563", // gray-600
+  "#6B7280", // gray-500
+  "#9CA3AF", // gray-400
+  "#D1D5DB", // gray-300
+  "#4F46E5", // indigo-600
+  "#7C3AED", // violet-600
+  "#DB2777", // pink-600
+  "#F472B6", // pink-400
+  "#FBBF24", // amber-400
+];
+
+import CustomDailySpendingChart from "../components/CustomDailySpendingChart";
 // Интерфейс для данных статистики, получаемых с бэкенда
 interface DashboardStats {
   month: string; // Например, '2023-11'
@@ -201,12 +203,6 @@ const HomePage: React.FC = () => {
     fetchDashboardStats();
   }, [fetchDashboardStats]); // Зависимость от fetchDashboardStats
 
-  const formattedMonth = useMemo(() => {
-    if (!stats || !stats.month) return "";
-    const [year, month] = stats.month.split("-");
-    return `${monthNames[parseInt(month) - 1]} ${year}`;
-  }, [stats]);
-
   const handleOpenModal = (paymentId?: string) => {
     setEditingPaymentId(paymentId);
     setIsModalOpen(true);
@@ -264,234 +260,28 @@ const HomePage: React.FC = () => {
     }
   };
 
-  // --- Данные для графиков (из Dashboard.tsx) ---
+  // --- Данные для графика (НОВАЯ, УПРОЩЕННАЯ ВЕРСИЯ) ---
+  const { chartData, chartLabels } = useMemo(() => {
+    if (!stats?.dailyPaymentLoad || stats.dailyPaymentLoad.length === 0) {
+      return { chartData: [], chartLabels: [] };
+    }
 
-  // Define color palettes for charts
-  const categoryColorsLight = [
-    "rgba(255, 99, 132, 0.6)", // Red
-    "rgba(54, 162, 235, 0.6)", // Blue
-    "rgba(255, 206, 86, 0.6)", // Yellow
-    "rgba(75, 192, 192, 0.6)", // Green
-    "rgba(153, 102, 255, 0.6)", // Purple
-    "rgba(255, 159, 64, 0.6)", // Orange
-    "rgba(199, 199, 199, 0.6)", // Gray
-    "rgba(255, 99, 132, 0.8)",
-    "rgba(54, 162, 235, 0.8)",
-    "rgba(255, 206, 86, 0.8)",
-  ];
+    const dataPoints = stats.dailyPaymentLoad.map((d) => d.amount);
+    const labels = stats.dailyPaymentLoad.map((d) =>
+      new Date(d.date).toLocaleDateString([], {
+        day: "numeric",
+        month: "short",
+      })
+    );
 
-  const categoryColorsDark = [
-    "#374151", // gray-700
-    "#4B5563", // gray-600
-    "#6B7280", // gray-500
-    "#9CA3AF", // gray-400
-    "#D1D5DB", // gray-300
-    "#4F46E5", // indigo-600
-    "#7C3AED", // violet-600
-    "#DB2777", // pink-600
-    "#F472B6", // pink-400
-    "#FBBF24", // amber-400
-  ];
+    return { chartData: dataPoints, chartLabels: labels };
+  }, [stats]);
 
-  // Данные для круговой диаграммы (распределение по категориям)
-  const categoriesChartData = useMemo(() => {
-    const backgroundColors =
-      resolvedTheme === "dark" ? categoryColorsDark : categoryColorsLight;
-    return {
-      labels: stats?.categoriesDistribution.map((cat) => cat.name) || [], // Названия категорий
-      datasets: [
-        {
-          label: "Сумма",
-          data: stats?.categoriesDistribution.map((cat) => cat.amount) || [], // Суммы по категориям
-          backgroundColor: backgroundColors.slice(
-            0,
-            stats?.categoriesDistribution.length || 0
-          ), // Use appropriate colors
-          borderColor:
-            resolvedTheme === "dark" ? "rgb(31, 41, 55)" : "rgb(255, 255, 255)", // Example: dark:border-gray-800, light:border-white
-          borderWidth: 1,
-        },
-      ],
-    };
-  }, [stats, resolvedTheme]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Опции для круговой диаграммы
-  const categoriesChartOptions: ChartOptions<"pie"> = useMemo(
-    () => ({
-      responsive: true, // Адаптивность
-      plugins: {
-        legend: {
-          position: "right" as const, // Позиция легенды
-          labels: {
-            color:
-              resolvedTheme === "dark"
-                ? "rgb(209, 213, 219)"
-                : "rgb(55, 65, 81)", // Dynamic color
-          },
-        },
-        title: {
-          display: true,
-          text: "Распределение по категориям",
-          color:
-            resolvedTheme === "dark" ? "rgb(209, 213, 219)" : "rgb(55, 65, 81)", // Dynamic color
-        },
-        tooltip: {
-          bodyColor:
-            resolvedTheme === "dark" ? "rgb(209, 213, 219)" : "rgb(55, 65, 81)",
-          titleColor:
-            resolvedTheme === "dark" ? "rgb(209, 213, 219)" : "rgb(55, 65, 81)",
-          callbacks: {
-            label: (context: TooltipItem<"pie">) => {
-              const label = context.label || "";
-              const value = typeof context.raw === "number" ? context.raw : 0;
-              const dataset = context.chart.data.datasets[context.datasetIndex];
-              // Accept Chart.js data types: number | { raw: number } | { y: number } | [number, number]
-              const total = Array.isArray(dataset.data)
-                ? dataset.data.reduce((sum: number, v: unknown) => {
-                    if (typeof v === "number") return sum + v;
-                    if (v && typeof v === "object") {
-                      // Use type assertion to a generic object
-                      const obj = v as Record<string, unknown>;
-                      if ("raw" in obj && typeof obj.raw === "number")
-                        return sum + obj.raw;
-                      if ("y" in obj && typeof obj.y === "number")
-                        return sum + obj.y;
-                    }
-                    if (Array.isArray(v) && typeof v[1] === "number")
-                      return sum + v[1];
-                    return sum;
-                  }, 0)
-                : 0;
-              const percentage =
-                typeof total === "number" && total > 0
-                  ? ((value / total) * 100).toFixed(1) + "%"
-                  : "0%";
-              return `${label}: ${value.toFixed(2)} (${percentage})`;
-            },
-          },
-        },
-      },
-      maintainAspectRatio: false, // Отключаем поддержку соотношения сторон для контроля размера
-    }),
-    [resolvedTheme]
-  );
-
-  // Данные для графика платежной нагрузки (по дням)
-  const dailyLoadChartData = useMemo(() => {
-    return {
-      labels:
-        stats?.dailyPaymentLoad.map((d) =>
-          new Date(d.date).toLocaleDateString([], {
-            day: "numeric",
-            month: "short",
-          })
-        ) || [],
-      datasets: [
-        {
-          label: "Сумма платежей",
-          data: stats?.dailyPaymentLoad.map((d) => d.amount) || [],
-          fill: false,
-          borderColor:
-            resolvedTheme === "dark" ? "rgb(59, 130, 246)" : "rgb(37, 99, 235)", // Dynamic color
-          backgroundColor:
-            resolvedTheme === "dark" ? "rgb(59, 130, 246)" : "rgb(37, 99, 235)", // For points
-          tension: 0.1,
-        },
-      ],
-    };
-  }, [stats, resolvedTheme]);
-
-  // Опции для графика платежной нагрузки
-  const dailyLoadChartOptions: ChartOptions<"line"> = useMemo(
-    () => ({
-      responsive: true,
-      plugins: {
-        legend: {
-          display: false, // Скрыть легенду
-        },
-        title: {
-          display: true,
-          text: "Платежная нагрузка по дням",
-          color:
-            resolvedTheme === "dark" ? "rgb(209, 213, 219)" : "rgb(55, 65, 81)", // Dynamic color
-        },
-        tooltip: {
-          bodyColor:
-            resolvedTheme === "dark" ? "rgb(209, 213, 219)" : "rgb(55, 65, 81)",
-          titleColor:
-            resolvedTheme === "dark" ? "rgb(209, 213, 219)" : "rgb(55, 65, 81)",
-          callbacks: {
-            label: (context: TooltipItem<"line">) => {
-              const label = context.dataset.label || "";
-              const value = typeof context.raw === "number" ? context.raw : 0;
-              return `${label}: ${value.toFixed(2)}`;
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          // Ось X (даты)
-          title: {
-            display: true,
-            text: "Дата",
-            color:
-              resolvedTheme === "dark"
-                ? "rgb(156, 163, 175)"
-                : "rgb(107, 114, 128)",
-          }, // Dynamic color
-          type: "category" as const, // Тип оси для категорий (дат)
-          ticks: {
-            color:
-              resolvedTheme === "dark"
-                ? "rgb(156, 163, 175)"
-                : "rgb(107, 114, 128)",
-          }, // Dynamic color
-          grid: {
-            color:
-              resolvedTheme === "dark"
-                ? "rgba(107, 114, 128, 0.3)"
-                : "rgba(209, 213, 219, 0.5)",
-          }, // Lighter grid lines for dark
-        },
-        y: {
-          // Ось Y (суммы)
-          title: {
-            display: true,
-            text: "Сумма",
-            color:
-              resolvedTheme === "dark"
-                ? "rgb(156, 163, 175)"
-                : "rgb(107, 114, 128)",
-          }, // Dynamic color
-          ticks: {
-            color:
-              resolvedTheme === "dark"
-                ? "rgb(156, 163, 175)"
-                : "rgb(107, 114, 128)",
-          }, // Dynamic color
-          grid: {
-            color:
-              resolvedTheme === "dark"
-                ? "rgba(107, 114, 128, 0.3)"
-                : "rgba(209, 213, 219, 0.5)",
-          },
-        },
-      },
-      maintainAspectRatio: false, // Отключаем поддержку соотношения сторон
-    }),
-    [resolvedTheme]
-  );
-
-  // Если нет данных для графика (например, нет платежей в этом месяце)
-  const noCategoriesData =
-    !stats?.categoriesDistribution ||
-    stats.categoriesDistribution.length === 0 ||
-    stats.categoriesDistribution.every((cat) => cat.amount === 0);
-  const noDailyData =
-    !stats?.dailyPaymentLoad ||
-    stats.dailyPaymentLoad.length === 0 ||
-    stats.dailyPaymentLoad.every((day) => day.amount === 0);
+  const noDailyData = useMemo(() => {
+    return (
+      !chartData || chartData.length === 0 || chartData.every((v) => v === 0)
+    );
+  }, [chartData]);
 
   return (
     <>
@@ -506,13 +296,13 @@ const HomePage: React.FC = () => {
 
         {/* Отображение состояния загрузки или ошибки */}
         {isLoadingPayments && (
-          <div className="text-center text-gray-700 dark:text-gray-300">
-            Загрузка платежей... {/* TODO: Добавить спиннер */}
+          <div className="flex justify-center items-center h-40">
+            <Spinner />
           </div>
         )}
         {errorPayments && (
           <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
           >
             <span className="block sm:inline">{errorPayments.message}</span>
@@ -522,7 +312,7 @@ const HomePage: React.FC = () => {
         {/* Горизонтальная лента платежей */}
         {/* Условие для отображения ленты только при успешной загрузке и отсутствии ошибок */}
         {!isLoadingPayments && !errorPayments && (
-          <div className="flex overflow-x-auto pb-4 -mx-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-700 gap-x-4">
+          <div className="flex pb-4 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-700 gap-x-4">
             {" "}
             {/* Tailwind классы для стилизации скроллбара */}
             {upcomingPayments.length > 0 ? (
@@ -631,13 +421,13 @@ const HomePage: React.FC = () => {
           </div>
           {/* Состояния загрузки или ошибки для статистики */}
           {isLoadingStats && (
-            <div className="text-center text-gray-700 dark:text-gray-300">
-              Загрузка статистики... {/* TODO: Добавить спиннер */}
+            <div className="flex justify-center items-center py-10">
+              <Spinner />
             </div>
           )}
           {errorStats && (
             <div
-              className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+              className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
               role="alert"
             >
               {" "}
@@ -650,8 +440,8 @@ const HomePage: React.FC = () => {
               {/* TODO: Форматировать месяц на русский */}
               {/* Блоки с общими суммами */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <p className="text-lg font-medium text-gray-500 dark:text-gray-300">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
+                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
                     Предстоящие платежи
                   </p>
                   <p className="mt-1 text-3xl font-bold text-blue-600 dark:text-blue-400">
@@ -659,8 +449,8 @@ const HomePage: React.FC = () => {
                     {parseFloat(stats.totalUpcomingAmount).toFixed(2)}
                   </p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                  <p className="text-lg font-medium text-gray-500 dark:text-gray-300">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
+                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
                     Выполненные платежи
                   </p>
                   <p className="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
@@ -672,53 +462,36 @@ const HomePage: React.FC = () => {
               </div>
               {/* Блоки с графиками */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Круговая диаграмма (распределение по категориям) */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col">
-                  <p className="text-lg font-medium text-gray-500 dark:text-gray-300 mb-6">
+                {/* Распределение по категориям */}
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col">
+                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-6">
                     Распределение по категориям
                   </p>
-                  {noCategoriesData ? (
-                    <div className="text-center text-gray-700 dark:text-gray-300 py-10">
-                      Нет данных по категориям за этот месяц.
-                    </div>
-                  ) : (
-                    // Высота контейнера для графика
-                    <div className="relative h-80 w-full">
-                      <Pie
-                        data={categoriesChartData}
-                        options={{
-                          ...categoriesChartOptions,
-                          plugins: {
-                            ...categoriesChartOptions.plugins,
-                            title: { display: false },
-                          },
-                        }}
-                      />
-                    </div>
-                  )}
+                  <CategoryDistributionBars
+                    data={stats.categoriesDistribution}
+                    colors={
+                      resolvedTheme === "dark"
+                        ? categoryColorsDark
+                        : categoryColorsLight
+                    }
+                  />
                 </div>
 
                 {/* График платежной нагрузки по дням */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col">
-                  <p className="text-lg font-medium text-gray-500 dark:text-gray-300 mb-6">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col">
+                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-4">
                     Платежная нагрузка по дням
                   </p>
                   {noDailyData ? (
-                    <div className="text-center text-gray-700 dark:text-gray-300 py-10">
-                      Нет данных о платежной нагрузке за этот месяц.
+                    <div className="flex items-center justify-center h-full text-center text-gray-700 dark:text-gray-300 py-10">
+                      Нет данных о платежной нагрузке за этот период.
                     </div>
                   ) : (
-                    // Высота контейнера для графика
-                    <div className="relative h-80 w-full">
-                      <Line
-                        data={dailyLoadChartData}
-                        options={{
-                          ...dailyLoadChartOptions,
-                          plugins: {
-                            ...dailyLoadChartOptions.plugins,
-                            title: { display: false },
-                          },
-                        }}
+                    <div className="relative h-64 w-full">
+                      <CustomDailySpendingChart
+                        data={chartData}
+                        labels={chartLabels}
+                        theme={resolvedTheme}
                       />
                     </div>
                   )}

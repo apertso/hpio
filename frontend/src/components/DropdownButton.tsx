@@ -1,4 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import { useDropdown } from "../hooks/useDropdown";
+import DropdownOverlay from "./DropdownOverlay";
+import Scrollbar from "./Scrollbar";
 
 export interface DropdownOption {
   label: string;
@@ -20,54 +23,41 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
   className = "",
   ...rest
 }) => {
-  const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const { isOpen, setIsOpen, containerRef } = useDropdown();
+  const optionsRef = useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
 
-  // Close dropdown on outside click
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
+    if (!isOpen) return;
+    const el = optionsRef.current;
+    if (el) {
+      setIsOverflowing(el.scrollHeight > el.clientHeight);
     }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [open]);
+  }, [isOpen, options]);
 
   const classes =
-    `flex h-[35px] min-w-[80px] items-center justify-center rounded-xl bg-[#111316] text-white pl-4 pr-3 focus:outline-none transition-colors duration-150 ${className}`.trim();
+    `flex h-9 min-w-20 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#111316] text-gray-800 dark:text-white border border-gray-300 dark:border-transparent pl-4 pr-3 focus:outline-none cursor-pointer ${className}`.trim();
 
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-block" ref={containerRef}>
       <button
-        ref={buttonRef}
         className={classes}
         style={{ boxShadow: "none", border: "none" }}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setIsOpen((o) => !o)}
         {...rest}
       >
         <span className="text-sm flex-1 text-center">{label}</span>
         {icon && <span>{icon}</span>}
         <span
           className={`transition-transform ml-2 flex items-center ${
-            open ? "rotate-180" : ""
+            isOpen ? "rotate-180" : ""
           }`}
         >
           <svg width="16" height="16" fill="none" viewBox="0 0 20 20">
             <path
               d="M6 8l4 4 4-4"
-              stroke="white"
+              stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -75,18 +65,23 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
           </svg>
         </span>
       </button>
-      {open && (
+
+      <DropdownOverlay isOpen={isOpen} align="left" widthClass="min-w-full">
+        <Scrollbar containerRef={optionsRef} />
         <div
-          ref={menuRef}
-          className="absolute left-0 mt-2 z-20 min-w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 border border-gray-200 dark:border-gray-700"
+          ref={optionsRef}
+          className={`relative max-h-60 overflow-y-auto${
+            isOverflowing ? " pr-4" : ""
+          }`}
+          style={{ position: "relative" }}
         >
           {options.map((option, idx) => (
             <button
               key={option.label + idx}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 cursor-pointer"
               onClick={() => {
-                setOpen(false);
                 option.onClick();
+                setIsOpen(false);
               }}
               type="button"
             >
@@ -95,7 +90,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
             </button>
           ))}
         </div>
-      )}
+      </DropdownOverlay>
     </div>
   );
 };

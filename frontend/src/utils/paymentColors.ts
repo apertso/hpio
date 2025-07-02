@@ -7,8 +7,8 @@ export function getPaymentColorClass(payment: {
   isRecurrent?: boolean;
 }): string {
   if (payment.status === "overdue") return "bg-[#f02626] text-white"; // ярко-красный
-  if (payment.status === "completed") return "bg-gray-700 text-gray-300"; // более тёмный серый
-  if (payment.status === "deleted") return "bg-gray-800 text-gray-400";
+  if (payment.status === "completed") return "bg-gray-400 dark:bg-gray-700";
+  if (payment.status === "deleted") return "bg-gray-300 dark:bg-gray-800";
 
   const now = new Date();
   const dueDateTime = new Date(payment.dueDate);
@@ -21,5 +21,5 @@ export function getPaymentColorClass(payment: {
   if (daysLeft <= 1) return "bg-green-700 text-white"; // Срочно
   if (daysLeft <= 3) return "bg-green-600 text-white"; // Скоро
   if (daysLeft <= 7) return "bg-[#35605a] text-white"; // На горизонте
-  return "bg-gray-600 text-gray-200"; // Спокойный цвет
+  return "bg-gray-500 dark:bg-gray-600"; // Спокойный цвет
 }

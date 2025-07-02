@@ -9,6 +9,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ZodSchema } from "zod";
 import Modal from "./Modal"; // Assuming Modal component is in the same directory
+import Spinner from "./Spinner";
 
 interface UseFormModalProps<T extends FieldValues> {
   isOpen: boolean;
@@ -17,7 +18,7 @@ interface UseFormModalProps<T extends FieldValues> {
   schema: ZodSchema<T>;
   onSubmit: SubmitHandler<T>;
   defaultValues?: DefaultValues<T>; // Use DefaultValues type
-  children: (methods: UseFormReturn<T, any, T>) => ReactNode; // Explicitly set TFieldValues to T
+  children: (methods: UseFormReturn<T, unknown, T>) => ReactNode; // Explicitly set TFieldValues to T
   isSubmitting?: boolean; // Optional prop to indicate external submission state
   formError?: string | null; // Optional prop for external form errors
 }
@@ -33,7 +34,7 @@ function UseFormModal<T extends FieldValues>({
   isSubmitting: externalIsSubmitting = false,
   formError: externalFormError = null,
 }: UseFormModalProps<T>) {
-  const methods = useForm<T, any, T>({
+  const methods = useForm<T, unknown, T>({
     // Explicitly set TFieldValues to T
     resolver: zodResolver(schema),
     defaultValues,
@@ -70,7 +71,7 @@ function UseFormModal<T extends FieldValues>({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {formError && (
           <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
           >
             <span className="block sm:inline">{formError}</span>
@@ -84,18 +85,17 @@ function UseFormModal<T extends FieldValues>({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200 cursor-pointer"
             disabled={isSubmitting}
           >
             Отмена
           </button>
           <button
             type="submit"
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-28 cursor-pointer"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Сохранение..." : "Сохранить"}{" "}
-            {/* Generic save text */}
+            {isSubmitting ? <Spinner size="sm" /> : "Сохранить"}
           </button>
         </div>
       </form>

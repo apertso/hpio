@@ -1,7 +1,8 @@
 // src/pages/RegisterPage.tsx
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Используем хук из контекста
+import Spinner from "../components/Spinner";
 
 const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -10,7 +11,15 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { register } = useAuth(); // Получаем функцию регистрации из контекста
+  const { register, isAuthenticated, loading: authLoading } = useAuth(); // Получаем функцию регистрации из контекста
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Если проверка аутентификации завершена и пользователь аутентифицирован, перенаправляем его
+    if (!authLoading && isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,12 +35,30 @@ const RegisterPage: React.FC = () => {
     try {
       await register(email, password);
       // Перенаправление происходит внутри AuthContext.register при успехе
-    } catch (err: any) {
-      setError(err.message); // Отобразить ошибку из контекста
+    } catch (err: unknown) {
+      let message = "Ошибка регистрации";
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "message" in err &&
+        typeof (err as { message?: unknown }).message === "string"
+      ) {
+        message = (err as { message: string }).message;
+      }
+      setError(message); // Отобразить ошибку из контекста
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Пока идет проверка токена, показываем спиннер, чтобы избежать мелькания формы
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
@@ -41,7 +68,7 @@ const RegisterPage: React.FC = () => {
         </h2>
         {error && (
           <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
           >
             <span className="block sm:inline">{error}</span>
@@ -104,11 +131,11 @@ const RegisterPage: React.FC = () => {
           </div>
           <div className="flex items-center justify-center mb-4">
             <button
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-44"
               type="submit"
               disabled={isLoading}
             >
-              {isLoading ? "Регистрация..." : "Зарегистрироваться"}
+              {isLoading ? <Spinner size="sm" /> : "Зарегистрироваться"}
             </button>
           </div>
           <div className="text-center text-sm text-gray-700 dark:text-gray-200">

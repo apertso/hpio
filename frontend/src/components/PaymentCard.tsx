@@ -13,7 +13,6 @@ import {
 import { useDropdown } from "../hooks/useDropdown";
 import DropdownOverlay from "./DropdownOverlay";
 import PaymentIconDisplay from "./PaymentIconDisplay";
-import { BuiltinIcon } from "../utils/builtinIcons";
 
 interface PaymentCardProps {
   payment: {
@@ -24,9 +23,6 @@ interface PaymentCardProps {
     status: "upcoming" | "overdue" | "completed" | "deleted";
     seriesId?: string | null;
     series?: { id: string; isActive: boolean } | null;
-    iconType?: "builtin" | "custom" | null;
-    builtinIconName?: BuiltinIcon | null;
-    iconPath?: string | null;
   };
   onEdit: () => void;
   onComplete: () => void;
@@ -74,7 +70,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
 
   return (
     <div
-      className={`${cardClasses} text-gray-900 dark:text-gray-100 w-68 min-h-36 py-4 px-4 rounded-xl`}
+      className={`${cardClasses} text-gray-900 dark:text-gray-100 min-h-36 py-4 px-4 rounded-xl`}
     >
       <div>
         {/* Header */}

@@ -3,8 +3,11 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Используем хук из контекста
 import Spinner from "../components/Spinner";
+import { Input } from "../components/Input";
+import FormBlock from "../components/FormBlock";
 
 const RegisterPage: React.FC = () => {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -32,8 +35,34 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
+    if (password.length < 8) {
+      setError("Пароль должен быть не менее 8 символов.");
+      setIsLoading(false);
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError("Пароль должен содержать хотя бы одну заглавную букву.");
+      setIsLoading(false);
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError("Пароль должен содержать хотя бы одну строчную букву.");
+      setIsLoading(false);
+      return;
+    }
+    if (!/\d/.test(password)) {
+      setError("Пароль должен содержать хотя бы одну цифру.");
+      setIsLoading(false);
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      setError("Пароль должен содержать хотя бы один специальный символ.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      await register(email, password);
+      await register(name, email, password);
       // Перенаправление происходит внутри AuthContext.register при успехе
     } catch (err: unknown) {
       let message = "Ошибка регистрации";
@@ -62,7 +91,7 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
-      <div className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-md w-full max-w-md">
+      <FormBlock className="w-full max-w-md">
         <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
           Регистрация
         </h2>
@@ -74,34 +103,30 @@ const RegisterPage: React.FC = () => {
             <span className="block sm:inline">{error}</span>
           </div>
         )}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label
-              className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2"
-              htmlFor="email"
-            >
-              Email
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
-              id="email"
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="mb-4">
-            <label
-              className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2"
-              htmlFor="password"
-            >
-              Пароль
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Имя"
+            id="name"
+            type="text"
+            placeholder="Ваше имя"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            disabled={isLoading}
+          />
+          <Input
+            label="Email"
+            id="email"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={isLoading}
+          />
+          <div>
+            <Input
+              label="Пароль"
               id="password"
               type="password"
               placeholder="********"
@@ -110,26 +135,22 @@ const RegisterPage: React.FC = () => {
               required
               disabled={isLoading}
             />
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              Пароль должен содержать минимум 8 символов, включая заглавную
+              букву, цифру и спецсимвол.
+            </p>
           </div>
-          <div className="mb-6">
-            <label
-              className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2"
-              htmlFor="confirm-password"
-            >
-              Подтвердите пароль
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
-              id="confirm-password"
-              type="password"
-              placeholder="********"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="flex items-center justify-center mb-4">
+          <Input
+            label="Подтвердите пароль"
+            id="confirm-password"
+            type="password"
+            placeholder="********"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            disabled={isLoading}
+          />
+          <div className="flex items-center justify-center pt-2">
             <button
               className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-44"
               type="submit"
@@ -148,7 +169,7 @@ const RegisterPage: React.FC = () => {
             </Link>
           </div>
         </form>
-      </div>
+      </FormBlock>
     </div>
   );
 };

@@ -11,9 +11,7 @@ export interface RecurringSeriesAttributes {
   categoryId?: string | null;
   recurrencePattern: "daily" | "weekly" | "monthly" | "yearly";
   recurrenceEndDate?: Date | null;
-  iconType?: "builtin" | "custom" | null;
   builtinIconName?: string | null;
-  iconPath?: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -28,9 +26,7 @@ export interface RecurringSeriesCreationAttributes
     | "updatedAt"
     | "categoryId"
     | "recurrenceEndDate"
-    | "iconType"
     | "builtinIconName"
-    | "iconPath"
   > {}
 
 export interface RecurringSeriesInstance
@@ -83,15 +79,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.DATEONLY,
         allowNull: true,
       },
-      iconType: {
-        type: dataTypes.ENUM("builtin", "custom"),
-        allowNull: true,
-      },
       builtinIconName: {
-        type: dataTypes.STRING,
-        allowNull: true,
-      },
-      iconPath: {
         type: dataTypes.STRING,
         allowNull: true,
       },

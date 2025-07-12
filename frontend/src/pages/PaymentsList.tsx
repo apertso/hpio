@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
-import PaymentForm from "../components/PaymentForm"; // Форма для редактирования
 import { getPaymentColorClass } from "../utils/paymentColors"; // Для цветовой индикации в таблице
 import PaymentIconDisplay from "../components/PaymentIconDisplay"; // !!! Импорт компонента отображения иконки
 import useApi from "../hooks/useApi"; // Import useApi
@@ -18,6 +17,7 @@ import { ArrowPathIcon } from "@heroicons/react/24/outline"; // Recurrence icon
 import { Button } from "../components/Button"; // Import the Button component
 import { PaymentData } from "../types/paymentData";
 import Spinner from "../components/Spinner";
+import { useNavigate } from "react-router-dom";
 
 // TODO: Хелпер для форматирования шаблона повторения на русский
 export const formatRecurrencePattern = (
@@ -61,13 +61,21 @@ const PaymentsList: React.FC = () => {
   useEffect(() => {
     if (rawAllPayments) {
       // Преобразуем amount в number
-      const payments = rawAllPayments.map((p: any) => ({
-        ...p,
-        amount: parseFloat(p.amount),
-      }));
+      const payments = rawAllPayments.map((p: unknown) => {
+        const payment = p as PaymentData;
+        return {
+          ...payment,
+          amount:
+            typeof payment.amount === "string"
+              ? parseFloat(payment.amount)
+              : payment.amount,
+        };
+      });
       setAllPayments(payments);
       logger.info(
-        `Successfully fetched and processed ${payments.length} all payments.`
+        `Successfully fetched and processed ${
+          (payments as PaymentData[]).length
+        } all payments.`
       );
     } else {
       setAllPayments([]); // Clear payments if raw data is null (e.g., on error)
@@ -79,35 +87,7 @@ const PaymentsList: React.FC = () => {
     executeFetchAllPayments();
   }, [executeFetchAllPayments]); // Dependency on executeFetchAllPayments
 
-  // Состояние для модального окна редактирования
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPaymentId, setEditingPaymentId] = useState<string | undefined>(
-    undefined
-  );
-
-  // TODO: Состояние для фильтров и сортировки (реализовать позже)
-  // const [filters, setFilters] = useState({ status: '', categoryId: '', search: '' });
-  // const [sort, setSort] = useState({ field: 'dueDate', order: 'asc' });
-  // const [pagination, setPagination] = useState({ page: 1, limit: 10 }); // Пагинация
-
-  // Обработчики модального окна
-  const handleOpenModal = (paymentId?: string) => {
-    setEditingPaymentId(paymentId); // Передаем ID для редактирования
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingPaymentId(undefined);
-    // TODO: Возможно, сбросить форму при закрытии
-  };
-
-  // Обработчик успешного сохранения/редактирования платежа
-  const handlePaymentSaved = () => {
-    handleCloseModal();
-    executeFetchAllPayments(); // Перезагружаем список после сохранения/редактирования using the execute function from useApi
-    alert("Платеж успешно сохранен!"); // Временное уведомление
-  };
+  const navigate = useNavigate();
 
   // TODO: Обработчики действий над платежом (Часть 8)
   const handleCompletePayment = async (paymentId: string) => {
@@ -157,6 +137,14 @@ const PaymentsList: React.FC = () => {
     }
   };
 
+  const handleAddPayment = () => {
+    navigate("/payments/new");
+  };
+
+  const handleEditPayment = (paymentId: string) => {
+    navigate(`/payments/edit/${paymentId}`);
+  };
+
   return (
     <>
       <title>Хочу Плачу - Список платежей</title>
@@ -165,7 +153,7 @@ const PaymentsList: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Все платежи
           </h2>
-          <Button onClick={() => handleOpenModal()} label="Добавить платеж" />
+          <Button onClick={handleAddPayment} label="Добавить платеж" />
         </div>
 
         {/* TODO: Добавить секцию для фильтров, поиска и пагинации (Часть 6+) */}
@@ -359,7 +347,7 @@ const PaymentsList: React.FC = () => {
                         {/* Также можно запретить редактирование completed/deleted, если это бизнес-требование */}
                         {payment.status !== "deleted" && ( // Например, разрешим редактирование completed
                           <button
-                            onClick={() => handleOpenModal(payment.id)}
+                            onClick={() => handleEditPayment(payment.id)}
                             className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1 cursor-pointer" // mx-1 для отступов между кнопками
                             title="Редактировать"
                           >
@@ -410,16 +398,6 @@ const PaymentsList: React.FC = () => {
             )}
           </div>
         )}
-
-        {/* ... Модальное окно с формой ... */}
-        {/* The Modal component is now handled internally by UseFormModal */}
-        {/* We only need to render PaymentForm and pass the modal state and handlers */}
-        <PaymentForm
-          isOpen={isModalOpen} // Pass isOpen state
-          onClose={handleCloseModal} // Pass onClose handler
-          paymentId={editingPaymentId}
-          onSuccess={handlePaymentSaved}
-        />
       </div>
     </>
   );

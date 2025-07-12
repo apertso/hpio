@@ -45,8 +45,7 @@ export const seriesApi = {
     const response = await axiosInstance.get(`/series/${id}`);
     return response.data;
   },
-  updateSeries: async (id: string, data: any) => {
-    // TODO: Define a more specific type for data
+  updateSeries: async (id: string, data: unknown) => {
     const response = await axiosInstance.put(`/series/${id}`, data);
     return response.data;
   },
@@ -56,6 +55,17 @@ export const seriesApi = {
   },
   deleteSeries: async (id: string) => {
     const response = await axiosInstance.delete(`/series/${id}`);
+    return response.data;
+  },
+};
+
+export const authApi = {
+  verifyEmail: async (token: string) => {
+    const response = await axiosInstance.post("/auth/verify-email", { token });
+    return response.data;
+  },
+  resendVerificationEmail: async () => {
+    const response = await axiosInstance.post("/auth/resend-verification");
     return response.data;
   },
 };

@@ -148,7 +148,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               {/* TODO: Реализовать визуальный прогресс-бар */}
               <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-600 mt-2">
                 <div
-                  className="bg-blue-600 h-2.5 rounded-full"
+                  className="h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
                   style={{ width: `${uploadProgress}%` }}
                 ></div>
               </div>

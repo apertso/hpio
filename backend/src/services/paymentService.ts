@@ -17,8 +17,6 @@ interface PaymentData {
   // Fields for files and icons (handled by fileService/icon logic)
   filePath?: string | null;
   fileName?: string | null;
-  iconPath?: string | null;
-  iconType?: "builtin" | "custom" | null;
   builtinIconName?: string | null;
   // Option to create a completed payment immediately (used during creation)
   createAsCompleted?: boolean;
@@ -146,9 +144,7 @@ export const getFilteredPayments = async (userId: string, filters: any) => {
             "amount",
             "recurrencePattern",
             "recurrenceEndDate",
-            "iconType",
             "builtinIconName",
-            "iconPath",
             "isActive",
           ],
         }, // Include recurring series data
@@ -204,9 +200,7 @@ export const createPayment = async (
         categoryId: paymentData.categoryId || null,
         recurrencePattern: paymentData.recurrencePattern, // This must be present
         recurrenceEndDate: recurrenceEndDate,
-        iconType: paymentData.iconType || null,
         builtinIconName: paymentData.builtinIconName || null,
-        iconPath: paymentData.iconPath || null,
         isActive: true, // New series are active by default
       });
       seriesId = newSeries.id;
@@ -228,11 +222,9 @@ export const createPayment = async (
       completedAt: paymentData.createAsCompleted
         ? Sequelize.literal("GETDATE()")
         : null,
-      // filePath, fileName, iconPath, iconType, builtinIconName are handled by fileService/icon logic
+      // filePath, fileName, builtinIconName are handled by fileService/icon logic
       // Copy icon data to the first payment instance if it's a new series
-      iconType: paymentData.iconType || null,
       builtinIconName: paymentData.builtinIconName || null,
-      iconPath: paymentData.iconPath || null,
     });
 
     logger.info(
@@ -266,8 +258,6 @@ export const getPaymentById = async (paymentId: string, userId: string) => {
         "completedAt",
         "filePath",
         "fileName", // Include file fields
-        "iconPath",
-        "iconType",
         "builtinIconName",
         "seriesId", // Include seriesId
       ],
@@ -282,9 +272,7 @@ export const getPaymentById = async (paymentId: string, userId: string) => {
             "amount",
             "recurrencePattern",
             "recurrenceEndDate",
-            "iconType",
             "builtinIconName",
-            "iconPath",
             "isActive",
           ],
         }, // Include recurring series data
@@ -361,8 +349,6 @@ export const updatePayment = async (
       "categoryId",
       "filePath",
       "fileName",
-      "iconPath",
-      "iconType",
       "builtinIconName",
     ];
 
@@ -404,18 +390,10 @@ export const updatePayment = async (
         recurrencePattern: paymentData.recurrencePattern,
         recurrenceEndDate: recurrenceEndDateForNewSeries,
         // Используем иконку из paymentData, если есть, иначе из существующего платежа
-        iconType:
-          paymentData.iconType !== undefined
-            ? paymentData.iconType
-            : payment.iconType,
         builtinIconName:
           paymentData.builtinIconName !== undefined
             ? paymentData.builtinIconName
             : payment.builtinIconName,
-        iconPath:
-          paymentData.iconPath !== undefined
-            ? paymentData.iconPath
-            : payment.iconPath,
         isActive: true, // Новая серия активна по умолчанию
       });
       fieldsToUpdate.seriesId = newSeries.id; // Привязываем платеж к новой серии
@@ -874,9 +852,7 @@ export const completePayment = async (paymentId: string, userId: string) => {
                 status: newPaymentStatus,
                 seriesId: series.id,
                 // Копируем детали иконки из серии
-                iconType: series.iconType,
                 builtinIconName: series.builtinIconName,
-                iconPath: series.iconPath,
               });
               logger.info(
                 `Generated next recurring payment (Series ID: ${series.id}, Due Date: ${nextDueDateString}) by completePayment for ${payment.id}.`
@@ -1030,9 +1006,7 @@ export const generateNextRecurrentPayments = async () => {
           dueDate: nextDueDateString,
           status: nextDueDate < today ? "overdue" : "upcoming",
           seriesId: series.id,
-          iconType: series.iconType,
           builtinIconName: series.builtinIconName,
-          iconPath: series.iconPath,
         });
         logger.info(
           `Generated new recurring payment (ID: ${newPayment.id}, Series ID: ${newPayment.seriesId}, Due Date: ${newPayment.dueDate})`

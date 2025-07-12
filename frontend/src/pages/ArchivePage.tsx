@@ -15,8 +15,8 @@ import { PaperClipIcon } from "@heroicons/react/24/outline"; // Add import
 import { PaymentData } from "../types/paymentData";
 import useApi from "../hooks/useApi"; // Import useApi
 import { formatRecurrencePattern } from "./PaymentsList";
-import PaymentForm from "../components/PaymentForm"; // <-- ДОБАВИТЬ ИМПОРТ ФОРМЫ
 import Spinner from "../components/Spinner";
+import { useNavigate } from "react-router-dom";
 
 // Define the raw API fetch function
 const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
@@ -38,27 +38,32 @@ const ArchivePage: React.FC = () => {
   // State for transformed data
   const [archivedPayments, setArchivedPayments] = useState<PaymentData[]>([]);
 
-  // НОВОЕ: Состояние для модального окна редактирования
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPaymentId, setEditingPaymentId] = useState<string | undefined>(
-    undefined
-  );
+  const navigate = useNavigate();
 
   // Effect to transform data when raw data changes
   useEffect(() => {
     if (rawArchivedPayments) {
-      const payments = rawArchivedPayments.map((p: any) => ({
-        ...p,
-        amount: parseFloat(p.amount),
-        // completedAt может прийти как строка, Date.parse() или new Date()
-        completedAt: p.completedAt
-          ? new Date(p.completedAt).toLocaleString()
-          : null, // Форматируем дату выполнения для отображения
-        updatedAt: p.updatedAt ? new Date(p.updatedAt).toLocaleString() : null, // Форматируем дату обновления для отображения удаленных
-      }));
+      const payments = rawArchivedPayments.map((p: unknown) => {
+        const payment = p as PaymentData;
+        return {
+          ...payment,
+          amount:
+            typeof payment.amount === "string"
+              ? parseFloat(payment.amount)
+              : payment.amount,
+          completedAt: payment.completedAt
+            ? new Date(payment.completedAt).toLocaleString()
+            : "",
+          updatedAt: payment.updatedAt
+            ? new Date(payment.updatedAt).toLocaleString()
+            : "",
+        };
+      });
       setArchivedPayments(payments);
       logger.info(
-        `Successfully fetched and processed ${payments.length} archived payments.`
+        `Successfully fetched and processed ${
+          (payments as PaymentData[]).length
+        } archived payments.`
       );
     } else {
       setArchivedPayments([]); // Clear payments if raw data is null (e.g., on error)
@@ -159,22 +164,8 @@ const ArchivePage: React.FC = () => {
     }
   };
 
-  // НОВОЕ: Обработчики для открытия/закрытия модального окна
-  const handleOpenModal = (paymentId: string) => {
-    setEditingPaymentId(paymentId);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingPaymentId(undefined);
-  };
-
-  // НОВОЕ: Обработчик для успешного сохранения (обновляет список)
-  const handlePaymentSaved = () => {
-    handleCloseModal();
-    executeFetchArchivedPayments(); // Обновляем список архива
-    alert("Платеж успешно обновлен.");
+  const handleEditPayment = (paymentId: string) => {
+    navigate(`/payments/edit/${paymentId}`);
   };
 
   return (
@@ -368,7 +359,7 @@ const ArchivePage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
                         {/* НОВАЯ КНОПКА "РЕДАКТИРОВАТЬ" */}
                         <button
-                          onClick={() => handleOpenModal(payment.id)}
+                          onClick={() => handleEditPayment(payment.id)}
                           className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1 cursor-pointer"
                           title="Редактировать"
                         >
@@ -406,14 +397,6 @@ const ArchivePage: React.FC = () => {
             )}
           </div>
         )}
-
-        {/* НОВАЯ МОДАЛКА РЕДАКТИРОВАНИЯ */}
-        <PaymentForm
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          paymentId={editingPaymentId}
-          onSuccess={handlePaymentSaved}
-        />
       </div>
     </>
   );

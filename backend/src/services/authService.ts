@@ -8,7 +8,28 @@ import { UserInstance } from "../models/User";
 import { Op } from "sequelize";
 import { deleteFileFromFS } from "./fileService";
 import path from "path";
-import { sendPasswordResetEmail } from "./emailService"; // <-- Импортируем email сервис
+import { sendPasswordResetEmail, sendVerificationEmail } from "./emailService";
+import crypto from "crypto";
+
+// Вспомогательная функция для валидации пароля
+const validatePassword = (password: string): string | null => {
+  if (password.length < 8) {
+    return "Пароль должен быть не менее 8 символов.";
+  }
+  if (!/[A-Z]/.test(password)) {
+    return "Пароль должен содержать хотя бы одну заглавную букву.";
+  }
+  if (!/[a-z]/.test(password)) {
+    return "Пароль должен содержать хотя бы одну строчную букву.";
+  }
+  if (!/\d/.test(password)) {
+    return "Пароль должен содержать хотя бы одну цифру.";
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return "Пароль должен содержать хотя бы один специальный символ.";
+  }
+  return null;
+};
 
 // Вспомогательная функция для генерации JWT
 const generateToken = (id: string) => {
@@ -25,10 +46,19 @@ const generatePasswordResetToken = (id: string) => {
 };
 
 // Регистрация нового пользователя
-export const registerUser = async (email: string, password: string) => {
+export const registerUser = async (
+  name: string,
+  email: string,
+  password: string
+) => {
   // Базовая валидация
-  if (!email || !password) {
-    throw new Error("Необходимо указать Email и пароль.");
+  if (!name || !email || !password) {
+    throw new Error("Необходимо указать Имя, Email и пароль.");
+  }
+
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    throw new Error(passwordError);
   }
 
   // Проверка существования пользователя
@@ -41,22 +71,74 @@ export const registerUser = async (email: string, password: string) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  // Создание пользователя
-  const user = await db.User.create({
-    email,
-    password: hashedPassword,
-  });
+  // Обернем создание пользователя и категорий в транзакцию для атомарности
+  const transaction = await db.sequelize.transaction();
+  try {
+    // Создание пользователя
+    const user = await db.User.create(
+      {
+        name,
+        email,
+        password: hashedPassword,
+        isVerified: false,
+      },
+      { transaction }
+    );
 
-  if (user) {
-    logger.info(`User registered: ${user.email}`);
+    // Создание стандартного набора категорий для нового пользователя
+    const defaultCategories = [
+      "Жильё и коммунальные",
+      "Питание",
+      "Транспорт",
+      "Здоровье",
+      "Покупки и одежда",
+      "Развлечения",
+      "Образование",
+      "Семья и дети",
+      "Финансы и кредиты",
+      "Прочее",
+    ];
+
+    const categoriesToCreate = defaultCategories.map((categoryName) => ({
+      userId: user.id,
+      name: categoryName,
+    }));
+
+    await db.Category.bulkCreate(categoriesToCreate, { transaction });
+
+    // Генерируем токен верификации
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    user.verificationToken = verificationToken;
+    user.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 часа
+    await user.save({ transaction });
+
+    await transaction.commit();
+
+    // Отправляем письмо верификации
+    const verificationLink = `${config.frontendUrl}/verify-email?token=${verificationToken}`;
+    sendVerificationEmail(user.email, verificationLink).catch((err) => {
+      logger.error("Error sending verification email asynchronously:", err);
+    });
+
+    logger.info(
+      `User registered: ${user.email} and default categories created.`
+    );
     // Возвращаем пользователя и токен
     return {
       id: user.id,
+      name: user.name,
       email: user.email,
       token: generateToken(user.id),
+      isVerified: user.isVerified,
+      photoPath: user.photoPath,
     };
-  } else {
-    throw new Error("Неверные данные пользователя.");
+  } catch (error) {
+    await transaction.rollback();
+    logger.error("User registration failed, transaction rolled back", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Не удалось зарегистрировать пользователя.");
   }
 };
 
@@ -74,11 +156,13 @@ export const loginUser = async (email: string, password: string) => {
   // Убедитесь, что пользователь найден И пароли совпадают
   if (user && (await bcrypt.compare(password, user.password))) {
     logger.info(`User logged in: ${user.email}`);
-    // Возвращаем пользователя и токен
     return {
       id: user.id,
+      name: user.name,
       email: user.email,
       token: generateToken(user.id),
+      isVerified: user.isVerified,
+      photoPath: user.photoPath,
     };
   } else {
     throw new Error("Неверный Email или пароль.");
@@ -90,6 +174,15 @@ export const forgotPassword = async (email: string) => {
   const user = await db.User.findOne({ where: { email } });
 
   if (user) {
+    if (!user.isVerified) {
+      logger.warn(
+        `Password reset requested for unverified email: ${email}. Aborting.`
+      );
+      return {
+        message:
+          "Если пользователь с таким Email существует и его адрес подтвержден, инструкции по сбросу пароля будут отправлены.",
+      };
+    }
     // Если пользователь найден, генерируем токен и отправляем письмо
     const resetToken = generatePasswordResetToken(user.id);
     const resetUrl = `${config.frontendUrl}/reset-password?token=${resetToken}`;
@@ -108,7 +201,7 @@ export const forgotPassword = async (email: string) => {
   // Это мера безопасности для предотвращения перебора email-адресов
   return {
     message:
-      "Если пользователь с таким Email существует, инструкции по сбросу пароля будут отправлены на указанный адрес.",
+      "Если пользователь с таким Email существует и его адрес подтвержден, инструкции по сбросу пароля будут отправлены на указанный адрес.",
   };
 };
 
@@ -116,6 +209,11 @@ export const forgotPassword = async (email: string) => {
 export const resetPassword = async (token: string, newPassword: string) => {
   if (!token || !newPassword) {
     throw new Error("Токен и новый пароль обязательны.");
+  }
+
+  const passwordError = validatePassword(newPassword);
+  if (passwordError) {
+    throw new Error(passwordError);
   }
 
   try {
@@ -147,7 +245,7 @@ export const resetPassword = async (token: string, newPassword: string) => {
 // Получение профиля пользователя
 export const getUserProfile = async (userId: string) => {
   const user = await db.User.findByPk(userId, {
-    attributes: ["id", "email", "photoPath", "createdAt"],
+    attributes: ["id", "email", "name", "photoPath", "createdAt", "isVerified"],
   });
 
   if (!user) {
@@ -159,11 +257,21 @@ export const getUserProfile = async (userId: string) => {
 // Обновление профиля пользователя (email, пароль)
 export const updateUserProfile = async (
   userId: string,
-  data: { email?: string; password?: string; currentPassword?: string }
+  data: {
+    name?: string;
+    email?: string;
+    password?: string;
+    currentPassword?: string;
+  }
 ) => {
   const user = await db.User.findByPk(userId);
   if (!user) {
     throw new Error("Пользователь не найден.");
+  }
+
+  // Обновление имени
+  if (data.name) {
+    user.name = data.name;
   }
 
   // Обновление email
@@ -185,6 +293,10 @@ export const updateUserProfile = async (
     const isMatch = await bcrypt.compare(data.currentPassword, user.password);
     if (!isMatch) {
       throw new Error("Неверный текущий пароль.");
+    }
+    const passwordError = validatePassword(data.password);
+    if (passwordError) {
+      throw new Error(passwordError);
     }
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(data.password, salt);
@@ -249,4 +361,53 @@ export const deleteUserAccount = async (userId: string) => {
   await user.destroy();
   logger.info(`User account deleted for user ID: ${userId}`);
   return { message: "Аккаунт успешно удален." };
+};
+
+export const resendVerificationEmail = async (userId: string) => {
+  const user = await db.User.findByPk(userId);
+
+  if (!user) {
+    throw new Error("Пользователь не найден.");
+  }
+
+  if (user.isVerified) {
+    throw new Error("Email уже подтвержден.");
+  }
+
+  // Генерируем новый токен верификации
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  user.verificationToken = verificationToken;
+  user.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 часа
+  await user.save();
+
+  // Отправляем письмо верификации
+  const verificationLink = `${config.frontendUrl}/verify-email?token=${verificationToken}`;
+  sendVerificationEmail(user.email, verificationLink).catch((err) => {
+    logger.error("Error resending verification email asynchronously:", err);
+  });
+
+  logger.info(`Resent verification email to: ${user.email}`);
+
+  return { message: "Новая ссылка для подтверждения отправлена на ваш email." };
+};
+
+export const verifyEmail = async (token: string) => {
+  if (!token) {
+    throw new Error("Токен верификации не предоставлен.");
+  }
+  const user = await db.User.findOne({
+    where: {
+      verificationToken: token,
+      verificationTokenExpires: { [Op.gt]: new Date() },
+    },
+  });
+  if (!user) {
+    throw new Error("Неверный или истекший токен верификации.");
+  }
+  user.isVerified = true;
+  user.verificationToken = null;
+  user.verificationTokenExpires = null;
+  await user.save();
+  logger.info(`Email verified for user: ${user.email}`);
+  return { message: "Email успешно подтвержден." };
 };

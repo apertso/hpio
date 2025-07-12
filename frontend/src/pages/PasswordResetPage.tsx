@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance"; // Прямое использование axios для этого эндпоинта
 import logger from "../utils/logger";
 import Spinner from "../components/Spinner";
+import { Input } from "../components/Input";
+import FormBlock from "../components/FormBlock";
 
 const PasswordResetPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -47,7 +49,7 @@ const PasswordResetPage: React.FC = () => {
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
-      <div className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-md w-full max-w-md">
+      <FormBlock className="w-full max-w-md">
         <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
           Сброс пароля
         </h2>
@@ -59,7 +61,7 @@ const PasswordResetPage: React.FC = () => {
             <span className="block sm:inline">{message}</span>
           </div>
         )}
-        {error && ( // Отображаем, если есть специфическая ошибка запроса (опционально)
+        {error && (
           <div
             className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
@@ -70,26 +72,18 @@ const PasswordResetPage: React.FC = () => {
         <p className="text-center text-gray-700 dark:text-gray-200 mb-4">
           Введите ваш Email для получения инструкций по сбросу пароля.
         </p>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
-            <label
-              className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2"
-              htmlFor="email"
-            >
-              Email
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
-              id="email"
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="flex items-center justify-center mb-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Input
+            label="Email"
+            id="email"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={isLoading}
+          />
+          <div className="flex items-center justify-center">
             <button
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-56"
               type="submit"
@@ -107,7 +101,7 @@ const PasswordResetPage: React.FC = () => {
             </Link>
           </div>
         </form>
-      </div>
+      </FormBlock>
     </div>
   );
 };

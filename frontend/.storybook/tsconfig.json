@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.app.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.storybook.tsbuildinfo",
+    "lib": [],
+    "types": ["node"]
+  },
+  "include": ["./*", "../src/**/*.stories.tsx"]
+}

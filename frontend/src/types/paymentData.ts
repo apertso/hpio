@@ -14,9 +14,7 @@ export interface PaymentData {
   filePath?: string | null; // File path field
   fileName?: string | null; // File name field
   // !!! Icon fields
-  iconType?: "builtin" | "custom" | null;
   builtinIconName?: BuiltinIcon | null; // Use BuiltinIcon type
-  iconPath?: string | null;
   category?: { id: string; name: string } | null; // Can be category object or null
   // Include series data if joined
   series?: {
@@ -25,9 +23,7 @@ export interface PaymentData {
     amount: number;
     recurrencePattern: "daily" | "weekly" | "monthly" | "yearly";
     recurrenceEndDate?: string | null;
-    iconType?: "builtin" | "custom" | null;
     builtinIconName?: BuiltinIcon | null; // Use BuiltinIcon type
-    iconPath?: string | null;
     isActive: boolean;
   } | null;
 }

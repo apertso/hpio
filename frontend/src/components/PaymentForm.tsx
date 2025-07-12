@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { SubmitHandler, DefaultValues } from "react-hook-form"; // Import necessary types
+import { zodResolver } from "@hookform/resolvers/zod";
+import { SubmitHandler, useForm } from "react-hook-form"; // Import necessary types
 import { z } from "zod";
 import axiosInstance from "../api/axiosInstance";
 import { AxiosError } from "axios";
 import logger from "../utils/logger";
 import "react-datepicker/dist/react-datepicker.css";
-import IconPicker, { PaymentIconInfo } from "./IconPicker"; // Import IconPicker and its types/values
 import SeriesEditModal from "./SeriesEditModal";
 
 import PaymentDetailsSection from "./PaymentDetailsSection";
@@ -13,7 +13,9 @@ import PaymentDetailsSection from "./PaymentDetailsSection";
 import PaymentCategorySelect from "./PaymentCategorySelect";
 import PaymentRecurrenceSection from "./PaymentRecurrenceSection";
 import PaymentFileUploadSection from "./PaymentFileUploadSection";
-import UseFormModal from "./UseFormModal"; // Import the new UseFormModal
+import IconSelector from "./IconSelector"; // Import IconSelector
+import { BuiltinIcon } from "../utils/builtinIcons"; // Import BuiltinIcon type
+import Spinner from "./Spinner";
 
 // PaymentIconInfo interface is now imported from IconPicker.tsx
 
@@ -59,76 +61,67 @@ export type PaymentFormInputs = z.infer<typeof paymentFormSchema> & {
 };
 
 interface PaymentFormProps {
-  isOpen?: boolean; // Add isOpen prop
-  onClose: () => void; // Add onClose prop
   paymentId?: string;
-  onSuccess: (newPaymentId?: string) => void; // Добавили опциональный newPaymentId в onSuccess для создания
+  onSuccess: (newPaymentId?: string) => void;
+  onCancel: () => void;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
-  isOpen = true, // Destructure isOpen
-  onClose, // Destructure onClose
   paymentId,
   onSuccess,
+  onCancel,
 }) => {
   const isEditMode = !!paymentId;
 
-  // State to hold the series ID if the payment being edited is part of a series
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting: rhfIsSubmitting },
+    setValue,
+    watch,
+    clearErrors,
+    reset,
+  } = useForm<PaymentFormInputs>({
+    resolver: zodResolver(paymentFormSchema),
+  });
+
   const [currentSeriesId, setCurrentSeriesId] = useState<string | null>(null);
-  // State to control the visibility of the SeriesEditModal
   const [isSeriesModalOpen, setIsSeriesModalOpen] = useState(false);
-
-  // State for default values to pass to UseFormModal
-  const [defaultValues, setDefaultValues] = useState<
-    DefaultValues<PaymentFormInputs> | undefined
-  >(undefined);
-  // State for API errors not handled by react-hook-form validation
   const [formError, setFormError] = useState<string | null>(null);
-  // State for loading data in edit mode
   const [isLoading, setIsLoading] = useState(isEditMode);
-
   const [attachedFile, setAttachedFile] = useState<{
     filePath: string;
     fileName: string;
   } | null>(null);
-
-  // !!! Состояние для хранения выбранной/загруженной иконки
-  const [selectedIcon, setSelectedIcon] = useState<PaymentIconInfo | null>(
+  const [selectedIconName, setSelectedIconName] = useState<BuiltinIcon | null>(
     null
   );
-
-  // !!! Состояние для опции "Создать как завершенный" (только для создания)
   const [createAsCompleted, setCreateAsCompleted] = useState(false);
 
-  // Effect to fetch payment data for editing
   useEffect(() => {
     if (isEditMode && paymentId) {
       const fetchPayment = async () => {
         setIsLoading(true);
-        setFormError(null); // Clear API errors on load
+        setFormError(null);
         try {
           const res = await axiosInstance.get(`/payments/${paymentId}`);
           const paymentData = res.data;
 
-          // Set default values for react-hook-form
-          setDefaultValues({
+          reset({
             title: paymentData.title,
             amount: parseFloat(paymentData.amount),
             dueDate: new Date(paymentData.dueDate),
             categoryId: paymentData.category?.id || "",
-            // Recurrence fields are not set here as they are part of the series
-            recurrencePattern: null, // Ensure these are null for edit mode form
+            recurrencePattern: null,
             recurrenceEndDate: null,
           });
 
-          // Store the seriesId if it exists
           if (paymentData.seriesId) {
             setCurrentSeriesId(paymentData.seriesId);
           } else {
             setCurrentSeriesId(null);
           }
 
-          // Set the state of the attached file
           if (paymentData.filePath && paymentData.fileName) {
             setAttachedFile({
               filePath: paymentData.filePath,
@@ -138,17 +131,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             setAttachedFile(null);
           }
 
-          // Set the state of the selected/uploaded icon
-          if (paymentData.iconType) {
-            setSelectedIcon({
-              iconType: paymentData.iconType,
-              builtinIconName: paymentData.builtinIconName,
-              iconPath: paymentData.iconPath,
-            });
-          } else {
-            setSelectedIcon(null);
-          }
-
+          setSelectedIconName(paymentData.builtinIconName || null);
           setIsLoading(false);
         } catch (error: unknown) {
           const errorMessage =
@@ -162,14 +145,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             errorMessage,
             error
           );
-          setFormError(errorMessage); // Set API error
+          setFormError(errorMessage);
           setIsLoading(false);
         }
       };
       fetchPayment();
     } else {
-      // Create mode - set initial default values, clear states
-      setDefaultValues({
+      reset({
         title: "",
         amount: undefined,
         dueDate: new Date(),
@@ -179,33 +161,20 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       });
       setCurrentSeriesId(null);
       setAttachedFile(null);
-      setSelectedIcon(null);
+      setSelectedIconName(null);
       setCreateAsCompleted(false);
-      setFormError(null); // Clear API errors
-      setIsLoading(false); // Not loading in create mode initially
+      setFormError(null);
+      setIsLoading(false);
     }
-  }, [paymentId, isEditMode]); // Dependencies: paymentId, isEditMode
+  }, [paymentId, isEditMode, reset]);
 
-  // Handler for icon changes from IconPicker
-  const handleIconChange = useCallback((iconInfo: PaymentIconInfo | null) => {
-    setSelectedIcon(iconInfo);
-    // setFormError(null); // Reset form error if it came from IconPicker - UseFormModal handles this
+  const handleIconChange = useCallback((iconName: BuiltinIcon | null) => {
+    setSelectedIconName(iconName);
   }, []);
 
-  // Handler for errors from IconPicker
-  const handleIconError = useCallback((message: string) => {
-    setFormError(`Ошибка иконки: ${message}`);
-  }, []);
+  const handleFormSubmit: SubmitHandler<PaymentFormInputs> = async (data) => {
+    setFormError(null);
 
-  // Adapted onSubmit function to be passed to UseFormModal
-  const onSubmit: SubmitHandler<PaymentFormInputs> = async (data) => {
-    setFormError(null); // Clear previous API errors
-
-    // Validation on Frontend should also consider dependencies:
-    // If isRecurrent is true, pattern must be selected. Zod schema already handles this with nullable().optional() and enum.
-    // If isRecurrent is true and pattern is selected, endDate can be null or Date.
-
-    // Construct the payload based on whether it's create or edit mode
     const basePayloadData = {
       title: data.title,
       amount: Number(data.amount),
@@ -218,31 +187,25 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           )}`
         : null,
       categoryId: data.categoryId === "" ? null : data.categoryId,
-      iconType: selectedIcon?.iconType || null,
-      builtinIconName: selectedIcon?.builtinIconName || null,
-      iconPath: selectedIcon?.iconPath || null,
+      builtinIconName: selectedIconName,
     };
 
-    let finalPayload: any = { ...basePayloadData }; // Start with base payload
+    let finalPayload: any = { ...basePayloadData };
 
     if (isEditMode) {
-      // If editing a one-time payment and a recurrence pattern is now selected by the user,
-      // include recurrence fields to trigger conversion to a new series on the backend.
       if (!currentSeriesId && data.recurrencePattern) {
         finalPayload.recurrencePattern = data.recurrencePattern;
         finalPayload.recurrenceEndDate = data.recurrenceEndDate
           ? data.recurrenceEndDate.toISOString().split("T")[0]
           : null;
       }
-      // Note: If currentSeriesId exists, recurrence pattern changes are handled by SeriesEditModal.
     } else {
-      // Create mode: include recurrence fields if provided, and createAsCompleted option
       if (data.recurrencePattern) {
         finalPayload = {
           ...basePayloadData,
-          recurrencePattern: data.recurrencePattern || null, // Send pattern if selected
+          recurrencePattern: data.recurrencePattern || null,
           recurrenceEndDate:
-            data.recurrencePattern && data.recurrenceEndDate // Only send endDate if pattern exists
+            data.recurrencePattern && data.recurrenceEndDate
               ? data.recurrenceEndDate.toISOString().split("T")[0]
               : null,
           createAsCompleted: createAsCompleted,
@@ -258,12 +221,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       if (isEditMode && paymentId) {
         await axiosInstance.put(`/payments/${paymentId}`, finalPayload);
         logger.info(`Payment updated (ID: ${paymentId})`);
-        onSuccess(paymentId); // Call onSuccess, passing the ID
+        onSuccess(paymentId);
       } else {
         const res = await axiosInstance.post("/payments", finalPayload);
-        const newPaymentId = res.data.id; // Get the ID of the new payment
+        const newPaymentId = res.data.id;
         logger.info("Payment created", res.data);
-        onSuccess(newPaymentId); // Call onSuccess, passing the ID of the new payment
+        onSuccess(newPaymentId);
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -273,149 +236,138 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           ? error.message
           : "An error occurred while saving.";
       logger.error("Failed to save payment:", errorMessage, error);
-      setFormError(errorMessage); // Set API error
-      // Do NOT re-throw the error here, let useApi handle it if it were used for the save operation.
-      // Since we are not using useApi for the save operation in this refactor step,
-      // we handle the error and set the formError state locally.
+      setFormError(errorMessage);
     }
   };
 
+  const combinedIsSubmitting = rhfIsSubmitting || isLoading;
+
+  if (isLoading && isEditMode) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <>
-      {/* UseFormModal wraps the form content */}
-      <UseFormModal<PaymentFormInputs>
-        isOpen={isOpen}
-        onClose={onClose}
-        title={isEditMode ? "Редактировать платеж" : "Добавить платеж"}
-        schema={paymentFormSchema}
-        onSubmit={onSubmit} // Pass the adapted onSubmit function
-        defaultValues={defaultValues}
-        isSubmitting={isLoading} // Pass loading state for fetching data
-        formError={formError} // Pass API error
+      <form
+        onSubmit={handleSubmit(handleFormSubmit)}
+        className="space-y-6"
+        noValidate
       >
-        {(
-          methods // Render prop provides useForm methods
-        ) => (
-          <>
-            {/* Form fields using methods.register, methods.formState.errors, etc. */}
-            {/* Removed h2 and formError display as they are in UseFormModal */}
-
-            {/* Поля: Название, Сумма, Срок оплаты */}
-            <PaymentDetailsSection
-              register={methods.register}
-              errors={methods.formState.errors}
-              setValue={methods.setValue}
-              watchDueDate={methods.watch("dueDate")}
-              isSubmitting={methods.formState.isSubmitting || isLoading} // Pass combined submitting state
-            />
-            {/* Поле: Категория */}
-            <PaymentCategorySelect
-              register={methods.register}
-              errors={methods.formState.errors}
-              setValue={methods.setValue}
-              watchCategoryId={methods.watch("categoryId")}
-              isSubmitting={methods.formState.isSubmitting || isLoading}
-            />
-
-            {/* !!! Recurrence Section !!! */}
-            {/* Показываем секцию для создания нового платежа ИЛИ для редактирования разового платежа (когда нет currentSeriesId) */}
-            {/* Если платеж уже часть серии (currentSeriesId есть), настройки повторения меняются через SeriesEditModal */}
-            {!currentSeriesId ? (
-              <PaymentRecurrenceSection
-                register={methods.register}
-                errors={methods.formState.errors}
-                setValue={methods.setValue}
-                watchRecurrencePattern={methods.watch("recurrencePattern")}
-                watchRecurrenceEndDate={methods.watch("recurrenceEndDate")}
-                isSubmitting={methods.formState.isSubmitting || isLoading}
-                clearErrors={methods.clearErrors}
-              />
-            ) : (
-              <div className="my-4 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  Этот платеж является частью регулярной серии. Для изменения
-                  шаблона повторения, используйте кнопку "Изменить шаблон
-                  повторения".
-                </p>
-              </div>
-            )}
-
-            {/* !!! "Edit Recurrence Settings" Button (show in edit mode if seriesId exists) !!! */}
-            {isEditMode && currentSeriesId && (
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Open SeriesEditModal, passing currentSeriesId
-                    if (currentSeriesId) {
-                      setIsSeriesModalOpen(true);
-                    } else {
-                      logger.warn(
-                        "Attempted to open series edit modal but currentSeriesId is null."
-                      );
-                    }
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200 cursor-pointer"
-                  disabled={methods.formState.isSubmitting || isLoading}
-                >
-                  Изменить шаблон повторения
-                </button>
-              </div>
-            )}
-
-            {/* IconPicker Component */}
-            <IconPicker
-              paymentId={paymentId} // Payment ID (undefined in create mode)
-              initialIcon={selectedIcon} // Current icon
-              onIconChange={handleIconChange} // Icon change handler
-              onError={handleIconError} // Use handleIconError
-              isFormSubmitting={methods.formState.isSubmitting || isLoading} // Form submission status
-            />
-
-            {/* Компонент FileUpload */}
-            <PaymentFileUploadSection
-              paymentId={paymentId} // ID платежа (undefined при создании)
-              initialFile={attachedFile} // Начальное состояние файла (null при создании)
-              isSubmitting={methods.formState.isSubmitting || isLoading} // Pass combined submitting state
-              setFormError={setFormError} // Pass the local setFormError
-            />
-
-            {/* !!! "Create as Completed" Option (show only in create mode) !!! */}
-            {!isEditMode && (
-              <div className="flex items-center">
-                <input
-                  id="createAsCompleted"
-                  type="checkbox"
-                  checked={createAsCompleted} // Managed by local state
-                  onChange={(e) => setCreateAsCompleted(e.target.checked)}
-                  className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600"
-                  disabled={methods.formState.isSubmitting || isLoading}
-                />
-                <label
-                  htmlFor="createAsCompleted"
-                  className="ml-2 block text-sm text-gray-900 dark:text-gray-100"
-                >
-                  Создать как выполненный
-                </label>
-              </div>
-            )}
-
-            {/* Removed form buttons as they are handled by UseFormModal */}
-          </>
+        {formError && (
+          <div
+            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg"
+            role="alert"
+          >
+            {formError}
+          </div>
         )}
-      </UseFormModal>
-      {/* Series Edit Modal remains outside UseFormModal */}
-      {currentSeriesId && ( // Only render if there's a seriesId
+
+        <PaymentDetailsSection
+          register={register}
+          errors={errors}
+          setValue={setValue}
+          watchDueDate={watch("dueDate")}
+          isSubmitting={combinedIsSubmitting}
+        />
+        <PaymentCategorySelect
+          register={register}
+          errors={errors}
+          setValue={setValue}
+          watchCategoryId={watch("categoryId")}
+          isSubmitting={combinedIsSubmitting}
+        />
+        {!currentSeriesId ? (
+          <PaymentRecurrenceSection
+            register={register}
+            errors={errors}
+            setValue={setValue}
+            watchRecurrencePattern={watch("recurrencePattern")}
+            watchRecurrenceEndDate={watch("recurrenceEndDate")}
+            isSubmitting={combinedIsSubmitting}
+            clearErrors={clearErrors}
+          />
+        ) : (
+          <div className="my-4 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Этот платеж является частью регулярной серии. Для изменения
+              шаблона повторения, используйте кнопку "Изменить шаблон
+              повторения".
+            </p>
+          </div>
+        )}
+        {isEditMode && currentSeriesId && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSeriesModalOpen(true);
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200 cursor-pointer"
+              disabled={combinedIsSubmitting}
+            >
+              Изменить шаблон повторения
+            </button>
+          </div>
+        )}
+        <IconSelector
+          selectedIconName={selectedIconName}
+          onIconChange={handleIconChange}
+          isFormSubmitting={combinedIsSubmitting}
+        />
+        <PaymentFileUploadSection
+          paymentId={paymentId}
+          initialFile={attachedFile}
+          isSubmitting={combinedIsSubmitting}
+          setFormError={setFormError}
+        />
+        {!isEditMode && (
+          <div className="flex items-center">
+            <input
+              id="createAsCompleted"
+              type="checkbox"
+              checked={createAsCompleted}
+              onChange={(e) => setCreateAsCompleted(e.target.checked)}
+              className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600"
+              disabled={combinedIsSubmitting}
+            />
+            <label
+              htmlFor="createAsCompleted"
+              className="ml-2 block text-sm text-gray-900 dark:text-gray-100"
+            >
+              Создать как выполненный
+            </label>
+          </div>
+        )}
+
+        <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500"
+            disabled={combinedIsSubmitting}
+          >
+            Отмена
+          </button>
+          <button
+            type="submit"
+            className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-28"
+            disabled={combinedIsSubmitting}
+          >
+            {combinedIsSubmitting ? <Spinner size="sm" /> : "Сохранить"}
+          </button>
+        </div>
+      </form>
+      {currentSeriesId && (
         <SeriesEditModal
           seriesId={currentSeriesId}
           isOpen={isSeriesModalOpen}
           onClose={() => setIsSeriesModalOpen(false)}
           onSuccess={() => {
-            // TODO: Maybe refresh payment data after series update?
-            // For now, just close the modal.
             setIsSeriesModalOpen(false);
-            // Optionally, call onSuccess of the parent PaymentForm to trigger a list refresh
-            // onSuccess(paymentId); // Pass paymentId to refresh the specific payment in the list
           }}
         />
       )}

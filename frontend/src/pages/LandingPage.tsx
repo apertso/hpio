@@ -46,7 +46,7 @@ const LandingPage: React.FC = () => {
         <div className="inline-block px-4 py-2 mt-6 font-semibold text-green-800 bg-green-100 border border-green-200 rounded-full dark:bg-green-900/30 dark:text-green-300 dark:border-green-700">
           🎉 Сервис на стадии бета-тестирования и полностью бесплатен!
         </div>
-        <div className="mt-8">
+        <div className="mt-8 flex justify-center">
           <Link to="/register">
             <Button
               label="Начать бесплатно"
@@ -88,13 +88,13 @@ const LandingPage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-col items-center justify-center gap-12 mt-12 lg:flex-row">
-          {/* Screenshot Placeholder 1 */}
-          <div className="w-full max-w-3xl p-2 transition-all duration-300 bg-gray-200 dark:bg-gray-800 rounded-lg shadow-2xl hover:shadow-indigo-500/20">
-            <div className="flex items-center justify-center text-lg h-96 text-gray-500 bg-gray-300 dark:bg-gray-700 rounded-md">
-              {/* Тут будет скриншот дашборда */}
-              Скриншот дашборда (
-              {resolvedTheme === "light" ? "светлая" : "темная"} тема)
-            </div>
+          {/* Screenshot Image */}
+          <div className="w-full max-w-5xl p-4 transition-all duration-300 bg-gray-200 dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-indigo-500/20">
+            <img
+              src="/screenshot.png"
+              alt="Скриншот дашборда приложения Хочу Плачу"
+              className="w-full h-[36rem] bg-dark-bg object-contain rounded-xl border-4 border-gray-300 dark:border-gray-700 shadow-lg"
+            />
           </div>
         </div>
       </section>
@@ -105,13 +105,13 @@ const LandingPage: React.FC = () => {
           Готовы навести порядок в финансах?
         </h2>
         <p className="max-w-xl mx-auto mt-4 text-gray-600 dark:text-gray-400">
-          Присоединяйтесь к нашему бета-тесту сегодня. Это быстро, легко и,
-          самое главное, бесплатно.
+          Присоединяйтесь к нашему бета-тесту сегодня. Это быстро, легко и
+          удобно.
         </p>
-        <div className="mt-8">
+        <div className="mt-8 flex justify-center">
           <Link to="/register">
             <Button
-              label="Присоединиться бесплатно"
+              label="Присоединиться"
               className="px-8 py-3 text-lg font-bold"
             />
           </Link>

@@ -11,7 +11,9 @@ import { AxiosError } from "axios";
 import logger from "../utils/logger";
 import PaymentCategorySelect from "./PaymentCategorySelect";
 import PaymentRecurrenceSection from "./PaymentRecurrenceSection";
-import IconPicker, { PaymentIconInfo } from "./IconPicker"; // Import IconPicker and its types/values
+import IconSelector from "./IconSelector"; // Import IconSelector
+import { BuiltinIcon } from "../utils/builtinIcons"; // Import BuiltinIcon type
+import { Input } from "./Input";
 
 // Schema for validating recurring series form
 const seriesFormSchema = z.object({
@@ -63,8 +65,8 @@ const SeriesEditModal: React.FC<SeriesEditModalProps> = ({
   // State for loading data
   const [isLoading, setIsLoading] = useState(true);
 
-  // State for storing the selected/uploaded icon for the series
-  const [selectedIcon, setSelectedIcon] = useState<PaymentIconInfo | null>(
+  // State for storing the selected icon for the series
+  const [selectedIconName, setSelectedIconName] = useState<BuiltinIcon | null>(
     null
   );
 
@@ -88,16 +90,8 @@ const SeriesEditModal: React.FC<SeriesEditModalProps> = ({
             isActive: seriesData.isActive,
           });
 
-          // Set the state of the selected/uploaded icon
-          if (seriesData.iconType) {
-            setSelectedIcon({
-              iconType: seriesData.iconType,
-              builtinIconName: seriesData.builtinIconName,
-              iconPath: seriesData.iconPath,
-            });
-          } else {
-            setSelectedIcon(null);
-          }
+          // Set the state of the selected icon
+          setSelectedIconName(seriesData.builtinIconName || null);
 
           setIsLoading(false);
         } catch (error: unknown) {
@@ -122,19 +116,13 @@ const SeriesEditModal: React.FC<SeriesEditModalProps> = ({
       setDefaultValues(undefined); // Reset default values
       setFormError(null); // Clear API errors
       setIsLoading(true); // Set loading to true for next open
-      setSelectedIcon(null); // Reset icon state
+      setSelectedIconName(null); // Reset icon state
     }
   }, [isOpen, seriesId]); // Dependencies: isOpen, seriesId
 
   // Handler for icon changes from IconPicker
-  const handleIconChange = useCallback((iconInfo: PaymentIconInfo | null) => {
-    setSelectedIcon(iconInfo);
-    // setFormError(null); // Reset form error if it came from IconPicker - UseFormModal handles this
-  }, []);
-
-  // Handler for errors from IconPicker
-  const handleIconError = useCallback((message: string) => {
-    setFormError(`Ошибка иконки: ${message}`);
+  const handleIconChange = useCallback((iconName: BuiltinIcon | null) => {
+    setSelectedIconName(iconName);
   }, []);
 
   // Adapted onSubmit function to be passed to UseFormModal
@@ -150,9 +138,7 @@ const SeriesEditModal: React.FC<SeriesEditModalProps> = ({
         ? data.recurrenceEndDate.toISOString().split("T")[0]
         : null,
       isActive: data.isActive,
-      iconType: selectedIcon?.iconType || null,
-      builtinIconName: selectedIcon?.builtinIconName || null,
-      iconPath: selectedIcon?.iconPath || null,
+      builtinIconName: selectedIconName,
     };
 
     try {
@@ -191,91 +177,51 @@ const SeriesEditModal: React.FC<SeriesEditModalProps> = ({
         methods: UseFormReturn<SeriesFormInputs> // Render prop provides useForm methods, explicitly type methods
       ) => (
         <>
-          {/* Form fields using methods.register, methods.formState.errors, etc. */}
-          {/* Removed loading and error display as they are in UseFormModal */}
-          {/* Removed form tag as it's in UseFormModal */}
-          {/* Removed formError display as it's in UseFormModal */}
+          <Input
+            id="title"
+            label="Название"
+            type="text"
+            {...methods.register("title")}
+            disabled={methods.formState.isSubmitting || isLoading}
+            error={methods.formState.errors.title?.message}
+          />
 
-          {/* Fields: Title, Amount */}
-          <div>
-            <label
-              htmlFor="title"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-            >
-              Название
-            </label>
-            <input
-              id="title"
-              type="text"
-              {...methods.register("title")} // Use methods.register
-              className={`mt-1 block w-full rounded-md border ${
-                methods.formState.errors.title // Use methods.formState.errors
-                  ? "border-red-500"
-                  : "border-gray-300 dark:border-gray-600"
-              } shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100`}
-              disabled={methods.formState.isSubmitting || isLoading} // Use combined submitting state
-            />
-            {methods.formState.errors.title && ( // Use methods.formState.errors
-              <p className="mt-1 text-sm text-red-500">
-                {methods.formState.errors.title.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label
-              htmlFor="amount"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-            >
-              Сумма
-            </label>
-            <input
-              id="amount"
-              type="number"
-              step="0.01"
-              {...methods.register("amount", { valueAsNumber: true })} // Use methods.register
-              className={`mt-1 block w-full rounded-md border ${
-                methods.formState.errors.amount // Use methods.formState.errors
-                  ? "border-red-500"
-                  : "border-gray-300 dark:border-gray-600"
-              } shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100`}
-              disabled={methods.formState.isSubmitting || isLoading} // Use combined submitting state
-            />
-            {methods.formState.errors.amount && ( // Use methods.formState.errors
-              <p className="mt-1 text-sm text-red-500">
-                {methods.formState.errors.amount.message}
-              </p>
-            )}
-          </div>
+          <Input
+            id="amount"
+            label="Сумма"
+            type="number"
+            step="0.01"
+            {...methods.register("amount", { valueAsNumber: true })}
+            disabled={methods.formState.isSubmitting || isLoading}
+            error={methods.formState.errors.amount?.message}
+          />
 
           {/* Field: Category */}
           <PaymentCategorySelect
-            register={methods.register as any} // Use methods.register, cast to any
-            errors={methods.formState.errors as any} // Use methods.formState.errors, cast to any
-            setValue={methods.setValue as any} // Use methods.setValue, cast to any
-            watchCategoryId={methods.watch("categoryId")} // Use methods.watch
-            isSubmitting={methods.formState.isSubmitting || isLoading} // Use combined submitting state
+            register={methods.register}
+            errors={methods.formState.errors}
+            setValue={methods.setValue}
+            watchCategoryId={methods.watch("categoryId")}
+            isSubmitting={methods.formState.isSubmitting || isLoading}
           />
 
           {/* Recurrence Pattern and End Date */}
           <PaymentRecurrenceSection
-            register={methods.register as any} // Use methods.register, cast to any
-            errors={methods.formState.errors as any} // Use methods.formState.errors, cast to any
-            setValue={methods.setValue as any} // Use methods.setValue, cast to any
-            watchRecurrencePattern={methods.watch("recurrencePattern")} // Use methods.watch
-            watchRecurrenceEndDate={methods.watch("recurrenceEndDate")} // Use methods.watch
-            isSubmitting={methods.formState.isSubmitting || isLoading} // Use combined submitting state
-            clearErrors={methods.clearErrors as any} // Use methods.clearErrors, cast to any
+            register={methods.register}
+            errors={methods.formState.errors}
+            setValue={methods.setValue}
+            watchRecurrencePattern={methods.watch("recurrencePattern")}
+            watchRecurrenceEndDate={methods.watch("recurrenceEndDate")}
+            isSubmitting={methods.formState.isSubmitting || isLoading}
+            clearErrors={methods.clearErrors}
             // Note: isRecurrent checkbox is not shown in series edit
           />
 
-          {/* Icon Picker */}
-          <IconPicker
-            paymentId={seriesId} // Use seriesId for icon uploads related to the series
-            initialIcon={selectedIcon}
+          {/* Icon Selector */}
+          <IconSelector
+            selectedIconName={selectedIconName}
             onIconChange={handleIconChange}
-            onError={handleIconError}
-            isFormSubmitting={methods.formState.isSubmitting || isLoading} // Use combined submitting state
+            isFormSubmitting={methods.formState.isSubmitting || isLoading}
           />
 
           {/* Is Active checkbox */}
@@ -283,10 +229,10 @@ const SeriesEditModal: React.FC<SeriesEditModalProps> = ({
             <input
               id="isActive"
               type="checkbox"
-              {...methods.register("isActive")} // Use methods.register
-              checked={methods.watch("isActive")} // Use methods.watch
+              {...methods.register("isActive")}
+              checked={methods.watch("isActive")}
               className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600"
-              disabled={methods.formState.isSubmitting || isLoading} // Use combined submitting state
+              disabled={methods.formState.isSubmitting || isLoading}
             />
             <label
               htmlFor="isActive"
@@ -295,8 +241,6 @@ const SeriesEditModal: React.FC<SeriesEditModalProps> = ({
               Серия активна (генерировать новые платежи)
             </label>
           </div>
-
-          {/* Removed form buttons as they are handled by UseFormModal */}
         </>
       )}
     </UseFormModal>

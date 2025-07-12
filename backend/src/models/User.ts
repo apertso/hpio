@@ -3,8 +3,12 @@ import { DataTypes, Sequelize, Model, Optional } from "sequelize";
 interface UserAttributes {
   id: string;
   email: string;
+  name: string;
   password: string;
   photoPath?: string | null;
+  isVerified: boolean;
+  verificationToken?: string | null;
+  verificationTokenExpires?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   // Add other user attributes here if needed
@@ -13,7 +17,13 @@ interface UserAttributes {
 interface UserCreationAttributes
   extends Optional<
     UserAttributes,
-    "id" | "createdAt" | "updatedAt" | "photoPath"
+    | "id"
+    | "createdAt"
+    | "updatedAt"
+    | "photoPath"
+    | "isVerified"
+    | "verificationToken"
+    | "verificationTokenExpires"
   > {}
 
 export interface UserInstance
@@ -37,6 +47,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
           isEmail: true,
         },
       },
+      name: {
+        type: dataTypes.STRING,
+        allowNull: false,
+      },
       password: {
         type: dataTypes.STRING,
         allowNull: false,
@@ -44,6 +58,20 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       // Добавьте другие поля пользователя по необходимости
       photoPath: {
         type: dataTypes.STRING,
+        allowNull: true,
+      },
+      isVerified: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      verificationToken: {
+        type: dataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      },
+      verificationTokenExpires: {
+        type: dataTypes.DATE,
         allowNull: true,
       },
       createdAt: {

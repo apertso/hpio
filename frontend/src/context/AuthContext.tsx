@@ -15,6 +15,8 @@ import userApi from "../api/userApi"; // <-- ADD THIS
 export interface User {
   id: string;
   email: string;
+  name: string;
+  isVerified: boolean;
   photoPath?: string | null; // <-- ADD THIS
   // Добавьте другие поля пользователя, если они будут возвращаться с бэкенда
 }
@@ -25,7 +27,7 @@ interface AuthContextProps {
   isAuthenticated: boolean;
   loading: boolean; // Индикатор загрузки (например, при попытке автоматического входа по токену)
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>; // <-- ADD THIS
   //forgotPassword: (email: string) => Promise<void>; // Можно добавить сюда, но пока оставим на странице
@@ -124,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // Если не удалось обновить данные (например, токен невалиден), выходим
       logout();
     }
-  }, []); // <-- ADD `logout` to dependency array if it's not already stable
+  }, [logout]); // <-- ADD `logout` to dependency array if it's not already stable
 
   // Функция входа
   const login = useCallback(
@@ -135,10 +137,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email,
           password,
         });
-        const { token, id, email: userEmail, photoPath } = res.data;
+        const {
+          token,
+          id,
+          name,
+          email: userEmail,
+          photoPath,
+          isVerified,
+        } = res.data;
 
         localStorage.setItem("jwtToken", token);
-        const userData = { id, email: userEmail, photoPath };
+        const userData = { id, name, email: userEmail, photoPath, isVerified };
         localStorage.setItem("user", JSON.stringify(userData));
 
         setToken(token);
@@ -167,25 +176,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Функция регистрации
   const register = useCallback(
-    async (email: string, password: string) => {
+    async (name: string, email: string, password: string) => {
       setLoading(true);
       try {
         const res = await axiosInstance.post("/auth/register", {
+          name,
           email,
           password,
         });
         const {
           token,
           id: regId,
+          name: regName,
           email: regEmail,
           photoPath: regPhotoPath,
+          isVerified,
         } = res.data;
 
         localStorage.setItem("jwtToken", token);
         const regUserData = {
           id: regId,
+          name: regName,
           email: regEmail,
           photoPath: regPhotoPath,
+          isVerified,
         };
         localStorage.setItem("user", JSON.stringify(regUserData));
 

@@ -1,7 +1,13 @@
 // src/pages/HomePage.tsx
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import PaymentCard from "../components/PaymentCard"; // Для отображения карточек
-import PaymentForm from "../components/PaymentForm"; // Наша форма
+import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import axiosInstance from "../api/axiosInstance"; // Для получения данных
 import logger from "../utils/logger";
 import useApi from "../hooks/useApi"; // Import useApi
@@ -11,6 +17,8 @@ import { DropdownButton } from "../components/DropdownButton";
 import { YearSelectorDropdown } from "../components/YearSelectorDropdown";
 import Spinner from "../components/Spinner";
 import CategoryDistributionBars from "../components/CategoryDistributionBars";
+import Scrollbar from "../components/Scrollbar";
+import { useNavigate } from "react-router-dom";
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import { PaymentData } from "../types/paymentData";
@@ -53,16 +61,19 @@ const categoryColorsLight = [
 ];
 
 const categoryColorsDark = [
-  "#374151", // gray-700
-  "#4B5563", // gray-600
-  "#6B7280", // gray-500
-  "#9CA3AF", // gray-400
-  "#D1D5DB", // gray-300
-  "#4F46E5", // indigo-600
-  "#7C3AED", // violet-600
-  "#DB2777", // pink-600
-  "#F472B6", // pink-400
-  "#FBBF24", // amber-400
+  "#ef4444", // red-500
+  "#f97316", // orange-500
+  "#eab308", // yellow-500
+  "#84cc16", // lime-500
+  "#22c55e", // green-500
+  "#10b981", // emerald-500
+  "#14b8a6", // teal-500
+  "#06b6d4", // cyan-500
+  "#3b82f6", // blue-500
+  "#6366f1", // indigo-500
+  "#8b5cf6", // violet-500
+  "#d946ef", // fuchsia-500
+  "#ec4899", // pink-500
 ];
 
 import CustomDailySpendingChart from "../components/CustomDailySpendingChart";
@@ -82,11 +93,36 @@ const fetchUpcomingPaymentsApi = async (): Promise<PaymentData[]> => {
   return res.data;
 };
 
+// New list item component for mobile view
+const UpcomingPaymentListItem: React.FC<{ payment: PaymentData }> = ({
+  payment,
+}) => {
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-4">
+        <PaymentIconDisplay payment={payment} sizeClass="h-8 w-8" />
+        <div>
+          <p className="font-medium text-gray-900 dark:text-gray-100">
+            {payment.title}
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {new Date(payment.dueDate).toLocaleDateString("ru-RU", {
+              day: "2-digit",
+              month: "short",
+            })}
+          </p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
+          {new Intl.NumberFormat("ru-RU").format(payment.amount)}&nbsp;₽
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const HomePage: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPaymentId, setEditingPaymentId] = useState<string | undefined>(
-    undefined
-  ); // ID платежа для редактирования
   const { resolvedTheme } = useTheme(); // Access the theme
 
   const {
@@ -203,24 +239,14 @@ const HomePage: React.FC = () => {
     fetchDashboardStats();
   }, [fetchDashboardStats]); // Зависимость от fetchDashboardStats
 
-  const handleOpenModal = (paymentId?: string) => {
-    setEditingPaymentId(paymentId);
-    setIsModalOpen(true);
+  const navigate = useNavigate();
+
+  const handleAddPayment = () => {
+    navigate("/payments/new");
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingPaymentId(undefined);
-    // TODO: Возможно, сбросить форму после закрытия модалки, если она не сбрасывается автоматически reset() при изменении paymentId
-  };
-
-  // Обработчик успешного сохранения платежа
-  const handlePaymentSaved = () => {
-    handleCloseModal();
-    // После сохранения платежа, перезагружаем список предстоящих платежей И статистику
-    executeFetchUpcomingPayments();
-    fetchDashboardStats(); // !!! Добавили перезагрузку статистики
-    alert("Платеж успешно сохранен!"); // Временное уведомление
+  const handleEditPayment = (paymentId: string) => {
+    navigate(`/payments/edit/${paymentId}`);
   };
 
   // --- Обработчики действий для карточек платежей ---
@@ -283,6 +309,10 @@ const HomePage: React.FC = () => {
     );
   }, [chartData]);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+
   return (
     <>
       <title>Хочу Плачу - Главная</title>
@@ -291,7 +321,7 @@ const HomePage: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Платежи на ближайшие 10 дней
           </h2>
-          <Button onClick={() => handleOpenModal()} label="Добавить платеж" />
+          <Button onClick={handleAddPayment} label="Добавить платеж" />
         </div>
 
         {/* Отображение состояния загрузки или ошибки */}
@@ -310,27 +340,75 @@ const HomePage: React.FC = () => {
         )}
 
         {/* Горизонтальная лента платежей */}
-        {/* Условие для отображения ленты только при успешной загрузке и отсутствии ошибок */}
         {!isLoadingPayments && !errorPayments && (
-          <div className="flex pb-4 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-700 gap-x-4">
-            {" "}
-            {/* Tailwind классы для стилизации скроллбара */}
+          <>
             {upcomingPayments.length > 0 ? (
-              upcomingPayments.map((payment) => (
-                <PaymentCard
-                  key={payment.id}
-                  payment={payment}
-                  onEdit={() => handleOpenModal(payment.id)}
-                  onComplete={() => handleCompletePayment(payment.id)}
-                  onDelete={() => handleDeletePayment(payment.id)}
-                />
-              ))
+              <>
+                {/* Desktop horizontal scroll */}
+                <div className="hidden md:block">
+                  <div className="relative">
+                    <div
+                      ref={scrollContainerRef}
+                      className="flex overflow-x-auto pb-4 scrollbar-hide gap-x-4"
+                    >
+                      {(showAllUpcoming
+                        ? upcomingPayments
+                        : upcomingPayments.slice(0, 10)
+                      ).map((payment) => (
+                        <div key={payment.id} className="flex-shrink-0 w-68">
+                          <PaymentCard
+                            payment={payment}
+                            onEdit={() => handleEditPayment(payment.id)}
+                            onComplete={() => handleCompletePayment(payment.id)}
+                            onDelete={() => handleDeletePayment(payment.id)}
+                          />
+                        </div>
+                      ))}
+                      {!showAllUpcoming && upcomingPayments.length > 10 && (
+                        <div className="flex-shrink-0 flex items-center justify-center w-68">
+                          <button
+                            onClick={() => setShowAllUpcoming(true)}
+                            className="p-4 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors w-full h-full font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
+                          >
+                            Показать все
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <Scrollbar
+                      containerRef={scrollContainerRef}
+                      orientation="horizontal"
+                    />
+                  </div>
+                </div>
+
+                {/* Mobile vertical list */}
+                <div className="block md:hidden space-y-2">
+                  {(showAllUpcoming
+                    ? upcomingPayments
+                    : upcomingPayments.slice(0, 5)
+                  ).map((payment) => (
+                    <UpcomingPaymentListItem
+                      key={payment.id}
+                      payment={payment}
+                    />
+                  ))}
+                  {!showAllUpcoming && upcomingPayments.length > 5 && (
+                    <button
+                      onClick={() => setShowAllUpcoming(true)}
+                      className="w-full mt-2 p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
+                    >
+                      Показать все
+                    </button>
+                  )}
+                </div>
+              </>
             ) : (
-              <div className="flex-none w-full text-center text-gray-700 dark:text-gray-300 p-4">
+              <div className="w-full text-center text-gray-700 dark:text-gray-300 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 Нет предстоящих или просроченных платежей. Добавьте первый!
               </div>
             )}
-          </div>
+          </>
         )}
 
         {/* --- Блок Дашборда (из Dashboard.tsx) --- */}
@@ -507,14 +585,6 @@ const HomePage: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Модальное окно с формой */}
-        <PaymentForm
-          isOpen={isModalOpen} // Pass isOpen state
-          onClose={handleCloseModal} // Обработчик отмены
-          paymentId={editingPaymentId} // Передаем ID для режима редактирования
-          onSuccess={handlePaymentSaved} // Обработчик успеха
-        />
       </div>
     </>
   );

@@ -14,8 +14,14 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
 
   // Используем React Portal для рендеринга модального окна вне основного DOM-дерева
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {title && (
           <div className="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-600">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -42,7 +48,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
             </button>
           </div>
         )}
-        {!title && ( // Если нет заголовка, просто кнопка закрытия
+        {!title && (
           <div className="flex justify-end">
             <button
               onClick={onClose}
@@ -64,11 +70,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
             </button>
           </div>
         )}
-
         {children}
       </div>
     </div>,
-    document.body // Рендерим в body
+    document.body
   );
 };
 

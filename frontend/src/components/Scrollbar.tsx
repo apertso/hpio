@@ -8,79 +8,127 @@ import React, {
 
 interface ScrollbarProps {
   containerRef: RefObject<HTMLElement | null>;
+  orientation?: "vertical" | "horizontal";
 }
 
-const SCROLLBAR_MARGIN = 5; // 5px margin from top and bottom
+const SCROLLBAR_MARGIN = 5; // 5px margin
 
-const Scrollbar: React.FC<ScrollbarProps> = ({ containerRef }) => {
+const Scrollbar: React.FC<ScrollbarProps> = ({
+  containerRef,
+  orientation = "vertical",
+}) => {
   const [thumbStyle, setThumbStyle] = useState({
     height: "0px",
     top: "0px",
+    width: "0px",
+    left: "0px",
     display: "none",
   });
 
   const scrollbarTrackRef = useRef<HTMLDivElement>(null);
-  const dragStartRef = useRef({ startY: 0, startScrollTop: 0 });
+  const dragStartRef = useRef({
+    startY: 0,
+    startScrollTop: 0,
+    startX: 0,
+    startScrollLeft: 0,
+  });
   const isDraggingRef = useRef(false);
+  const isVertical = orientation === "vertical";
 
   const updateThumb = useCallback(() => {
     if (!containerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 
-    if (scrollHeight <= clientHeight) {
-      setThumbStyle((prev) => ({ ...prev, display: "none" }));
-      return;
+    if (isVertical) {
+      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+      if (scrollHeight <= clientHeight) {
+        setThumbStyle((prev) => ({ ...prev, display: "none" }));
+        return;
+      }
+      const thumbTrackHeight = clientHeight - 2 * SCROLLBAR_MARGIN;
+      const thumbHeight = Math.max(
+        (clientHeight / scrollHeight) * thumbTrackHeight,
+        20
+      );
+      const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+      const thumbTop =
+        SCROLLBAR_MARGIN + scrollPercentage * (thumbTrackHeight - thumbHeight);
+      setThumbStyle((prev) => ({
+        ...prev,
+        height: `${thumbHeight}px`,
+        top: `${thumbTop}px`,
+        display: "block",
+      }));
+    } else {
+      // Horizontal
+      const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
+      if (scrollWidth <= clientWidth) {
+        setThumbStyle((prev) => ({ ...prev, display: "none" }));
+        return;
+      }
+      const thumbTrackWidth = clientWidth - 2 * SCROLLBAR_MARGIN;
+      const thumbWidth = Math.max(
+        (clientWidth / scrollWidth) * thumbTrackWidth,
+        20
+      );
+      const scrollPercentage = scrollLeft / (scrollWidth - clientWidth);
+      const thumbLeft =
+        SCROLLBAR_MARGIN + scrollPercentage * (thumbTrackWidth - thumbWidth);
+      setThumbStyle((prev) => ({
+        ...prev,
+        width: `${thumbWidth}px`,
+        left: `${thumbLeft}px`,
+        display: "block",
+      }));
     }
-
-    // Adjust track height for margins
-    const thumbTrackHeight = clientHeight - 2 * SCROLLBAR_MARGIN;
-    const thumbHeight = Math.max(
-      (clientHeight / scrollHeight) * thumbTrackHeight,
-      20
-    );
-
-    const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-    const thumbTop =
-      SCROLLBAR_MARGIN + scrollPercentage * (thumbTrackHeight - thumbHeight);
-
-    setThumbStyle({
-      height: `${thumbHeight}px`,
-      top: `${thumbTop}px`,
-      display: "block",
-    });
-  }, [containerRef]);
+  }, [containerRef, isVertical]);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isDraggingRef.current || !containerRef.current) return;
       e.preventDefault();
 
-      const { scrollHeight, clientHeight } = containerRef.current;
-      const deltaY = e.clientY - dragStartRef.current.startY;
-
-      const scrollableContentHeight = scrollHeight - clientHeight;
-      const thumbHeight = parseFloat(thumbStyle.height);
-
-      if (isNaN(thumbHeight) || thumbHeight === 0) return;
-
-      const thumbTrackHeight = clientHeight - 2 * SCROLLBAR_MARGIN;
-      const thumbScrollRange = thumbTrackHeight - thumbHeight;
-
-      if (thumbScrollRange <= 0) return; // Prevent division by zero
-
-      const contentScrollPerThumbPixel =
-        scrollableContentHeight / thumbScrollRange;
-      let newScrollTop =
-        dragStartRef.current.startScrollTop +
-        deltaY * contentScrollPerThumbPixel;
-
-      newScrollTop = Math.max(
-        0,
-        Math.min(newScrollTop, scrollableContentHeight)
-      );
-      containerRef.current.scrollTop = newScrollTop;
+      if (isVertical) {
+        const { scrollHeight, clientHeight } = containerRef.current;
+        const deltaY = e.clientY - dragStartRef.current.startY;
+        const scrollableContentHeight = scrollHeight - clientHeight;
+        const thumbHeight = parseFloat(thumbStyle.height);
+        if (isNaN(thumbHeight) || thumbHeight === 0) return;
+        const thumbTrackHeight = clientHeight - 2 * SCROLLBAR_MARGIN;
+        const thumbScrollRange = thumbTrackHeight - thumbHeight;
+        if (thumbScrollRange <= 0) return;
+        const contentScrollPerThumbPixel =
+          scrollableContentHeight / thumbScrollRange;
+        let newScrollTop =
+          dragStartRef.current.startScrollTop +
+          deltaY * contentScrollPerThumbPixel;
+        newScrollTop = Math.max(
+          0,
+          Math.min(newScrollTop, scrollableContentHeight)
+        );
+        containerRef.current.scrollTop = newScrollTop;
+      } else {
+        // Horizontal
+        const { scrollWidth, clientWidth } = containerRef.current;
+        const deltaX = e.clientX - dragStartRef.current.startX;
+        const scrollableContentWidth = scrollWidth - clientWidth;
+        const thumbWidth = parseFloat(thumbStyle.width);
+        if (isNaN(thumbWidth) || thumbWidth === 0) return;
+        const thumbTrackWidth = clientWidth - 2 * SCROLLBAR_MARGIN;
+        const thumbScrollRange = thumbTrackWidth - thumbWidth;
+        if (thumbScrollRange <= 0) return;
+        const contentScrollPerThumbPixel =
+          scrollableContentWidth / thumbScrollRange;
+        let newScrollLeft =
+          dragStartRef.current.startScrollLeft +
+          deltaX * contentScrollPerThumbPixel;
+        newScrollLeft = Math.max(
+          0,
+          Math.min(newScrollLeft, scrollableContentWidth)
+        );
+        containerRef.current.scrollLeft = newScrollLeft;
+      }
     },
-    [containerRef, thumbStyle.height]
+    [containerRef, thumbStyle, isVertical]
   );
 
   const handleMouseUp = useCallback(
@@ -98,20 +146,28 @@ const Scrollbar: React.FC<ScrollbarProps> = ({ containerRef }) => {
     (e: React.MouseEvent) => {
       if (!containerRef.current) return;
       e.preventDefault();
-      e.stopPropagation(); // Prevent track click event from firing
+      e.stopPropagation();
 
       isDraggingRef.current = true;
-      dragStartRef.current = {
-        startY: e.clientY,
-        startScrollTop: containerRef.current.scrollTop,
-      };
+      if (isVertical) {
+        dragStartRef.current = {
+          ...dragStartRef.current,
+          startY: e.clientY,
+          startScrollTop: containerRef.current.scrollTop,
+        };
+      } else {
+        dragStartRef.current = {
+          ...dragStartRef.current,
+          startX: e.clientX,
+          startScrollLeft: containerRef.current.scrollLeft,
+        };
+      }
 
       document.body.style.userSelect = "none";
-
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     },
-    [containerRef, handleMouseMove, handleMouseUp]
+    [containerRef, handleMouseMove, handleMouseUp, isVertical]
   );
 
   const handleTrackMouseDown = useCallback(
@@ -119,29 +175,41 @@ const Scrollbar: React.FC<ScrollbarProps> = ({ containerRef }) => {
       if (!containerRef.current || !scrollbarTrackRef.current) return;
       e.preventDefault();
 
-      const { clientHeight } = containerRef.current;
-      const trackRect = scrollbarTrackRef.current.getBoundingClientRect();
-      const thumbTop = parseFloat(thumbStyle.top);
-
-      // Determine click position relative to the track
-      const clickY = e.clientY - trackRect.top;
-
-      // Scroll up or down by one "page" (the height of the container)
-      if (clickY < thumbTop) {
-        // Clicked above the thumb
-        containerRef.current.scrollBy({
-          top: -clientHeight,
-          behavior: "smooth",
-        });
+      if (isVertical) {
+        const { clientHeight } = containerRef.current;
+        const trackRect = scrollbarTrackRef.current.getBoundingClientRect();
+        const thumbTop = parseFloat(thumbStyle.top);
+        const clickY = e.clientY - trackRect.top;
+        if (clickY < thumbTop) {
+          containerRef.current.scrollBy({
+            top: -clientHeight,
+            behavior: "smooth",
+          });
+        } else {
+          containerRef.current.scrollBy({
+            top: clientHeight,
+            behavior: "smooth",
+          });
+        }
       } else {
-        // Clicked below the thumb
-        containerRef.current.scrollBy({
-          top: clientHeight,
-          behavior: "smooth",
-        });
+        const { clientWidth } = containerRef.current;
+        const trackRect = scrollbarTrackRef.current.getBoundingClientRect();
+        const thumbLeft = parseFloat(thumbStyle.left);
+        const clickX = e.clientX - trackRect.left;
+        if (clickX < thumbLeft) {
+          containerRef.current.scrollBy({
+            left: -clientWidth,
+            behavior: "smooth",
+          });
+        } else {
+          containerRef.current.scrollBy({
+            left: clientWidth,
+            behavior: "smooth",
+          });
+        }
       }
     },
-    [containerRef, thumbStyle.top]
+    [containerRef, thumbStyle, isVertical]
   );
 
   useEffect(() => {
@@ -176,16 +244,28 @@ const Scrollbar: React.FC<ScrollbarProps> = ({ containerRef }) => {
     <div
       ref={scrollbarTrackRef}
       onMouseDown={handleTrackMouseDown}
-      className="absolute top-0 right-0 h-full w-2.5 z-10"
+      className={`absolute z-10 ${
+        isVertical
+          ? "top-0 right-0 h-full w-2.5"
+          : "bottom-0 left-0 w-full h-2.5"
+      }`}
       style={{ pointerEvents: "auto" }}
     >
       <div
-        className="absolute rounded bg-gray-400 dark:bg-gray-600 opacity-50 hover:opacity-75 transition-opacity"
-        style={{
-          ...thumbStyle,
-          width: "8px",
-          right: "2px",
-        }}
+        className="absolute rounded bg-gray-400 dark:bg-gray-600 opacity-50 hover:opacity-75 transition-opacity cursor-pointer"
+        style={
+          isVertical
+            ? {
+                ...thumbStyle,
+                width: "8px",
+                right: "2px",
+              }
+            : {
+                ...thumbStyle,
+                height: "8px",
+                bottom: "2px",
+              }
+        }
         onMouseDown={handleThumbMouseDown}
       />
     </div>

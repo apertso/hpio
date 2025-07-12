@@ -21,8 +21,6 @@ interface PaymentAttributes {
   fileMimeType?: string | null; // MIME type of the uploaded file
   fileSize?: number | null; // Size of the uploaded file in bytes
   uploadedAt?: Date | null; // Timestamp of when the file was uploaded
-  iconPath?: string | null;
-  iconType?: "builtin" | "custom" | null;
   builtinIconName?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -40,8 +38,6 @@ interface PaymentCreationAttributes
     | "fileMimeType"
     | "fileSize"
     | "uploadedAt"
-    | "iconPath"
-    | "iconType"
     | "builtinIconName"
     | "createdAt"
     | "updatedAt"
@@ -124,16 +120,6 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         allowNull: true,
       },
       // Поля для иконок (будут реализованы в Части 13)
-      iconPath: {
-        // Путь к пользовательской иконке (если iconType === 'custom')
-        type: dataTypes.STRING,
-        allowNull: true,
-      },
-      iconType: {
-        // Тип иконки ('builtin' или 'custom')
-        type: dataTypes.ENUM("builtin", "custom"),
-        allowNull: true, // NULL, если иконка не выбрана
-      },
       // Если iconType === 'builtin', здесь может храниться имя встроенной иконки
       builtinIconName: {
         type: dataTypes.STRING,

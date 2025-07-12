@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 import Spinner from "../components/Spinner";
+import { Input } from "../components/Input";
+import FormBlock from "../components/FormBlock";
 
 const ResetPasswordPage: React.FC = () => {
   const [password, setPassword] = useState("");
@@ -28,6 +30,27 @@ const ResetPasswordPage: React.FC = () => {
 
     if (password !== confirmPassword) {
       setError("Пароли не совпадают.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Пароль должен быть не менее 8 символов.");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError("Пароль должен содержать хотя бы одну заглавную букву.");
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError("Пароль должен содержать хотя бы одну строчную букву.");
+      return;
+    }
+    if (!/\d/.test(password)) {
+      setError("Пароль должен содержать хотя бы одну цифру.");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      setError("Пароль должен содержать хотя бы один специальный символ.");
       return;
     }
 
@@ -63,7 +86,7 @@ const ResetPasswordPage: React.FC = () => {
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
-      <div className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-md w-full max-w-md">
+      <FormBlock className="w-full max-w-md">
         <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
           Установить новый пароль
         </h2>
@@ -83,16 +106,10 @@ const ResetPasswordPage: React.FC = () => {
             <span className="block sm:inline">{success}</span>
           </div>
         )}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label
-              className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2"
-              htmlFor="password"
-            >
-              Новый пароль
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Input
+              label="Новый пароль"
               id="password"
               type="password"
               placeholder="********"
@@ -101,26 +118,22 @@ const ResetPasswordPage: React.FC = () => {
               required
               disabled={isLoading || !!success}
             />
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              Пароль должен содержать минимум 8 символов, включая заглавную
+              букву, цифру и спецсимвол.
+            </p>
           </div>
-          <div className="mb-6">
-            <label
-              className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2"
-              htmlFor="confirm-password"
-            >
-              Подтвердите новый пароль
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
-              id="confirm-password"
-              type="password"
-              placeholder="********"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              disabled={isLoading || !!success}
-            />
-          </div>
-          <div className="flex items-center justify-center mb-4">
+          <Input
+            label="Подтвердите новый пароль"
+            id="confirm-password"
+            type="password"
+            placeholder="********"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            disabled={isLoading || !!success}
+          />
+          <div className="flex items-center justify-center pt-2">
             <button
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-44"
               type="submit"
@@ -138,7 +151,7 @@ const ResetPasswordPage: React.FC = () => {
             </Link>
           </div>
         </form>
-      </div>
+      </FormBlock>
     </div>
   );
 };

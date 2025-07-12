@@ -48,7 +48,10 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
               <div className="col-span-8 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
                 <div
                   className="h-2.5 rounded-full"
-                  style={{ width: `${percentage}%`, backgroundColor: color }}
+                  style={{
+                    width: `${percentage}%`,
+                    background: `linear-gradient(to right, ${color}99, ${color})`,
+                  }}
                 ></div>
               </div>
               <span className="col-span-1 text-right font-medium text-gray-500 dark:text-gray-400">

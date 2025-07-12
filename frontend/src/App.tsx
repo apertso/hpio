@@ -12,9 +12,12 @@ import PasswordResetPage from "./pages/PasswordResetPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LandingPage from "./pages/LandingPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import PaymentEditPage from "./pages/PaymentEditPage";
+import CategoryEditPage from "./pages/CategoryEditPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 import { useTheme } from "./context/ThemeContext";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Scrollbar from "./components/Scrollbar";
 import { useDropdown } from "./hooks/useDropdown";
@@ -28,6 +31,7 @@ import {
 } from "@heroicons/react/24/outline";
 import axiosInstance from "./api/axiosInstance";
 import { PHOTO_URL } from "./api/userApi";
+import VerificationBanner from "./components/VerificationBanner";
 
 // TODO: Создать компонент ThemeSwitcher
 const ThemeSwitcher = () => {
@@ -44,7 +48,7 @@ const ThemeSwitcher = () => {
 
 // Компонент навигации, который зависит от статуса аутентификации
 const Navigation: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, token } = useAuth();
   const location = useLocation();
   const {
     isOpen: isUserPopoverOpen,
@@ -106,7 +110,7 @@ const Navigation: React.FC = () => {
                 {user?.photoPath ? (
                   <img
                     key={avatarKey}
-                    src={`${axiosInstance.defaults.baseURL}${PHOTO_URL}`}
+                    src={`${axiosInstance.defaults.baseURL}${PHOTO_URL}?token=${token}`}
                     alt="User Avatar"
                     className="size-10 rounded-full object-cover bg-gray-300 dark:bg-card-bg"
                   />
@@ -127,11 +131,18 @@ const Navigation: React.FC = () => {
                   aria-orientation="vertical"
                   aria-labelledby="user-menu-button"
                 >
-                  {user?.email && (
-                    <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex items-center">
-                      <p className="text-sm font-medium text-gray-700 dark:text-slate-300 truncate">
-                        {user.email}
-                      </p>
+                  {(user?.email || user?.name) && (
+                    <div className="p-4 border-b border-gray-200 dark:border-slate-700">
+                      {user.name && (
+                        <p className="text-base font-semibold text-gray-800 dark:text-slate-200 truncate mb-1">
+                          {user.name}
+                        </p>
+                      )}
+                      {user.email && (
+                        <p className="text-sm text-gray-500 dark:text-slate-400 truncate">
+                          {user.email}
+                        </p>
+                      )}
                     </div>
                   )}
                   <div className="py-2 px-4">
@@ -186,94 +197,91 @@ const Navigation: React.FC = () => {
 
 function App() {
   const scrollableContainerRef = React.useRef<HTMLDivElement>(null);
+  const { isAuthenticated } = useAuth();
   return (
-    // AuthProvider должен быть внутри BrowserRouter и ThemeProvider
-    <AuthProvider>
-      <div className="relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans">
-        <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20">
-          <div className="flex items-center gap-4 text-black dark:text-white">
-            <div className="size-4 text-black dark:text-white">
-              <svg
-                viewBox="0 0 48 48"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z"
-                  fill="currentColor"
-                ></path>
-              </svg>
+    <div className="relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans">
+      <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20">
+        <Link
+          to={isAuthenticated ? "/dashboard" : "/"}
+          className="flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
+          style={{ textDecoration: "none" }}
+        >
+          <div className="size-4 text-black dark:text-white">
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z"
+                fill="currentColor"
+              ></path>
+            </svg>
+          </div>
+          <h1 className="text-lg font-bold leading-tight tracking-[-0.015em]">
+            Хочу Плачу
+          </h1>
+        </Link>
+        <Navigation /> {/* Используем компонент навигации */}
+      </header>
+
+      {/* Banner for email verification */}
+      <VerificationBanner />
+
+      <div className="flex-1 relative overflow-hidden">
+        <Scrollbar containerRef={scrollableContainerRef} />
+        <div
+          ref={scrollableContainerRef}
+          className="absolute inset-0 overflow-y-auto scrollbar-hide flex flex-col"
+        >
+          {/* Основное содержимое с роутингом */}
+          <main className="px-13 flex flex-1 justify-center py-5">
+            <div className="flex flex-col flex-1 w-full">
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route
+                  path="/forgot-password"
+                  element={<PasswordResetPage />}
+                />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                {/* Protected routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/dashboard" element={<HomePage />} />
+                  <Route path="/payments" element={<PaymentsList />} />
+                  <Route path="/payments/new" element={<PaymentEditPage />} />
+                  <Route
+                    path="/payments/edit/:id"
+                    element={<PaymentEditPage />}
+                  />
+                  <Route path="/categories" element={<CategoriesPage />} />
+                  <Route
+                    path="/categories/new"
+                    element={<CategoryEditPage />}
+                  />
+                  <Route
+                    path="/categories/edit/:id"
+                    element={<CategoryEditPage />}
+                  />
+                  <Route path="/archive" element={<ArchivePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Route>
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
             </div>
-            <h1 className="text-lg font-bold leading-tight tracking-[-0.015em]">
-              Хочу Плачу
-            </h1>
-          </div>
-          <Navigation /> {/* Используем компонент навигации */}
-        </header>
+          </main>
 
-        <div className="flex-1 relative overflow-hidden">
-          <Scrollbar containerRef={scrollableContainerRef} />
-          <div
-            ref={scrollableContainerRef}
-            className="absolute inset-0 overflow-y-auto scrollbar-hide flex flex-col"
-          >
-            {/* Основное содержимое с роутингом */}
-            <main className="px-13 flex flex-1 justify-center py-5">
-              <div className="flex flex-col flex-1">
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  <Route
-                    path="/forgot-password"
-                    element={<PasswordResetPage />}
-                  />
-                  <Route
-                    path="/reset-password"
-                    element={<ResetPasswordPage />}
-                  />
-                  {/* Protected routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<HomePage />} />
-                    <Route path="/payments" element={<PaymentsList />} />
-                    <Route path="/categories" element={<CategoriesPage />} />
-                    <Route path="/archive" element={<ArchivePage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                  </Route>
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </div>
-            </main>
-
-            <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-6 text-center">
-              <div className="container mx-auto text-sm text-gray-600 dark:text-text-secondary">
-                <p>
-                  © {new Date().getFullYear()} Хочу Плачу. Все права защищены.
-                </p>
-                <div className="mt-2 space-x-4">
-                  <Link to="/about" className="hover:underline">
-                    О нас
-                  </Link>{" "}
-                  {/* TODO: Create /about page or remove */}
-                  <Link to="/privacy" className="hover:underline">
-                    Политика конфиденциальности
-                  </Link>{" "}
-                  {/* TODO: Create /privacy page or remove */}
-                  <Link to="/terms" className="hover:underline">
-                    Условия использования
-                  </Link>{" "}
-                  {/* TODO: Create /terms page or remove */}
-                </div>
-                {/* Optional: Add social media icons or other relevant links */}
-              </div>
-            </footer>
-          </div>
+          <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-6 text-center text-sm text-gray-500 dark:text-text-secondary">
+            <p>© {new Date().getFullYear()} Хочу Плачу. Все права защищены.</p>
+          </footer>
         </div>
       </div>
-    </AuthProvider>
+    </div>
   );
 }
 

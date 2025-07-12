@@ -26,7 +26,7 @@ const createEmailTemplate = (name: string, resetLink: string): string => {
             .header h1 { margin: 0; font-size: 24px; color: #0a0a0a; }
             .content { padding: 20px 0; }
             .content p { margin: 0 0 15px; }
-            .button { display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none !important; border-radius: 5px; font-weight: bold; }
             .footer { margin-top: 20px; text-align: center; font-size: 12px; color: #777; }
         </style>
     </head>
@@ -43,6 +43,51 @@ const createEmailTemplate = (name: string, resetLink: string): string => {
                 </p>
                 <p>Эта ссылка для сброса пароля будет действительна в течение 15 минут.</p>
                 <p>Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+            </div>
+            <div class="footer">
+                <p>&copy; ${new Date().getFullYear()} Хочу Плачу. Все права защищены.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+};
+
+const createVerificationEmailTemplate = (
+  name: string,
+  verificationLink: string
+): string => {
+  return `
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Подтверждение Email</title>
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+            .header { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #ddd; }
+            .header h1 { margin: 0; font-size: 24px; color: #0a0a0a; }
+            .content { padding: 20px 0; }
+            .content p { margin: 0 0 15px; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: #ffffff !important; text-decoration: none !important; border-radius: 5px; font-weight: bold; }
+            .footer { margin-top: 20px; text-align: center; font-size: 12px; color: #777; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Хочу Плачу</h1>
+            </div>
+            <div class="content">
+                <p>Здравствуйте, ${name}!</p>
+                <p>Добро пожаловать в Хочу Плачу! Пожалуйста, подтвердите ваш email-адрес, нажав на кнопку ниже:</p>
+                <p style="text-align: center;">
+                    <a href="${verificationLink}" class="button">Подтвердить Email</a>
+                </p>
+                <p>Эта ссылка будет действительна в течение 24 часов.</p>
+                <p>Если вы не регистрировались, просто проигнорируйте это письмо.</p>
             </div>
             <div class="footer">
                 <p>&copy; ${new Date().getFullYear()} Хочу Плачу. Все права защищены.</p>
@@ -83,5 +128,38 @@ export const sendPasswordResetEmail = async (
     logger.error(`Failed to send email to ${recipientEmail}:`, error);
     // Depending on the policy, you might want to re-throw the error
     // or handle it silently. For now, we just log it.
+  }
+};
+
+export const sendVerificationEmail = async (
+  recipientEmail: string,
+  verificationLink: string
+) => {
+  if (!config.mailerSend.apiKey) {
+    logger.error("MailerSend API key is not configured. Cannot send email.");
+    if (process.env.NODE_ENV !== "production") {
+      logger.info(
+        `[DEV MODE] Verification link for ${recipientEmail}: ${verificationLink}`
+      );
+    }
+    return;
+  }
+
+  const recipients = [new Recipient(recipientEmail)];
+
+  const emailParams = new EmailParams()
+    .setFrom(sentFrom)
+    .setTo(recipients)
+    .setSubject("Подтвердите ваш Email для Хочу Плачу")
+    .setHtml(createVerificationEmailTemplate(recipientEmail, verificationLink));
+
+  try {
+    await mailerSend.email.send(emailParams);
+    logger.info(`Verification email sent to ${recipientEmail}`);
+  } catch (error) {
+    logger.error(
+      `Failed to send verification email to ${recipientEmail}:`,
+      error
+    );
   }
 };

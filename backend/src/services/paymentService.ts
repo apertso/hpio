@@ -134,7 +134,11 @@ export const getFilteredPayments = async (userId: string, filters: any) => {
       where,
       order,
       include: [
-        { model: db.Category, as: "category", attributes: ["id", "name"] }, // Include category
+        {
+          model: db.Category,
+          as: "category",
+          attributes: ["id", "name", "builtinIconName"],
+        }, // Include category
         {
           model: db.RecurringSeries,
           as: "series",
@@ -262,7 +266,11 @@ export const getPaymentById = async (paymentId: string, userId: string) => {
         "seriesId", // Include seriesId
       ],
       include: [
-        { model: db.Category, as: "category", attributes: ["id", "name"] }, // Include category
+        {
+          model: db.Category,
+          as: "category",
+          attributes: ["id", "name", "builtinIconName"],
+        }, // Include category
         {
           model: db.RecurringSeries,
           as: "series",
@@ -350,6 +358,7 @@ export const updatePayment = async (
       "filePath",
       "fileName",
       "builtinIconName",
+      "completedAt",
     ];
 
     allowedFields.forEach((field) => {
@@ -357,6 +366,22 @@ export const updatePayment = async (
         fieldsToUpdate[field] = (paymentData as any)[field];
       }
     });
+
+    // Специальная обработка для completedAt
+    if (fieldsToUpdate.completedAt) {
+      if (payment.status !== "completed") {
+        logger.warn(
+          `Attempt to update completedAt for a non-completed payment ${paymentId}. Ignoring.`
+        );
+        delete fieldsToUpdate.completedAt;
+      } else {
+        const newDate = new Date(fieldsToUpdate.completedAt);
+        if (isNaN(newDate.getTime())) {
+          throw new Error("Неверный формат даты выполнения.");
+        }
+        fieldsToUpdate.completedAt = newDate;
+      }
+    }
 
     // If there are fields to update, perform the update
     // Логика для конвертации разового платежа в новый регулярный
@@ -587,7 +612,7 @@ export const getArchivedPayments = async (userId: string, filters: any) => {
           // Include category data
           model: db.Category,
           as: "category",
-          attributes: ["id", "name"],
+          attributes: ["id", "name", "builtinIconName"],
         },
         {
           model: db.RecurringSeries,
@@ -738,9 +763,13 @@ export const permanentDeletePayment = async (
 // Для повторяющихся платежей это отмечает текущий экземпляр и готовит к генерации следующего (логика в Части 15/Крон)
 // --- Доработка функции completePayment ---
 // После отметки выполнения повторяющегося платежа, нужно создать следующий экземпляр.
-export const completePayment = async (paymentId: string, userId: string) => {
+export const completePayment = async (
+  paymentId: string,
+  userId: string,
+  completionDate?: string
+) => {
   logger.info(
-    `Attempting to complete payment (ID: ${paymentId}, User: ${userId})`
+    `Attempting to complete payment (ID: ${paymentId}, User: ${userId}) with date: ${completionDate}`
   );
   try {
     // Находим платеж, чтобы убедиться, что он принадлежит пользователю и имеет статус 'upcoming' или 'overdue'
@@ -764,7 +793,9 @@ export const completePayment = async (paymentId: string, userId: string) => {
     // Обновляем статус на 'completed' и устанавливаем дату выполнения
     await payment.update({
       status: "completed",
-      completedAt: Sequelize.literal("GETDATE()"),
+      completedAt: completionDate
+        ? new Date(completionDate)
+        : Sequelize.literal("GETDATE()"),
     });
     logger.info(`Payment completed (ID: ${payment.id}, User: ${userId}).`);
 
@@ -1042,7 +1073,9 @@ export const updateOverdueStatuses = async () => {
       {
         where: {
           status: "upcoming", // Только предстоящие
-          dueDate: { [Op.lte]: now }, // У которых срок оплаты <= сегодня
+          // Используем 'lt' (less than), чтобы платежи с сегодняшней датой не становились просроченными.
+          // Платеж становится просроченным только на следующий день после dueDate.
+          dueDate: { [Op.lt]: now }, // У которых срок оплаты < сегодня
         },
       }
     );
@@ -1066,17 +1099,15 @@ export const getDashboardStats = async (
 ) => {
   try {
     const now = new Date();
-    // Определяем начало и конец периода
+    // Определяем начало и конец периода, используя UTC, чтобы избежать смещения часовых поясов.
     const periodStart = startDate
-      ? new Date(startDate)
-      : new Date(now.getFullYear(), now.getMonth(), 1);
+      ? new Date(startDate + "T00:00:00.000Z") // UTC
+      : new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
     const periodEnd = endDate
-      ? new Date(endDate)
-      : new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-    // Устанавливаем время для корректного сравнения
-    periodStart.setHours(0, 0, 0, 0);
-    periodEnd.setHours(23, 59, 59, 999);
+      ? new Date(endDate + "T23:59:59.999Z") // UTC
+      : new Date(
+          Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+        );
 
     // Один запрос для получения всех платежей, релевантных для статистики
     const relevantPayments: (PaymentInstance & {
@@ -1089,12 +1120,12 @@ export const getDashboardStats = async (
             // Платежи, у которых СРОК ОПЛАТЫ в периоде
             dueDate: {
               [Op.between]: [
-                periodStart.toISOString().split("T")[0],
-                periodEnd.toISOString().split("T")[0],
+                periodStart.toISOString(),
+                periodEnd.toISOString(),
               ],
             },
             status: {
-              [Op.ne]: "deleted",
+              [Op.notIn]: ["deleted", "completed"],
             },
           },
           {
@@ -1102,8 +1133,8 @@ export const getDashboardStats = async (
             status: "completed",
             completedAt: {
               [Op.between]: [
-                periodStart.toISOString().split("T")[0],
-                periodEnd.toISOString().split("T")[0],
+                periodStart.toISOString(),
+                periodEnd.toISOString(),
               ],
             },
           },
@@ -1113,7 +1144,7 @@ export const getDashboardStats = async (
         {
           model: db.Category,
           as: "category",
-          attributes: ["id", "name"],
+          attributes: ["id", "name", "builtinIconName"],
         },
       ],
       attributes: [
@@ -1136,7 +1167,7 @@ export const getDashboardStats = async (
 
     for (const payment of relevantPayments) {
       const amount = parseFloat(payment.amount.toString());
-      const paymentDueDate = new Date(payment.dueDate);
+      const paymentDueDate = new Date(payment.dueDate + "T00:00:00.000Z");
 
       // Рассчитываем "Предстоящие" - это upcoming и overdue с dueDate в периоде
       if (
@@ -1171,12 +1202,17 @@ export const getDashboardStats = async (
       }
 
       // Статистика по дням (для всех платежей в выборке)
-      const dueDateKey = payment.dueDate; // YYYY-MM-DD
-      if (!dailyStats[dueDateKey]) {
-        dailyStats[dueDateKey] = { date: dueDateKey, amount: 0 };
+      // Используем completedAt для выполненных платежей и dueDate для остальных
+      const dateKey =
+        payment.status === "completed" && payment.completedAt
+          ? new Date(payment.completedAt as Date).toISOString().split("T")[0]
+          : payment.dueDate;
+
+      if (!dailyStats[dateKey]) {
+        dailyStats[dateKey] = { date: dateKey, amount: 0 };
       }
       if (payment.status !== "deleted") {
-        dailyStats[dueDateKey].amount += amount;
+        dailyStats[dateKey].amount += amount;
       }
     }
 

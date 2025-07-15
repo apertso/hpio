@@ -7,6 +7,7 @@ import { AxiosError } from "axios";
 import logger from "../utils/logger";
 import "react-datepicker/dist/react-datepicker.css";
 import SeriesEditModal from "./SeriesEditModal";
+import DatePicker from "react-datepicker";
 
 import PaymentDetailsSection from "./PaymentDetailsSection";
 
@@ -37,8 +38,7 @@ const paymentFormSchema = z.object({
     .string()
     .uuid("Неверный формат ID категории")
     .nullable()
-    .optional()
-    .or(z.literal("")), // Allow empty string for "Без категории"
+    .optional(),
   // !!! Поля рекуррентности
   // Шаблон повторения - обязателен, если isRecurrent true
   recurrencePattern: z
@@ -50,6 +50,7 @@ const paymentFormSchema = z.object({
     .date({ invalid_type_error: "Неверный формат даты окончания" })
     .nullable()
     .optional(),
+  completedAt: z.date().nullable().optional(),
 
   // TODO: Добавить опцию "Создать как завершенный" (только для создания)
   // createAsCompleted: z.boolean().optional(),
@@ -89,6 +90,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [isSeriesModalOpen, setIsSeriesModalOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<{
     filePath: string;
     fileName: string;
@@ -106,6 +108,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         try {
           const res = await axiosInstance.get(`/payments/${paymentId}`);
           const paymentData = res.data;
+          setPaymentStatus(paymentData.status);
 
           reset({
             title: paymentData.title,
@@ -114,6 +117,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             categoryId: paymentData.category?.id || "",
             recurrencePattern: null,
             recurrenceEndDate: null,
+            completedAt: paymentData.completedAt
+              ? new Date(paymentData.completedAt)
+              : null,
           });
 
           if (paymentData.seriesId) {
@@ -188,9 +194,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         : null,
       categoryId: data.categoryId === "" ? null : data.categoryId,
       builtinIconName: selectedIconName,
+      completedAt: data.completedAt ? data.completedAt.toISOString() : null,
     };
 
-    let finalPayload: any = { ...basePayloadData };
+    let finalPayload: Record<string, unknown> = { ...basePayloadData };
 
     if (isEditMode) {
       if (!currentSeriesId && data.recurrencePattern) {
@@ -274,7 +281,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           isSubmitting={combinedIsSubmitting}
         />
         <PaymentCategorySelect
-          register={register}
           errors={errors}
           setValue={setValue}
           watchCategoryId={watch("categoryId")}
@@ -282,7 +288,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         />
         {!currentSeriesId ? (
           <PaymentRecurrenceSection
-            register={register}
             errors={errors}
             setValue={setValue}
             watchRecurrencePattern={watch("recurrencePattern")}
@@ -324,6 +329,37 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           isSubmitting={combinedIsSubmitting}
           setFormError={setFormError}
         />
+        {paymentStatus === "completed" && (
+          <div>
+            <label
+              htmlFor="completedAt"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2"
+            >
+              Дата выполнения
+            </label>
+            <DatePicker
+              id="completedAt"
+              selected={watch("completedAt")}
+              onChange={(date: Date | null) => {
+                setValue("completedAt", date, { shouldValidate: true });
+              }}
+              dateFormat="yyyy-MM-dd HH:mm"
+              showTimeSelect
+              timeFormat="HH:mm"
+              className={`block w-full rounded-md border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white dark:placeholder-gray-500 ${
+                errors.completedAt ? "border-red-500" : ""
+              }`}
+              wrapperClassName="w-full"
+              disabled={combinedIsSubmitting}
+              placeholderText="Выберите дату и время выполнения"
+            />
+            {errors.completedAt && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.completedAt.message}
+              </p>
+            )}
+          </div>
+        )}
         {!isEditMode && (
           <div className="flex items-center">
             <input

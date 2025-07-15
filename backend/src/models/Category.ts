@@ -8,6 +8,7 @@ interface CategoryAttributes {
   id: string;
   userId: string;
   name: string;
+  builtinIconName?: string | null;
   // iconName?: string | null; // Если добавлены в модель
   // color?: string | null;
   createdAt: Date;
@@ -15,7 +16,10 @@ interface CategoryAttributes {
 }
 
 interface CategoryCreationAttributes
-  extends Optional<CategoryAttributes, "id" | "createdAt" | "updatedAt"> {}
+  extends Optional<
+    CategoryAttributes,
+    "id" | "createdAt" | "updatedAt" | "builtinIconName"
+  > {}
 
 export interface CategoryInstance
   extends Model<CategoryAttributes, CategoryCreationAttributes>,
@@ -51,6 +55,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.STRING,
         allowNull: false,
         unique: "userCategoryUnique", // Уникальность в рамках пользователя
+      },
+      builtinIconName: {
+        type: dataTypes.STRING,
+        allowNull: true,
       },
       // Опционально: можно добавить поле для иконки категории, цвета и т.п.
       // iconName: { type: dataTypes.STRING, allowNull: true },

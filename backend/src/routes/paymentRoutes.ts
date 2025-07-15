@@ -98,7 +98,12 @@ router.put("/:id", async (req: Request, res: Response) => {
 // PUT /api/payments/:id/complete - Отметить платеж как выполненный (2.2, 2.7)
 router.put("/:id/complete", async (req: Request, res: Response) => {
   try {
-    const completedPayment = await completePayment(req.params.id, req.user!.id);
+    const { completionDate } = req.body;
+    const completedPayment = await completePayment(
+      req.params.id,
+      req.user!.id,
+      completionDate
+    );
     if (!completedPayment) {
       return res.status(404).json({
         message: "Платеж не найден, нет прав или его нельзя завершить.",

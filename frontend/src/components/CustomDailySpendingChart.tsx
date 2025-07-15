@@ -1,4 +1,11 @@
-import React, { useMemo, useState, useRef, useCallback } from "react";
+// frontend/src/components/CustomDailySpendingChart.tsx
+import React, {
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
 
 interface Point {
   x: number;
@@ -7,8 +14,12 @@ interface Point {
 
 interface CustomChartProps {
   data: number[];
-  labels: string[];
+  labels: string[]; // Formatted labels for tooltip
   theme: "light" | "dark";
+  rawDates: string[];
+  onPointClick?: (date: string) => void;
+  startDate: Date;
+  endDate: Date;
 }
 
 // Утилита для создания сглаженной кривой (spline)
@@ -39,6 +50,10 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
   data,
   labels,
   theme,
+  rawDates,
+  onPointClick,
+  startDate,
+  endDate,
 }) => {
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
@@ -48,27 +63,86 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
     index: number;
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const width = 500;
-  const height = 200;
-  const padding = { top: 20, right: 20, bottom: 20, left: 20 };
+  useEffect(() => {
+    if (containerRef.current) {
+      const resizeObserver = new ResizeObserver((entries) => {
+        if (entries[0]) {
+          const { width, height } = entries[0].contentRect;
+          setDimensions({ width, height });
+        }
+      });
+      resizeObserver.observe(containerRef.current);
+      return () => resizeObserver.disconnect();
+    }
+  }, []);
 
-  const { linePath, areaPath, points } = useMemo(() => {
-    const maxValue = Math.max(...data, 0) * 1.25 || 1; // Добавляем 25% "воздуха" сверху
-    const effectiveWidth = width - padding.left - padding.right;
-    const effectiveHeight = height - padding.top - padding.bottom;
+  const { width, height } = dimensions;
+  // Константы для геометрии графика
+  const yAxisAreaWidth = 35; // Пространство для меток оси Y
+  const padding = { top: 20, right: 20, bottom: 30, left: 10 }; // Внутренние отступы самого графика
 
-    const calculatedPoints = data.map((value, index) => {
-      const xPosition =
-        data.length > 1
-          ? padding.left + (index / (data.length - 1)) * effectiveWidth
-          : padding.left + effectiveWidth / 2; // Center if only one point
-
+  const { linePath, areaPath, points, yAxisTicks, xAxisTicks } = useMemo(() => {
+    if (width === 0 || height === 0 || !data || data.length === 0) {
       return {
-        x: xPosition,
-        y: padding.top + effectiveHeight - (value / maxValue) * effectiveHeight,
+        linePath: "",
+        areaPath: "",
+        points: [],
+        yAxisTicks: [],
+        xAxisTicks: [],
       };
+    }
+
+    const maxValue = Math.max(...data, 0) * 1.25 || 1;
+    const effectiveWidth =
+      width - yAxisAreaWidth - padding.left - padding.right;
+    const effectiveHeight = height - padding.top - padding.bottom;
+    const timeDomain = endDate.getTime() - startDate.getTime();
+
+    const getX = (date: Date) => {
+      const plotStart = yAxisAreaWidth + padding.left;
+      if (timeDomain <= 0) return plotStart + effectiveWidth / 2;
+      return (
+        plotStart +
+        ((date.getTime() - startDate.getTime()) / timeDomain) * effectiveWidth
+      );
+    };
+
+    const calculatedPoints = rawDates.map((dateStr, index) => ({
+      x: getX(new Date(dateStr)),
+      y:
+        padding.top +
+        effectiveHeight -
+        (data[index] / maxValue) * effectiveHeight,
+    }));
+
+    const yTicks = 4;
+    const calculatedYAxisTicks = Array.from({ length: yTicks + 1 }, (_, i) => {
+      const value = (maxValue / yTicks) * i;
+      const y =
+        padding.top + effectiveHeight - (value / maxValue) * effectiveHeight;
+      return { y, value };
     });
+
+    const numXTicks = Math.max(2, Math.floor(effectiveWidth / 80));
+    const calculatedXAxisTicks: { x: number; label: string }[] = [];
+    if (timeDomain > 0) {
+      // Создаем тики для оси X, включая начальную и конечную дату
+      for (let i = 0; i <= numXTicks; i++) {
+        const tickDate = new Date(
+          startDate.getTime() + (timeDomain / numXTicks) * i
+        );
+        calculatedXAxisTicks.push({
+          x: getX(tickDate),
+          label: tickDate.toLocaleDateString("ru-RU", {
+            day: "numeric",
+            month: "short",
+          }),
+        });
+      }
+    }
 
     const linePath = createSplinePath(calculatedPoints);
     const areaPath =
@@ -76,24 +150,35 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         ? `${linePath} L ${calculatedPoints[calculatedPoints.length - 1].x},${
             height - padding.bottom
           } L ${calculatedPoints[0].x},${height - padding.bottom} Z`
-        : ""; // No area for a single point
+        : "";
 
-    return { linePath, areaPath, points: calculatedPoints };
-  }, [data, width, height, padding]);
+    return {
+      linePath,
+      areaPath,
+      points: calculatedPoints,
+      yAxisTicks: calculatedYAxisTicks,
+      xAxisTicks: calculatedXAxisTicks,
+    };
+  }, [data, rawDates, width, height, startDate, endDate]);
+
+  const transformMouseEvent = (event: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const point = svg.createSVGPoint();
+    point.x = event.clientX;
+    point.y = event.clientY;
+    return point.matrixTransform(svg.getScreenCTM()!.inverse());
+  };
 
   const handleMouseMove = useCallback(
     (event: React.MouseEvent<SVGSVGElement>) => {
-      if (!svgRef.current || points.length === 0) return;
-
-      const svg = svgRef.current;
-      const rect = svg.getBoundingClientRect();
-      const x = event.clientX - rect.left;
+      const svgPoint = transformMouseEvent(event);
+      if (!svgPoint || points.length === 0) return;
 
       let closestIndex = 0;
       let minDistance = Infinity;
-
       points.forEach((point, index) => {
-        const distance = Math.abs(point.x - x);
+        const distance = Math.abs(point.x - svgPoint.x);
         if (distance < minDistance) {
           minDistance = distance;
           closestIndex = index;
@@ -112,122 +197,153 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
     [points, data]
   );
 
-  const handleMouseLeave = useCallback(() => {
-    setTooltip(null);
-  }, []);
+  const handleMouseLeave = useCallback(() => setTooltip(null), []);
 
-  const lineColor = theme === "dark" ? "#a78bfa" : "#6d28d9"; // Saturated purple
+  const handleMouseClick = useCallback(
+    (event: React.MouseEvent<SVGSVGElement>) => {
+      const svgPoint = transformMouseEvent(event);
+      if (!svgPoint || points.length === 0 || !onPointClick) return;
+
+      let closestIndex = 0;
+      let minDistance = Infinity;
+      points.forEach((point, index) => {
+        const distance = Math.abs(point.x - svgPoint.x);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = index;
+        }
+      });
+      onPointClick(rawDates[closestIndex]);
+    },
+    [points, onPointClick, rawDates]
+  );
+
+  const lineColor = theme === "dark" ? "#a78bfa" : "#6d28d9";
   const gradientStartColor = theme === "dark" ? "#5b21b6" : "#c4b5fd";
   const gradientEndColor =
     theme === "dark" ? "rgba(20, 20, 20, 0)" : "rgba(237, 233, 254, 0)";
 
-  // Label rendering logic
-  const maxLabelsToShow = 10;
-  const labelStep =
-    labels.length > maxLabelsToShow
-      ? Math.ceil(labels.length / maxLabelsToShow)
-      : 1;
-
   return (
-    <div className="relative w-full h-full flex flex-col">
-      <div className="relative flex-grow">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${width} ${height}`}
-          className="absolute w-full h-full"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
-          <defs>
-            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="0%"
-                stopColor={gradientStartColor}
-                stopOpacity={0.4}
-              />
-              <stop
-                offset="100%"
-                stopColor={gradientEndColor}
-                stopOpacity={0.1}
-              />
-            </linearGradient>
-          </defs>
+    <div ref={containerRef} className="relative w-full h-full">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${width || 0} ${height || 0}`}
+        className="w-full h-full"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleMouseClick}
+        style={{ cursor: onPointClick ? "pointer" : "default" }}
+      >
+        <defs>
+          <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop
+              offset="0%"
+              stopColor={gradientStartColor}
+              stopOpacity={0.4}
+            />
+            <stop
+              offset="100%"
+              stopColor={gradientEndColor}
+              stopOpacity={0.1}
+            />
+          </linearGradient>
+        </defs>
 
-          {/* Gradient Fill Area */}
-          <path d={areaPath} fill="url(#chartGradient)" />
-
-          {/* Line */}
-          <path
-            d={linePath}
-            fill="none"
-            stroke={lineColor}
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Tooltip Indicators */}
-          {tooltip?.visible && points.length > 1 && (
-            <g>
-              <line
-                x1={tooltip.x}
-                y1={height - padding.bottom}
-                x2={tooltip.x}
-                y2={padding.top}
-                stroke={lineColor}
-                strokeWidth="1"
-                strokeDasharray="4 2"
-                opacity="0.5"
-              />
-              <circle
-                cx={tooltip.x}
-                cy={tooltip.y}
-                r="5"
-                fill={theme === "dark" ? "#0a0a0a" : "#ffffff"}
-                stroke={lineColor}
-                strokeWidth="2"
-              />
-            </g>
-          )}
-        </svg>
-        {/* Tooltip HTML element */}
-        {tooltip?.visible && (
-          <div
-            className="absolute p-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md shadow-lg pointer-events-none border border-gray-200 dark:border-gray-700"
-            style={{
-              left: `${tooltip.x}px`,
-              top: `${tooltip.y}px`,
-              transform: "translate(-50%, -120%)",
-              transition: "transform 0.1s ease-out",
-            }}
+        {/* Y-Axis Grid Lines and Labels */}
+        {yAxisTicks.map((tick, i) => (
+          <g
+            key={`y-${i}`}
+            className="text-xs"
+            fill={theme === "dark" ? "#9ca3af" : "#6b7280"}
           >
-            {data[tooltip.index].toLocaleString("ru-RU", {
-              style: "currency",
-              currency: "RUB",
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Labels */}
-      <div className="flex justify-between pt-2 h-6 text-xs text-gray-500 dark:text-gray-400">
-        {labels.map((label, index) => (
-          <div
-            key={index}
-            className="flex-1 text-center"
-            style={{
-              visibility:
-                index % labelStep === 0 ||
-                (index === labels.length - 1 &&
-                  (labels.length - 1) % labelStep !== 0)
-                  ? "visible"
-                  : "hidden",
-            }}
-          >
-            {label}
-          </div>
+            <line
+              x1={yAxisAreaWidth + padding.left}
+              x2={width - padding.right}
+              y1={tick.y}
+              y2={tick.y}
+              stroke={theme === "dark" ? "#374151" : "#e5e7eb"}
+              strokeWidth="1"
+            />
+            <text x={yAxisAreaWidth - 8} y={tick.y + 4} textAnchor="end">
+              {tick.value === 0
+                ? "0"
+                : tick.value >= 1000
+                ? `${Math.round(tick.value / 1000)}k`
+                : Math.round(tick.value)}
+            </text>
+          </g>
         ))}
-      </div>
+
+        {/* X-Axis Labels */}
+        {xAxisTicks.map((tick, i) => (
+          <g
+            key={`x-${i}`}
+            className="text-xs"
+            fill={theme === "dark" ? "#9ca3af" : "#6b7280"}
+          >
+            <text
+              x={tick.x}
+              y={height - padding.bottom + 20}
+              textAnchor="middle"
+            >
+              {tick.label}
+            </text>
+          </g>
+        ))}
+
+        <path d={areaPath} fill="url(#chartGradient)" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke={lineColor}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {tooltip?.visible && points.length > 0 && (
+          <g>
+            <line
+              x1={tooltip.x}
+              y1={height - padding.bottom}
+              x2={tooltip.x}
+              y2={padding.top}
+              stroke={lineColor}
+              strokeWidth="1"
+              strokeDasharray="4 2"
+              opacity="0.5"
+            />
+            <circle
+              cx={tooltip.x}
+              cy={tooltip.y}
+              r="5"
+              fill={theme === "dark" ? "#0a0a0a" : "#ffffff"}
+              stroke={lineColor}
+              strokeWidth="2"
+            />
+          </g>
+        )}
+      </svg>
+      {tooltip?.visible && (
+        <div
+          className="absolute p-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md shadow-lg pointer-events-none border border-gray-200 dark:border-gray-700"
+          style={{
+            left: `${(tooltip.x / width) * 100}%`,
+            top: `${(tooltip.y / height) * 100}%`,
+            transform: "translate(-50%, -120%)",
+            transition: "transform 0.1s ease-out",
+          }}
+        >
+          {labels[tooltip.index]}:{" "}
+          {new Intl.NumberFormat("ru-RU", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(data[tooltip.index])}
+          <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+            ₽
+          </span>
+        </div>
+      )}
     </div>
   );
 };

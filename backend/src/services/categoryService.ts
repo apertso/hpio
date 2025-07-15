@@ -6,6 +6,7 @@ import logger from "../config/logger";
 
 interface CategoryData {
   name: string;
+  builtinIconName?: string;
   // iconName?: string; // Если добавлены в модель
   // color?: string;
 }
@@ -83,6 +84,7 @@ export const createCategory = async (
     const category = await db.Category.create({
       userId: userId,
       name: categoryName,
+      builtinIconName: categoryData.builtinIconName || null,
       // ... другие поля ...
     });
 
@@ -142,6 +144,7 @@ export const updateCategory = async (
 
     await category.update({
       name: newCategoryName,
+      builtinIconName: categoryData.builtinIconName,
       // ... другие поля ...
     });
 

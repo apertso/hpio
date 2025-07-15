@@ -28,8 +28,7 @@ const seriesFormSchema = z.object({
     .string()
     .uuid("Неверный формат ID категории")
     .nullable()
-    .optional()
-    .or(z.literal("")), // Allow empty string for "Без категории"
+    .optional(),
   recurrencePattern: z.enum(["daily", "weekly", "monthly", "yearly"], {
     required_error: "Шаблон повторения обязателен",
     invalid_type_error: "Неверный шаблон повторения",
@@ -198,22 +197,20 @@ const SeriesEditModal: React.FC<SeriesEditModalProps> = ({
 
           {/* Field: Category */}
           <PaymentCategorySelect
-            register={methods.register}
             errors={methods.formState.errors}
-            setValue={methods.setValue}
+            setValue={methods.setValue as any}
             watchCategoryId={methods.watch("categoryId")}
             isSubmitting={methods.formState.isSubmitting || isLoading}
           />
 
           {/* Recurrence Pattern and End Date */}
           <PaymentRecurrenceSection
-            register={methods.register}
             errors={methods.formState.errors}
-            setValue={methods.setValue}
+            setValue={methods.setValue as any}
             watchRecurrencePattern={methods.watch("recurrencePattern")}
             watchRecurrenceEndDate={methods.watch("recurrenceEndDate")}
             isSubmitting={methods.formState.isSubmitting || isLoading}
-            clearErrors={methods.clearErrors}
+            clearErrors={methods.clearErrors as any}
             // Note: isRecurrent checkbox is not shown in series edit
           />
 

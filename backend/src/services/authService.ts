@@ -87,21 +87,22 @@ export const registerUser = async (
 
     // Создание стандартного набора категорий для нового пользователя
     const defaultCategories = [
-      "Жильё и коммунальные",
-      "Питание",
-      "Транспорт",
-      "Здоровье",
-      "Покупки и одежда",
-      "Развлечения",
-      "Образование",
-      "Семья и дети",
-      "Финансы и кредиты",
-      "Прочее",
+      { name: "Жильё и коммунальные", icon: "home" },
+      { name: "Питание", icon: "shopping-cart" },
+      { name: "Транспорт", icon: "truck" },
+      { name: "Здоровье", icon: "heart" },
+      { name: "Покупки и одежда", icon: "gift" },
+      { name: "Развлечения", icon: "film" },
+      { name: "Образование", icon: "book-open" },
+      { name: "Семья и дети", icon: "sparkles" },
+      { name: "Финансы и кредиты", icon: "credit-card" },
+      { name: "Прочее", icon: "wrench" },
     ];
 
-    const categoriesToCreate = defaultCategories.map((categoryName) => ({
+    const categoriesToCreate = defaultCategories.map((category) => ({
       userId: user.id,
-      name: categoryName,
+      name: category.name,
+      builtinIconName: category.icon,
     }));
 
     await db.Category.bulkCreate(categoriesToCreate, { transaction });
@@ -116,9 +117,11 @@ export const registerUser = async (
 
     // Отправляем письмо верификации
     const verificationLink = `${config.frontendUrl}/verify-email?token=${verificationToken}`;
-    sendVerificationEmail(user.email, verificationLink).catch((err) => {
-      logger.error("Error sending verification email asynchronously:", err);
-    });
+    sendVerificationEmail(user.email, user.name, verificationLink).catch(
+      (err) => {
+        logger.error("Error sending verification email asynchronously:", err);
+      }
+    );
 
     logger.info(
       `User registered: ${user.email} and default categories created.`
@@ -188,7 +191,7 @@ export const forgotPassword = async (email: string) => {
     const resetUrl = `${config.frontendUrl}/reset-password?token=${resetToken}`;
 
     // Асинхронно отправляем email
-    sendPasswordResetEmail(user.email, resetUrl).catch((err) => {
+    sendPasswordResetEmail(user.email, user.name, resetUrl).catch((err) => {
       // Логируем ошибку отправки, но не сообщаем о ней пользователю
       logger.error("Error sending password reset email asynchronously:", err);
     });
@@ -283,6 +286,17 @@ export const updateUserProfile = async (
       throw new Error("Пользователь с таким Email уже существует.");
     }
     user.email = data.email;
+    user.isVerified = false;
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    user.verificationToken = verificationToken;
+    user.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 часа
+
+    const verificationLink = `${config.frontendUrl}/verify-email?token=${verificationToken}`;
+    sendVerificationEmail(user.email, user.name, verificationLink).catch(
+      (err) => {
+        logger.error("Error sending verification email on email change:", err);
+      }
+    );
   }
 
   // Обновление пароля
@@ -382,9 +396,11 @@ export const resendVerificationEmail = async (userId: string) => {
 
   // Отправляем письмо верификации
   const verificationLink = `${config.frontendUrl}/verify-email?token=${verificationToken}`;
-  sendVerificationEmail(user.email, verificationLink).catch((err) => {
-    logger.error("Error resending verification email asynchronously:", err);
-  });
+  sendVerificationEmail(user.email, user.name, verificationLink).catch(
+    (err) => {
+      logger.error("Error resending verification email asynchronously:", err);
+    }
+  );
 
   logger.info(`Resent verification email to: ${user.email}`);
 

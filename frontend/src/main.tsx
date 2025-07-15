@@ -5,13 +5,16 @@ import "./index.css";
 import { ThemeProvider } from "./context/ThemeContext.tsx"; // Импорт ThemeProvider
 import { BrowserRouter } from "react-router-dom"; // Для роутинга
 import { AuthProvider } from "./context/AuthContext.tsx";
+import { ToastProvider } from "./context/ToastContext.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

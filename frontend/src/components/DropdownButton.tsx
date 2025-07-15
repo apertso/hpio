@@ -7,6 +7,7 @@ export interface DropdownOption {
   label: string;
   onClick: () => void;
   icon?: React.ReactNode;
+  value?: string | number;
 }
 
 export interface DropdownButtonProps
@@ -14,6 +15,7 @@ export interface DropdownButtonProps
   label: string;
   icon?: React.ReactNode;
   options: DropdownOption[];
+  selectedValue?: string | number;
 }
 
 export const DropdownButton: React.FC<DropdownButtonProps> = ({
@@ -21,6 +23,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
   icon,
   options,
   className = "",
+  selectedValue,
   ...rest
 }) => {
   const { isOpen, setIsOpen, containerRef } = useDropdown();
@@ -78,7 +81,11 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
           {options.map((option, idx) => (
             <button
               key={option.label + idx}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 cursor-pointer"
+              className={`w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 cursor-pointer ${
+                option.value !== undefined && option.value === selectedValue
+                  ? "bg-gray-200 dark:bg-gray-700 font-bold"
+                  : ""
+              }`}
               onClick={() => {
                 option.onClick();
                 setIsOpen(false);

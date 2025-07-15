@@ -10,6 +10,8 @@ import Spinner from "../components/Spinner";
 import getErrorMessage from "../utils/getErrorMessage";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
+import IconSelector from "../components/IconSelector";
+import { BuiltinIcon } from "../utils/builtinIcons";
 
 const categoryFormSchema = z.object({
   name: z
@@ -27,6 +29,7 @@ const CategoryEditPage: React.FC = () => {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
+  const [selectedIcon, setSelectedIcon] = useState<BuiltinIcon | null>(null);
 
   const {
     register,
@@ -46,6 +49,7 @@ const CategoryEditPage: React.FC = () => {
         .get(`/categories/${id}`)
         .then((res) => {
           setValue("name", res.data.name);
+          setSelectedIcon(res.data.builtinIconName || null);
         })
         .catch((error) => {
           logger.error(`Failed to fetch category ${id}`, error);
@@ -61,12 +65,16 @@ const CategoryEditPage: React.FC = () => {
 
   const onSubmit: SubmitHandler<CategoryFormInputs> = async (data) => {
     setFormError(null);
+    const payload = {
+      ...data,
+      builtinIconName: selectedIcon,
+    };
     try {
       if (isEditMode) {
-        await axiosInstance.put(`/categories/${id}`, data);
+        await axiosInstance.put(`/categories/${id}`, payload);
         logger.info(`Category updated: ${id}`);
       } else {
-        await axiosInstance.post("/categories", data);
+        await axiosInstance.post("/categories", payload);
         logger.info("Category created");
       }
       navigate("/categories");
@@ -118,6 +126,13 @@ const CategoryEditPage: React.FC = () => {
                     {...register("name")}
                     disabled={combinedIsLoading}
                     error={errors.name?.message}
+                  />
+                </div>
+                <div className="mb-6">
+                  <IconSelector
+                    selectedIconName={selectedIcon}
+                    onIconChange={setSelectedIcon}
+                    isFormSubmitting={combinedIsLoading}
                   />
                 </div>
 

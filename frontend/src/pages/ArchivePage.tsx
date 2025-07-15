@@ -17,6 +17,8 @@ import useApi from "../hooks/useApi"; // Import useApi
 import { formatRecurrencePattern } from "./PaymentsList";
 import Spinner from "../components/Spinner";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext"; // Import useToast
+import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 
 // Define the raw API fetch function
 const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
@@ -27,6 +29,8 @@ const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
 };
 
 const ArchivePage: React.FC = () => {
+  const { showToast } = useToast(); // Import useToast
+
   // Use useApi for the raw fetch
   const {
     data: rawArchivedPayments,
@@ -37,6 +41,15 @@ const ArchivePage: React.FC = () => {
 
   // State for transformed data
   const [archivedPayments, setArchivedPayments] = useState<PaymentData[]>([]);
+
+  // New state for confirm modal
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    action: (() => void) | null;
+    title: string;
+    message: string;
+  }>({ isOpen: false, action: null, title: "", message: "" });
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const navigate = useNavigate();
 
@@ -51,19 +64,11 @@ const ArchivePage: React.FC = () => {
             typeof payment.amount === "string"
               ? parseFloat(payment.amount)
               : payment.amount,
-          completedAt: payment.completedAt
-            ? new Date(payment.completedAt).toLocaleString()
-            : "",
-          updatedAt: payment.updatedAt
-            ? new Date(payment.updatedAt).toLocaleString()
-            : "",
         };
       });
       setArchivedPayments(payments);
       logger.info(
-        `Successfully fetched and processed ${
-          (payments as PaymentData[]).length
-        } archived payments.`
+        `Successfully fetched and processed ${payments.length} archived payments.`
       );
     } else {
       setArchivedPayments([]); // Clear payments if raw data is null (e.g., on error)
@@ -83,58 +88,74 @@ const ArchivePage: React.FC = () => {
   // These handlers should ideally also use useApi, but the current task is only about the main data fetch.
   // Keeping them as is for now.
 
+  const onConfirmAction = async () => {
+    if (confirmModalState.action) {
+      setIsConfirming(true);
+      await confirmModalState.action();
+      setIsConfirming(false);
+    }
+    setConfirmModalState({
+      isOpen: false,
+      action: null,
+      title: "",
+      message: "",
+    });
+  };
+
   // Обработчик восстановления платежа
-  const handleRestorePayment = async (paymentId: string) => {
-    if (
-      window.confirm(
-        "Вы уверены, что хотите восстановить этот платеж? Он вернется в список активных."
-      )
-    ) {
+  const handleRestorePayment = (paymentId: string) => {
+    const action = async () => {
       try {
-        // Отправляем PUT запрос на эндпоинт восстановления
         await axiosInstance.put(`/archive/${paymentId}/restore`);
         logger.info(`Payment restored: ${paymentId}`);
-        executeFetchArchivedPayments(); // Перезагружаем список архива после восстановления
-        alert("Платеж успешно восстановлен."); // Временное уведомление
-      } catch (error: any) {
-        logger.error(
-          `Failed to restore payment ${paymentId}:`,
-          error.response?.data?.message || error.message
-        );
-        alert(
-          `Не удалось восстановить платеж: ${
-            error.response?.data?.message || error.message
-          }`
-        );
+        executeFetchArchivedPayments();
+        showToast("Платеж успешно восстановлен.", "success");
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        logger.error(`Failed to restore payment ${paymentId}:`, errorMessage);
+        showToast(`Не удалось восстановить платеж: ${errorMessage}`, "error");
       }
-    }
+    };
+
+    setConfirmModalState({
+      isOpen: true,
+      action,
+      title: "Восстановить платеж",
+      message:
+        "Вы уверены, что хотите восстановить этот платеж? Он вернется в список активных.",
+    });
   };
 
   // Обработчик полного (перманентного) удаления платежа
-  const handlePermanentDeletePayment = async (paymentId: string) => {
-    if (
-      window.confirm(
-        "Внимание! Вы уверены, что хотите ПОЛНОСТЬЮ удалить этот платеж? Это действие необратимо и удалит все связанные файлы."
-      )
-    ) {
+  const handlePermanentDeletePayment = (paymentId: string) => {
+    const action = async () => {
       try {
-        // Отправляем DELETE запрос на эндпоинт перманентного удаления
         await axiosInstance.delete(`/archive/${paymentId}/permanent`);
         logger.info(`Payment permanently deleted: ${paymentId}`);
-        executeFetchArchivedPayments(); // Перезагружаем список архива после удаления
-        alert("Платеж полностью удален."); // Временное уведомление
-      } catch (error: any) {
+        executeFetchArchivedPayments();
+        showToast("Платеж полностью удален.", "info");
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
         logger.error(
           `Failed to permanently delete payment ${paymentId}:`,
-          error.response?.data?.message || error.message
+          errorMessage
         );
-        alert(
-          `Не удалось полностью удалить платеж: ${
-            error.response?.data?.message || error.message
-          }`
+        showToast(
+          `Не удалось полностью удалить платеж: ${errorMessage}`,
+          "error"
         );
       }
-    }
+    };
+
+    setConfirmModalState({
+      isOpen: true,
+      action,
+      title: "Полностью удалить платеж",
+      message:
+        "Внимание! Это действие необратимо и удалит все связанные файлы.",
+    });
   };
 
   const handleDownloadFile = async (paymentId: string, fileName: string) => {
@@ -151,16 +172,14 @@ const ArchivePage: React.FC = () => {
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
       logger.info(`File downloaded for archived payment ${paymentId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       logger.error(
         `Failed to download file for archived payment ${paymentId}:`,
-        error.response?.data?.message || error.message
+        errorMessage
       );
-      alert(
-        `Не удалось скачать файл: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      showToast(`Не удалось скачать файл: ${errorMessage}`, "error");
     }
   };
 
@@ -317,8 +336,13 @@ const ArchivePage: React.FC = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {" "}
-                        {/* Сумма */} {payment.amount.toFixed(2)}{" "}
+                        {new Intl.NumberFormat("ru-RU", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(payment.amount)}
+                        <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
+                          ₽
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         {" "}
@@ -329,8 +353,12 @@ const ArchivePage: React.FC = () => {
                         {" "}
                         {/* Дата выполнения/удаления */}
                         {payment.completedAt
-                          ? payment.completedAt
-                          : payment.updatedAt}{" "}
+                          ? new Date(payment.completedAt).toLocaleString(
+                              "ru-RU"
+                            )
+                          : new Date(payment.updatedAt).toLocaleString(
+                              "ru-RU"
+                            )}{" "}
                         {/* Показываем completedAt или updatedAt для удаленных */}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
@@ -398,6 +426,22 @@ const ArchivePage: React.FC = () => {
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() =>
+          setConfirmModalState({
+            isOpen: false,
+            action: null,
+            title: "",
+            message: "",
+          })
+        }
+        onConfirm={onConfirmAction}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        confirmText="Да, подтвердить"
+        isConfirming={isConfirming}
+      />
     </>
   );
 };

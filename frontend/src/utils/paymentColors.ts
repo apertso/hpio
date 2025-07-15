@@ -9,7 +9,7 @@ export function getPaymentColorClass(payment: {
 }): string {
   if (payment.status === "overdue") return "bg-[#f02626] text-white"; // ярко-красный
   if (payment.status === "completed") return "bg-gray-400 dark:bg-gray-700";
-  if (payment.status === "deleted") return "bg-gray-300 dark:bg-gray-800";
+  if (payment.status === "deleted") return "bg-red-500 dark:bg-red-600";
 
   const now = new Date();
   const dueDateTime = new Date(payment.dueDate);

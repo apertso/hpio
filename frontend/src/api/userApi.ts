@@ -5,6 +5,7 @@ export const PHOTO_URL = "/user/profile/photo";
 
 // Data types for API calls
 interface UpdateProfileData {
+  name?: string;
   email?: string;
   password?: string;
   currentPassword?: string;

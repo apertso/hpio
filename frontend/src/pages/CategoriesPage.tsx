@@ -1,17 +1,21 @@
 // src/pages/CategoriesPage.tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import axiosInstance from "../api/axiosInstance";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline"; // Иконки действий
 import { Button } from "../components/Button"; // Import the Button component
 import useApi from "../hooks/useApi"; // Import useApi
 import Spinner from "../components/Spinner";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext"; // Import useToast
+import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
+import PaymentIconDisplay from "../components/PaymentIconDisplay";
+import { BuiltinIcon } from "../utils/builtinIcons";
 
 // Интерфейс для данных категории
 interface Category {
   id: string;
   name: string;
-  // TODO: Добавить другие поля категории, если они есть (иконка, цвет)
+  builtinIconName?: BuiltinIcon | null;
 }
 
 // Define the raw API fetch function for categories list
@@ -21,12 +25,23 @@ const fetchCategoriesApi = async (): Promise<Category[]> => {
 };
 
 const CategoriesPage: React.FC = () => {
+  const { showToast } = useToast(); // Import useToast
+
   // Use useApi for fetching the categories list
   const {
     data: categories,
     isLoading: isLoadingCategories,
     execute: executeFetchCategories,
   } = useApi<Category[]>(fetchCategoriesApi);
+
+  // New state for confirm modal
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    action: (() => void) | null;
+    title: string;
+    message: string;
+  }>({ isOpen: false, action: null, title: "", message: "" });
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // Effect to trigger the fetch on mount
   useEffect(() => {
@@ -43,25 +58,41 @@ const CategoriesPage: React.FC = () => {
     navigate(`/categories/edit/${id}`);
   };
 
+  const onConfirmAction = async () => {
+    if (confirmModalState.action) {
+      setIsConfirming(true);
+      await confirmModalState.action();
+      setIsConfirming(false);
+    }
+    setConfirmModalState({
+      isOpen: false,
+      action: null,
+      title: "",
+      message: "",
+    });
+  };
+
   // Удаление категории
   const handleDeleteCategory = async (
     categoryId: string,
     categoryName: string
   ) => {
-    if (
-      window.confirm(
-        `Вы уверены, что хотите удалить категорию "${categoryName}"? Связанные платежи останутся без категории.`
-      )
-    ) {
+    const action = async () => {
       try {
         await axiosInstance.delete(`/categories/${categoryId}`);
         executeFetchCategories();
-        alert("Категория успешно удалена.");
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error: unknown) {
-        alert("Не удалось удалить категорию. Попробуйте позже.");
+        showToast("Категория успешно удалена.", "success");
+      } catch {
+        showToast("Не удалось удалить категорию. Попробуйте позже.", "error");
       }
-    }
+    };
+
+    setConfirmModalState({
+      isOpen: true,
+      action,
+      title: "Удалить категорию",
+      message: `Вы уверены, что хотите удалить категорию "${categoryName}"? Связанные платежи останутся без категории.`,
+    });
   };
 
   return (
@@ -96,6 +127,12 @@ const CategoriesPage: React.FC = () => {
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                     >
+                      Иконка
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                    >
                       Название
                     </th>
                     <th
@@ -112,6 +149,15 @@ const CategoriesPage: React.FC = () => {
                       key={category.id}
                       className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100"
                     >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <PaymentIconDisplay
+                          payment={{
+                            id: category.id,
+                            builtinIconName: category.builtinIconName,
+                          }}
+                          sizeClass="h-6 w-6"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                         {category.name}
                       </td>
@@ -147,6 +193,22 @@ const CategoriesPage: React.FC = () => {
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() =>
+          setConfirmModalState({
+            isOpen: false,
+            action: null,
+            title: "",
+            message: "",
+          })
+        }
+        onConfirm={onConfirmAction}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        confirmText="Да, удалить"
+        isConfirming={isConfirming}
+      />
     </>
   );
 };

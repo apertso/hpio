@@ -19,6 +19,10 @@ import Spinner from "../components/Spinner";
 import CategoryDistributionBars from "../components/CategoryDistributionBars";
 import Scrollbar from "../components/Scrollbar";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext"; // Import useToast
+import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal"; // Import ConfirmCompletionDateModal
+import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
+import Modal from "../components/Modal"; // Add this import
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import { PaymentData } from "../types/paymentData";
@@ -84,6 +88,7 @@ interface DashboardStats {
   totalCompletedAmount: string; // Строка
   categoriesDistribution: { id?: string; name: string; amount: number }[]; // id is optional for "No Category"
   dailyPaymentLoad: { date: string; amount: number }[];
+  allPaymentsInMonth: PaymentData[]; // Add this field
   // TODO: Добавить другие поля, если бэкенд их возвращает
 }
 
@@ -115,7 +120,13 @@ const UpcomingPaymentListItem: React.FC<{ payment: PaymentData }> = ({
       </div>
       <div className="text-right">
         <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
-          {new Intl.NumberFormat("ru-RU").format(payment.amount)}&nbsp;₽
+          {new Intl.NumberFormat("ru-RU", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }).format(payment.amount)}
+          <span className="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">
+            ₽
+          </span>
         </p>
       </div>
     </div>
@@ -124,6 +135,7 @@ const UpcomingPaymentListItem: React.FC<{ payment: PaymentData }> = ({
 
 const HomePage: React.FC = () => {
   const { resolvedTheme } = useTheme(); // Access the theme
+  const { showToast } = useToast(); // Import useToast
 
   const {
     data: rawUpcomingPayments,
@@ -176,12 +188,25 @@ const HomePage: React.FC = () => {
   );
   const [customDateTo, setCustomDateTo] = useState(new Date());
 
-  // --- Функция для загрузки статистики (из Dashboard.tsx) ---
-  const fetchDashboardStats = useCallback(async () => {
-    setIsLoadingStats(true);
-    setErrorStats(null);
+  // --- Новые состояния для модальных окон и уведомлений ---
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionDateModalState, setCompletionDateModalState] = useState<{
+    isOpen: boolean;
+    payment: PaymentData | null;
+  }>({ isOpen: false, payment: null });
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    action: (() => void) | null;
+    title: string;
+    message: string;
+  }>({ isOpen: false, action: null, title: "", message: "" });
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [dailyPaymentsModal, setDailyPaymentsModal] = useState<{
+    date: string;
+    payments: PaymentData[];
+  } | null>(null);
 
-    // НОВОЕ: Логика для определения startDate и endDate
+  const { startDate, endDate } = useMemo(() => {
     let startDate, endDate;
     switch (periodType) {
       case "month":
@@ -197,10 +222,18 @@ const HomePage: React.FC = () => {
         endDate = new Date(year, 11, 31);
         break;
       case "custom":
+      default:
         startDate = customDateFrom;
         endDate = customDateTo;
         break;
     }
+    return { startDate, endDate };
+  }, [periodType, year, month, quarter, customDateFrom, customDateTo]);
+
+  // --- Функция для загрузки статистики (из Dashboard.tsx) ---
+  const fetchDashboardStats = useCallback(async () => {
+    setIsLoadingStats(true);
+    setErrorStats(null);
 
     const params = {
       startDate: formatDateToLocal(startDate),
@@ -216,6 +249,12 @@ const HomePage: React.FC = () => {
         totalUpcomingAmount: parseFloat(res.data.totalUpcomingAmount),
         totalCompletedAmount: parseFloat(res.data.totalCompletedAmount),
         // amounts в массивах categoriesDistribution и dailyPaymentLoad уже number на бэкенде
+        allPaymentsInMonth:
+          res.data.allPaymentsInMonth?.map((p: PaymentData) => ({
+            ...p,
+            amount:
+              typeof p.amount === "string" ? parseFloat(p.amount) : p.amount,
+          })) || [],
       };
 
       setStats(formattedStats);
@@ -232,7 +271,7 @@ const HomePage: React.FC = () => {
     } finally {
       setIsLoadingStats(false);
     }
-  }, [periodType, year, month, quarter, customDateFrom, customDateTo]);
+  }, [startDate, endDate]); // Update dependency array
 
   // --- Эффект для загрузки статистики при монтировании компонента (из Dashboard.tsx) ---
   useEffect(() => {
@@ -250,57 +289,106 @@ const HomePage: React.FC = () => {
   };
 
   // --- Обработчики действий для карточек платежей ---
-  const handleCompletePayment = async (paymentId: string) => {
-    if (
-      window.confirm(
-        "Вы уверены, что хотите отметить этот платеж как выполненный?"
-      )
-    ) {
-      try {
-        await axiosInstance.put(`/payments/${paymentId}/complete`);
-        alert("Платеж выполнен.");
-        executeFetchUpcomingPayments();
-        fetchDashboardStats();
-      } catch (error) {
-        logger.error(`Failed to complete payment ${paymentId}:`, error);
-        alert("Не удалось выполнить платеж.");
-      }
+  const callCompleteApi = async (paymentId: string, completionDate?: Date) => {
+    setIsCompleting(true);
+    try {
+      const payload = completionDate
+        ? { completionDate: completionDate.toISOString().split("T")[0] }
+        : {};
+      await axiosInstance.put(`/payments/${paymentId}/complete`, payload);
+      showToast("Платеж выполнен.", "success");
+      executeFetchUpcomingPayments();
+      fetchDashboardStats();
+    } catch (error) {
+      logger.error(`Failed to complete payment ${paymentId}:`, error);
+      showToast("Не удалось выполнить платеж.", "error");
+    } finally {
+      setIsCompleting(false);
+      setCompletionDateModalState({ isOpen: false, payment: null });
+    }
+  };
+
+  const handleCompletePayment = async (payment: PaymentData) => {
+    const today = new Date();
+    const dueDate = new Date(payment.dueDate);
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (today.getTime() === dueDate.getTime()) {
+      callCompleteApi(payment.id);
+    } else {
+      setCompletionDateModalState({ isOpen: true, payment: payment });
     }
   };
 
   const handleDeletePayment = async (paymentId: string) => {
-    if (
-      window.confirm(
-        "Вы уверены, что хотите удалить этот платеж? Он будет перемещен в архив."
-      )
-    ) {
+    const action = async () => {
       try {
         await axiosInstance.delete(`/payments/${paymentId}`);
-        alert("Платеж перемещен в архив.");
+        showToast("Платеж перемещен в архив.", "info");
         executeFetchUpcomingPayments();
         fetchDashboardStats();
       } catch (error) {
         logger.error(`Failed to delete payment ${paymentId}:`, error);
-        alert("Не удалось удалить платеж.");
+        showToast("Не удалось удалить платеж.", "error");
       }
+    };
+
+    setConfirmModalState({
+      isOpen: true,
+      action,
+      title: "Удалить платеж",
+      message:
+        "Вы уверены, что хотите удалить этот платеж? Он будет перемещен в архив.",
+    });
+  };
+
+  const onConfirmAction = async () => {
+    if (confirmModalState.action) {
+      setIsConfirming(true);
+      await confirmModalState.action();
+      setIsConfirming(false);
     }
+    setConfirmModalState({
+      isOpen: false,
+      action: null,
+      title: "",
+      message: "",
+    });
+  };
+
+  const handleChartPointClick = (date: string) => {
+    if (!stats?.allPaymentsInMonth) return;
+    const paymentsForDay = stats.allPaymentsInMonth.filter((p) => {
+      const paymentDateKey =
+        p.status === "completed" && p.completedAt
+          ? new Date(p.completedAt).toISOString().split("T")[0]
+          : p.dueDate;
+      return paymentDateKey === date;
+    });
+    setDailyPaymentsModal({ date, payments: paymentsForDay });
   };
 
   // --- Данные для графика (НОВАЯ, УПРОЩЕННАЯ ВЕРСИЯ) ---
-  const { chartData, chartLabels } = useMemo(() => {
+  const { chartData, chartLabels, chartRawDates } = useMemo(() => {
     if (!stats?.dailyPaymentLoad || stats.dailyPaymentLoad.length === 0) {
-      return { chartData: [], chartLabels: [] };
+      return { chartData: [], chartLabels: [], chartRawDates: [] };
     }
 
     const dataPoints = stats.dailyPaymentLoad.map((d) => d.amount);
     const labels = stats.dailyPaymentLoad.map((d) =>
-      new Date(d.date).toLocaleDateString([], {
+      new Date(d.date).toLocaleDateString("ru-RU", {
         day: "numeric",
         month: "short",
       })
     );
+    const rawDates = stats.dailyPaymentLoad.map((d) => d.date);
 
-    return { chartData: dataPoints, chartLabels: labels };
+    return {
+      chartData: dataPoints,
+      chartLabels: labels,
+      chartRawDates: rawDates,
+    };
   }, [stats]);
 
   const noDailyData = useMemo(() => {
@@ -359,7 +447,7 @@ const HomePage: React.FC = () => {
                           <PaymentCard
                             payment={payment}
                             onEdit={() => handleEditPayment(payment.id)}
-                            onComplete={() => handleCompletePayment(payment.id)}
+                            onComplete={() => handleCompletePayment(payment)}
                             onDelete={() => handleDeletePayment(payment.id)}
                           />
                         </div>
@@ -431,14 +519,28 @@ const HomePage: React.FC = () => {
                   : "Произвольный"
               }
               options={[
-                { label: "Месяц", onClick: () => setPeriodType("month") },
-                { label: "Квартал", onClick: () => setPeriodType("quarter") },
-                { label: "Год", onClick: () => setPeriodType("year") },
+                {
+                  label: "Месяц",
+                  value: "month",
+                  onClick: () => setPeriodType("month"),
+                },
+                {
+                  label: "Квартал",
+                  value: "quarter",
+                  onClick: () => setPeriodType("quarter"),
+                },
+                {
+                  label: "Год",
+                  value: "year",
+                  onClick: () => setPeriodType("year"),
+                },
                 {
                   label: "Произвольный",
+                  value: "custom",
                   onClick: () => setPeriodType("custom"),
                 },
               ]}
+              selectedValue={periodType}
             />
             {/* Month dropdown */}
             {periodType === "month" && (
@@ -447,8 +549,10 @@ const HomePage: React.FC = () => {
                   label={monthNames[month]}
                   options={monthNames.map((name, idx) => ({
                     label: name,
+                    value: idx,
                     onClick: () => setMonth(idx),
                   }))}
+                  selectedValue={month}
                 />
               </>
             )}
@@ -459,8 +563,10 @@ const HomePage: React.FC = () => {
                   label={String(quarter + 1)}
                   options={Array.from({ length: 4 }, (_, idx) => ({
                     label: String(idx + 1),
+                    value: idx,
                     onClick: () => setQuarter(idx),
                   }))}
+                  selectedValue={quarter}
                 />
               </>
             )}
@@ -523,8 +629,11 @@ const HomePage: React.FC = () => {
                     Предстоящие платежи
                   </p>
                   <p className="mt-1 text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    {/* TODO: Форматировать сумму */}
-                    {parseFloat(stats.totalUpcomingAmount).toFixed(2)}
+                    {new Intl.NumberFormat("ru-RU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(parseFloat(stats.totalUpcomingAmount))}
+                    <span className="ml-1 text-2xl font-normal">₽</span>
                   </p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
@@ -532,8 +641,11 @@ const HomePage: React.FC = () => {
                     Выполненные платежи
                   </p>
                   <p className="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
-                    {/* TODO: Форматировать сумму */}
-                    {parseFloat(stats.totalCompletedAmount).toFixed(2)}
+                    {new Intl.NumberFormat("ru-RU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(parseFloat(stats.totalCompletedAmount))}
+                    <span className="ml-1 text-2xl font-normal">₽</span>
                   </p>
                 </div>
                 {/* TODO: Добавить другие суммарные показатели, если нужны */}
@@ -557,8 +669,11 @@ const HomePage: React.FC = () => {
 
                 {/* График платежной нагрузки по дням */}
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col">
-                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-4">
+                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-1">
                     Платежная нагрузка по дням
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    Кликните на точку на графике, чтобы увидеть детали за день.
                   </p>
                   {noDailyData ? (
                     <div className="flex items-center justify-center h-full text-center text-gray-700 dark:text-gray-300 py-10">
@@ -570,6 +685,10 @@ const HomePage: React.FC = () => {
                         data={chartData}
                         labels={chartLabels}
                         theme={resolvedTheme}
+                        rawDates={chartRawDates}
+                        onPointClick={handleChartPointClick}
+                        startDate={startDate}
+                        endDate={endDate}
                       />
                     </div>
                   )}
@@ -586,6 +705,83 @@ const HomePage: React.FC = () => {
           )}
         </div>
       </div>
+      <ConfirmCompletionDateModal
+        isOpen={completionDateModalState.isOpen}
+        onClose={() =>
+          setCompletionDateModalState({ isOpen: false, payment: null })
+        }
+        onConfirm={(selectedDate) => {
+          if (completionDateModalState.payment) {
+            callCompleteApi(completionDateModalState.payment.id, selectedDate);
+          }
+        }}
+        dueDate={
+          completionDateModalState.payment
+            ? new Date(completionDateModalState.payment.dueDate)
+            : new Date()
+        }
+        isConfirming={isCompleting}
+      />
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() =>
+          setConfirmModalState({
+            isOpen: false,
+            action: null,
+            title: "",
+            message: "",
+          })
+        }
+        onConfirm={onConfirmAction}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        isConfirming={isConfirming}
+      />
+      {/* Modal for Daily Payments */}
+      <Modal
+        isOpen={!!dailyPaymentsModal}
+        onClose={() => setDailyPaymentsModal(null)}
+        title={`Платежи за ${
+          dailyPaymentsModal?.date
+            ? new Date(dailyPaymentsModal.date).toLocaleDateString("ru-RU", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : ""
+        }`}
+      >
+        {dailyPaymentsModal && dailyPaymentsModal.payments.length > 0 ? (
+          <ul className="space-y-3">
+            {dailyPaymentsModal.payments.map((p) => (
+              <li
+                key={p.id}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md"
+              >
+                <div className="flex items-center gap-3">
+                  <PaymentIconDisplay payment={p} sizeClass="h-6 w-6" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {p.title}
+                  </span>
+                </div>
+                <span className="font-bold text-gray-900 dark:text-gray-100">
+                  {new Intl.NumberFormat("ru-RU", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(p.amount)}
+                  <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
+                    ₽
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-600 dark:text-gray-400">
+            Нет платежей на эту дату.
+          </p>
+        )}
+      </Modal>
     </>
   );
 };

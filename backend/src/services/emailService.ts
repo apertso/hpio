@@ -100,6 +100,7 @@ const createVerificationEmailTemplate = (
 
 export const sendPasswordResetEmail = async (
   recipientEmail: string,
+  recipientName: string,
   resetLink: string
 ) => {
   if (!config.mailerSend.apiKey) {
@@ -119,7 +120,7 @@ export const sendPasswordResetEmail = async (
     .setFrom(sentFrom)
     .setTo(recipients)
     .setSubject("Инструкции по сбросу пароля для Хочу Плачу")
-    .setHtml(createEmailTemplate(recipientEmail, resetLink));
+    .setHtml(createEmailTemplate(recipientName, resetLink));
 
   try {
     await mailerSend.email.send(emailParams);
@@ -133,6 +134,7 @@ export const sendPasswordResetEmail = async (
 
 export const sendVerificationEmail = async (
   recipientEmail: string,
+  recipientName: string,
   verificationLink: string
 ) => {
   if (!config.mailerSend.apiKey) {
@@ -151,7 +153,7 @@ export const sendVerificationEmail = async (
     .setFrom(sentFrom)
     .setTo(recipients)
     .setSubject("Подтвердите ваш Email для Хочу Плачу")
-    .setHtml(createVerificationEmailTemplate(recipientEmail, verificationLink));
+    .setHtml(createVerificationEmailTemplate(recipientName, verificationLink));
 
   try {
     await mailerSend.email.send(emailParams);

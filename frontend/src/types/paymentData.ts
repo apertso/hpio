@@ -15,7 +15,11 @@ export interface PaymentData {
   fileName?: string | null; // File name field
   // !!! Icon fields
   builtinIconName?: BuiltinIcon | null; // Use BuiltinIcon type
-  category?: { id: string; name: string } | null; // Can be category object or null
+  category?: {
+    id: string;
+    name: string;
+    builtinIconName?: BuiltinIcon | null;
+  } | null; // Can be category object or null
   // Include series data if joined
   series?: {
     id: string;

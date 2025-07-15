@@ -26,6 +26,9 @@ interface PaymentDataForIcon {
   id: string;
   builtinIconName?: BuiltinIcon | null;
   title?: string;
+  category?: {
+    builtinIconName?: BuiltinIcon | null;
+  } | null;
 }
 
 interface PaymentIconDisplayProps {
@@ -56,12 +59,13 @@ const PaymentIconDisplay: React.FC<PaymentIconDisplayProps> = ({
   payment,
   sizeClass = "h-6 w-6",
 }) => {
-  if (!payment || !payment.builtinIconName) {
+  const iconName = payment.builtinIconName || payment.category?.builtinIconName;
+  if (!payment || !iconName) {
     return <Icon className={`${sizeClass} text-gray-400`} />;
   }
-  const iconColor = getIconColorByName(payment.builtinIconName);
+  const iconColor = getIconColorByName(iconName);
 
-  const BuiltinIconComponent = builtinIconComponents[payment.builtinIconName];
+  const BuiltinIconComponent = builtinIconComponents[iconName];
   if (BuiltinIconComponent) {
     return (
       <BuiltinIconComponent
@@ -75,7 +79,7 @@ const PaymentIconDisplay: React.FC<PaymentIconDisplayProps> = ({
       className={`${sizeClass} flex items-center justify-center border rounded dark:border-gray-600`}
       style={{ color: iconColor, borderColor: iconColor }}
     >
-      {payment.builtinIconName[0]?.toUpperCase() || "?"}
+      {iconName[0]?.toUpperCase() || "?"}
     </div>
   );
 };

@@ -18,6 +18,9 @@ import { Button } from "../components/Button"; // Import the Button component
 import { PaymentData } from "../types/paymentData";
 import Spinner from "../components/Spinner";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext"; // Import useToast
+import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal"; // Import ConfirmCompletionDateModal
+import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 
 // TODO: Хелпер для форматирования шаблона повторения на русский
 export const formatRecurrencePattern = (
@@ -46,6 +49,8 @@ const fetchAllPaymentsApi = async (): Promise<PaymentData[]> => {
 };
 
 const PaymentsList: React.FC = () => {
+  const { showToast } = useToast(); // Import useToast
+
   // Use useApi for fetching all payments
   const {
     data: rawAllPayments,
@@ -56,6 +61,20 @@ const PaymentsList: React.FC = () => {
 
   // State for transformed all payments data
   const [allPayments, setAllPayments] = useState<PaymentData[]>([]);
+
+  // New state for modals
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionDateModalState, setCompletionDateModalState] = useState<{
+    isOpen: boolean;
+    payment: PaymentData | null;
+  }>({ isOpen: false, payment: null });
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    action: (() => void) | null;
+    title: string;
+    message: string;
+  }>({ isOpen: false, action: null, title: "", message: "" });
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // Effect to transform data when raw all payments data changes
   useEffect(() => {
@@ -89,52 +108,79 @@ const PaymentsList: React.FC = () => {
 
   const navigate = useNavigate();
 
+  const callCompleteApi = async (paymentId: string, completionDate?: Date) => {
+    setIsCompleting(true);
+    try {
+      const payload = completionDate
+        ? { completionDate: completionDate.toISOString().split("T")[0] }
+        : {};
+      await axiosInstance.put(`/payments/${paymentId}/complete`, payload);
+      showToast("Платеж выполнен.", "success");
+      executeFetchAllPayments();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      logger.error(`Failed to complete payment ${paymentId}:`, errorMessage);
+      showToast("Не удалось выполнить платеж.", "error");
+    } finally {
+      setIsCompleting(false);
+      setCompletionDateModalState({ isOpen: false, payment: null });
+    }
+  };
+
+  const onConfirmAction = async () => {
+    if (confirmModalState.action) {
+      setIsConfirming(true);
+      await confirmModalState.action();
+      setIsConfirming(false);
+    }
+    setConfirmModalState({
+      isOpen: false,
+      action: null,
+      title: "",
+      message: "",
+    });
+  };
+
   // TODO: Обработчики действий над платежом (Часть 8)
-  const handleCompletePayment = async (paymentId: string) => {
-    if (
-      window.confirm("Вы уверены, что хотите отметить платеж как выполненный?")
-    ) {
-      try {
-        await axiosInstance.put(`/payments/${paymentId}/complete`);
-        logger.info(`Payment marked as completed: ${paymentId}`);
-        executeFetchAllPayments(); // Перезагружаем список после выполнения using the execute function from useApi
-      } catch (error: any) {
-        logger.error(
-          `Failed to complete payment ${paymentId}:`,
-          error.response?.data?.message || error.message
-        );
-        alert(
-          `Не удалось отметить платеж как выполненный: ${
-            error.response?.data?.message || error.message
-          }`
-        );
-      }
+  const handleCompletePayment = async (payment: PaymentData) => {
+    const today = new Date();
+    const dueDate = new Date(payment.dueDate);
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (today.getTime() === dueDate.getTime()) {
+      callCompleteApi(payment.id);
+    } else {
+      setCompletionDateModalState({ isOpen: true, payment: payment });
     }
   };
 
   // Логическое удаление платежа (перемещение в архив)
   const handleDeletePayment = async (paymentId: string) => {
-    if (
-      window.confirm(
-        "Вы уверены, что хотите удалить платеж (переместить в архив)?"
-      )
-    ) {
+    const action = async () => {
       try {
         await axiosInstance.delete(`/payments/${paymentId}`);
         logger.info(`Payment soft-deleted: ${paymentId}`);
-        executeFetchAllPayments(); // Перезагружаем список после удаления using the execute function from useApi
-      } catch (error: any) {
+        showToast("Платеж перемещен в архив.", "info");
+        executeFetchAllPayments();
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
         logger.error(
           `Failed to soft-delete payment ${paymentId}:`,
-          error.response?.data?.message || error.message
+          errorMessage
         );
-        alert(
-          `Не удалось удалить платеж: ${
-            error.response?.data?.message || error.message
-          }`
-        );
+        showToast("Не удалось удалить платеж.", "error");
       }
-    }
+    };
+
+    setConfirmModalState({
+      isOpen: true,
+      action,
+      title: "Удалить платеж",
+      message: "Вы уверены, что хотите удалить платеж (переместить в архив)?",
+    });
   };
 
   const handleAddPayment = () => {
@@ -143,6 +189,35 @@ const PaymentsList: React.FC = () => {
 
   const handleEditPayment = (paymentId: string) => {
     navigate(`/payments/edit/${paymentId}`);
+  };
+
+  // Функция для скачивания файла (через защищенный API)
+  const handleDownloadFile = async (paymentId: string, fileName: string) => {
+    try {
+      const res = await axiosInstance.get(`/files/payment/${paymentId}`, {
+        responseType: "blob", // Получаем файл как Blob
+      });
+
+      // Создаем временную ссылку для скачивания
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName); // Указываем оригинальное имя файла для скачивания
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link); // Удаляем временную ссылку
+      window.URL.revokeObjectURL(url); // Освобождаем URL объекта
+
+      logger.info(`File downloaded for payment ${paymentId}`);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      logger.error(
+        `Failed to download file for payment ${paymentId}:`,
+        errorMessage
+      );
+      showToast(`Не удалось скачать файл: ${errorMessage}`, "error");
+    }
   };
 
   return (
@@ -306,8 +381,13 @@ const PaymentsList: React.FC = () => {
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {" "}
-                        {/* Сумма */} {payment.amount.toFixed(2)}{" "}
+                        {new Intl.NumberFormat("ru-RU", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(payment.amount)}
+                        <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
+                          ₽
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         {" "}
@@ -361,7 +441,7 @@ const PaymentsList: React.FC = () => {
                           <>
                             {/* Кнопка Выполнить */}
                             <button
-                              onClick={() => handleCompletePayment(payment.id)}
+                              onClick={() => handleCompletePayment(payment)}
                               className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 mx-1 cursor-pointer"
                               title="Отметить как выполненный"
                             >
@@ -399,39 +479,41 @@ const PaymentsList: React.FC = () => {
           </div>
         )}
       </div>
+      <ConfirmCompletionDateModal
+        isOpen={completionDateModalState.isOpen}
+        onClose={() =>
+          setCompletionDateModalState({ isOpen: false, payment: null })
+        }
+        onConfirm={(selectedDate) => {
+          if (completionDateModalState.payment) {
+            callCompleteApi(completionDateModalState.payment.id, selectedDate);
+          }
+        }}
+        dueDate={
+          completionDateModalState.payment
+            ? new Date(completionDateModalState.payment.dueDate)
+            : new Date()
+        }
+        isConfirming={isCompleting}
+      />
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() =>
+          setConfirmModalState({
+            isOpen: false,
+            action: null,
+            title: "",
+            message: "",
+          })
+        }
+        onConfirm={onConfirmAction}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        confirmText="Да, подтвердить"
+        isConfirming={isConfirming}
+      />
     </>
   );
-};
-
-// Функция для скачивания файла (через защищенный API)
-const handleDownloadFile = async (paymentId: string, fileName: string) => {
-  try {
-    const res = await axiosInstance.get(`/files/payment/${paymentId}`, {
-      responseType: "blob", // Получаем файл как Blob
-    });
-
-    // Создаем временную ссылку для скачивания
-    const url = window.URL.createObjectURL(new Blob([res.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", fileName); // Указываем оригинальное имя файла для скачивания
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode?.removeChild(link); // Удаляем временную ссылку
-    window.URL.revokeObjectURL(url); // Освобождаем URL объекта
-
-    logger.info(`File downloaded for payment ${paymentId}`);
-  } catch (error: any) {
-    logger.error(
-      `Failed to download file for payment ${paymentId}:`,
-      error.response?.data?.message || error.message
-    );
-    alert(
-      `Не удалось скачать файл: ${
-        error.response?.data?.message || error.message
-      }`
-    );
-  }
 };
 
 export default PaymentsList;

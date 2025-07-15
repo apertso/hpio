@@ -13,6 +13,8 @@ interface ScrollbarProps {
 
 const SCROLLBAR_MARGIN = 5; // 5px margin
 
+// Remove animateScroll and easeOutCubic helpers
+
 const Scrollbar: React.FC<ScrollbarProps> = ({
   containerRef,
   orientation = "vertical",
@@ -34,6 +36,7 @@ const Scrollbar: React.FC<ScrollbarProps> = ({
   });
   const isDraggingRef = useRef(false);
   const isVertical = orientation === "vertical";
+  // Remove animationFrameRef declaration
 
   const updateThumb = useCallback(() => {
     if (!containerRef.current) return;
@@ -89,13 +92,20 @@ const Scrollbar: React.FC<ScrollbarProps> = ({
 
       if (isVertical) {
         const { scrollHeight, clientHeight } = containerRef.current;
+        const thumbTrackHeight = clientHeight - 2 * SCROLLBAR_MARGIN;
+        const thumbHeight = Math.max(
+          (clientHeight / scrollHeight) * thumbTrackHeight,
+          20
+        );
+
         const deltaY = e.clientY - dragStartRef.current.startY;
         const scrollableContentHeight = scrollHeight - clientHeight;
-        const thumbHeight = parseFloat(thumbStyle.height);
+
         if (isNaN(thumbHeight) || thumbHeight === 0) return;
-        const thumbTrackHeight = clientHeight - 2 * SCROLLBAR_MARGIN;
+
         const thumbScrollRange = thumbTrackHeight - thumbHeight;
         if (thumbScrollRange <= 0) return;
+
         const contentScrollPerThumbPixel =
           scrollableContentHeight / thumbScrollRange;
         let newScrollTop =
@@ -109,13 +119,20 @@ const Scrollbar: React.FC<ScrollbarProps> = ({
       } else {
         // Horizontal
         const { scrollWidth, clientWidth } = containerRef.current;
+        const thumbTrackWidth = clientWidth - 2 * SCROLLBAR_MARGIN;
+        const thumbWidth = Math.max(
+          (clientWidth / scrollWidth) * thumbTrackWidth,
+          20
+        );
+
         const deltaX = e.clientX - dragStartRef.current.startX;
         const scrollableContentWidth = scrollWidth - clientWidth;
-        const thumbWidth = parseFloat(thumbStyle.width);
+
         if (isNaN(thumbWidth) || thumbWidth === 0) return;
-        const thumbTrackWidth = clientWidth - 2 * SCROLLBAR_MARGIN;
+
         const thumbScrollRange = thumbTrackWidth - thumbWidth;
         if (thumbScrollRange <= 0) return;
+
         const contentScrollPerThumbPixel =
           scrollableContentWidth / thumbScrollRange;
         let newScrollLeft =
@@ -128,7 +145,7 @@ const Scrollbar: React.FC<ScrollbarProps> = ({
         containerRef.current.scrollLeft = newScrollLeft;
       }
     },
-    [containerRef, thumbStyle, isVertical]
+    [containerRef, isVertical]
   );
 
   const handleMouseUp = useCallback(
@@ -176,9 +193,19 @@ const Scrollbar: React.FC<ScrollbarProps> = ({
       e.preventDefault();
 
       if (isVertical) {
-        const { clientHeight } = containerRef.current;
+        const { clientHeight, scrollHeight, scrollTop } = containerRef.current;
         const trackRect = scrollbarTrackRef.current.getBoundingClientRect();
-        const thumbTop = parseFloat(thumbStyle.top);
+
+        const thumbTrackHeight = clientHeight - 2 * SCROLLBAR_MARGIN;
+        const thumbHeight = Math.max(
+          (clientHeight / scrollHeight) * thumbTrackHeight,
+          20
+        );
+        const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+        const thumbTop =
+          SCROLLBAR_MARGIN +
+          scrollPercentage * (thumbTrackHeight - thumbHeight);
+
         const clickY = e.clientY - trackRect.top;
         if (clickY < thumbTop) {
           containerRef.current.scrollBy({
@@ -192,9 +219,18 @@ const Scrollbar: React.FC<ScrollbarProps> = ({
           });
         }
       } else {
-        const { clientWidth } = containerRef.current;
+        const { clientWidth, scrollWidth, scrollLeft } = containerRef.current;
         const trackRect = scrollbarTrackRef.current.getBoundingClientRect();
-        const thumbLeft = parseFloat(thumbStyle.left);
+
+        const thumbTrackWidth = clientWidth - 2 * SCROLLBAR_MARGIN;
+        const thumbWidth = Math.max(
+          (clientWidth / scrollWidth) * thumbTrackWidth,
+          20
+        );
+        const scrollPercentage = scrollLeft / (scrollWidth - clientWidth);
+        const thumbLeft =
+          SCROLLBAR_MARGIN + scrollPercentage * (thumbTrackWidth - thumbWidth);
+
         const clickX = e.clientX - trackRect.left;
         if (clickX < thumbLeft) {
           containerRef.current.scrollBy({
@@ -209,7 +245,7 @@ const Scrollbar: React.FC<ScrollbarProps> = ({
         }
       }
     },
-    [containerRef, thumbStyle, isVertical]
+    [containerRef, isVertical]
   );
 
   useEffect(() => {
@@ -239,6 +275,26 @@ const Scrollbar: React.FC<ScrollbarProps> = ({
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [containerRef, updateThumb, handleMouseMove, handleMouseUp]);
+
+  useEffect(() => {
+    const scrollbar = scrollbarTrackRef.current;
+    const container = containerRef.current;
+    if (!scrollbar || !container) return;
+
+    const wheelHandler = (e: WheelEvent) => {
+      if (isVertical) {
+        container.scrollBy({ top: e.deltaY, behavior: "smooth" });
+      } else {
+        container.scrollBy({ left: e.deltaX, behavior: "smooth" });
+      }
+    };
+
+    scrollbar.addEventListener("wheel", wheelHandler, { passive: true });
+
+    return () => {
+      scrollbar.removeEventListener("wheel", wheelHandler);
+    };
+  }, [containerRef, isVertical]);
 
   return (
     <div

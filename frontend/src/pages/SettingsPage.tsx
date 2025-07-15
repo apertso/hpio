@@ -13,11 +13,13 @@ import {
   UserIcon,
   CheckBadgeIcon,
   ExclamationCircleIcon,
+  PencilIcon,
 } from "@heroicons/react/24/solid";
 import userApi, { PHOTO_URL } from "../api/userApi";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
 import { useTheme } from "../context/ThemeContext";
+import { useToast } from "../context/ToastContext"; // Import useToast
 
 const profileSchema = z.object({
   name: z.string().min(1, "Имя обязательно для заполнения."),
@@ -73,7 +75,9 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 const SettingsPage: React.FC = () => {
   const { user, refreshUser, logout, token } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
+  const { showToast } = useToast(); // Import useToast
   const [isUploading, setIsUploading] = useState(false);
+  const [isEmailEditing, setIsEmailEditing] = useState(false);
   const [avatarKey, setAvatarKey] = useState(Date.now());
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
@@ -130,9 +134,18 @@ const SettingsPage: React.FC = () => {
 
   const onProfileSubmit: SubmitHandler<ProfileInputs> = async (data) => {
     try {
+      const emailChanged = data.email !== user?.email;
       await userApi.updateProfile({ name: data.name, email: data.email });
       await refreshUser();
-      alert("Профиль успешно обновлен.");
+      if (emailChanged) {
+        showToast(
+          "Профиль успешно обновлен. Мы отправили ссылку для подтверждения на ваш новый email.",
+          "success"
+        );
+      } else {
+        showToast("Профиль успешно обновлен.", "success");
+      }
+      setIsEmailEditing(false);
     } catch (error) {
       const message = getErrorMessage(error);
       setProfileError("root.serverError", { type: "manual", message });
@@ -146,7 +159,7 @@ const SettingsPage: React.FC = () => {
         currentPassword: data.currentPassword,
       });
       resetPasswordForm();
-      alert("Пароль успешно изменен.");
+      showToast("Пароль успешно изменен.", "success");
     } catch (error) {
       const message = getErrorMessage(error);
       setPasswordError("root.serverError", { type: "manual", message });
@@ -155,15 +168,18 @@ const SettingsPage: React.FC = () => {
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmationText !== "УДАЛИТЬ АККАУНТ") {
-      alert("Введите подтверждающую фразу правильно.");
+      showToast("Введите подтверждающую фразу правильно.", "error");
       return;
     }
     try {
       await userApi.deleteAccount();
-      alert("Ваш аккаунт был успешно удален.");
+      showToast("Ваш аккаунт был успешно удален.", "success");
       logout();
     } catch (error) {
-      alert(`Ошибка при удалении аккаунта: ${getErrorMessage(error)}`);
+      showToast(
+        `Ошибка при удалении аккаунта: ${getErrorMessage(error)}`,
+        "error"
+      );
     }
   };
 
@@ -244,11 +260,12 @@ const SettingsPage: React.FC = () => {
                     <Input
                       id="email"
                       type="email"
-                      className="w-full bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 pr-10"
+                      className="w-full bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 pr-20"
                       {...registerProfile("email")}
                       error={profileErrors.email?.message}
+                      disabled={!isEmailEditing}
                     />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center space-x-2">
                       {user?.isVerified ? (
                         <CheckBadgeIcon
                           className="h-5 w-5 text-green-500"
@@ -259,6 +276,15 @@ const SettingsPage: React.FC = () => {
                           className="h-5 w-5 text-yellow-500"
                           title="Email не подтвержден"
                         />
+                      )}
+                      {!isEmailEditing && (
+                        <button
+                          type="button"
+                          onClick={() => setIsEmailEditing(true)}
+                          className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 cursor-pointer"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
                       )}
                     </div>
                   </div>

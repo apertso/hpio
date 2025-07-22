@@ -6,8 +6,8 @@ import { config } from "../config/appConfig";
 import logger from "../config/logger";
 import { UserInstance } from "../models/User";
 import { Op } from "sequelize";
-import { deleteFileFromFS } from "./fileService";
 import path from "path";
+import fs from "fs/promises";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./emailService";
 import crypto from "crypto";
 
@@ -329,7 +329,7 @@ export const attachPhotoToUser = async (
   const user = (await db.User.findByPk(userId)) as UserInstance;
   if (!user) {
     // Если пользователь не найден, удаляем загруженный файл
-    await deleteFileFromFS(userId, "profile", file.filename);
+    await fs.rm(path.join(config.uploadDir, "users", userId, file.filename));
     throw new Error("Пользователь не найден.");
   }
 
@@ -337,7 +337,7 @@ export const attachPhotoToUser = async (
   if (user.photoPath) {
     try {
       const oldFileName = path.basename(user.photoPath);
-      await deleteFileFromFS(userId, "profile", oldFileName);
+      await fs.rm(path.join(config.uploadDir, "users", userId, oldFileName));
     } catch (e) {
       logger.error(`Could not delete old profile photo: ${user.photoPath}`, e);
     }
@@ -359,20 +359,47 @@ export const deleteUserAccount = async (userId: string) => {
     throw new Error("Пользователь не найден.");
   }
 
-  // Удаляем директорию пользователя со всеми файлами
+  const transaction = await db.sequelize.transaction();
+
   try {
-    const userUploadsDir = path.join(config.uploadDir, "users", userId);
-    await deleteFileFromFS(userId, ""); // Передаем пустой paymentId, чтобы удалить папку /users/userId
+    // Вручную удаляем связанные записи в рамках транзакции
+    // Сначала удаляем платежи, так как они могут ссылаться на другие таблицы
+    await db.Payment.destroy({ where: { userId }, transaction });
+    // Затем удаляем серии, которые также могут иметь зависимости
+    await db.RecurringSeries.destroy({ where: { userId }, transaction });
+    // После этого удаляем категории
+    await db.Category.destroy({ where: { userId }, transaction });
+
+    // Наконец, удаляем самого пользователя
+    await user.destroy({ transaction });
+
+    // Если все операции с БД успешны, подтверждаем транзакцию
+    await transaction.commit();
   } catch (error) {
-    logger.error(
-      `Error deleting user upload directory for user ${userId}:`,
-      error
-    );
-    // Продолжаем удаление пользователя из БД даже если файлы не удалились
+    // В случае ошибки откатываем все изменения в БД
+    await transaction.rollback();
+    logger.error(`Error deleting database records for user ${userId}:`, error);
+    // Пробрасываем ошибку дальше, чтобы контроллер мог ее обработать
+    throw error;
   }
 
-  // Удаляем пользователя из БД (связанные данные удалятся каскадно)
-  await user.destroy();
+  // После успешного удаления из БД удаляем файлы пользователя из файловой системы.
+  // Эта операция выполняется вне транзакции.
+  try {
+    const userUploadsDir = path.join(config.uploadDir, "users", userId);
+    await fs.rm(userUploadsDir, { recursive: true, force: true });
+    logger.info(`User upload directory deleted for user ${userId}`);
+  } catch (error: any) {
+    // Ошибка не является критической, если директория просто не существует.
+    // Логируем только другие типы ошибок.
+    if (error.code !== "ENOENT") {
+      logger.error(
+        `Error deleting user upload directory for user ${userId}:`,
+        error
+      );
+    }
+  }
+
   logger.info(`User account deleted for user ID: ${userId}`);
   return { message: "Аккаунт успешно удален." };
 };

@@ -54,7 +54,6 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         // Название категории
         type: dataTypes.STRING,
         allowNull: false,
-        unique: "userCategoryUnique", // Уникальность в рамках пользователя
       },
       builtinIconName: {
         type: dataTypes.STRING,

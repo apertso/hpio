@@ -454,18 +454,24 @@ const HomePage: React.FC = () => {
     }
   }, [startDate, endDate]); // Update dependency array
 
-  // --- Эффект для загрузки статистики при монтировании компонента (из Dashboard.tsx) ---
+  // --- Эффекты для загрузки и сброса статистики ---
+
+  // Эффект для загрузки статистики при изменении фильтров
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
+
+  // Эффект для сброса фильтров на текущую дату при монтировании или по триггеру сброса
   useEffect(() => {
     setUpcomingDays(10);
     setPeriodType("month");
     setYear(new Date().getFullYear());
     setMonth(new Date().getMonth());
     setQuarter(Math.floor(new Date().getMonth() / 3));
-    // TODO: Should be reseted as well, but they doesn't work properly
+    // TODO: Should be reseted as well, but they don't work properly
     // setCustomDateFrom(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
     // setCustomDateTo(new Date());
-    fetchDashboardStats();
-  }, [fetchDashboardStats, resetKey]); // Зависимость от fetchDashboardStats
+  }, [resetKey]); // Зависимость только от resetKey
 
   const navigate = useNavigate();
 

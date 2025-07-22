@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { config } from "../config/config";
+import { config } from "../config/appConfig";
 import db from "../models"; // Импорт для доступа к моделям
 
 const protect = async (req: Request, res: Response, next: NextFunction) => {

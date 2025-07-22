@@ -2,6 +2,10 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../api/axiosInstance";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline"; // Иконки действий
+import {
+  PencilIcon as PencilSolidIcon,
+  TrashIcon as TrashSolidIcon,
+} from "@heroicons/react/24/solid";
 import { Button } from "../components/Button"; // Import the Button component
 import useApi from "../hooks/useApi"; // Import useApi
 import Spinner from "../components/Spinner";
@@ -24,6 +28,92 @@ const fetchCategoriesApi = async (): Promise<Category[]> => {
   return res.data;
 };
 
+// MobileActionsOverlay and CategoryListItem components
+const MobileActionsOverlay: React.FC<{
+  category: Category | null;
+  onClose: () => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
+}> = ({ category, onClose, onEdit, onDelete }) => {
+  const [isVisible, setIsVisible] = React.useState(false);
+  React.useEffect(() => {
+    if (category) {
+      const timer = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsVisible(false);
+    }
+  }, [category]);
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 300);
+  };
+  if (!category) return null;
+  const actions = [
+    {
+      label: "Изменить",
+      icon: PencilSolidIcon,
+      handler: () => onEdit(category.id),
+    },
+    {
+      label: "Удалить",
+      icon: TrashSolidIcon,
+      handler: () => onDelete(category.id, category.name),
+    },
+  ];
+  return (
+    <div
+      className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+        isVisible ? "bg-black/40" : "bg-black/0"
+      }`}
+      onClick={handleClose}
+      aria-hidden="true"
+    >
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out ${
+          isVisible ? "translate-y-0" : "translate-y-full"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-around items-center">
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              onClick={() => {
+                action.handler();
+                handleClose();
+              }}
+              className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+            >
+              <action.icon className="h-6 w-6" />
+              <span className="text-sm">{action.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+const CategoryListItem: React.FC<{
+  category: Category;
+  onClick: () => void;
+}> = ({ category, onClick }) => (
+  <button
+    onClick={onClick}
+    className="w-full text-left flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+  >
+    <div className="flex items-center gap-4">
+      <PaymentIconDisplay
+        payment={{ id: category.id, builtinIconName: category.builtinIconName }}
+        sizeClass="h-8 w-8"
+      />
+      <p className="font-medium text-gray-900 dark:text-gray-100">
+        {category.name}
+      </p>
+    </div>
+  </button>
+);
+
 const CategoriesPage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
 
@@ -42,6 +132,8 @@ const CategoriesPage: React.FC = () => {
     message: string;
   }>({ isOpen: false, action: null, title: "", message: "" });
   const [isConfirming, setIsConfirming] = useState(false);
+  const [mobileActionsCategory, setMobileActionsCategory] =
+    useState<Category | null>(null);
 
   // Effect to trigger the fetch on mount
   useEffect(() => {
@@ -118,79 +210,94 @@ const CategoriesPage: React.FC = () => {
           </div>
         )}
         {!isLoadingCategories && (
-          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+          <>
             {categories && categories.length > 0 ? ( // Check if categories is not null and has length
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Иконка
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Название
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Действия
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Иконка
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Название
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                        >
+                          Действия
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {categories.map((category) => (
+                        <tr
+                          key={category.id}
+                          className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100"
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <PaymentIconDisplay
+                              payment={{
+                                id: category.id,
+                                builtinIconName: category.builtinIconName,
+                              }}
+                              sizeClass="h-6 w-6"
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {category.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
+                            <button
+                              onClick={() => handleEditCategory(category.id)} // Редактировать категорию
+                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1 cursor-pointer"
+                              title="Редактировать"
+                            >
+                              <PencilIcon className="h-5 w-5" />{" "}
+                              {/* Иконка редактирования */}
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteCategory(category.id, category.name)
+                              } // Удалить категорию
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1 cursor-pointer"
+                              title="Удалить"
+                            >
+                              <TrashIcon className="h-5 w-5" />{" "}
+                              {/* Иконка удаления */}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Mobile Card View */}
+                <div className="block md:hidden space-y-2 p-2">
                   {categories.map((category) => (
-                    <tr
+                    <CategoryListItem
                       key={category.id}
-                      className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <PaymentIconDisplay
-                          payment={{
-                            id: category.id,
-                            builtinIconName: category.builtinIconName,
-                          }}
-                          sizeClass="h-6 w-6"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {category.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
-                        <button
-                          onClick={() => handleEditCategory(category.id)} // Редактировать категорию
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1 cursor-pointer"
-                          title="Редактировать"
-                        >
-                          <PencilIcon className="h-5 w-5" />{" "}
-                          {/* Иконка редактирования */}
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleDeleteCategory(category.id, category.name)
-                          } // Удалить категорию
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1 cursor-pointer"
-                          title="Удалить"
-                        >
-                          <TrashIcon className="h-5 w-5" />{" "}
-                          {/* Иконка удаления */}
-                        </button>
-                      </td>
-                    </tr>
+                      category={category}
+                      onClick={() => setMobileActionsCategory(category)}
+                    />
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             ) : (
               <div className="p-4 text-center text-gray-700 dark:text-gray-300">
                 Нет категорий. Добавьте первую!
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
       <ConfirmModal
@@ -208,6 +315,12 @@ const CategoriesPage: React.FC = () => {
         message={confirmModalState.message}
         confirmText="Да, удалить"
         isConfirming={isConfirming}
+      />
+      <MobileActionsOverlay
+        category={mobileActionsCategory}
+        onClose={() => setMobileActionsCategory(null)}
+        onEdit={handleEditCategory}
+        onDelete={handleDeleteCategory}
       />
     </>
   );

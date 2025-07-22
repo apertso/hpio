@@ -9,7 +9,8 @@ export interface RecurringSeriesAttributes {
   title: string;
   amount: number;
   categoryId?: string | null;
-  recurrencePattern: "daily" | "weekly" | "monthly" | "yearly";
+  startDate: string; // Новое поле
+  recurrenceRule: string; // Новое поле вместо pattern
   recurrenceEndDate?: Date | null;
   builtinIconName?: string | null;
   isActive: boolean;
@@ -71,8 +72,12 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
           key: "id",
         },
       },
-      recurrencePattern: {
-        type: dataTypes.ENUM("daily", "weekly", "monthly", "yearly"),
+      startDate: {
+        type: dataTypes.DATEONLY,
+        allowNull: false,
+      },
+      recurrenceRule: {
+        type: dataTypes.STRING,
         allowNull: false,
       },
       recurrenceEndDate: {
@@ -105,7 +110,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       indexes: [
         { fields: ["userId"] },
         { fields: ["categoryId"] },
-        { fields: ["recurrencePattern"] },
+        { fields: ["recurrenceRule"] }, // Индекс по новому полю
         { fields: ["isActive"] },
       ],
     }

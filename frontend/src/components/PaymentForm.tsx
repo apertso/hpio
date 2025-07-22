@@ -1,27 +1,52 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SubmitHandler, useForm } from "react-hook-form"; // Import necessary types
+import { SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import axiosInstance from "../api/axiosInstance";
 import { AxiosError } from "axios";
 import logger from "../utils/logger";
 import "react-datepicker/dist/react-datepicker.css";
-import SeriesEditModal from "./SeriesEditModal";
 import DatePicker from "react-datepicker";
+import { seriesApi } from "../api/axiosInstance";
 
 import PaymentDetailsSection from "./PaymentDetailsSection";
-
 import PaymentCategorySelect from "./PaymentCategorySelect";
 import PaymentRecurrenceSection from "./PaymentRecurrenceSection";
 import PaymentFileUploadSection from "./PaymentFileUploadSection";
-import IconSelector from "./IconSelector"; // Import IconSelector
-import { BuiltinIcon } from "../utils/builtinIcons"; // Import BuiltinIcon type
+import IconSelector from "./IconSelector";
+import { BuiltinIcon } from "../utils/builtinIcons";
 import Spinner from "./Spinner";
+import { PaymentData } from "../types/paymentData";
 
-// PaymentIconInfo interface is now imported from IconPicker.tsx
+// Schema for a single payment edit
+const singlePaymentSchema = z.object({
+  title: z
+    .string()
+    .min(1, "Название обязательно")
+    .max(255, "Название слишком длинное"),
+  amount: z
+    .number({ invalid_type_error: "Сумма должна быть числом" })
+    .min(0.01, "Сумма должна быть больше 0"),
+  dueDate: z.date({
+    required_error: "Дата срока оплаты обязательна",
+    invalid_type_error: "Неверный формат даты",
+  }),
+  categoryId: z
+    .string()
+    .uuid("Неверный формат ID категории")
+    .nullable()
+    .optional(),
+  completedAt: z.date().nullable().optional(),
+});
 
-// Схема валидации формы платежа
-// НЕ добавляем здесь поля iconType, builtinIconName, iconPath - они управляются IconPicker и передаются через callback
+// Schema for a series edit
+const seriesSchema = singlePaymentSchema.extend({
+  recurrenceRule: z.string().min(1, "Правило повторения обязательно."),
+  // `dueDate` will be re-purposed as `startDate` for the series
+});
+
+// A broad schema for the form to accommodate all fields.
+// Specific validation will be handled in the submit handler based on scope.
 const paymentFormSchema = z.object({
   title: z
     .string()
@@ -39,198 +64,174 @@ const paymentFormSchema = z.object({
     .uuid("Неверный формат ID категории")
     .nullable()
     .optional(),
-  // !!! Поля рекуррентности
-  // Шаблон повторения - обязателен, если isRecurrent true
-  recurrencePattern: z
-    .enum(["daily", "weekly", "monthly", "yearly"])
-    .nullable()
-    .optional(), // Может быть null, если isRecurrent false
-  // Дата окончания - опциональна, если isRecurrent true
-  recurrenceEndDate: z
-    .date({ invalid_type_error: "Неверный формат даты окончания" })
-    .nullable()
-    .optional(),
+  recurrenceRule: z.string().nullable().optional(),
   completedAt: z.date().nullable().optional(),
-
-  // TODO: Добавить опцию "Создать как завершенный" (только для создания)
-  // createAsCompleted: z.boolean().optional(),
 });
 
-// Определяем тип данных формы, включая опциональные поля из формы
-export type PaymentFormInputs = z.infer<typeof paymentFormSchema> & {
-  // createAsCompleted?: boolean; // Добавляем опцию, если она будет в форме
-};
+export type PaymentFormInputs = z.infer<typeof paymentFormSchema>;
 
 interface PaymentFormProps {
   paymentId?: string;
   onSuccess: (newPaymentId?: string) => void;
   onCancel: () => void;
+  initialData: PaymentData | null; // Receive initial data as a prop
+  editScope: "single" | "series"; // Receive edit scope
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
   paymentId,
   onSuccess,
   onCancel,
+  initialData,
+  editScope,
 }) => {
   const isEditMode = !!paymentId;
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting: rhfIsSubmitting },
+    formState: { errors, isSubmitting },
     setValue,
     watch,
-    clearErrors,
     reset,
   } = useForm<PaymentFormInputs>({
     resolver: zodResolver(paymentFormSchema),
   });
 
-  const [currentSeriesId, setCurrentSeriesId] = useState<string | null>(null);
-  const [isSeriesModalOpen, setIsSeriesModalOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(isEditMode);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [selectedIconName, setSelectedIconName] = useState<BuiltinIcon | null>(
+    null
+  );
   const [attachedFile, setAttachedFile] = useState<{
     filePath: string;
     fileName: string;
   } | null>(null);
-  const [selectedIconName, setSelectedIconName] = useState<BuiltinIcon | null>(
-    null
-  );
-  const [createAsCompleted, setCreateAsCompleted] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
+  // Effect to populate the form with initial data
   useEffect(() => {
-    if (isEditMode && paymentId) {
-      const fetchPayment = async () => {
-        setIsLoading(true);
-        setFormError(null);
-        try {
-          const res = await axiosInstance.get(`/payments/${paymentId}`);
-          const paymentData = res.data;
-          setPaymentStatus(paymentData.status);
-
-          reset({
-            title: paymentData.title,
-            amount: parseFloat(paymentData.amount),
-            dueDate: new Date(paymentData.dueDate),
-            categoryId: paymentData.category?.id || "",
-            recurrencePattern: null,
-            recurrenceEndDate: null,
-            completedAt: paymentData.completedAt
-              ? new Date(paymentData.completedAt)
-              : null,
-          });
-
-          if (paymentData.seriesId) {
-            setCurrentSeriesId(paymentData.seriesId);
-          } else {
-            setCurrentSeriesId(null);
-          }
-
-          if (paymentData.filePath && paymentData.fileName) {
-            setAttachedFile({
-              filePath: paymentData.filePath,
-              fileName: paymentData.fileName,
-            });
-          } else {
-            setAttachedFile(null);
-          }
-
-          setSelectedIconName(paymentData.builtinIconName || null);
-          setIsLoading(false);
-        } catch (error: unknown) {
-          const errorMessage =
-            error instanceof AxiosError && error.response?.data?.message
-              ? error.response.data.message
-              : error instanceof Error
-              ? error.message
-              : "Failed to load payment data.";
-          logger.error(
-            `Failed to fetch payment ${paymentId}:`,
-            errorMessage,
-            error
-          );
-          setFormError(errorMessage);
-          setIsLoading(false);
-        }
+    if (initialData) {
+      const dataToSet = {
+        title:
+          editScope === "series" && initialData.series
+            ? initialData.series.title
+            : initialData.title,
+        amount: parseFloat(
+          (editScope === "series" && initialData.series
+            ? initialData.series.amount
+            : initialData.amount
+          ).toString()
+        ),
+        dueDate: new Date(initialData.dueDate),
+        categoryId: initialData.category?.id || null,
+        recurrenceRule:
+          editScope === "series" && initialData.series
+            ? initialData.series.recurrenceRule
+            : null,
+        completedAt: initialData.completedAt
+          ? new Date(initialData.completedAt)
+          : null,
       };
-      fetchPayment();
-    } else {
+      reset(dataToSet);
+
+      setSelectedIconName(
+        (editScope === "series" && initialData.series
+          ? initialData.series.builtinIconName
+          : initialData.builtinIconName) || null
+      );
+      setAttachedFile(
+        initialData.filePath && initialData.fileName
+          ? { filePath: initialData.filePath, fileName: initialData.fileName }
+          : null
+      );
+      setPaymentStatus(initialData.status);
+    } else if (!isEditMode) {
+      // Reset for "new payment" form
       reset({
         title: "",
         amount: undefined,
         dueDate: new Date(),
         categoryId: null,
-        recurrencePattern: null,
-        recurrenceEndDate: null,
+        recurrenceRule: null,
       });
-      setCurrentSeriesId(null);
-      setAttachedFile(null);
       setSelectedIconName(null);
-      setCreateAsCompleted(false);
-      setFormError(null);
-      setIsLoading(false);
+      setAttachedFile(null);
+      setPaymentStatus(null);
     }
-  }, [paymentId, isEditMode, reset]);
+  }, [initialData, editScope, isEditMode, reset]);
 
   const handleIconChange = useCallback((iconName: BuiltinIcon | null) => {
     setSelectedIconName(iconName);
   }, []);
 
+  const handleRecurrenceRuleChange = useCallback(
+    (rule: string | null) => {
+      setValue("recurrenceRule", rule, { shouldValidate: true });
+    },
+    [setValue]
+  );
+
   const handleFormSubmit: SubmitHandler<PaymentFormInputs> = async (data) => {
     setFormError(null);
 
-    const basePayloadData = {
-      title: data.title,
-      amount: Number(data.amount),
-      dueDate: data.dueDate
-        ? `${data.dueDate.getFullYear()}-${String(
-            data.dueDate.getMonth() + 1
-          ).padStart(2, "0")}-${String(data.dueDate.getDate()).padStart(
-            2,
-            "0"
-          )}`
-        : null,
-      categoryId: data.categoryId === "" ? null : data.categoryId,
-      builtinIconName: selectedIconName,
-      completedAt: data.completedAt ? data.completedAt.toISOString() : null,
-    };
+    // Manual validation based on scope
+    const validationSchema =
+      editScope === "series" ? seriesSchema : singlePaymentSchema;
+    const validationResult = validationSchema.safeParse(data);
 
-    let finalPayload: Record<string, unknown> = { ...basePayloadData };
-
-    if (isEditMode) {
-      if (!currentSeriesId && data.recurrencePattern) {
-        finalPayload.recurrencePattern = data.recurrencePattern;
-        finalPayload.recurrenceEndDate = data.recurrenceEndDate
-          ? data.recurrenceEndDate.toISOString().split("T")[0]
-          : null;
-      }
-    } else {
-      if (data.recurrencePattern) {
-        finalPayload = {
-          ...basePayloadData,
-          recurrencePattern: data.recurrencePattern || null,
-          recurrenceEndDate:
-            data.recurrencePattern && data.recurrenceEndDate
-              ? data.recurrenceEndDate.toISOString().split("T")[0]
-              : null,
-          createAsCompleted: createAsCompleted,
-        };
-      } else {
-        finalPayload.recurrencePattern = null;
-        finalPayload.recurrenceEndDate = null;
-      }
-      finalPayload.createAsCompleted = createAsCompleted;
+    if (!validationResult.success) {
+      // The resolver should catch this, but as a fallback:
+      setFormError("Пожалуйста, проверьте правильность заполнения полей.");
+      return;
     }
 
     try {
       if (isEditMode && paymentId) {
-        await axiosInstance.put(`/payments/${paymentId}`, finalPayload);
-        logger.info(`Payment updated (ID: ${paymentId})`);
-        onSuccess(paymentId);
+        if (editScope === "single") {
+          // Update a single payment
+          const payload = {
+            title: data.title,
+            amount: Number(data.amount),
+            dueDate: data.dueDate.toISOString().split("T")[0],
+            categoryId: data.categoryId || null,
+            builtinIconName: selectedIconName,
+            completedAt: data.completedAt
+              ? data.completedAt.toISOString()
+              : null,
+          };
+          await axiosInstance.put(`/payments/${paymentId}`, payload);
+          logger.info(`Payment updated (ID: ${paymentId})`);
+          onSuccess(paymentId);
+        } else {
+          // editScope === 'series'
+          const seriesId = initialData?.seriesId;
+          if (!seriesId) {
+            throw new Error("Series ID not found for editing.");
+          }
+          const payload = {
+            title: data.title,
+            amount: Number(data.amount),
+            categoryId: data.categoryId || null,
+            recurrenceRule: data.recurrenceRule, // This will be set from the recurrence section
+            builtinIconName: selectedIconName,
+            cutOffPaymentId: paymentId, // The current payment is the cut-off point
+            startDate: data.dueDate.toISOString().split("T")[0], // The payment's due date becomes the new series start date
+          };
+          await seriesApi.updateSeries(seriesId, payload);
+          logger.info(`Recurring series updated (ID: ${seriesId})`);
+          onSuccess(paymentId);
+        }
       } else {
-        const res = await axiosInstance.post("/payments", finalPayload);
+        // Create new payment (can be single or first in a new series)
+        const payload = {
+          title: data.title,
+          amount: Number(data.amount),
+          dueDate: data.dueDate.toISOString().split("T")[0],
+          categoryId: data.categoryId || null,
+          recurrenceRule: data.recurrenceRule || null,
+          builtinIconName: selectedIconName,
+        };
+        const res = await axiosInstance.post("/payments", payload);
         const newPaymentId = res.data.id;
         logger.info("Payment created", res.data);
         onSuccess(newPaymentId);
@@ -247,15 +248,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   };
 
-  const combinedIsSubmitting = rhfIsSubmitting || isLoading;
+  const watchDueDate = watch("dueDate");
+  const watchCategoryId = watch("categoryId");
+  const currentRule = watch("recurrenceRule");
 
-  if (isLoading && isEditMode) {
-    return (
-      <div className="flex justify-center items-center h-96">
-        <Spinner />
-      </div>
-    );
-  }
+  // Determine if recurrence section should be shown
+  const showRecurrence = (isEditMode && editScope === "series") || !isEditMode;
 
   return (
     <>
@@ -277,59 +275,48 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           register={register}
           errors={errors}
           setValue={setValue}
-          watchDueDate={watch("dueDate")}
-          isSubmitting={combinedIsSubmitting}
+          watchDueDate={watchDueDate}
+          isSubmitting={isSubmitting}
         />
+        {editScope === "series" && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-4 ml-1">
+            Эта дата станет датой начала для измененной серии.
+          </p>
+        )}
+
         <PaymentCategorySelect
           errors={errors}
           setValue={setValue}
-          watchCategoryId={watch("categoryId")}
-          isSubmitting={combinedIsSubmitting}
+          watchCategoryId={watchCategoryId}
+          isSubmitting={isSubmitting}
         />
-        {!currentSeriesId ? (
+
+        {showRecurrence && (
           <PaymentRecurrenceSection
-            errors={errors}
-            setValue={setValue}
-            watchRecurrencePattern={watch("recurrencePattern")}
-            watchRecurrenceEndDate={watch("recurrenceEndDate")}
-            isSubmitting={combinedIsSubmitting}
-            clearErrors={clearErrors}
+            onRuleChange={handleRecurrenceRuleChange}
+            isSubmitting={isSubmitting}
+            currentRule={currentRule}
+            dueDate={watchDueDate}
           />
-        ) : (
-          <div className="my-4 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              Этот платеж является частью регулярной серии. Для изменения
-              шаблона повторения, используйте кнопку "Изменить шаблон
-              повторения".
-            </p>
-          </div>
         )}
-        {isEditMode && currentSeriesId && (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSeriesModalOpen(true);
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500 transition-colors duration-200 cursor-pointer"
-              disabled={combinedIsSubmitting}
-            >
-              Изменить шаблон повторения
-            </button>
-          </div>
-        )}
+
         <IconSelector
           selectedIconName={selectedIconName}
           onIconChange={handleIconChange}
-          isFormSubmitting={combinedIsSubmitting}
+          isFormSubmitting={isSubmitting}
         />
-        <PaymentFileUploadSection
-          paymentId={paymentId}
-          initialFile={attachedFile}
-          isSubmitting={combinedIsSubmitting}
-          setFormError={setFormError}
-        />
-        {paymentStatus === "completed" && (
+
+        {/* File upload is only available for single payments, not for series editing */}
+        {editScope === "single" && (
+          <PaymentFileUploadSection
+            paymentId={paymentId}
+            initialFile={attachedFile}
+            isSubmitting={isSubmitting}
+            setFormError={setFormError}
+          />
+        )}
+
+        {paymentStatus === "completed" && editScope === "single" && (
           <div>
             <label
               htmlFor="completedAt"
@@ -350,7 +337,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 errors.completedAt ? "border-red-500" : ""
               }`}
               wrapperClassName="w-full"
-              disabled={combinedIsSubmitting}
+              disabled={isSubmitting}
               placeholderText="Выберите дату и время выполнения"
             />
             {errors.completedAt && (
@@ -360,53 +347,25 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             )}
           </div>
         )}
-        {!isEditMode && (
-          <div className="flex items-center">
-            <input
-              id="createAsCompleted"
-              type="checkbox"
-              checked={createAsCompleted}
-              onChange={(e) => setCreateAsCompleted(e.target.checked)}
-              className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600"
-              disabled={combinedIsSubmitting}
-            />
-            <label
-              htmlFor="createAsCompleted"
-              className="ml-2 block text-sm text-gray-900 dark:text-gray-100"
-            >
-              Создать как выполненный
-            </label>
-          </div>
-        )}
 
         <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
             onClick={onCancel}
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500"
-            disabled={combinedIsSubmitting}
+            disabled={isSubmitting}
           >
             Отмена
           </button>
           <button
             type="submit"
             className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-28"
-            disabled={combinedIsSubmitting}
+            disabled={isSubmitting}
           >
-            {combinedIsSubmitting ? <Spinner size="sm" /> : "Сохранить"}
+            {isSubmitting ? <Spinner size="sm" /> : "Сохранить"}
           </button>
         </div>
       </form>
-      {currentSeriesId && (
-        <SeriesEditModal
-          seriesId={currentSeriesId}
-          isOpen={isSeriesModalOpen}
-          onClose={() => setIsSeriesModalOpen(false)}
-          onSuccess={() => {
-            setIsSeriesModalOpen(false);
-          }}
-        />
-      )}
     </>
   );
 };

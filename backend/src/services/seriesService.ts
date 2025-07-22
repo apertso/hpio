@@ -2,6 +2,7 @@ import db from "../models";
 import { RecurringSeriesInstance } from "../models/RecurringSeries";
 import { RecurringSeriesCreationAttributes } from "../models/RecurringSeries";
 import logger from "../config/logger";
+import { Op } from "sequelize";
 
 /**
  * Get a recurring series by ID and user ID.
@@ -32,69 +33,170 @@ export const getRecurringSeriesById = async (
 };
 
 /**
- * Update a recurring series.
- * @param seriesId - The ID of the recurring series to update.
+ * Updates a recurring series by splitting it. The old series is deactivated,
+ * future payments of the old series are deleted, a new series is created,
+ * and the cut-off payment is updated and linked to the new series.
+ * @param seriesId - The ID of the old recurring series to update.
  * @param userId - The ID of the user.
- * @param data - The data to update the recurring series with.
- * @returns The updated recurring series instance or null if not found or not owned by the user.
+ * @param data - The data for the new series, including the cut-off payment ID and new start date.
+ * @returns The new recurring series instance or null if not found or not owned by the user.
  */
 export const updateRecurringSeries = async (
   seriesId: string,
   userId: string,
-  data: Partial<RecurringSeriesCreationAttributes>
+  data: Partial<RecurringSeriesCreationAttributes> & {
+    cutOffPaymentId: string;
+    startDate: string;
+  }
 ): Promise<RecurringSeriesInstance | null> => {
+  const { cutOffPaymentId, startDate, ...newSeriesData } = data;
+
+  if (!cutOffPaymentId) {
+    throw new Error("cutOffPaymentId is required to update a series.");
+  }
+  if (!startDate) {
+    throw new Error("startDate is required for the new series.");
+  }
+
+  const transaction = await db.sequelize.transaction();
   try {
-    const series = await db.RecurringSeries.findOne({
-      where: {
-        id: seriesId,
-        userId: userId,
-      },
+    // Find the old series and the payment that serves as the cut-off point
+    const oldSeries = await db.RecurringSeries.findOne({
+      where: { id: seriesId, userId },
+      transaction,
+    });
+    const cutOffPayment = await db.Payment.findOne({
+      where: { id: cutOffPaymentId, userId },
+      transaction,
     });
 
-    if (!series) {
-      return null;
+    if (
+      !oldSeries ||
+      !cutOffPayment ||
+      cutOffPayment.seriesId !== oldSeries.id
+    ) {
+      throw new Error(
+        "Series or payment not found, or payment does not belong to the series."
+      );
     }
 
-    await series.update(data);
-    // Fetch the updated series with includes if needed for response
-    const updatedSeries = await getRecurringSeriesById(series.id, userId);
-    return updatedSeries;
+    // 1. Deactivate the old series by setting its end date to the day before the cut-off payment
+    const cutOffDate = new Date(cutOffPayment.dueDate);
+    cutOffDate.setDate(cutOffDate.getDate() - 1);
+    oldSeries.recurrenceEndDate = cutOffDate;
+    oldSeries.isActive = false; // Mark as inactive
+    await oldSeries.save({ transaction });
+    logger.info(`Deactivated old series ${oldSeries.id}.`);
+
+    // 2. Delete all future payments of the old series that are after the cut-off payment
+    await db.Payment.destroy({
+      where: {
+        seriesId: oldSeries.id,
+        dueDate: { [Op.gt]: cutOffPayment.dueDate },
+      },
+      transaction,
+    });
+    logger.info(`Deleted future payments for old series ${oldSeries.id}.`);
+
+    // 3. Create the new series with data from the form
+    const newSeries = await db.RecurringSeries.create(
+      {
+        userId,
+        title: newSeriesData.title ?? oldSeries.title,
+        amount: newSeriesData.amount ?? oldSeries.amount,
+        categoryId:
+          newSeriesData.categoryId !== undefined
+            ? newSeriesData.categoryId
+            : oldSeries.categoryId,
+        recurrenceRule:
+          newSeriesData.recurrenceRule ?? oldSeries.recurrenceRule,
+        startDate: startDate,
+        recurrenceEndDate: newSeriesData.recurrenceEndDate,
+        builtinIconName:
+          newSeriesData.builtinIconName !== undefined
+            ? newSeriesData.builtinIconName
+            : oldSeries.builtinIconName,
+        isActive: true,
+      },
+      { transaction }
+    );
+    logger.info(`Created new series ${newSeries.id}.`);
+
+    // 4. Update the cut-off payment to become the first instance of the new series
+    cutOffPayment.seriesId = newSeries.id;
+    cutOffPayment.title = newSeries.title;
+    cutOffPayment.amount = newSeries.amount;
+    cutOffPayment.categoryId = newSeries.categoryId;
+    cutOffPayment.builtinIconName = newSeries.builtinIconName;
+    cutOffPayment.dueDate = startDate; // The dueDate becomes the new startDate
+    await cutOffPayment.save({ transaction });
+    logger.info(
+      `Updated payment ${cutOffPayment.id} to be the first of new series ${newSeries.id}.`
+    );
+
+    await transaction.commit();
+
+    const result = await getRecurringSeriesById(newSeries.id, userId);
+    return result;
   } catch (error) {
-    logger.error(`Error updating recurring series with ID ${seriesId}:`, error);
+    await transaction.rollback();
+    logger.error(
+      `Error splitting recurring series with ID ${seriesId}:`,
+      error
+    );
     throw error;
   }
 };
 
 /**
- * Delete a recurring series.
- * @param seriesId - The ID of the recurring series to delete.
+ * Deactivates a recurring series and deletes its future payments.
+ * @param seriesId - The ID of the recurring series to deactivate.
  * @param userId - The ID of the user.
- * @returns True if the series was deleted, false otherwise.
+ * @returns True if the series was deactivated, false otherwise.
  */
 export const deleteRecurringSeries = async (
   seriesId: string,
   userId: string
 ): Promise<boolean> => {
+  const transaction = await db.sequelize.transaction();
   try {
     const series = await db.RecurringSeries.findOne({
       where: {
         id: seriesId,
         userId: userId,
       },
+      transaction,
     });
 
     if (!series) {
+      await transaction.rollback();
       return false;
     }
 
-    // Note: ON DELETE SET NULL on payments.seriesId will handle dissociating payments
-    await series.destroy();
+    // Deactivate the series
+    await series.update({ isActive: false }, { transaction });
+
+    // Delete future (upcoming or overdue) payments for this series
+    await db.Payment.destroy({
+      where: {
+        seriesId: seriesId,
+        status: { [Op.in]: ["upcoming", "overdue"] },
+      },
+      transaction,
+    });
+
+    await transaction.commit();
+
     logger.info(
-      `Recurring series with ID ${seriesId} deleted by user ${userId}.`
+      `Recurring series with ID ${seriesId} deactivated by user ${userId}. Future payments deleted.`
     );
     return true;
   } catch (error) {
-    logger.error(`Error deleting recurring series with ID ${seriesId}:`, error);
+    await transaction.rollback();
+    logger.error(
+      `Error deactivating recurring series with ID ${seriesId}:`,
+      error
+    );
     throw error;
   }
 };

@@ -25,7 +25,7 @@ export interface PaymentData {
     id: string;
     title: string;
     amount: number;
-    recurrencePattern: "daily" | "weekly" | "monthly" | "yearly";
+    recurrenceRule: string;
     recurrenceEndDate?: string | null;
     builtinIconName?: BuiltinIcon | null; // Use BuiltinIcon type
     isActive: boolean;

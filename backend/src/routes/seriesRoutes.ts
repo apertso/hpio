@@ -78,7 +78,7 @@ router.delete("/:id", async (req, res) => {
         .json({ message: "Recurring series not found or access denied." });
     }
 
-    res.json({ message: "Recurring series deleted successfully." });
+    res.json({ message: "Recurring series deactivated successfully." });
   } catch (error) {
     logger.error(`Error in DELETE /api/series/${seriesId}:`, error);
     res.status(500).json({ message: "Failed to delete recurring series." });

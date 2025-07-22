@@ -31,7 +31,10 @@ router.get("/", async (req: Request, res: Response) => {
 // PUT /api/archive/:id/restore - Восстановить платеж из архива
 router.put("/:id/restore", async (req: Request, res: Response) => {
   try {
-    const restoredPayment = await restorePayment(req.params.id, req.user!.id);
+    const { reactivateSeries } = req.body;
+    const restoredPayment = await restorePayment(req.params.id, req.user!.id, {
+      reactivateSeries,
+    });
     if (!restoredPayment) {
       return res
         .status(404)

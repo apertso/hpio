@@ -4,6 +4,7 @@ import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 import useApi from "./useApi"; // Import the new hook
 import getErrorMessage from "../utils/getErrorMessage";
+import { AxiosProgressEvent } from "axios";
 
 interface UseFileUploadLogicProps {
   paymentId?: string;
@@ -36,7 +37,7 @@ const maxFileSize = 5 * 1024 * 1024; // 5 МБ
 const uploadFileApi = async (
   paymentId: string,
   formData: FormData,
-  onUploadProgress: (progressEvent: any) => void
+  onUploadProgress: (progressEvent: AxiosProgressEvent) => void
 ): Promise<UploadResponse> => {
   const res = await axiosInstance.post(
     `/files/upload/payment/${paymentId}`,
@@ -102,7 +103,7 @@ const useFileUploadLogic = ({
       const formData = new FormData();
       formData.append("paymentFile", acceptedFiles[0]);
 
-      await executeUpload(paymentId, formData, (e: any) => {
+      await executeUpload(paymentId, formData, (e: AxiosProgressEvent) => {
         const percent = Math.round((e.loaded * 100) / (e.total || 1));
         setUploadProgress(percent);
       });

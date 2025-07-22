@@ -9,7 +9,7 @@ import {
 } from "../services/fileService"; // Сервис файлов
 import logger from "../config/logger";
 import path from "path";
-import { config } from "../config/config";
+import { config } from "../config/appConfig";
 
 const router = Router();
 router.use(protect);

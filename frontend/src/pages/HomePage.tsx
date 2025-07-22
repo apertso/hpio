@@ -23,9 +23,12 @@ import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal"; // Import ConfirmCompletionDateModal
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import Modal from "../components/Modal"; // Add this import
+import { useReset } from "../context/ResetContext";
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import { PaymentData } from "../types/paymentData";
+import getErrorMessage from "../utils/getErrorMessage";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 // Utility function to format date in local timezone (YYYY-MM-DD)
 const formatDateToLocal = (date: Date): string => {
@@ -52,16 +55,16 @@ const monthNames = [
 
 // Define color palettes for charts
 const categoryColorsLight = [
-  "rgba(255, 99, 132, 0.6)", // Red
-  "rgba(54, 162, 235, 0.6)", // Blue
-  "rgba(255, 206, 86, 0.6)", // Yellow
-  "rgba(75, 192, 192, 0.6)", // Green
-  "rgba(153, 102, 255, 0.6)", // Purple
-  "rgba(255, 159, 64, 0.6)", // Orange
-  "rgba(199, 199, 199, 0.6)", // Gray
-  "rgba(255, 99, 132, 0.8)",
-  "rgba(54, 162, 235, 0.8)",
-  "rgba(255, 206, 86, 0.8)",
+  "#FF6384", // Red
+  "#36A2EB", // Blue
+  "#FFCE56", // Yellow
+  "#4BC0C0", // Teal/Green
+  "#9966FF", // Purple
+  "#FF9F40", // Orange
+  "#9CA3AF", // Gray
+  "#EC4899", // Pink
+  "#10B981", // Emerald
+  "#6366F1", // Indigo
 ];
 
 const categoryColorsDark = [
@@ -93,49 +96,220 @@ interface DashboardStats {
 }
 
 // Define the raw API fetch function for upcoming payments
-const fetchUpcomingPaymentsApi = async (): Promise<PaymentData[]> => {
-  const res = await axiosInstance.get("/payments/upcoming");
+const fetchUpcomingPaymentsApi = async (
+  days: number
+): Promise<PaymentData[]> => {
+  const res = await axiosInstance.get("/payments/upcoming", {
+    params: { days },
+  });
   return res.data;
 };
 
-// New list item component for mobile view
-const UpcomingPaymentListItem: React.FC<{ payment: PaymentData }> = ({
-  payment,
-}) => {
+import {
+  PencilIcon,
+  CheckCircleIcon,
+  TrashIcon,
+} from "@heroicons/react/24/solid";
+
+// Helper to format recurrence rules
+const formatRecurrenceRule = (rule: string | undefined): string => {
+  if (!rule) return "Разовый";
+  if (rule.includes("FREQ=DAILY")) return "Ежедневно";
+  if (rule.includes("FREQ=WEEKLY")) return "Еженедельно";
+  if (rule.includes("FREQ=MONTHLY")) return "Ежемесячно";
+  if (rule.includes("FREQ=YEARLY")) return "Ежегодно";
+  return "Повторяющийся";
+};
+
+// Inside HomePage component, before UpcomingPaymentListItem
+const MobileActionsOverlay: React.FC<{
+  payment: PaymentData | null;
+  onClose: () => void;
+  onEdit: (id: string) => void;
+  onComplete: (payment: PaymentData) => void;
+  onDelete: (payment: PaymentData) => void;
+}> = ({ payment, onClose, onEdit, onComplete, onDelete }) => {
+  const [isVisible, setIsVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    if (payment) {
+      const timer = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsVisible(false);
+    }
+  }, [payment]);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 300);
+  };
+
+  if (!payment) return null;
+
+  const actions = [
+    { label: "Изменить", icon: PencilIcon, handler: () => onEdit(payment.id) },
+    {
+      label: "Выполнить",
+      icon: CheckCircleIcon,
+      handler: () => onComplete(payment),
+    },
+    { label: "Удалить", icon: TrashIcon, handler: () => onDelete(payment) },
+  ];
+
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-      <div className="flex items-center gap-4">
-        <PaymentIconDisplay payment={payment} sizeClass="h-8 w-8" />
-        <div>
-          <p className="font-medium text-gray-900 dark:text-gray-100">
-            {payment.title}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {new Date(payment.dueDate).toLocaleDateString("ru-RU", {
-              day: "2-digit",
-              month: "short",
-            })}
+    <div
+      className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+        isVisible ? "bg-black/40" : "bg-black/0"
+      }`}
+      onClick={handleClose}
+      aria-hidden="true"
+    >
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out ${
+          isVisible ? "translate-y-0" : "translate-y-full"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-around items-center">
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              onClick={() => {
+                action.handler();
+                handleClose();
+              }}
+              className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+            >
+              <action.icon className="h-6 w-6" />
+              <span className="text-sm">{action.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Replace UpcomingPaymentListItem with the new version
+const UpcomingPaymentListItem: React.FC<{
+  payment: PaymentData;
+  onClick: () => void;
+}> = ({ payment, onClick }) => {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left flex flex-col p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow space-y-3"
+    >
+      {/* Top Part */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <PaymentIconDisplay payment={payment} sizeClass="h-8 w-8" />
+          <div>
+            <p className="font-medium text-gray-900 dark:text-gray-100">
+              {payment.title}
+            </p>
+            <p
+              className={`text-sm ${
+                payment.status === "overdue"
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              {payment.status === "upcoming" && "Предстоящий"}
+              {payment.status === "overdue" && "Просрочен"}
+            </p>
+          </div>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
+            {new Intl.NumberFormat("ru-RU", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(payment.amount)}
+            <span className="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">
+              ₽
+            </span>
           </p>
         </div>
       </div>
-      <div className="text-right">
-        <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
-          {new Intl.NumberFormat("ru-RU", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(payment.amount)}
-          <span className="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">
-            ₽
-          </span>
-        </p>
+      {/* Bottom Part */}
+      <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-3">
+        <div>
+          <p>Срок: {new Date(payment.dueDate).toLocaleDateString("ru-RU")}</p>
+        </div>
+        {payment.seriesId && payment.series?.isActive && (
+          <div className="flex items-center">
+            <ArrowPathIcon className="h-4 w-4 mr-1" />
+            <span>{formatRecurrenceRule(payment.series?.recurrenceRule)}</span>
+          </div>
+        )}
       </div>
-    </div>
+    </button>
+  );
+};
+
+const DeleteRecurringPaymentModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onDeleteInstance: () => void;
+  onDeleteSeries: () => void;
+  isProcessing: boolean;
+}> = ({ isOpen, onClose, onDeleteInstance, onDeleteSeries, isProcessing }) => {
+  if (!isOpen) return null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Удаление повторяющегося платежа"
+    >
+      <div className="space-y-4">
+        <p className="text-gray-700 dark:text-gray-300">
+          Это повторяющийся платеж. Вы хотите удалить только этот экземпляр или
+          всю серию платежей?
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          При удалении серии все будущие запланированные платежи будут отменены,
+          а сама серия станет неактивной.
+        </p>
+        <div className="flex flex-wrap justify-end gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={onClose}
+            type="button"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
+            disabled={isProcessing}
+          >
+            Отмена
+          </button>
+          <button
+            onClick={onDeleteInstance}
+            disabled={isProcessing}
+            type="button"
+            className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-[120px]"
+          >
+            {isProcessing ? <Spinner size="sm" /> : "Только этот"}
+          </button>
+          <button
+            onClick={onDeleteSeries}
+            disabled={isProcessing}
+            type="button"
+            className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 min-w-[140px]"
+          >
+            {isProcessing ? <Spinner size="sm" /> : "Удалить серию"}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 };
 
 const HomePage: React.FC = () => {
   const { resolvedTheme } = useTheme(); // Access the theme
   const { showToast } = useToast(); // Import useToast
+  const { resetKey } = useReset();
+
+  const [upcomingDays, setUpcomingDays] = useState<3 | 7 | 10 | 14 | 21>(10);
 
   const {
     data: rawUpcomingPayments,
@@ -164,10 +338,10 @@ const HomePage: React.FC = () => {
     }
   }, [rawUpcomingPayments]);
 
-  // Effect to trigger the fetch on mount
+  // Effect to trigger the fetch on mount and when upcomingDays changes
   useEffect(() => {
-    executeFetchUpcomingPayments();
-  }, [executeFetchUpcomingPayments]); // Dependency on executeFetchUpcomingPayments
+    executeFetchUpcomingPayments(upcomingDays);
+  }, [executeFetchUpcomingPayments, upcomingDays, resetKey]);
 
   // --- Состояние для данных дашборда ---
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -205,6 +379,13 @@ const HomePage: React.FC = () => {
     date: string;
     payments: PaymentData[];
   } | null>(null);
+  const [deleteRecurringModalState, setDeleteRecurringModalState] = useState<{
+    isOpen: boolean;
+    payment: PaymentData | null;
+  }>({ isOpen: false, payment: null });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [mobileActionsPayment, setMobileActionsPayment] =
+    useState<PaymentData | null>(null);
 
   const { startDate, endDate } = useMemo(() => {
     let startDate, endDate;
@@ -275,8 +456,16 @@ const HomePage: React.FC = () => {
 
   // --- Эффект для загрузки статистики при монтировании компонента (из Dashboard.tsx) ---
   useEffect(() => {
+    setUpcomingDays(10);
+    setPeriodType("month");
+    setYear(new Date().getFullYear());
+    setMonth(new Date().getMonth());
+    setQuarter(Math.floor(new Date().getMonth() / 3));
+    // TODO: Should be reseted as well, but they doesn't work properly
+    // setCustomDateFrom(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+    // setCustomDateTo(new Date());
     fetchDashboardStats();
-  }, [fetchDashboardStats]); // Зависимость от fetchDashboardStats
+  }, [fetchDashboardStats, resetKey]); // Зависимость от fetchDashboardStats
 
   const navigate = useNavigate();
 
@@ -297,11 +486,14 @@ const HomePage: React.FC = () => {
         : {};
       await axiosInstance.put(`/payments/${paymentId}/complete`, payload);
       showToast("Платеж выполнен.", "success");
-      executeFetchUpcomingPayments();
+      executeFetchUpcomingPayments(upcomingDays);
       fetchDashboardStats();
     } catch (error) {
       logger.error(`Failed to complete payment ${paymentId}:`, error);
-      showToast("Не удалось выполнить платеж.", "error");
+      showToast(
+        `Не удалось выполнить платеж: ${getErrorMessage(error)}`,
+        "error"
+      );
     } finally {
       setIsCompleting(false);
       setCompletionDateModalState({ isOpen: false, payment: null });
@@ -321,16 +513,25 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const handleDeletePayment = async (paymentId: string) => {
+  const handleDeletePayment = async (payment: PaymentData) => {
+    if (
+      payment.seriesId &&
+      (payment.status === "upcoming" || payment.status === "overdue")
+    ) {
+      setDeleteRecurringModalState({ isOpen: true, payment: payment });
+      return;
+    }
+
     const action = async () => {
       try {
-        await axiosInstance.delete(`/payments/${paymentId}`);
+        await axiosInstance.delete(`/payments/${payment.id}`);
         showToast("Платеж перемещен в архив.", "info");
-        executeFetchUpcomingPayments();
+        executeFetchUpcomingPayments(upcomingDays);
         fetchDashboardStats();
-      } catch (error) {
-        logger.error(`Failed to delete payment ${paymentId}:`, error);
-        showToast("Не удалось удалить платеж.", "error");
+      } catch (error: unknown) {
+        showToast(`Ошибка удаления: ${getErrorMessage(error)}`, "error");
+      } finally {
+        // No error toast here, handled by catch in the modal
       }
     };
 
@@ -341,6 +542,42 @@ const HomePage: React.FC = () => {
       message:
         "Вы уверены, что хотите удалить этот платеж? Он будет перемещен в архив.",
     });
+  };
+
+  const handleDeleteInstance = async () => {
+    if (!deleteRecurringModalState.payment) return;
+    setIsDeleting(true);
+    try {
+      await axiosInstance.delete(
+        `/payments/${deleteRecurringModalState.payment.id}`
+      );
+      showToast("Платеж перемещен в архив.", "info");
+      executeFetchUpcomingPayments(upcomingDays);
+      fetchDashboardStats();
+    } catch (error: unknown) {
+      showToast(`Ошибка удаления: ${getErrorMessage(error)}`, "error");
+    } finally {
+      setIsDeleting(false);
+      setDeleteRecurringModalState({ isOpen: false, payment: null });
+    }
+  };
+
+  const handleDeleteSeries = async () => {
+    if (!deleteRecurringModalState.payment?.seriesId) return;
+    setIsDeleting(true);
+    try {
+      await axiosInstance.delete(
+        `/series/${deleteRecurringModalState.payment.seriesId}`
+      );
+      showToast("Серия платежей была деактивирована.", "success");
+      executeFetchUpcomingPayments(upcomingDays);
+      fetchDashboardStats();
+    } catch (error: unknown) {
+      showToast(`Ошибка удаления серии: ${getErrorMessage(error)}`, "error");
+    } finally {
+      setIsDeleting(false);
+      setDeleteRecurringModalState({ isOpen: false, payment: null });
+    }
   };
 
   const onConfirmAction = async () => {
@@ -401,13 +638,32 @@ const HomePage: React.FC = () => {
 
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
 
+  const dayOptions = [
+    { label: "3 дня", value: 3 },
+    { label: "7 дней", value: 7 },
+    { label: "10 дней", value: 10 },
+    { label: "14 дней", value: 14 },
+    { label: "21 день", value: 21 },
+  ];
+
   return (
     <>
       <title>Хочу Плачу - Главная</title>
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Платежи на ближайшие 10 дней
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 inline-block">
+            Платежи на ближайшие&nbsp;
+            <DropdownButton
+              className="text-2xl font-bold text-gray-500 dark:text-gray-400"
+              label={dayOptions.find((o) => o.value === upcomingDays)!.label}
+              options={dayOptions.map((opt) => ({
+                label: opt.label,
+                value: opt.value,
+                onClick: () =>
+                  setUpcomingDays(opt.value as 3 | 7 | 10 | 14 | 21),
+              }))}
+              selectedValue={upcomingDays}
+            />
           </h2>
           <Button onClick={handleAddPayment} label="Добавить платеж" />
         </div>
@@ -448,7 +704,7 @@ const HomePage: React.FC = () => {
                             payment={payment}
                             onEdit={() => handleEditPayment(payment.id)}
                             onComplete={() => handleCompletePayment(payment)}
-                            onDelete={() => handleDeletePayment(payment.id)}
+                            onDelete={() => handleDeletePayment(payment)}
                           />
                         </div>
                       ))}
@@ -479,6 +735,7 @@ const HomePage: React.FC = () => {
                     <UpcomingPaymentListItem
                       key={payment.id}
                       payment={payment}
+                      onClick={() => setMobileActionsPayment(payment)}
                     />
                   ))}
                   {!showAllUpcoming && upcomingPayments.length > 5 && (
@@ -492,8 +749,16 @@ const HomePage: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div className="w-full text-center text-gray-700 dark:text-gray-300 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                Нет предстоящих или просроченных платежей. Добавьте первый!
+              <div className="w-full text-gray-700 dark:text-gray-300 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-center text-center sm:text-left">
+                <span className="text-lg font-medium sm:mr-6">
+                  Нет предстоящих или просроченных платежей.
+                </span>
+                <img
+                  src="/no-items.png"
+                  alt="Нет платежей"
+                  className="mb-2 sm:mb-0 w-48 h-48 object-contain opacity-80 dark:filter"
+                  draggable={false}
+                />
               </div>
             )}
           </>
@@ -782,6 +1047,22 @@ const HomePage: React.FC = () => {
           </p>
         )}
       </Modal>
+      <DeleteRecurringPaymentModal
+        isOpen={deleteRecurringModalState.isOpen}
+        onClose={() =>
+          setDeleteRecurringModalState({ isOpen: false, payment: null })
+        }
+        onDeleteInstance={handleDeleteInstance}
+        onDeleteSeries={handleDeleteSeries}
+        isProcessing={isDeleting}
+      />
+      <MobileActionsOverlay
+        payment={mobileActionsPayment}
+        onClose={() => setMobileActionsPayment(null)}
+        onEdit={handleEditPayment}
+        onComplete={handleCompletePayment}
+        onDelete={handleDeletePayment}
+      />
     </>
   );
 };

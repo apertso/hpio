@@ -22,7 +22,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
   label,
   icon,
   options,
-  className = "",
+  className = "h-9 min-w-20 rounded-xl bg-gray-100 dark:bg-[#111316] pl-4 pr-3 text-sm text-gray-800 dark:text-white",
   selectedValue,
   ...rest
 }) => {
@@ -39,18 +39,17 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
   }, [isOpen, options]);
 
   const classes =
-    `flex h-9 min-w-20 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#111316] text-gray-800 dark:text-white border border-gray-300 dark:border-transparent pl-4 pr-3 focus:outline-none cursor-pointer ${className}`.trim();
+    `flex items-center justify-center focus:outline-none cursor-pointer ${className}`.trim();
 
   return (
     <div className="relative inline-block" ref={containerRef}>
       <button
         className={classes}
-        style={{ boxShadow: "none", border: "none" }}
         type="button"
         onClick={() => setIsOpen((o) => !o)}
         {...rest}
       >
-        <span className="text-sm flex-1 text-center">{label}</span>
+        <span className="flex-1 text-center">{label}</span>
         {icon && <span>{icon}</span>}
         <span
           className={`transition-transform ml-2 flex items-center ${

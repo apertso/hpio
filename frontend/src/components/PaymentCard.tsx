@@ -66,7 +66,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
 
   // Стили из класса subtle-card
   const cardClasses =
-    "p-4 rounded-lg transition-shadow duration-300 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:shadow-lg dark:hover:shadow-white/10 flex flex-col justify-between h-full";
+    "p-4 rounded-lg transition-shadow duration-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:shadow-lg dark:hover:shadow-white/10 flex flex-col justify-between h-full";
 
   return (
     <div

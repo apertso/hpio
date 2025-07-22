@@ -4,6 +4,7 @@ import logger from "../config/logger";
 import { deleteFileFromFS } from "./fileService"; // Переиспользуем удаление из ФС и открепление иконки
 import { PaymentInstance } from "../models/Payment";
 import { CategoryInstance } from "../models/Category";
+import { RRule } from "rrule";
 
 // Пример интерфейса для данных платежа (опционально, для строгой типизации)
 interface PaymentData {
@@ -12,7 +13,7 @@ interface PaymentData {
   dueDate: string; // YYYY-MM-DD
   categoryId?: string | null; // Allow null for category
   // Fields for creating a new recurring series (only used during creation)
-  recurrencePattern?: "daily" | "weekly" | "monthly" | "yearly";
+  recurrenceRule?: string; // Новое поле для RRULE
   recurrenceEndDate?: string; // YYYY-MM-DD string for input
   // Fields for files and icons (handled by fileService/icon logic)
   filePath?: string | null;
@@ -24,48 +25,51 @@ interface PaymentData {
 }
 
 // --- Вспомогательная функция: рассчитать следующую дату платежа ---
-// Принимает дату (объект Date или строка YYYY-MM-DD) и шаблон повторения
+// Новая версия с rrule
 const calculateNextDueDate = (
-  currentDueDate: Date | string,
-  pattern: "daily" | "weekly" | "monthly" | "yearly"
-): Date => {
-  const date =
-    typeof currentDueDate === "string"
-      ? new Date(currentDueDate)
-      : new Date(currentDueDate);
-  // Устанавливаем время на полночь, чтобы избежать проблем с часовыми поясами при расчете даты
-  date.setHours(0, 0, 0, 0);
+  rruleString: string,
+  seriesStartDate: Date,
+  seriesEndDate?: Date | null
+): Date | null => {
+  try {
+    if (!rruleString || rruleString.trim() === "") {
+      return null;
+    }
+    // Временное исправление для некорректно сгенерированных строк rrule.
+    // Используем RegExp с word boundary (\b), чтобы не заменять 'FREQ=MONTHLY' на 'FREQ=MONTHLYLY'.
+    const correctedRruleString = rruleString
+      .trim()
+      .replace(/FREQ=DAY\b/g, "FREQ=DAILY")
+      .replace(/FREQ=WEEK\b/g, "FREQ=WEEKLY")
+      .replace(/FREQ=MONTH\b/g, "FREQ=MONTHLY")
+      .replace(/FREQ=YEAR\b/g, "FREQ=YEARLY");
 
-  switch (pattern) {
-    case "daily":
-      date.setDate(date.getDate() + 1); // Добавляем 1 день
-      break;
-    case "weekly":
-      date.setDate(date.getDate() + 7); // Добавляем 7 дней
-      break;
-    case "monthly":
-      // Добавляем 1 месяц. Важно: Date.prototype.setMonth() корректно обрабатывает конец месяца
-      // Например, 31 января + 1 месяц = 2 марта (т.к. в феврале 28/29 дней)
-      date.setMonth(date.getMonth() + 1);
-      break;
-    case "yearly":
-      date.setFullYear(date.getFullYear() + 1); // Добавляем 1 год
-      break;
-    default:
-      throw new Error(`Неизвестный шаблон повторения: ${pattern}`);
+    const rule = RRule.fromString(correctedRruleString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // `dtstart` важен, чтобы правило знало отправную точку для расчета.
+    // rrule.js работает с датами JS. Модели Sequelize с DATEONLY (`YYYY-MM-DD`)
+    // при `new Date()` создают объект Date в UTC 00:00, что является правильным поведением.
+    rule.options.dtstart = seriesStartDate;
+    // Ищем следующую дату СТРОГО после lastDueDate.
+    // inc=false означает, что если lastDueDate сама является валидной датой, она не будет возвращена,
+    // а будет найдена следующая за ней.
+    const nextDate = rule.after(today, false);
+    if (seriesEndDate && nextDate > seriesEndDate) {
+      return null;
+    }
+    return nextDate;
+  } catch (error) {
+    logger.error(`Error parsing rrule string: ${rruleString}`, error);
+    return null;
   }
-
-  // Важно: Вернуть Date объект, а не строку, если функция вызывается внутри Node.js
-  // Если нужно вернуть строку для БД/API, форматировать в YYYY-MM-DD
-  // Например: return date.toISOString().split('T')[0];
-  return date; // Возвращаем объект Date
 };
 
 // --- Функции для горизонтальной ленты и полного списка ---
 
 // Получить активные предстоящие платежи для горизонтальной ленты (2.2)
 // Включает upcoming и overdue
-export const getUpcomingPayments = async (userId: string) => {
+export const getUpcomingPayments = async (userId: string, days: number) => {
   try {
     const now = new Date();
     // Устанавливаем время на полночь для сравнения только дат
@@ -73,11 +77,11 @@ export const getUpcomingPayments = async (userId: string) => {
 
     // Получаем платежи пользователя со статусом 'upcoming' ИЛИ 'overdue'
     // Сортируем по дате срока оплаты по возрастанию
-    // Calculate the date 10 days from now
-    const tenDaysLater = new Date(now);
-    tenDaysLater.setDate(now.getDate() + 10);
+    // Calculate the date N days from now
+    const daysFromNow = new Date(now);
+    daysFromNow.setDate(now.getDate() + days);
     // Set time to end of the day for inclusive comparison
-    tenDaysLater.setHours(23, 59, 59, 999);
+    daysFromNow.setHours(23, 59, 59, 999);
 
     const payments = await db.Payment.findAll({
       where: {
@@ -86,8 +90,8 @@ export const getUpcomingPayments = async (userId: string) => {
           [Op.in]: ["upcoming", "overdue"], // Включаем предстоящие и просроченные
         },
         dueDate: {
-          // Filter by due date within the next 10 days
-          [Op.lte]: tenDaysLater,
+          // Filter by due date within the next N days
+          [Op.lte]: daysFromNow,
         },
       },
       order: [["dueDate", "ASC"]],
@@ -95,7 +99,7 @@ export const getUpcomingPayments = async (userId: string) => {
     });
 
     logger.info(
-      `Fetched ${payments.length} upcoming/overdue payments for user ${userId}`
+      `Fetched ${payments.length} upcoming/overdue payments for user ${userId} for the next ${days} days`
     );
     return payments; // Возвращаем модели Sequelize, Frontend обработает их
   } catch (error) {
@@ -146,7 +150,7 @@ export const getFilteredPayments = async (userId: string, filters: any) => {
             "id",
             "title",
             "amount",
-            "recurrencePattern",
+            "recurrenceRule",
             "recurrenceEndDate",
             "builtinIconName",
             "isActive",
@@ -188,7 +192,8 @@ export const createPayment = async (
     let seriesId: string | null = null;
 
     // If creating a recurring payment, create a RecurringSeries entry first
-    if (paymentData.recurrencePattern) {
+    if (paymentData.recurrenceRule) {
+      // Проверяем новое поле
       // Check for recurrencePattern directly
       // ... (ensure recurrenceEndDate is handled if provided)
       let recurrenceEndDate: Date | null = null;
@@ -202,10 +207,11 @@ export const createPayment = async (
         title: paymentData.title,
         amount: paymentData.amount,
         categoryId: paymentData.categoryId || null,
-        recurrencePattern: paymentData.recurrencePattern, // This must be present
+        startDate: paymentData.dueDate, // Дата первого платежа - это и есть startDate серии
+        recurrenceRule: paymentData.recurrenceRule, // Используем новое поле
         recurrenceEndDate: recurrenceEndDate,
         builtinIconName: paymentData.builtinIconName || null,
-        isActive: true, // New series are active by default
+        isActive: true,
       });
       seriesId = newSeries.id;
       logger.info(
@@ -278,7 +284,7 @@ export const getPaymentById = async (paymentId: string, userId: string) => {
             "id",
             "title",
             "amount",
-            "recurrencePattern",
+            "recurrenceRule",
             "recurrenceEndDate",
             "builtinIconName",
             "isActive",
@@ -292,6 +298,24 @@ export const getPaymentById = async (paymentId: string, userId: string) => {
         `Payment not found or no access (ID: ${paymentId}, User: ${userId})`
       );
       return null; // Платеж не найден или не принадлежит пользователю
+    }
+
+    if (payment.seriesId) {
+      // Find the last *active* payment in the series
+      const lastPaymentInSeries = await db.Payment.findOne({
+        where: {
+          seriesId: payment.seriesId,
+          status: { [Op.in]: ["upcoming", "overdue"] },
+        },
+        order: [["dueDate", "DESC"]],
+      });
+      // Add a non-persistent flag to the instance
+      payment.setDataValue(
+        "isLastInSeries" as any,
+        lastPaymentInSeries ? lastPaymentInSeries.id === payment.id : false
+      );
+    } else {
+      payment.setDataValue("isLastInSeries" as any, false);
     }
 
     logger.info(`Fetched payment details (ID: ${payment.id}, User: ${userId})`);
@@ -348,6 +372,16 @@ export const updatePayment = async (
       return null; // Payment not found or does not belong to the user
     }
 
+    // Prevent changing recurrence for archived payments
+    if (
+      (payment.status === "completed" || payment.status === "deleted") &&
+      paymentData.hasOwnProperty("recurrenceRule")
+    ) {
+      throw new Error(
+        "Cannot change recurrence for a completed or archived payment."
+      );
+    }
+
     // Update only the provided allowed fields
     const fieldsToUpdate: any = {};
     const allowedFields = [
@@ -385,7 +419,7 @@ export const updatePayment = async (
 
     // If there are fields to update, perform the update
     // Логика для конвертации разового платежа в новый регулярный
-    if (paymentData.recurrencePattern && !payment.seriesId) {
+    if (paymentData.recurrenceRule && !payment.seriesId) {
       logger.info(
         `Converting one-time payment ${payment.id} to a new recurring series.`
       );
@@ -412,7 +446,8 @@ export const updatePayment = async (
           fieldsToUpdate.categoryId !== undefined
             ? fieldsToUpdate.categoryId
             : payment.categoryId,
-        recurrencePattern: paymentData.recurrencePattern,
+        startDate: fieldsToUpdate.dueDate || payment.dueDate, // The due date of the current payment
+        recurrenceRule: paymentData.recurrenceRule,
         recurrenceEndDate: recurrenceEndDateForNewSeries,
         // Используем иконку из paymentData, если есть, иначе из существующего платежа
         builtinIconName:
@@ -429,8 +464,8 @@ export const updatePayment = async (
       // Если иконка была изменена в paymentData, она уже будет в fieldsToUpdate
       // и применится к экземпляру платежа ниже.
     } else if (
-      paymentData.hasOwnProperty("recurrencePattern") &&
-      paymentData.recurrencePattern === null &&
+      paymentData.hasOwnProperty("recurrenceRule") &&
+      paymentData.recurrenceRule === null &&
       payment.seriesId
     ) {
       // Если пользователь явно очистил recurrencePattern для существующего регулярного платежа,
@@ -442,11 +477,11 @@ export const updatePayment = async (
       );
       fieldsToUpdate.seriesId = null;
       // Также удаляем recurrencePattern и recurrenceEndDate из fieldsToUpdate, т.к. они относятся к серии
-      delete fieldsToUpdate.recurrencePattern;
+      delete fieldsToUpdate.recurrenceRule;
       delete fieldsToUpdate.recurrenceEndDate;
     } else if (
       payment.seriesId &&
-      (paymentData.hasOwnProperty("recurrencePattern") ||
+      (paymentData.hasOwnProperty("recurrenceRule") ||
         paymentData.hasOwnProperty("recurrenceEndDate"))
     ) {
       // Если платеж уже является частью серии, и в paymentData есть recurrencePattern/EndDate,
@@ -456,7 +491,7 @@ export const updatePayment = async (
       logger.warn(
         `Attempted to change series pattern/endDate for payment instance ${payment.id}. These changes should be made via SeriesEditModal. Ignoring for instance.`
       );
-      delete fieldsToUpdate.recurrencePattern;
+      delete fieldsToUpdate.recurrenceRule;
       delete fieldsToUpdate.recurrenceEndDate;
     }
     if (Object.keys(fieldsToUpdate).length > 0) {
@@ -528,6 +563,7 @@ export const deletePayment = async (paymentId: string, userId: string) => {
 
     // Store the original seriesId before updating
     const originalSeriesId = payment.seriesId;
+    const originalStatus = payment.status;
 
     // If a file is attached, delete it
     // If a file is attached, do NOT delete it on logical delete (Option B)
@@ -544,6 +580,64 @@ export const deletePayment = async (paymentId: string, userId: string) => {
     logger.info(
       `Payment soft-deleted (ID: ${payment.id}, User: ${userId}). Dissociated from series ${originalSeriesId}.`
     );
+
+    // Если удаленный платеж был активной частью серии, генерируем следующий
+    if (
+      originalSeriesId &&
+      (originalStatus === "upcoming" || originalStatus === "overdue")
+    ) {
+      const series = await db.RecurringSeries.findOne({
+        where: { id: originalSeriesId, isActive: true },
+      });
+
+      if (series) {
+        const nextDueDate = calculateNextDueDate(
+          series.recurrenceRule,
+          new Date(series.startDate)
+        );
+
+        if (nextDueDate) {
+          const seriesEndDate = series.recurrenceEndDate
+            ? new Date(series.recurrenceEndDate)
+            : null;
+          if (seriesEndDate) {
+            seriesEndDate.setHours(0, 0, 0, 0);
+          }
+
+          if (!seriesEndDate || nextDueDate <= seriesEndDate) {
+            const nextDueDateString = nextDueDate.toISOString().split("T")[0];
+
+            const existingNextPayment = await db.Payment.findOne({
+              where: {
+                seriesId: series.id,
+                dueDate: nextDueDateString,
+              },
+            });
+
+            if (!existingNextPayment) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const newPaymentStatus =
+                new Date(nextDueDateString) < today ? "overdue" : "upcoming";
+
+              await db.Payment.create({
+                userId: series.userId,
+                categoryId: series.categoryId,
+                title: series.title,
+                amount: series.amount,
+                dueDate: nextDueDateString,
+                status: newPaymentStatus,
+                seriesId: series.id,
+                builtinIconName: series.builtinIconName,
+              });
+              logger.info(
+                `Generated next recurring payment (Series ID: ${series.id}, Due Date: ${nextDueDateString}) after deleting instance ${payment.id}.`
+              );
+            }
+          }
+        }
+      }
+    }
 
     // If the payment was part of a recurring series, check if the series should be deleted
     if (originalSeriesId) {
@@ -620,7 +714,7 @@ export const getArchivedPayments = async (userId: string, filters: any) => {
           attributes: [
             "id",
             "title",
-            "recurrencePattern",
+            "recurrenceRule",
             "recurrenceEndDate",
             "isActive",
           ],
@@ -641,7 +735,13 @@ export const getArchivedPayments = async (userId: string, filters: any) => {
 
 // --- Новая функция: Восстановить платеж из архива (2.5, 2.8) ---
 // Status 'completed' or 'deleted' -> 'upcoming' (or 'overdue' if date is in the past)
-export const restorePayment = async (paymentId: string, userId: string) => {
+export const restorePayment = async (
+  paymentId: string,
+  userId: string,
+  options: { reactivateSeries?: boolean } = {}
+) => {
+  const { reactivateSeries = false } = options;
+  const transaction = await db.sequelize.transaction();
   try {
     // Find the payment in the archive, ensure it belongs to the user and has status 'completed' or 'deleted'
     const payment = await db.Payment.findOne({
@@ -650,9 +750,11 @@ export const restorePayment = async (paymentId: string, userId: string) => {
         userId: userId,
         status: { [Op.in]: ["completed", "deleted"] }, // Only from archive
       },
+      transaction,
     });
 
     if (!payment) {
+      await transaction.rollback();
       logger.warn(
         `Payment not found for restore or invalid status (ID: ${paymentId}, User: ${userId})`
       );
@@ -668,25 +770,38 @@ export const restorePayment = async (paymentId: string, userId: string) => {
     const newStatus = dueDate >= now ? "upcoming" : "overdue";
 
     // When restoring, reset completedAt (as the payment is active again)
-    await payment.update({
-      status: newStatus,
-      completedAt: null, // Reset completion date
-    });
+    await payment.update(
+      {
+        status: newStatus,
+        completedAt: null, // Reset completion date
+      },
+      { transaction }
+    );
+
+    // If reactivating the series is requested, find the series and update it
+    if (reactivateSeries && payment.seriesId) {
+      const series = await db.RecurringSeries.findOne({
+        where: { id: payment.seriesId, userId },
+        transaction,
+      });
+
+      if (series && !series.isActive) {
+        await series.update({ isActive: true }, { transaction });
+        logger.info(
+          `Recurring series ${series.id} reactivated upon restoring payment ${payment.id}.`
+        );
+      }
+    }
+
+    await transaction.commit();
 
     logger.info(
       `Payment restored from archive (ID: ${payment.id}, User: ${userId}). New status: ${newStatus}`
     );
 
-    // TODO: If this is a recurring payment, and it was deleted, ensure its series is "revived"
-    // and the Cron job will generate new instances.
-    // The current generateNextRecurrentPayments logic should pick up series
-    // that do not have active upcoming/overdue instances. Restoring
-    // one instance to upcoming should "activate" the series.
-    // If the "parent" payment (seriesId = null + isRecurrent=true) was deleted,
-    // restoring it to upcoming will make it an active parent again.
-
     return payment; // Return the restored payment
   } catch (error: any) {
+    await transaction.rollback();
     logger.error(
       `Error restoring payment ${paymentId} from archive (User: ${userId}):`,
       error
@@ -836,15 +951,15 @@ export const completePayment = async (
         if (canGenerateNext) {
           // Рассчитываем дату следующего платежа
           const nextDueDate = calculateNextDueDate(
-            completedPaymentDueDate,
-            series.recurrencePattern
+            series.recurrenceRule || "", // Передаем recurrenceRule
+            new Date(series.startDate) // Передаем startDate серии
           );
 
           // Еще одна проверка на дату окончания серии для *следующего* вычисленного платежа
           if (series.recurrenceEndDate) {
             const seriesEndDate = new Date(series.recurrenceEndDate);
             seriesEndDate.setHours(0, 0, 0, 0);
-            if (new Date(nextDueDate) > seriesEndDate) {
+            if (nextDueDate && new Date(nextDueDate) > seriesEndDate) {
               // Следующий платеж выходит за дату окончания серии
               canGenerateNext = false;
               if (series.isActive) {
@@ -857,22 +972,21 @@ export const completePayment = async (
             }
           }
 
-          if (canGenerateNext) {
+          if (canGenerateNext && nextDueDate) {
             const nextDueDateString = nextDueDate.toISOString().split("T")[0];
-            // Проверяем, не существует ли уже следующий платеж
+
+            // Проверяем, существует ли уже следующий платеж в серии
             const existingNextPayment = await db.Payment.findOne({
               where: {
                 seriesId: series.id,
                 dueDate: nextDueDateString,
-                status: { [Op.ne]: "deleted" }, // Не считаем логически удаленные существующими
               },
             });
 
+            // Создаем только если его еще нет
             if (!existingNextPayment) {
-              // Определяем статус нового платежа (просрочен или предстоящий)
               const newPaymentStatus =
                 new Date(nextDueDateString) < today ? "overdue" : "upcoming";
-
               // Создаем новый платеж
               await db.Payment.create({
                 userId: series.userId,
@@ -890,7 +1004,7 @@ export const completePayment = async (
               );
             } else {
               logger.info(
-                `Next payment for series ${series.id} on ${nextDueDateString} already exists. Not generated by completePayment.`
+                `Next payment for series ${series.id} on ${nextDueDateString} already exists. Skipping generation.`
               );
             }
           }
@@ -916,15 +1030,13 @@ export const completePayment = async (
   }
 };
 
-// --- New function: генерация следующих экземпляров для всех подходящих повторяющихся платежей (для Cron) ---
-// Эта функция должна запускаться ежедневно.
-// Она должна найти "родительские" повторяющиеся платежи (parentId === id ИЛИ parentId === null + isRecurrent=true),
-// у которых последний сгенерированный экземпляр выполнен или просрочен, и создать следующий.
-// Или, более просто: найти *последний* экземпляр каждой повторяющейся серии,
-// который еще не был выполнен/удален, и если его срок оплаты в прошлом, рассчитать и создать следующий.
-// Или: найти все повторяющиеся платежи (isRecurrent=true), у которых НЕТ предстоящего или просроченного
-// "потомка" с датой > сегодняшней, и создать следующий экземпляр, начиная от даты последнего выполненного.
-// Это сложная логика, требующая аккуратных запросов.
+// --- Генерация следующих экземпляров для всех активных серий (cron) ---
+// Функция должна запускаться ежедневно.
+// Алгоритм:
+// 1. Находим все активные серии, у которых не истек срок (recurrenceEndDate ≥ сегодня или отсутствует).
+// 2. Для каждой такой серии проверяем: есть ли платеж с dueDate > сегодня.
+// 3. Если такого платежа нет, создаем следующий экземпляр, начиная от startDate или последнего платежа.
+// Таким образом, всегда гарантируется, что у активной серии есть хотя бы один предстоящий платеж.
 
 export const generateNextRecurrentPayments = async () => {
   logger.info("Running generateNextRecurrentPayments cron job...");
@@ -934,7 +1046,7 @@ export const generateNextRecurrentPayments = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set time to midnight for date comparison
 
-    // Find all active recurring series
+    // Find all active recurring series that have not ended
     const activeSeries = await db.RecurringSeries.findAll({
       where: {
         isActive: true,
@@ -955,95 +1067,58 @@ export const generateNextRecurrentPayments = async () => {
     for (const series of activeSeries) {
       // Find the latest payment instance for this series
       const lastPayment = await db.Payment.findOne({
-        where: { seriesId: series.id },
-        order: [["dueDate", "DESC"]], // Sort by due date descending to get the latest
+        where: {
+          seriesId: series.id,
+          dueDate: { [Op.gt]: today },
+        },
       });
 
-      let lastDueDate: Date;
       if (lastPayment) {
-        // If there are existing payments, use the latest one's due date
-        lastDueDate = new Date(lastPayment.dueDate);
-        lastDueDate.setHours(0, 0, 0, 0);
-      } else {
-        // Если это первая генерация для серии, нужно определить начальную дату.
-        // Предположим, что первый платеж должен быть создан на основе 'сегодня' или даты начала серии, если она есть.
-        // Для простоты, если нет платежей, и серия активна, можно пробовать генерировать с сегодняшнего дня.
-        // Но более корректно было бы иметь дату начала серии.
-        // Пока оставим логику как есть, но это место для возможного улучшения.
-        const seriesStartDate = new Date(series.createdAt); // Пример: используем дату создания серии как отправную точку
-        seriesStartDate.setHours(0, 0, 0, 0);
-        // Рассчитываем первую dueDate на основе series.createdAt и pattern, чтобы она была >= today
-        let potentialNextDueDate = seriesStartDate;
-        // Чтобы избежать бесконечного цикла, если createdAt в далеком прошлом:
-        // Проверяем, не был ли уже создан платеж для этой серии на основе paymentService.createPayment
-        // Если серия только что создана и первый платеж (instance) создается через createPayment,
-        // то lastDueDate будет корректно взята из этого первого платежа.
-        // Если же серия создается, но первый instance не создается сразу, а ожидается от cron,
-        // то lastDueDate будет вычисляться от series.createdAt или другой стартовой точки.
-
-        // Логика для определения lastDueDate, если нет lastPayment, может быть сложной.
-        // Самый простой вариант — если при создании серии, первый платеж создается сразу (например, на сегодняшнюю дату или указанную dueDate).
-        // Если так, то lastPayment всегда будет.
-        // Если нет, то нужно правило для первой генерации.
-        // Допустим, для новой серии без платежей, мы пытаемся сгенерировать первый платеж, если его dueDate <= today.
-        // Начальную дату можно брать из какого-то поля серии (startDate) или считать от createdAt.
-        // Для данного примера, если lastPayment нет, попробуем взять 'сегодня' минус один день, чтобы nextDueDate был 'сегодня'.
-        lastDueDate = new Date(today);
-        lastDueDate.setDate(lastDueDate.getDate() - 1); // Чтобы calculateNextDueDate дал "сегодня", если pattern daily
-
-        logger.warn(
-          `No payments found for active recurring series ${series.id}. Using effective start date for generation.`
-        );
+        continue;
       }
 
-      // Calculate the next due date based on the series' recurrence pattern
-      const nextDueDate = calculateNextDueDate(
-        lastDueDate,
-        series.recurrencePattern
+      logger.info(
+        `No payments found for series ${series.id}. Starting generation from series start date: ${series.startDate}.`
       );
 
-      if (
-        series.recurrenceEndDate &&
-        new Date(nextDueDate) > new Date(series.recurrenceEndDate)
-      ) {
+      const seriesEndDate = series.recurrenceEndDate
+        ? new Date(series.recurrenceEndDate)
+        : null;
+
+      // Loop to generate all missing payments up to today
+      const nextDueDate = calculateNextDueDate(
+        series.recurrenceRule,
+        new Date(series.startDate),
+        seriesEndDate
+      );
+
+      if (!nextDueDate) {
         logger.info(
-          `Recurring series ${series.id} reached end date. Deactivating.`
+          `No next due date found for series ${series.id}. Skipping.`
         );
-        await series.update({ isActive: false }); // Деактивируем серию
+        await series.update({ isActive: false });
+        logger.info(
+          `Deactivating series ${series.id} as it reached its end date.`
+        );
         continue;
       }
 
       const nextDueDateString = nextDueDate.toISOString().split("T")[0];
-      const existingNextPayment = await db.Payment.findOne({
-        where: {
-          seriesId: series.id,
-          dueDate: nextDueDateString,
-        },
+
+      await db.Payment.create({
+        userId: series.userId,
+        categoryId: series.categoryId,
+        title: series.title,
+        amount: series.amount,
+        dueDate: nextDueDateString,
+        status: "upcoming",
+        seriesId: series.id,
+        builtinIconName: series.builtinIconName,
       });
-
-      if (existingNextPayment) {
-        continue;
-      }
-
-      // Генерируем платеж, если его nextDueDate сегодня или в прошлом (пропущенные)
-      // или если nextDueDate в ближайшем будущем (например, в пределах одного дня для ежедневного cron)
-      // Для ежедневного cron, условие nextDueDate <= today достаточно.
-      if (nextDueDate <= today) {
-        const newPayment = await db.Payment.create({
-          userId: series.userId,
-          categoryId: series.categoryId,
-          title: series.title,
-          amount: series.amount,
-          dueDate: nextDueDateString,
-          status: nextDueDate < today ? "overdue" : "upcoming",
-          seriesId: series.id,
-          builtinIconName: series.builtinIconName,
-        });
-        logger.info(
-          `Generated new recurring payment (ID: ${newPayment.id}, Series ID: ${newPayment.seriesId}, Due Date: ${newPayment.dueDate})`
-        );
-        createdCount++;
-      }
+      logger.info(
+        `Generated new recurring payment for series ${series.id} on ${nextDueDateString}`
+      );
+      createdCount++;
     }
 
     logger.info(
@@ -1239,5 +1314,42 @@ export const getDashboardStats = async (
       error
     );
     throw new Error("Не удалось рассчитать статистику.");
+  }
+};
+
+// --- Фоновая задача: Очистка "осиротевших" серий ---
+// Эта функция находит и удаляет записи о сериях, на которые не ссылается ни один платеж.
+export const cleanupOrphanedSeries = async () => {
+  logger.info("Running job: cleanupOrphanedSeries");
+  try {
+    // Находим все seriesId, которые используются в таблице платежей
+    const usedSeriesIdsResult = await db.Payment.findAll({
+      attributes: [
+        [db.sequelize.fn("DISTINCT", db.sequelize.col("seriesId")), "seriesId"],
+      ],
+      where: {
+        seriesId: {
+          [Op.ne]: null,
+        },
+      },
+      raw: true,
+    });
+
+    const usedSeriesIds = usedSeriesIdsResult.map((item: any) => item.seriesId);
+
+    // Удаляем все серии, ID которых не находится в списке используемых
+    const deletedCount = await db.RecurringSeries.destroy({
+      where: {
+        id: {
+          [Op.notIn]: usedSeriesIds,
+        },
+      },
+    });
+
+    logger.info(`Cleaned up ${deletedCount} orphaned recurring series.`);
+    return deletedCount;
+  } catch (error) {
+    logger.error("Error in cleanupOrphanedSeries cron job:", error);
+    throw error; // Пробрасываем ошибку для логирования в cron runner
   }
 };

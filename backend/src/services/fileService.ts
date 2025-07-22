@@ -2,7 +2,7 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
-import { config } from "../config/config";
+import { config } from "../config/appConfig";
 import db from "../models";
 import logger from "../config/logger";
 import { Request } from "express";
@@ -178,14 +178,14 @@ const attachFileToPayment = async (
     }
 
     // Сохраняем путь к файлу и оригинальное имя в полях платежа
-    // Путь относительный от корневой папки загрузок
-    const relativePath = path.join(
+    // Путь относительный от корневой папки загрузок (используем / для совместимости)
+    const relativePath = [
       "users",
       userId,
       "payments",
       paymentId,
-      file.filename
-    );
+      file.filename,
+    ].join("/");
 
     await payment.update({
       filePath: relativePath, // Сохраняем относительный путь
@@ -303,7 +303,6 @@ const detachFileFromPayment = async (paymentId: string, userId: string) => {
 
     // Удаляем файл из файловой системы после успешного обновления БД
     if (filePathToDelete) {
-      // Извлекаем paymentId и filename из относительного пути для deleteFileFromFS
       // Относительный путь: users/[user_id]/payments/[payment_id]/[filename]
       const parts = filePathToDelete.split(path.sep);
       if (

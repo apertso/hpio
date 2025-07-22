@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Modal from "./Modal";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import RadioButton from "./RadioButton";
 
 interface ConfirmCompletionDateModalProps {
   isOpen: boolean;
@@ -41,51 +42,30 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
         </p>
 
         <fieldset className="space-y-2">
-          <div className="flex items-center">
-            <input
-              id="today"
-              type="radio"
-              name="date-option"
-              value="today"
-              checked={selectedOption === "today"}
-              onChange={() => setSelectedOption("today")}
-              className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-            />
-            <label htmlFor="today" className="ml-3 block text-sm font-medium">
-              Сегодня ({new Date().toLocaleDateString("ru-RU")})
-            </label>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              id="due"
-              type="radio"
-              name="date-option"
-              value="due"
-              checked={selectedOption === "due"}
-              onChange={() => setSelectedOption("due")}
-              className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-            />
-            <label htmlFor="due" className="ml-3 block text-sm font-medium">
-              По дате платежа ({dueDate.toLocaleDateString("ru-RU")})
-            </label>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              id="custom"
-              type="radio"
-              name="date-option"
-              value="custom"
-              checked={selectedOption === "custom"}
-              onChange={() => setSelectedOption("custom")}
-              className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-            />
-            <label htmlFor="custom" className="ml-3 block text-sm font-medium">
-              Выбрать другую дату:
-            </label>
-          </div>
-
+          <RadioButton
+            id="today"
+            name="date-option"
+            value="today"
+            checked={selectedOption === "today"}
+            onChange={() => setSelectedOption("today")}
+            label={`Сегодня (${new Date().toLocaleDateString("ru-RU")})`}
+          />
+          <RadioButton
+            id="due"
+            name="date-option"
+            value="due"
+            checked={selectedOption === "due"}
+            onChange={() => setSelectedOption("due")}
+            label={`По дате платежа (${dueDate.toLocaleDateString("ru-RU")})`}
+          />
+          <RadioButton
+            id="custom"
+            name="date-option"
+            value="custom"
+            checked={selectedOption === "custom"}
+            onChange={() => setSelectedOption("custom")}
+            label="Выбрать другую дату:"
+          />
           {selectedOption === "custom" && (
             <div className="pl-7">
               <DatePicker

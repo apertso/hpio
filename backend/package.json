@@ -4,10 +4,11 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:migrate": "npx sequelize-cli db:migrate"
   },
   "keywords": [],
   "author": "",
@@ -25,14 +26,17 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "mailersend": "^2.2.0",
     "multer": "^1.4.5-lts.2",
     "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.14",
+    "rrule": "^2.8.1",
     "sequelize": "^6.37.3",
     "tedious": "^18.1.0",
     "winston": "^3.13.0"
   },
   "devDependencies": {
+    "@types/nodemailer": "^6.4.15",
+    "@types/rrule": "^2.1.7",
     "nodemon": "^3.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"

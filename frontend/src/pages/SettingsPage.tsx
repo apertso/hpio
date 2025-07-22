@@ -431,7 +431,7 @@ const SettingsPage: React.FC = () => {
           </div>
         </div>
         <p className="mt-12 text-center text-xs text-gray-500 dark:text-gray-600">
-          Версия приложения: 1.0.0
+          Версия приложения: 0.0.7
         </p>
       </div>
 

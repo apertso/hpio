@@ -44,10 +44,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
         label="Срок оплаты"
         selected={watchDueDate || null}
         onChange={(date: Date | null) => {
-          if (date !== null) {
-            setValue("dueDate", date, { shouldValidate: true });
-          }
-          // If date is null, react-hook-form validation will handle the required field check
+          setValue("dueDate", date as Date, { shouldValidate: true });
         }}
         dateFormat="yyyy-MM-dd"
         disabled={isSubmitting}

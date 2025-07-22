@@ -21,8 +21,15 @@ router.use(protect);
 // GET /api/payments/upcoming - Получить активные предстоящие платежи для ленты (2.2)
 router.get("/upcoming", async (req: Request, res: Response) => {
   try {
+    let days = 10; // Значение по умолчанию
+    if (req.query.days && typeof req.query.days === "string") {
+      const parsedDays = parseInt(req.query.days, 10);
+      if (!isNaN(parsedDays) && parsedDays > 0) {
+        days = parsedDays;
+      }
+    }
     // req.user.id добавлен middleware protect
-    const payments = await getUpcomingPayments(req.user!.id);
+    const payments = await getUpcomingPayments(req.user!.id, days);
     res.json(payments);
   } catch (error: any) {
     logger.error("Error in GET /api/payments/upcoming:", error);

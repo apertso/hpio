@@ -1,20 +1,27 @@
 // src/App.tsx
-import React, { useState, useEffect } from "react";
-import { Routes, Route, Link, useLocation } from "react-router-dom";
-import HomePage from "./pages/HomePage";
-import PaymentsList from "./pages/PaymentsList";
-import CategoriesPage from "./pages/CategoriesPage";
-import ArchivePage from "./pages/ArchivePage";
-import SettingsPage from "./pages/SettingsPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import PasswordResetPage from "./pages/PasswordResetPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import LandingPage from "./pages/LandingPage";
-import NotFoundPage from "./pages/NotFoundPage";
-import PaymentEditPage from "./pages/PaymentEditPage";
-import CategoryEditPage from "./pages/CategoryEditPage";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
+import React, { useState, useEffect, Suspense } from "react";
+import {
+  Routes,
+  Route,
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+// Replace static page imports with lazy imports
+const HomePage = React.lazy(() => import("./pages/HomePage"));
+const PaymentsList = React.lazy(() => import("./pages/PaymentsList"));
+const CategoriesPage = React.lazy(() => import("./pages/CategoriesPage"));
+const ArchivePage = React.lazy(() => import("./pages/ArchivePage"));
+const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
+const LoginPage = React.lazy(() => import("./pages/LoginPage"));
+const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
+const PasswordResetPage = React.lazy(() => import("./pages/PasswordResetPage"));
+const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage"));
+const LandingPage = React.lazy(() => import("./pages/LandingPage"));
+const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
+const PaymentEditPage = React.lazy(() => import("./pages/PaymentEditPage"));
+const CategoryEditPage = React.lazy(() => import("./pages/CategoryEditPage"));
+const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
 
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
@@ -28,10 +35,13 @@ import {
   MoonIcon,
   ArrowRightOnRectangleIcon,
   UserIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline";
 import axiosInstance from "./api/axiosInstance";
 import { PHOTO_URL } from "./api/userApi";
 import VerificationBanner from "./components/VerificationBanner";
+import { useReset } from "./context/ResetContext";
+import Spinner from "./components/Spinner";
 
 // TODO: Создать компонент ThemeSwitcher
 const ThemeSwitcher = () => {
@@ -55,6 +65,11 @@ const Navigation: React.FC = () => {
     setIsOpen: setIsUserPopoverOpen,
     containerRef: popoverRef,
   } = useDropdown();
+  const {
+    isOpen: isMobileMenuOpen,
+    setIsOpen: setIsMobileMenuOpen,
+    containerRef: mobileMenuRef,
+  } = useDropdown();
   const { setTheme, resolvedTheme } = useTheme();
   const [avatarKey, setAvatarKey] = useState(Date.now());
 
@@ -63,14 +78,24 @@ const Navigation: React.FC = () => {
     setAvatarKey(Date.now());
   }, [user?.photoPath]);
 
-  // Скрываем навигацию на страницах аутентификации
-  const authPaths = ["/login", "/register", "/forgot-password"];
+  // На страницах аутентификации показываем только переключатель темы
+  const authPaths = [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+  ];
   if (authPaths.includes(location.pathname)) {
-    return null;
+    return (
+      <nav>
+        <ThemeSwitcher />
+      </nav>
+    );
   }
 
   return (
-    <nav className="flex items-center gap-8">
+    <nav className="flex items-center gap-2 sm:gap-8">
       {isAuthenticated ? (
         <>
           <div className="hidden md:flex items-center gap-9">
@@ -100,6 +125,50 @@ const Navigation: React.FC = () => {
             </Link>
           </div>
           <div className="flex items-center space-x-3 md:space-x-4">
+            <div className="md:hidden relative" ref={mobileMenuRef}>
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg text-gray-800 dark:text-gray-200"
+              >
+                <Bars3Icon className="h-6 w-6" />
+              </button>
+              <DropdownOverlay
+                isOpen={isMobileMenuOpen}
+                align="right"
+                widthClass="w-56"
+              >
+                <div className="py-1">
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Главная
+                  </Link>
+                  <Link
+                    to="/payments"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Список платежей
+                  </Link>
+                  <Link
+                    to="/archive"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Архив
+                  </Link>
+                  <Link
+                    to="/categories"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Категории
+                  </Link>
+                </div>
+              </DropdownOverlay>
+            </div>
             <div className="relative" ref={popoverRef}>
               <button
                 onClick={() => setIsUserPopoverOpen(!isUserPopoverOpen)}
@@ -189,7 +258,16 @@ const Navigation: React.FC = () => {
           </div>
         </>
       ) : (
-        <ThemeSwitcher />
+        <div className="flex items-center gap-4">
+          <Link
+            to="/login"
+            className="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+            <span>Войти</span>
+          </Link>
+          <ThemeSwitcher />
+        </div>
       )}
     </nav>
   );
@@ -198,11 +276,26 @@ const Navigation: React.FC = () => {
 function App() {
   const scrollableContainerRef = React.useRef<HTMLDivElement>(null);
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { triggerReset } = useReset();
+
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const targetUrl = isAuthenticated ? "/dashboard" : "/";
+
+    if (isAuthenticated && location.pathname === targetUrl) {
+      triggerReset();
+    } else {
+      navigate(targetUrl);
+    }
+  };
   return (
     <div className="relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans">
       <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20">
-        <Link
-          to={isAuthenticated ? "/dashboard" : "/"}
+        <a
+          href={isAuthenticated ? "/dashboard" : "/"}
+          onClick={handleLogoClick}
           className="flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
           style={{ textDecoration: "none" }}
         >
@@ -223,7 +316,7 @@ function App() {
           <h1 className="text-lg font-bold leading-tight tracking-[-0.015em]">
             Хочу Плачу
           </h1>
-        </Link>
+        </a>
         <Navigation /> {/* Используем компонент навигации */}
       </header>
 
@@ -237,42 +330,53 @@ function App() {
           className="absolute inset-0 overflow-y-auto scrollbar-hide flex flex-col"
         >
           {/* Основное содержимое с роутингом */}
-          <main className="px-13 flex flex-1 justify-center py-5">
+          <main className="px-4 sm:px-10 flex flex-1 justify-center py-5">
             <div className="flex flex-col flex-1 w-full">
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route
-                  path="/forgot-password"
-                  element={<PasswordResetPage />}
-                />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/verify-email" element={<VerifyEmailPage />} />
-                {/* Protected routes */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/dashboard" element={<HomePage />} />
-                  <Route path="/payments" element={<PaymentsList />} />
-                  <Route path="/payments/new" element={<PaymentEditPage />} />
+              <Suspense
+                fallback={
+                  <div className="flex justify-center items-center h-full">
+                    <Spinner size="lg" />
+                  </div>
+                }
+              >
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
                   <Route
-                    path="/payments/edit/:id"
-                    element={<PaymentEditPage />}
-                  />
-                  <Route path="/categories" element={<CategoriesPage />} />
-                  <Route
-                    path="/categories/new"
-                    element={<CategoryEditPage />}
+                    path="/forgot-password"
+                    element={<PasswordResetPage />}
                   />
                   <Route
-                    path="/categories/edit/:id"
-                    element={<CategoryEditPage />}
+                    path="/reset-password"
+                    element={<ResetPasswordPage />}
                   />
-                  <Route path="/archive" element={<ArchivePage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                </Route>
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
+                  <Route path="/verify-email" element={<VerifyEmailPage />} />
+                  {/* Protected routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard" element={<HomePage />} />
+                    <Route path="/payments" element={<PaymentsList />} />
+                    <Route path="/payments/new" element={<PaymentEditPage />} />
+                    <Route
+                      path="/payments/edit/:id"
+                      element={<PaymentEditPage />}
+                    />
+                    <Route path="/categories" element={<CategoriesPage />} />
+                    <Route
+                      path="/categories/new"
+                      element={<CategoryEditPage />}
+                    />
+                    <Route
+                      path="/categories/edit/:id"
+                      element={<CategoryEditPage />}
+                    />
+                    <Route path="/archive" element={<ArchivePage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                  </Route>
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </Suspense>
             </div>
           </main>
 

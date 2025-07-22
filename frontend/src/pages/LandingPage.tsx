@@ -7,7 +7,6 @@ import {
   TagIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "../components/Button";
-import { useTheme } from "../context/ThemeContext";
 
 const Feature = ({
   icon: Icon,
@@ -28,8 +27,6 @@ const Feature = ({
 );
 
 const LandingPage: React.FC = () => {
-  const { resolvedTheme } = useTheme();
-
   return (
     <div className="w-full max-w-6xl mx-auto text-gray-900 dark:text-gray-100">
       {/* Hero Section */}

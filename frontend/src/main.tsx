@@ -6,6 +6,7 @@ import { ThemeProvider } from "./context/ThemeContext.tsx"; // Импорт Them
 import { BrowserRouter } from "react-router-dom"; // Для роутинга
 import { AuthProvider } from "./context/AuthContext.tsx";
 import { ToastProvider } from "./context/ToastContext.tsx";
+import { ResetProvider } from "./context/ResetContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <AuthProvider>
           <ToastProvider>
-            <App />
+            <ResetProvider>
+              <App />
+            </ResetProvider>
           </ToastProvider>
         </AuthProvider>
       </BrowserRouter>

@@ -3,6 +3,7 @@ import logger from "../config/logger";
 
 export const TASK_UPDATE_OVERDUE = "UPDATE_OVERDUE_STATUSES";
 export const TASK_GENERATE_RECURRING = "GENERATE_RECURRING_PAYMENTS";
+export const TASK_CLEANUP_ORPHANED_SERIES = "CLEANUP_ORPHANED_SERIES";
 
 const taskExecutionInProgress: Set<string> = new Set();
 

@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import * as authService from "../services/authService";
 import logger from "../config/logger";
 import path from "path";
-import { config } from "../config/config";
+import { config } from "../config/appConfig";
 import fs from "fs";
 
 // Получить профиль пользователя

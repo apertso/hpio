@@ -1,15 +1,16 @@
-import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
-import { config } from "../config/config";
+import nodemailer from "nodemailer";
+import { config } from "../config/appConfig";
 import logger from "../config/logger";
 
-const mailerSend = new MailerSend({
-  apiKey: config.mailerSend.apiKey,
+const transporter = nodemailer.createTransport({
+  host: config.smtp.host,
+  port: config.smtp.port,
+  secure: config.smtp.secure,
+  auth: {
+    user: config.smtp.user,
+    pass: config.smtp.pass,
+  },
 });
-
-const sentFrom = new Sender(
-  config.mailerSend.senderEmail,
-  config.mailerSend.senderName
-);
 
 const createEmailTemplate = (name: string, resetLink: string): string => {
   return `
@@ -103,32 +104,28 @@ export const sendPasswordResetEmail = async (
   recipientName: string,
   resetLink: string
 ) => {
-  if (!config.mailerSend.apiKey) {
-    logger.error("MailerSend API key is not configured. Cannot send email.");
-    // In development, you might want to log the reset link instead of sending an email
+  if (!config.smtp.host || !config.smtp.user || !config.smtp.pass) {
+    logger.error("SMTP server is not configured. Cannot send email.");
     if (process.env.NODE_ENV !== "production") {
       logger.info(
         `[DEV MODE] Password reset link for ${recipientEmail}: ${resetLink}`
       );
     }
-    return; // Don't proceed if API key is missing
+    return;
   }
 
-  const recipients = [new Recipient(recipientEmail)];
-
-  const emailParams = new EmailParams()
-    .setFrom(sentFrom)
-    .setTo(recipients)
-    .setSubject("Инструкции по сбросу пароля для Хочу Плачу")
-    .setHtml(createEmailTemplate(recipientName, resetLink));
+  const mailOptions = {
+    from: `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
+    to: recipientEmail,
+    subject: "Инструкции по сбросу пароля для Хочу Плачу",
+    html: createEmailTemplate(recipientName, resetLink),
+  };
 
   try {
-    await mailerSend.email.send(emailParams);
+    await transporter.sendMail(mailOptions);
     logger.info(`Password reset email sent to ${recipientEmail}`);
   } catch (error) {
     logger.error(`Failed to send email to ${recipientEmail}:`, error);
-    // Depending on the policy, you might want to re-throw the error
-    // or handle it silently. For now, we just log it.
   }
 };
 
@@ -137,8 +134,8 @@ export const sendVerificationEmail = async (
   recipientName: string,
   verificationLink: string
 ) => {
-  if (!config.mailerSend.apiKey) {
-    logger.error("MailerSend API key is not configured. Cannot send email.");
+  if (!config.smtp.host || !config.smtp.user || !config.smtp.pass) {
+    logger.error("SMTP server is not configured. Cannot send email.");
     if (process.env.NODE_ENV !== "production") {
       logger.info(
         `[DEV MODE] Verification link for ${recipientEmail}: ${verificationLink}`
@@ -147,16 +144,15 @@ export const sendVerificationEmail = async (
     return;
   }
 
-  const recipients = [new Recipient(recipientEmail)];
-
-  const emailParams = new EmailParams()
-    .setFrom(sentFrom)
-    .setTo(recipients)
-    .setSubject("Подтвердите ваш Email для Хочу Плачу")
-    .setHtml(createVerificationEmailTemplate(recipientName, verificationLink));
+  const mailOptions = {
+    from: `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
+    to: recipientEmail,
+    subject: "Подтвердите ваш Email для Хочу Плачу",
+    html: createVerificationEmailTemplate(recipientName, verificationLink),
+  };
 
   try {
-    await mailerSend.email.send(emailParams);
+    await transporter.sendMail(mailOptions);
     logger.info(`Verification email sent to ${recipientEmail}`);
   } catch (error) {
     logger.error(

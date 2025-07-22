@@ -1,22 +1,21 @@
-import React from "react";
 import { UseFormSetValue, FieldErrors } from "react-hook-form";
-import { PaymentFormInputs } from "./PaymentForm";
 import useCategories from "../hooks/useCategories";
 import Select, { SelectOption } from "./Select"; // Import new component
+import { PaymentFormInputs } from "./PaymentForm";
 
 interface PaymentCategorySelectProps {
   errors: FieldErrors<PaymentFormInputs>;
   setValue: UseFormSetValue<PaymentFormInputs>;
-  watchCategoryId: PaymentFormInputs["categoryId"];
+  watchCategoryId: string | null | undefined;
   isSubmitting: boolean;
 }
 
-const PaymentCategorySelect: React.FC<PaymentCategorySelectProps> = ({
+function PaymentCategorySelect({
   errors,
   setValue,
   watchCategoryId,
   isSubmitting,
-}) => {
+}: PaymentCategorySelectProps) {
   const { categories, isLoading, error } = useCategories();
 
   const options: SelectOption[] = [
@@ -56,11 +55,11 @@ const PaymentCategorySelect: React.FC<PaymentCategorySelectProps> = ({
       onChange={(value) =>
         setValue("categoryId", value, { shouldValidate: true })
       }
-      error={errors.categoryId?.message}
+      error={errors.categoryId?.message as string}
       disabled={isSubmitting || categories?.length === 0}
       placeholder="-- Без категории --"
     />
   );
-};
+}
 
 export default PaymentCategorySelect;

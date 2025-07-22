@@ -2,7 +2,7 @@
 import db from "../models"; // Для доступа к моделям User
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { config } from "../config/config";
+import { config } from "../config/appConfig";
 import logger from "../config/logger";
 import { UserInstance } from "../models/User";
 import { Op } from "sequelize";
@@ -343,8 +343,8 @@ export const attachPhotoToUser = async (
     }
   }
 
-  // Относительный путь для сохранения в БД
-  const relativePath = path.join("users", userId, "profile", file.filename);
+  // Относительный путь для сохранения в БД (используем / для совместимости)
+  const relativePath = ["users", userId, "profile", file.filename].join("/");
   user.photoPath = relativePath;
   await user.save();
 

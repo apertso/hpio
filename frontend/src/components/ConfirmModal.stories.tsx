@@ -25,7 +25,6 @@ const InteractiveConfirmModal: React.FC = () => {
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         onConfirm={() => {
-          alert("Confirmed!");
           setIsOpen(false);
         }}
         title="Delete Item"

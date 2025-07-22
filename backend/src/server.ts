@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import db from "./models"; // Подключение к БД и инициализация моделей
-import { config } from "./config/config";
+import { config } from "./config/appConfig";
 import apiRoutes from "./routes";
 import { setupCronJobs } from "./utils/cronJobs";
 import logger from "./config/logger";

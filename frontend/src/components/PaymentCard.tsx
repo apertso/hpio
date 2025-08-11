@@ -23,6 +23,7 @@ interface PaymentCardProps {
     status: "upcoming" | "overdue" | "completed" | "deleted";
     seriesId?: string | null;
     series?: { id: string; isActive: boolean } | null;
+    isVirtual?: boolean;
   };
   onEdit: () => void;
   onComplete: () => void;
@@ -66,11 +67,11 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
 
   // Стили из класса subtle-card
   const cardClasses =
-    "p-4 rounded-lg transition-shadow duration-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:shadow-lg dark:hover:shadow-white/10 flex flex-col justify-between h-full";
+    "p-4 rounded-lg transition-shadow duration-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:shadow-lg dark:hover:shadow-white/10 flex flex-col justify-between";
 
   return (
     <div
-      className={`${cardClasses} text-gray-900 dark:text-gray-100 min-h-36 py-4 px-4 rounded-xl`}
+      className={`${cardClasses} text-gray-900 dark:text-gray-100 h-40 py-4 px-4 rounded-xl`}
     >
       <div>
         {/* Header */}
@@ -81,58 +82,66 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
             </div>
             <h3 className="text-base font-medium">{payment.title}</h3>
           </div>
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen(!isMenuOpen);
-              }}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer"
-            >
-              <EllipsisVerticalIcon className="h-5 w-5" />
-            </button>
-            <DropdownOverlay
-              isOpen={isMenuOpen}
-              align="right"
-              widthClass="w-48"
-            >
-              <div className="py-1">
-                <button
-                  onClick={() => {
-                    onEdit();
-                    setMenuOpen(false);
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
-                >
-                  <PencilIcon className="w-4 h-4 mr-2" /> Редактировать
-                </button>
-                <button
-                  onClick={() => {
-                    onComplete();
-                    setMenuOpen(false);
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
-                >
-                  <CheckCircleIcon className="w-4 h-4 mr-2" /> Выполнить
-                </button>
-                <button
-                  onClick={() => {
-                    onDelete();
-                    setMenuOpen(false);
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
-                >
-                  <TrashIcon className="w-4 h-4 mr-2" /> Удалить
-                </button>
-              </div>
-            </DropdownOverlay>
-          </div>
+          {!payment.isVirtual && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(!isMenuOpen);
+                }}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer"
+              >
+                <EllipsisVerticalIcon className="h-5 w-5" />
+              </button>
+              <DropdownOverlay
+                isOpen={isMenuOpen}
+                align="right"
+                widthClass="w-48"
+                anchorRef={menuRef}
+              >
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      onEdit();
+                      setMenuOpen(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
+                  >
+                    <PencilIcon className="w-4 h-4 mr-2" /> Редактировать
+                  </button>
+                  <button
+                    onClick={() => {
+                      onComplete();
+                      setMenuOpen(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
+                  >
+                    <CheckCircleIcon className="w-4 h-4 mr-2" /> Выполнить
+                  </button>
+                  <button
+                    onClick={() => {
+                      onDelete();
+                      setMenuOpen(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
+                  >
+                    <TrashIcon className="w-4 h-4 mr-2" /> Удалить
+                  </button>
+                </div>
+              </DropdownOverlay>
+            </div>
+          )}
         </div>
 
         {/* Recurring status */}
         {isEffectivelyRecurring && (
           <p className="text-xs text-[#3F51B5] dark:text-indigo-400 mb-1 flex items-center font-normal">
             <ArrowPathIcon className="h-3 w-3 mr-1" /> Повторяющийся
+          </p>
+        )}
+        {payment.isVirtual && (
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+            Виртуальный
           </p>
         )}
       </div>

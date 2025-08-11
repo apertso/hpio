@@ -19,6 +19,17 @@ import {
   TASK_GENERATE_RECURRING,
   TASK_CLEANUP_ORPHANED_SERIES,
 } from "../services/taskLockService";
+import {
+  sendPaymentReminderEmail,
+  // Placeholder for future push service
+} from "../services/emailService";
+import db from "../models";
+import { Op } from "sequelize";
+import { trace, SpanStatusCode, Span } from "@opentelemetry/api"; // 👈 Import OpenTelemetry
+
+// --- OpenTelemetry Tracer ---
+const tracer = trace.getTracer("cron-job-tracer");
+// ----------------------------
 
 const setupCronJobs = () => {
   // ЗАДАЧА 1: Актуализация статусов просроченных платежей.
@@ -75,13 +86,121 @@ const setupCronJobs = () => {
     }
   });
 
-  // ЗАДАЧА 3 (В БУДУЩЕМ): Отправка уведомлений.
-  // ПОЧЕМУ НУЖНО: Cron идеально подходит для отправки своевременных напоминаний, не зависящих от действий пользователя.
-  // ПРИМЕРЫ:
-  // - "Напоминание: завтра нужно оплатить..." (запускается утром).
-  // - "Внимание: у вас появился просроченный платеж" (запускается после ЗАДАЧИ 1).
-  // - "Еженедельная сводка по предстоящим расходам".
-  // cron.schedule('0 8 * * *', async () => { /* ... логика вызова notificationService ... */ });
+  // ЗАДАЧА 3: Отправка уведомлений о платежах.
+  // ЧТО ДЕЛАЕТ: Каждую минуту проверяет, не наступило ли у кого-то из пользователей время для уведомлений.
+  // Если наступило, находит все платежи этого пользователя, которые должны быть оплачены сегодня и помечены для напоминания,
+  // и отправляет уведомление (Email/Push).
+  // ВРЕМЯ: Каждую минуту (только в продакшене).
+  if (process.env.NODE_ENV === "production") {
+    cron.schedule("* * * * *", async () => {
+      let span: Span;
+      try {
+        span = tracer.startSpan("notification-sending-job");
+      } catch (e) {
+        logger.error("[OpenTelemetry] Failed to start span:", e);
+        return; // не продолжаем задачу, чтобы не запускать "ослеплённую" логику
+      }
+
+      try {
+        // 1. Получаем ВСЕХ пользователей, у которых включены уведомления.
+        // Проверка времени будет произведена в коде приложения, так как MS SQL не поддерживает IANA-таймзоны (напр., 'Europe/Moscow').
+        const potentialUsers = await db.User.findAll({
+          where: {
+            notificationMethod: { [Op.ne]: "none" },
+            isVerified: true,
+          },
+        });
+
+        const now = new Date();
+
+        // 2. Фильтруем пользователей в коде, проверяя их локальное время.
+        const usersToNotify = potentialUsers.filter((user) => {
+          try {
+            // Форматируем текущее время в таймзоне пользователя в "HH:mm"
+            const timeInZone = new Intl.DateTimeFormat("en-GB", {
+              timeZone: user.timezone,
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }).format(now);
+
+            // Сравниваем с временем, указанным в настройках пользователя
+            return timeInZone === user.notificationTime;
+          } catch (e) {
+            logger.error(
+              `Invalid timezone for user ${user.id}: ${user.timezone}`
+            );
+            return false; // Игнорируем пользователя с невалидной таймзоной
+          }
+        });
+
+        span.setAttribute("users.to_notify.count", usersToNotify.length);
+        if (usersToNotify.length === 0) {
+          span.end();
+          return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        for (const user of usersToNotify) {
+          const paymentsToRemind = await db.Payment.findAll({
+            where: {
+              userId: user.id,
+              remind: true,
+              status: { [Op.in]: ["upcoming", "overdue"] },
+              dueDate: {
+                [Op.gte]: today,
+                [Op.lt]: tomorrow,
+              },
+            },
+          });
+
+          if (paymentsToRemind.length === 0) {
+            continue;
+          }
+
+          logger.info(
+            `Sending ${paymentsToRemind.length} reminders to ${user.email} via ${user.notificationMethod}`
+          );
+
+          for (const payment of paymentsToRemind) {
+            if (user.notificationMethod === "email") {
+              await sendPaymentReminderEmail(
+                user.email,
+                user.name,
+                payment.title,
+                payment.amount,
+                payment.dueDate
+              );
+            } else if (user.notificationMethod === "push") {
+              // TODO: Implement push notification logic
+              logger.warn(
+                `Push notification for user ${user.id} is not implemented yet.`
+              );
+            }
+          }
+        }
+
+        span.setStatus({ code: SpanStatusCode.OK });
+      } catch (error) {
+        logger.error("Cron: Error in notification sending job", error);
+        span.recordException(error as Error);
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: (error as Error).message,
+        });
+      } finally {
+        span.end();
+      }
+    });
+  } else {
+    logger.info(
+      "Skipping notification cron job in non-production environment."
+    );
+  }
 
   // ЗАДАЧА 4: Очистка "осиротевших" серий.
   // ЧТО ДЕЛАЕТ: Находит и удаляет записи о повторяющихся сериях, на которые не ссылается ни один платеж.

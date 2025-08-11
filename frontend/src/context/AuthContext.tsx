@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
+  useRef,
 } from "react";
 import axiosInstance from "../api/axiosInstance"; // Ваш настроенный экземпляр axios
 import { useNavigate } from "react-router-dom";
@@ -18,6 +19,9 @@ export interface User {
   name: string;
   isVerified: boolean;
   photoPath?: string | null; // <-- ADD THIS
+  notificationMethod?: "email" | "push" | "none";
+  notificationTime?: string;
+  timezone?: string; // <-- ADD THIS LINE
   // Добавьте другие поля пользователя, если они будут возвращаться с бэкенда
 }
 
@@ -29,8 +33,8 @@ interface AuthContextProps {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
-  refreshUser: () => Promise<void>; // <-- ADD THIS
-  //forgotPassword: (email: string) => Promise<void>; // Можно добавить сюда, но пока оставим на странице
+  refreshUser: () => Promise<void>; // Синхронное обновление профиля (старый путь)
+  revalidateMe: (reason?: string) => Promise<void>; // Легкая пере-валидация /user/me
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -48,13 +52,15 @@ function isAxiosErrorWithMessage(
   );
 }
 
+const USER_STORAGE_KEY = "user";
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const navigate = useNavigate();
   // Инициализируем состояние, пытаясь получить данные из localStorage
   const [user, setUser] = useState<User | null>(() => {
-    const storedUser = localStorage.getItem("user");
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
     return storedUser ? JSON.parse(storedUser) : null;
   });
   const [token, setToken] = useState<string | null>(
@@ -62,10 +68,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   const [loading, setLoading] = useState(true); // Флаг загрузки при инициализации
 
+  // ETag и контроль конкурентных запросов
+  const etagRef = useRef<string | null>(null);
+  const inflightRef = useRef(0);
+  const pollRef = useRef<number | null>(null);
+  const focusDebounceRef = useRef<number | null>(null);
+
   // Функция выхода
   const logout = useCallback(() => {
     localStorage.removeItem("jwtToken");
-    localStorage.removeItem("user");
+    localStorage.removeItem(USER_STORAGE_KEY);
     setToken(null);
     setUser(null);
     delete axiosInstance.defaults.headers.common["Authorization"]; // Удаляем заголовок Authorization
@@ -76,10 +88,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Эффект для проверки токена при загрузке приложения и настройки Axios
   useEffect(() => {
     if (token) {
-      // TODO: Опционально, добавить эндпоинт на бэкенде для проверки валидности токена без полных данных пользователя
-      // Например, GET /api/auth/verify-token
-      // Если токен есть, но не валиден (например, истек), пользователь будет считаться не аутентифицированным
-      // Пока полагаемся на интерцептор Axios для обработки 401
       axiosInstance.defaults.headers.common[
         "Authorization"
       ] = `Bearer ${token}`;
@@ -94,7 +102,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const interceptor = axiosInstance.interceptors.response.use(
       (response) => response,
       (error) => {
-        // Если ошибка 401 и это не запрос на login/register (чтобы избежать бесконечного цикла)
         if (
           error.response &&
           error.response.status === 401 &&
@@ -103,30 +110,115 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         ) {
           logger.warn("Received 401 Unauthorized. Logging out.");
           logout(); // Автоматический выход при неавторизованном запросе
-          // Опционально: navigate('/login'); // Перенаправить на страницу входа
         }
         return Promise.reject(error);
       }
     );
     return () => {
-      // Очистка интерцептора при размонтировании компонента
       axiosInstance.interceptors.response.eject(interceptor);
     };
   }, [navigate, logout]); // Зависимости от navigate и logout
 
-  // Функция для обновления данных пользователя из бэкенда
+  // Легкая пере-валидация /user/me (с ETag/304)
+  const revalidateMe = useCallback(async () => {
+    if (!token) return; // нет смысла запрашивать без токена
+    const callId = ++inflightRef.current;
+    try {
+      const resp = await userApi.getMe(etagRef.current || undefined);
+      if (resp.status === 304) {
+        if (callId === inflightRef.current) {
+          // нет изменений
+        }
+        return;
+      }
+      if (callId !== inflightRef.current) return;
+      if ("etag" in resp && resp.etag) etagRef.current = resp.etag;
+      const next = resp.data as User;
+      const wasUnverified = user?.isVerified === false;
+      setUser(next);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(next));
+      if (wasUnverified && next.isVerified) {
+        logger.info("Email verified detected via revalidation.");
+      }
+    } catch (error) {
+      // 401 перехватится интерцептором и вызовет logout
+      const message =
+        typeof error === "object" && error && "message" in error
+          ? String((error as { message?: unknown }).message || "")
+          : String(error);
+      logger.warn("Revalidate /user/me failed:", message);
+    }
+  }, [token, user]);
+
+  // Дебаунс для событий фокуса/видимости
+  const debounceRevalidate = useCallback(() => {
+    if (focusDebounceRef.current) window.clearTimeout(focusDebounceRef.current);
+    focusDebounceRef.current = window.setTimeout(() => {
+      revalidateMe();
+    }, 500);
+  }, [revalidateMe]);
+
+  // События: видимость, online
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") debounceRevalidate();
+    };
+    const onOnline = () => revalidateMe();
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", onOnline);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [revalidateMe, debounceRevalidate]);
+
+  // Поллинг только если пользователь не верифицирован
+  useEffect(() => {
+    const shouldPoll =
+      !!user &&
+      user.isVerified === false &&
+      document.visibilityState === "visible" &&
+      navigator.onLine;
+
+    if (!shouldPoll) {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+
+    if (!pollRef.current) {
+      pollRef.current = window.setInterval(() => revalidateMe(), 60000);
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [user?.isVerified, revalidateMe]);
+
+  // Первичная пере-валидация при монтировании
+  useEffect(() => {
+    revalidateMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Полное обновление профиля (старый путь)
   const refreshUser = useCallback(async () => {
     try {
       const freshUser = await userApi.getProfile();
       setUser(freshUser);
-      localStorage.setItem("user", JSON.stringify(freshUser));
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(freshUser));
       logger.info("User data refreshed.");
     } catch (error) {
       logger.error("Failed to refresh user data, logging out.", error);
-      // Если не удалось обновить данные (например, токен невалиден), выходим
       logout();
     }
-  }, [logout]); // <-- ADD `logout` to dependency array if it's not already stable
+  }, [logout]);
 
   // Функция входа
   const login = useCallback(
@@ -144,11 +236,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email: userEmail,
           photoPath,
           isVerified,
+          notificationMethod,
+          notificationTime,
+          timezone,
         } = res.data;
 
         localStorage.setItem("jwtToken", token);
-        const userData = { id, name, email: userEmail, photoPath, isVerified };
-        localStorage.setItem("user", JSON.stringify(userData));
+        const userData = {
+          id,
+          name,
+          email: userEmail,
+          photoPath,
+          isVerified,
+          notificationMethod,
+          notificationTime,
+          timezone,
+        };
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
 
         setToken(token);
         setUser(userData);
@@ -191,17 +295,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email: regEmail,
           photoPath: regPhotoPath,
           isVerified,
+          timezone,
         } = res.data;
 
         localStorage.setItem("jwtToken", token);
-        const regUserData = {
+        const regUserData: User = {
           id: regId,
           name: regName,
           email: regEmail,
           photoPath: regPhotoPath,
           isVerified,
+          notificationMethod: "email", // default
+          notificationTime: "09:30", // default
+          timezone,
         };
-        localStorage.setItem("user", JSON.stringify(regUserData));
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(regUserData));
 
         setToken(token);
         setUser(regUserData);
@@ -239,7 +347,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       login,
       register,
       logout,
-      refreshUser, // <-- ADD THIS
+      refreshUser,
+      revalidateMe,
     }),
     [
       user,
@@ -250,7 +359,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       register,
       logout,
       refreshUser,
-    ] // <-- ADD refreshUser
+      revalidateMe,
+    ]
   );
 
   return (

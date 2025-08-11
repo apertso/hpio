@@ -4,17 +4,11 @@ import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 // Переиспользуем компоненты для отображения платежа и иконки
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
-import { getPaymentColorClass } from "../utils/paymentColors";
+import ArchiveTable from "../components/ArchiveTable";
 // Импортируем иконки действий
-import {
-  ArrowPathIcon,
-  TrashIcon,
-  PencilIcon,
-} from "@heroicons/react/24/outline"; // Иконка восстановления, удаления и редактирования
 import { PaperClipIcon } from "@heroicons/react/24/outline"; // Add import
 import { PaymentData } from "../types/paymentData";
 import useApi from "../hooks/useApi"; // Import useApi
-import { formatRecurrenceRule } from "./PaymentsList";
 import Spinner from "../components/Spinner";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
@@ -431,12 +425,7 @@ const ArchivePage: React.FC = () => {
         {/* TODO: Секция фильтров и сортировки архива */}
         {/* <div className="mb-4 p-4 bg-gray-200 dark:bg-gray-700 rounded-md"> ... </div> */}
 
-        {/* Состояния загрузки или ошибки */}
-        {isLoadingArchive && (
-          <div className="flex justify-center items-center py-10">
-            <Spinner />
-          </div>
-        )}
+        {/* Состояние ошибки */}
         {errorArchive && (
           <div
             className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
@@ -448,218 +437,31 @@ const ArchivePage: React.FC = () => {
         )}
 
         {/* Таблица архивных платежей */}
-        {!isLoadingArchive && !errorArchive && (
+        {!errorArchive && (
           <>
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Иконка
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Статус
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Название
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Повторение
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Сумма
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Срок оплаты
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Выполнен/Удален
-                    </th>{" "}
-                    {/* Дата выполнения или пометки удаления */}
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Категория
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Файл
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                    >
-                      Действия
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {archivedPayments.map((payment) => (
-                    <tr
-                      key={payment.id}
-                      className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {" "}
-                        {/* Иконка */}{" "}
-                        <PaymentIconDisplay
-                          payment={payment}
-                          sizeClass="h-6 w-6"
-                        />{" "}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {" "}
-                        {/* Статус */}
-                        <span
-                          className={`inline-block w-3 h-3 rounded-full mr-2 ${getPaymentColorClass(
-                            payment
-                          )}`}
-                        ></span>
-                        {payment.status === "completed" && "Выполнен"}
-                        {payment.status === "deleted" && "Удален"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
-                        {" "}
-                        {/* Название */} {payment.title}{" "}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {/* Повторение */}
-                        {payment.seriesId && payment.series ? ( // Check for series data
-                          <span className="flex items-center">
-                            <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
-                            {/* Ensure formatRecurrencePattern is available or defined */}
-                            {/* Assuming formatRecurrencePattern is defined elsewhere or needs to be added */}
-                            {formatRecurrenceRule(
-                              payment.series.recurrenceRule
-                            )}
-                            {payment.series.recurrenceEndDate &&
-                              ` до ${new Date(
-                                payment.series.recurrenceEndDate
-                              ).toLocaleDateString()}`}
-                          </span>
-                        ) : (
-                          "Разовый"
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {new Intl.NumberFormat("ru-RU", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        }).format(payment.amount)}
-                        <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
-                          ₽
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {" "}
-                        {/* Срок оплаты */}{" "}
-                        {new Date(payment.dueDate).toLocaleDateString()}{" "}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {" "}
-                        {/* Дата выполнения/удаления */}
-                        {payment.completedAt
-                          ? new Date(payment.completedAt).toLocaleString(
-                              "ru-RU"
-                            )
-                          : new Date(payment.updatedAt).toLocaleString(
-                              "ru-RU"
-                            )}{" "}
-                        {/* Показываем completedAt или updatedAt для удаленных */}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {" "}
-                        {/* Категория */}{" "}
-                        {payment.category ? payment.category.name : "-"}{" "}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                        {/* Файл */}
-                        {payment.filePath && payment.fileName ? (
-                          <button
-                            onClick={() =>
-                              handleDownloadFile(payment.id, payment.fileName!)
-                            } // Ensure handleDownloadFile is defined/imported
-                            className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 cursor-pointer"
-                            title={`Скачать ${payment.fileName}`}
-                          >
-                            <PaperClipIcon className="h-5 w-5 inline-block mr-1" />
-                            {/* Можно добавить имя файла payment.fileName, если нужно */}
-                          </button>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      {/* Ячейка с кнопками действий */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end items-center">
-                        {/* НОВАЯ КНОПКА "РЕДАКТИРОВАТЬ" */}
-                        <button
-                          onClick={() => handleEditPayment(payment.id)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 mx-1 cursor-pointer"
-                          title="Редактировать"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-
-                        {/* Кнопка Восстановить */}
-                        <button
-                          onClick={() => handleRestorePayment(payment)}
-                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 mx-1 cursor-pointer"
-                          title="Восстановить"
-                        >
-                          <ArrowPathIcon className="h-5 w-5" />
-                        </button>
-
-                        {/* Кнопка Полное Удаление */}
-                        <button
-                          onClick={() =>
-                            handlePermanentDeletePayment(payment.id)
-                          }
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 mx-1 cursor-pointer"
-                          title="Удалить полностью"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ArchiveTable
+                data={archivedPayments}
+                isLoading={isLoadingArchive}
+                onEdit={handleEditPayment}
+                onRestore={handleRestorePayment}
+                onPermanentDelete={handlePermanentDeletePayment}
+                onDownloadFile={handleDownloadFile}
+              />
             </div>
             {/* Mobile Card View */}
-            <div className="block md:hidden space-y-3 p-2">
-              {archivedPayments.map((payment) => (
-                <ArchivedPaymentListItem
-                  key={payment.id}
-                  payment={payment}
-                  onClick={() => setMobileActionsPayment(payment)}
-                />
-              ))}
-            </div>
+            {!isLoadingArchive && (
+              <div className="block md:hidden space-y-3 p-2">
+                {archivedPayments.map((payment) => (
+                  <ArchivedPaymentListItem
+                    key={payment.id}
+                    payment={payment}
+                    onClick={() => setMobileActionsPayment(payment)}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

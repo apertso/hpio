@@ -7,12 +7,16 @@ import {
   uploadProfilePhoto,
   getProfilePhoto,
   deleteAccount,
+  getMe,
 } from "../controllers/userController";
 
 const router = Router();
 
 // Все маршруты пользователя должны быть защищены
 router.use(protect);
+
+// Легкий эндпоинт с ETag/Last-Modified для условной выборки
+router.get("/me", getMe);
 
 router.get("/profile", getProfile);
 router.put("/profile", updateProfile);

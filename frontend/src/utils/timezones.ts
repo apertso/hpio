@@ -1,0 +1,15 @@
+export const timezones = [
+  { value: "UTC", label: "UTC (Всемирное координированное время)" },
+  { value: "Europe/London", label: "Европа/Лондон (GMT+0/GMT+1)" },
+  { value: "Europe/Berlin", label: "Европа/Берлин (GMT+1/GMT+2)" },
+  { value: "Europe/Moscow", label: "Европа/Москва (GMT+3)" },
+  { value: "Asia/Yekaterinburg", label: "Азия/Екатеринбург (GMT+5)" },
+  { value: "Asia/Tashkent", label: "Азия/Ташкент (GMT+5)" },
+  { value: "Asia/Dubai", label: "Азия/Дубай (GMT+4)" },
+  { value: "America/New_York", label: "Америка/Нью-Йорк (EST/EDT)" },
+  { value: "America/Chicago", label: "Америка/Чикаго (CST/CDT)" },
+  { value: "America/Denver", label: "Америка/Денвер (MST/MDT)" },
+  { value: "America/Los_Angeles", label: "Америка/Лос-Анджелес (PST/PDT)" },
+  { value: "Asia/Tokyo", label: "Азия/Токио (GMT+9)" },
+  { value: "Australia/Sydney", label: "Австралия/Сидней (AEST/AEDT)" },
+];

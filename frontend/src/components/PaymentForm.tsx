@@ -16,7 +16,10 @@ import PaymentFileUploadSection from "./PaymentFileUploadSection";
 import IconSelector from "./IconSelector";
 import { BuiltinIcon } from "../utils/builtinIcons";
 import Spinner from "./Spinner";
+import ToggleSwitch from "./ToggleSwitch";
 import { PaymentData } from "../types/paymentData";
+
+// moved ToggleSwitch to a standalone component
 
 // Schema for a single payment edit
 const singlePaymentSchema = z.object({
@@ -65,6 +68,7 @@ const paymentFormSchema = z.object({
     .nullable()
     .optional(),
   recurrenceRule: z.string().nullable().optional(),
+  remind: z.boolean().optional(),
   completedAt: z.date().nullable().optional(),
 });
 
@@ -76,6 +80,7 @@ interface PaymentFormProps {
   onCancel: () => void;
   initialData: PaymentData | null; // Receive initial data as a prop
   editScope: "single" | "series"; // Receive edit scope
+  isSeriesInactive?: boolean;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
@@ -84,6 +89,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onCancel,
   initialData,
   editScope,
+  isSeriesInactive,
 }) => {
   const isEditMode = !!paymentId;
 
@@ -108,9 +114,24 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   } | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
+  const disableForInactiveSeries =
+    isEditMode && editScope === "series" && !!isSeriesInactive;
+
   // Effect to populate the form with initial data
   useEffect(() => {
     if (initialData) {
+      // В режиме редактирования серии «Срок оплаты» берём из series.generatedUntil (или сегодня, если его нет)
+      let dueDateForForm = new Date(initialData.dueDate);
+      if (editScope === "series") {
+        const generatedUntil = initialData.series
+          ? (
+              initialData.series as {
+                generatedUntil?: string | null;
+              }
+            ).generatedUntil
+          : undefined;
+        dueDateForForm = generatedUntil ? new Date(generatedUntil) : new Date();
+      }
       const dataToSet = {
         title:
           editScope === "series" && initialData.series
@@ -122,7 +143,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             : initialData.amount
           ).toString()
         ),
-        dueDate: new Date(initialData.dueDate),
+        dueDate: dueDateForForm,
         categoryId: initialData.category?.id || null,
         recurrenceRule:
           editScope === "series" && initialData.series
@@ -131,6 +152,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         completedAt: initialData.completedAt
           ? new Date(initialData.completedAt)
           : null,
+        remind: initialData.remind || false,
       };
       reset(dataToSet);
 
@@ -153,6 +175,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         dueDate: new Date(),
         categoryId: null,
         recurrenceRule: null,
+        remind: false,
       });
       setSelectedIconName(null);
       setAttachedFile(null);
@@ -195,6 +218,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             dueDate: data.dueDate.toISOString().split("T")[0],
             categoryId: data.categoryId || null,
             builtinIconName: selectedIconName,
+            remind: data.remind || false,
             completedAt: data.completedAt
               ? data.completedAt.toISOString()
               : null,
@@ -230,6 +254,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           categoryId: data.categoryId || null,
           recurrenceRule: data.recurrenceRule || null,
           builtinIconName: selectedIconName,
+          remind: data.remind || false,
         };
         const res = await axiosInstance.post("/payments", payload);
         const newPaymentId = res.data.id;
@@ -252,7 +277,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const watchCategoryId = watch("categoryId");
   const currentRule = watch("recurrenceRule");
 
-  // Determine if recurrence section should be shown
+  // Определяем, показывать ли блок повторения
+  // Показываем при создании нового платежа ИЛИ при редактировании серии
   const showRecurrence = (isEditMode && editScope === "series") || !isEditMode;
 
   return (
@@ -271,82 +297,98 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           </div>
         )}
 
-        <PaymentDetailsSection
-          register={register}
-          errors={errors}
-          setValue={setValue}
-          watchDueDate={watchDueDate}
-          isSubmitting={isSubmitting}
-        />
-        {editScope === "series" && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-4 ml-1">
-            Эта дата станет датой начала для измененной серии.
-          </p>
-        )}
-
-        <PaymentCategorySelect
-          errors={errors}
-          setValue={setValue}
-          watchCategoryId={watchCategoryId}
-          isSubmitting={isSubmitting}
-        />
-
-        {showRecurrence && (
-          <PaymentRecurrenceSection
-            onRuleChange={handleRecurrenceRuleChange}
-            isSubmitting={isSubmitting}
-            currentRule={currentRule}
-            dueDate={watchDueDate}
-          />
-        )}
-
-        <IconSelector
-          selectedIconName={selectedIconName}
-          onIconChange={handleIconChange}
-          isFormSubmitting={isSubmitting}
-        />
-
-        {/* File upload is only available for single payments, not for series editing */}
-        {editScope === "single" && (
-          <PaymentFileUploadSection
-            paymentId={paymentId}
-            initialFile={attachedFile}
-            isSubmitting={isSubmitting}
-            setFormError={setFormError}
-          />
-        )}
-
-        {paymentStatus === "completed" && editScope === "single" && (
-          <div>
-            <label
-              htmlFor="completedAt"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2"
-            >
-              Дата выполнения
-            </label>
-            <DatePicker
-              id="completedAt"
-              selected={watch("completedAt")}
-              onChange={(date: Date | null) => {
-                setValue("completedAt", date, { shouldValidate: true });
-              }}
-              dateFormat="yyyy-MM-dd HH:mm"
-              showTimeSelect
-              timeFormat="HH:mm"
-              className={`block w-full rounded-md border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white dark:placeholder-gray-500 ${
-                errors.completedAt ? "border-red-500" : ""
-              }`}
-              wrapperClassName="w-full"
-              disabled={isSubmitting}
-              placeholderText="Выберите дату и время выполнения"
+        <fieldset disabled={disableForInactiveSeries}>
+          <div className="space-y-6">
+            <PaymentDetailsSection
+              register={register}
+              errors={errors}
+              setValue={setValue}
+              watchDueDate={watchDueDate}
+              isSubmitting={isSubmitting}
             />
-            {errors.completedAt && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.completedAt.message}
+            {editScope === "series" && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-4 ml-1">
+                Эта дата станет датой начала для измененной серии.
               </p>
             )}
+
+            <PaymentCategorySelect
+              errors={errors}
+              setValue={setValue}
+              watchCategoryId={watchCategoryId}
+              isSubmitting={isSubmitting}
+            />
+
+            {showRecurrence && (
+              <PaymentRecurrenceSection
+                onRuleChange={handleRecurrenceRuleChange}
+                isSubmitting={isSubmitting}
+                currentRule={currentRule}
+                dueDate={watchDueDate}
+                isEditingSeries={isEditMode && editScope === "series"}
+              />
+            )}
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <ToggleSwitch
+                checked={watch("remind") || false}
+                onChange={(checked) => setValue("remind", checked)}
+                disabled={isSubmitting}
+              />
+              <span className="text-gray-700 dark:text-gray-200 font-medium">
+                Напоминать
+              </span>
+            </label>
+
+            <IconSelector
+              selectedIconName={selectedIconName}
+              onIconChange={handleIconChange}
+              isFormSubmitting={isSubmitting}
+            />
+
+            {/* File upload is only available for single payments, not for series editing */}
+            {editScope === "single" && (
+              <PaymentFileUploadSection
+                paymentId={paymentId}
+                initialFile={attachedFile}
+                isSubmitting={isSubmitting}
+                setFormError={setFormError}
+              />
+            )}
+
+            {paymentStatus === "completed" && editScope === "single" && (
+              <div>
+                <label
+                  htmlFor="completedAt"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2"
+                >
+                  Дата выполнения
+                </label>
+                <DatePicker
+                  id="completedAt"
+                  selected={watch("completedAt")}
+                  onChange={(date: Date | null) => {
+                    setValue("completedAt", date, { shouldValidate: true });
+                  }}
+                  dateFormat="yyyy-MM-dd HH:mm"
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  className={`block w-full rounded-md border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white dark:placeholder-gray-500 ${
+                    errors.completedAt ? "border-red-500" : ""
+                  }`}
+                  wrapperClassName="w-full"
+                  disabled={isSubmitting}
+                  placeholderText="Выберите дату и время выполнения"
+                />
+                {errors.completedAt && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.completedAt.message}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </fieldset>
 
         <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
           <button
@@ -360,7 +402,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           <button
             type="submit"
             className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-28"
-            disabled={isSubmitting}
+            disabled={isSubmitting || disableForInactiveSeries}
           >
             {isSubmitting ? <Spinner size="sm" /> : "Сохранить"}
           </button>

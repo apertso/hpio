@@ -9,12 +9,36 @@ interface UpdateProfileData {
   email?: string;
   password?: string;
   currentPassword?: string;
+  notificationMethod?: "email" | "push" | "none";
+  notificationTime?: string;
+  timezone?: string;
 }
 
 const userApi = {
   getProfile: async (): Promise<User> => {
     const response = await axiosInstance.get("/user/profile");
     return response.data;
+  },
+
+  // Лёгкий запрос профиля с поддержкой условного GET для обнаружения изменений, например подтверждения email
+  getMe: async (
+    etag?: string
+  ): Promise<{ status: 200; data: User; etag?: string } | { status: 304 }> => {
+    const headers: Record<string, string> = {};
+    if (etag) headers["If-None-Match"] = etag;
+    const response = await axiosInstance.get("/user/me", {
+      headers,
+      validateStatus: (s) => [200, 304].includes(s),
+    });
+    if (response.status === 304) {
+      return { status: 304 as const };
+    }
+    return {
+      status: 200 as const,
+      data: response.data,
+      etag:
+        (response.headers && (response.headers["etag"] as string)) || undefined,
+    };
   },
 
   updateProfile: async (data: UpdateProfileData): Promise<User> => {

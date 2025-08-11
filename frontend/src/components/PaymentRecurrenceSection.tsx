@@ -5,6 +5,7 @@ import { PaymentFormInputs } from "./PaymentForm";
 import Select, { SelectOption } from "./Select";
 import { Input } from "./Input";
 import RadioButton from "./RadioButton";
+import ToggleSwitch from "./ToggleSwitch";
 
 // --- Типы и константы ---
 type Period = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
@@ -61,6 +62,8 @@ interface PaymentRecurrenceSectionProps {
   isSubmitting: boolean;
   currentRule?: PaymentFormInputs["recurrenceRule"];
   dueDate?: PaymentFormInputs["dueDate"];
+  // При редактировании существующей серии поле «Повторять» должно быть скрыто и всегда включено
+  isEditingSeries?: boolean;
 }
 
 const weekdayMap = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
@@ -126,14 +129,56 @@ const parseRrule = (
   return state;
 };
 
+// 1. Добавляем функцию генерации RRULE
+const generateRuleFromState = (
+  state: RecurrenceState,
+  isRecurrenceEnabled: boolean,
+  isEditingSeries?: boolean
+): string | null => {
+  if (!isRecurrenceEnabled && !isEditingSeries) return null;
+  let rule = `FREQ=${state.freq};INTERVAL=${state.interval}`;
+  if (state.freq === "WEEKLY" && state.byday.length > 0) {
+    rule += `;BYDAY=${state.byday.join(",")}`;
+  }
+  if (state.freq === "MONTHLY") {
+    if (state.monthday_type === "BYMONTHDAY") {
+      rule += `;BYMONTHDAY=${state.bymonthday}`;
+    } else {
+      rule += `;BYDAY=${state.byday_pos};BYSETPOS=${state.bysetpos}`;
+    }
+  }
+  if (state.end_type === "UNTIL" && state.until) {
+    const utcDate = new Date(
+      Date.UTC(
+        state.until.getFullYear(),
+        state.until.getMonth(),
+        state.until.getDate(),
+        23,
+        59,
+        59
+      )
+    );
+    rule += `;UNTIL=${
+      utcDate.toISOString().replace(/[-:.]/g, "").slice(0, -3) + "Z"
+    }`;
+  }
+  if (state.end_type === "COUNT") {
+    rule += `;COUNT=${state.count}`;
+  }
+  return rule;
+};
+
 // --- Основной компонент ---
 const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
   onRuleChange,
   isSubmitting,
   currentRule,
   dueDate,
+  isEditingSeries,
 }) => {
-  const [isRecurrenceEnabled, setIsRecurrenceEnabled] = useState(!!currentRule);
+  const [isRecurrenceEnabled, setIsRecurrenceEnabled] = useState(
+    !!currentRule || !!isEditingSeries
+  );
 
   const [state, setState] = useState<RecurrenceState>(() => {
     const parsed = parseRrule(currentRule);
@@ -159,72 +204,87 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
     return dueDate ? weekdayMap[dueDate.getDay()] : null;
   }, [dueDate]);
 
-  const updateState = (part: Partial<RecurrenceState>) => {
-    setState((prevState) => ({ ...prevState, ...part }));
-  };
+  // Синхронизация локального состояния с currentRule (без вызова onRuleChange)
+  useEffect(() => {
+    const initialDayOfMonth = dueDate?.getDate() || new Date().getDate();
+    const initialWeekday = dueDate ? weekdayMap[dueDate.getDay()] : "MO";
+    if (currentRule) {
+      const parsed = parseRrule(currentRule);
+      setState((prev) => ({
+        ...prev,
+        interval: 1,
+        freq: "MONTHLY",
+        byday: [initialWeekday],
+        monthday_type: "BYMONTHDAY",
+        bymonthday: initialDayOfMonth,
+        bysetpos: 1,
+        byday_pos: initialWeekday,
+        end_type: "NEVER",
+        until: null,
+        count: 10,
+        ...parsed,
+      }));
+    } else {
+      setState({
+        interval: 1,
+        freq: "MONTHLY",
+        byday: [initialWeekday],
+        monthday_type: "BYMONTHDAY",
+        bymonthday: initialDayOfMonth,
+        bysetpos: 1,
+        byday_pos: initialWeekday,
+        end_type: "NEVER",
+        until: null,
+        count: 10,
+      });
+    }
+  }, [currentRule, dueDate]);
+
+  // 2. Модифицируем updateState для опционального вызова onRuleChange
+  const updateState = useCallback(
+    (part: Partial<RecurrenceState>, triggerRuleChange = false) => {
+      setState((prevState) => {
+        const newState = { ...prevState, ...part };
+        if (triggerRuleChange) {
+          onRuleChange(
+            generateRuleFromState(
+              newState,
+              isRecurrenceEnabled,
+              isEditingSeries
+            )
+          );
+        }
+        return newState;
+      });
+    },
+    [onRuleChange, isRecurrenceEnabled, isEditingSeries]
+  );
 
   // Sync state with dueDate changes
   useEffect(() => {
-    if (dueDate) {
-      const dayOfMonth = dueDate.getDate();
-      const weekday = weekdayMap[dueDate.getDay()];
-      const updates: Partial<RecurrenceState> = {
-        bymonthday: dayOfMonth,
-        byday_pos: weekday,
-      };
-      if (state.freq === "WEEKLY") {
-        updates.byday = [weekday];
-      }
-      updateState(updates);
+    if (!dueDate) return;
+    // При редактировании серии не перезаписываем значения, пришедшие из RRULE
+    if (isEditingSeries && currentRule) return;
+    const dayOfMonth = dueDate.getDate();
+    const weekday = weekdayMap[dueDate.getDay()];
+    const updates: Partial<RecurrenceState> = {
+      bymonthday: dayOfMonth,
+      byday_pos: weekday,
+    };
+    if (state.freq === "WEEKLY") {
+      updates.byday = [weekday];
     }
-  }, [dueDate]);
+    updateState(updates);
+  }, [dueDate, isEditingSeries, currentRule, state.freq, updateState]);
 
   // Generate RRULE string when state changes
-  useEffect(() => {
-    if (!isRecurrenceEnabled) {
-      onRuleChange(null);
-      return;
-    }
-
-    let rule = `FREQ=${state.freq};INTERVAL=${state.interval}`;
-
-    if (state.freq === "WEEKLY" && state.byday.length > 0) {
-      rule += `;BYDAY=${state.byday.join(",")}`;
-    }
-
-    if (state.freq === "MONTHLY") {
-      if (state.monthday_type === "BYMONTHDAY") {
-        rule += `;BYMONTHDAY=${state.bymonthday}`;
-      } else {
-        rule += `;BYDAY=${state.byday_pos};BYSETPOS=${state.bysetpos}`;
-      }
-    }
-
-    if (state.end_type === "UNTIL" && state.until) {
-      const utcDate = new Date(
-        Date.UTC(
-          state.until.getFullYear(),
-          state.until.getMonth(),
-          state.until.getDate(),
-          23,
-          59,
-          59
-        )
-      );
-      rule += `;UNTIL=${
-        utcDate.toISOString().replace(/[-:.]/g, "").slice(0, -3) + "Z"
-      }`;
-    }
-
-    if (state.end_type === "COUNT") {
-      rule += `;COUNT=${state.count}`;
-    }
-
-    onRuleChange(rule);
-  }, [isRecurrenceEnabled, state, onRuleChange]);
-
+  // 3. Удаляем useEffect, который вызывал onRuleChange при изменении state
+  // 4. handleRecurrenceToggle теперь вызывает onRuleChange
   const handleRecurrenceToggle = (enabled: boolean) => {
+    // В режиме редактирования серии переключатель скрыт/заблокирован, события игнорируются
+    if (isEditingSeries) return;
     setIsRecurrenceEnabled(enabled);
+    onRuleChange(generateRuleFromState(state, enabled, isEditingSeries));
   };
 
   const handleWeekdayToggle = useCallback(
@@ -240,7 +300,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
 
       updateState({ byday: newByday });
     },
-    [state.byday, dueDateWeekday]
+    [state.byday, dueDateWeekday, updateState]
   );
 
   const summary = useMemo(() => {
@@ -311,6 +371,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
     return summaryStr + ".";
   }, [isRecurrenceEnabled, state]);
 
+  // 5. handleFreqChange вызывает updateState с флагом
   const handleFreqChange = (v: string | null) => {
     if (!v) return;
     const newFreq = v as Period;
@@ -325,25 +386,26 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
         newState.byday = [dueDateWeekday];
       }
     }
-    updateState(newState);
+    updateState(newState, true);
   };
 
   return (
     <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 space-y-4">
-      <label className="flex items-center cursor-pointer">
-        <input
-          type="checkbox"
-          checked={isRecurrenceEnabled}
-          onChange={(e) => handleRecurrenceToggle(e.target.checked)}
-          disabled={isSubmitting}
-          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <span className="ml-3 text-sm text-gray-800 dark:text-gray-200">
-          Повторять
-        </span>
-      </label>
-
-      {isRecurrenceEnabled && (
+      {/* При редактировании серии скрываем переключатель «Повторять» и принудительно считаем повторение включённым */}
+      {!isEditingSeries && (
+        <label className="flex items-center cursor-pointer">
+          <ToggleSwitch
+            checked={isRecurrenceEnabled}
+            onChange={handleRecurrenceToggle}
+            disabled={isSubmitting}
+          />
+          <span className="ml-3 text-sm text-gray-800 dark:text-gray-200">
+            Повторять
+          </span>
+        </label>
+      )}
+      {/* В режиме редактирования серии считаем повторение всегда включённым */}
+      {(isRecurrenceEnabled || isEditingSeries) && (
         <div className="space-y-6">
           {/* Interval and Frequency */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -352,9 +414,12 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
               type="number"
               value={state.interval}
               onChange={(e) =>
-                updateState({
-                  interval: Math.max(1, parseInt(e.target.value, 10) || 1),
-                })
+                updateState(
+                  {
+                    interval: Math.max(1, parseInt(e.target.value, 10) || 1),
+                  },
+                  true
+                )
               }
               className="w-20"
               disabled={isSubmitting}
@@ -399,63 +464,31 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
 
           {/* Monthly options */}
           {state.freq === "MONTHLY" && (
-            <div className="space-y-3">
-              <RadioButton
-                id="monthday_bymonthday"
-                name="monthday_type"
-                value="BYMONTHDAY"
-                checked={state.monthday_type === "BYMONTHDAY"}
-                onChange={() => updateState({ monthday_type: "BYMONTHDAY" })}
-                label={
-                  <div className="flex items-center gap-2">
-                    <span>Каждое</span>
-                    <Input
-                      type="number"
-                      value={state.bymonthday}
-                      onChange={(e) =>
-                        updateState({
-                          bymonthday: Math.max(
-                            1,
-                            Math.min(31, parseInt(e.target.value, 10) || 1)
-                          ),
-                        })
-                      }
-                      className="w-20"
-                      disabled={
-                        state.monthday_type !== "BYMONTHDAY" || isSubmitting
-                      }
-                    />
-                    <span>число месяца</span>
-                  </div>
-                }
-              />
-              <RadioButton
-                id="monthday_bysetpos"
-                name="monthday_type"
-                value="BYSETPOS"
+            <div className="flex items-center gap-3 flex-wrap">
+              <ToggleSwitch
                 checked={state.monthday_type === "BYSETPOS"}
-                onChange={() => updateState({ monthday_type: "BYSETPOS" })}
-                label={
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span>В</span>
-                    <Select
-                      options={nthWeekOptions}
-                      value={String(state.bysetpos)}
-                      onChange={(v) => updateState({ bysetpos: Number(v) })}
-                      disabled={
-                        state.monthday_type !== "BYSETPOS" || isSubmitting
-                      }
-                    />
-                    <Select
-                      options={weekDayOptions}
-                      value={state.byday_pos}
-                      onChange={(v) => updateState({ byday_pos: v as string })}
-                      disabled={
-                        state.monthday_type !== "BYSETPOS" || isSubmitting
-                      }
-                    />
-                  </div>
+                onChange={(checked) =>
+                  updateState(
+                    { monthday_type: checked ? "BYSETPOS" : "BYMONTHDAY" },
+                    true
+                  )
                 }
+                disabled={isSubmitting}
+              />
+              <span className="text-sm text-gray-800 dark:text-gray-200">
+                Только в{" "}
+              </span>
+              <Select
+                options={nthWeekOptions}
+                value={String(state.bysetpos)}
+                onChange={(v) => updateState({ bysetpos: Number(v) }, true)}
+                disabled={isSubmitting || state.monthday_type !== "BYSETPOS"}
+              />
+              <Select
+                options={weekDayOptions}
+                value={state.byday_pos}
+                onChange={(v) => updateState({ byday_pos: v as string }, true)}
+                disabled={isSubmitting || state.monthday_type !== "BYSETPOS"}
               />
             </div>
           )}
@@ -485,7 +518,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                     <span>До даты:</span>
                     <DatePicker
                       selected={state.until}
-                      onChange={(date) => updateState({ until: date })}
+                      onChange={(date) => updateState({ until: date }, true)}
                       dateFormat="yyyy-MM-dd"
                       className="w-full rounded-md border-gray-300 bg-white px-3 py-1.5 text-sm dark:bg-gray-800"
                       wrapperClassName="w-40"
@@ -507,9 +540,15 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                       type="number"
                       value={state.count}
                       onChange={(e) =>
-                        updateState({
-                          count: Math.max(1, parseInt(e.target.value, 10) || 1),
-                        })
+                        updateState(
+                          {
+                            count: Math.max(
+                              1,
+                              parseInt(e.target.value, 10) || 1
+                            ),
+                          },
+                          true
+                        )
                       }
                       className="w-20"
                       disabled={state.end_type !== "COUNT" || isSubmitting}

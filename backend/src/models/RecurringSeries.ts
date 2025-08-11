@@ -13,7 +13,10 @@ export interface RecurringSeriesAttributes {
   recurrenceRule: string; // Новое поле вместо pattern
   recurrenceEndDate?: Date | null;
   builtinIconName?: string | null;
+  remind: boolean;
   isActive: boolean;
+  // New soft field (no migration): boundary to which occurrences are considered generated/consumed
+  generatedUntil?: string | null; // DATEONLY-like string, optional for compatibility
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +30,7 @@ export interface RecurringSeriesCreationAttributes
     | "updatedAt"
     | "categoryId"
     | "recurrenceEndDate"
+    | "remind"
     | "builtinIconName"
   > {}
 
@@ -88,10 +92,20 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.STRING,
         allowNull: true,
       },
+      remind: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       isActive: {
         type: dataTypes.BOOLEAN,
         defaultValue: true,
         allowNull: false,
+      },
+      // Soft-added field (sequelize will attempt to add if sync alters; we won't run migrations now)
+      generatedUntil: {
+        type: dataTypes.DATEONLY,
+        allowNull: true,
       },
       createdAt: {
         type: dataTypes.DATE,

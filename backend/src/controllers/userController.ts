@@ -4,6 +4,7 @@ import logger from "../config/logger";
 import path from "path";
 import { config } from "../config/appConfig";
 import fs from "fs";
+import crypto from "crypto";
 
 // Получить профиль пользователя
 export const getProfile = async (req: Request, res: Response) => {
@@ -13,6 +14,56 @@ export const getProfile = async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error(`Error fetching profile for user ${req.user!.id}:`, error);
     res.status(404).json({ message: error.message });
+  }
+};
+
+// Легковесный эндпоинт профиля с поддержкой ETag/Last-Modified для условных запросов
+export const getMe = async (req: Request, res: Response) => {
+  try {
+    const user = await authService.getUserProfile(req.user!.id);
+    // Сформируем компактный payload (без чувствительных полей)
+    const payload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      isVerified: user.isVerified,
+      photoPath: user.photoPath ?? null,
+      notificationMethod: user.notificationMethod,
+      notificationTime: user.notificationTime,
+      timezone: (user as any).timezone,
+      updatedAt:
+        (user as any).updatedAt?.toISOString?.() ?? new Date().toISOString(),
+    };
+
+    const bodyString = JSON.stringify(payload);
+    const weakEtag = `W/"${crypto
+      .createHash("sha1")
+      .update(bodyString)
+      .digest("hex")}"`;
+
+    // Устанавливаем заголовки
+    res.setHeader("ETag", weakEtag);
+    // Используем updatedAt, если доступен, иначе текущее время
+    const lastModified =
+      (user as any).updatedAt?.toUTCString?.() ?? new Date().toUTCString();
+    res.setHeader("Last-Modified", lastModified);
+
+    const inm = req.headers["if-none-match"];
+    const ims = req.headers["if-modified-since"];
+
+    const notModifiedByEtag =
+      typeof inm === "string" && inm.replace(/^\s+|\s+$/g, "") === weakEtag;
+    const notModifiedByTime =
+      typeof ims === "string" && new Date(ims) >= new Date(lastModified);
+
+    if (notModifiedByEtag || notModifiedByTime) {
+      return res.status(304).end();
+    }
+
+    return res.status(200).json(payload);
+  } catch (error: any) {
+    logger.error(`Error fetching /me for user ${req.user!.id}:`, error);
+    res.status(500).json({ message: "Failed to fetch user profile." });
   }
 };
 

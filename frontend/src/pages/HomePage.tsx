@@ -17,7 +17,7 @@ import { DropdownButton } from "../components/DropdownButton";
 import { YearSelectorDropdown } from "../components/YearSelectorDropdown";
 import Spinner from "../components/Spinner";
 import CategoryDistributionBars from "../components/CategoryDistributionBars";
-import Scrollbar from "../components/Scrollbar";
+
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal"; // Import ConfirmCompletionDateModal
@@ -219,6 +219,11 @@ const UpcomingPaymentListItem: React.FC<{
               {payment.status === "upcoming" && "Предстоящий"}
               {payment.status === "overdue" && "Просрочен"}
             </p>
+            {payment.isVirtual && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mt-1">
+                Виртуальный
+              </span>
+            )}
           </div>
         </div>
         <div className="text-right flex-shrink-0">
@@ -320,6 +325,8 @@ const HomePage: React.FC = () => {
 
   // State for transformed upcoming payments data
   const [upcomingPayments, setUpcomingPayments] = useState<PaymentData[]>([]);
+  // Отслеживаем первую успешную загрузку, чтобы избежать мигания «Нет данных» до получения первых данных
+  const [hasLoadedPaymentsOnce, setHasLoadedPaymentsOnce] = useState(false);
 
   // Effect to transform data when raw upcoming payments data changes
   useEffect(() => {
@@ -330,10 +337,12 @@ const HomePage: React.FC = () => {
         amount: typeof p.amount === "string" ? parseFloat(p.amount) : p.amount,
       }));
       setUpcomingPayments(payments);
+      setHasLoadedPaymentsOnce(true);
       logger.info(
         `Successfully fetched and processed ${payments.length} upcoming payments.`
       );
     } else {
+      // Не помечаем как loaded на null (ошибка/отмена) — чтобы не показать "нет данных" ложно
       setUpcomingPayments([]); // Clear payments if raw data is null (e.g., on error)
     }
   }, [rawUpcomingPayments]);
@@ -676,11 +685,29 @@ const HomePage: React.FC = () => {
 
         {/* Отображение состояния загрузки или ошибки */}
         {isLoadingPayments && (
-          <div className="flex justify-center items-center h-40">
-            <Spinner />
+          // Стабильный скелетон фиксированной высоты, чтобы не было скачков и "нет данных" до загрузки
+          <div className="w-full">
+            <div className="hidden md:block">
+              <div className="flex gap-4 pb-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 w-68 h-40 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-pulse"
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="block md:hidden space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="w-full h-24 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-pulse"
+                />
+              ))}
+            </div>
           </div>
         )}
-        {errorPayments && (
+        {errorPayments && hasLoadedPaymentsOnce && (
           <div
             className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
@@ -690,7 +717,8 @@ const HomePage: React.FC = () => {
         )}
 
         {/* Горизонтальная лента платежей */}
-        {!isLoadingPayments && !errorPayments && (
+        {/* Не рендерим пустое состояние, пока не было хотя бы одной успешной загрузки */}
+        {!isLoadingPayments && !errorPayments && hasLoadedPaymentsOnce && (
           <>
             {upcomingPayments.length > 0 ? (
               <>
@@ -699,7 +727,7 @@ const HomePage: React.FC = () => {
                   <div className="relative">
                     <div
                       ref={scrollContainerRef}
-                      className="flex overflow-x-auto pb-4 scrollbar-hide gap-x-4"
+                      className="flex overflow-x-auto pb-4 gap-x-4"
                     >
                       {(showAllUpcoming
                         ? upcomingPayments
@@ -725,10 +753,6 @@ const HomePage: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <Scrollbar
-                      containerRef={scrollContainerRef}
-                      orientation="horizontal"
-                    />
                   </div>
                 </div>
 
@@ -741,7 +765,10 @@ const HomePage: React.FC = () => {
                     <UpcomingPaymentListItem
                       key={payment.id}
                       payment={payment}
-                      onClick={() => setMobileActionsPayment(payment)}
+                      onClick={() => {
+                        if (!payment.isVirtual)
+                          setMobileActionsPayment(payment);
+                      }}
                     />
                   ))}
                   {!showAllUpcoming && upcomingPayments.length > 5 && (
@@ -754,19 +781,14 @@ const HomePage: React.FC = () => {
                   )}
                 </div>
               </>
-            ) : (
-              <div className="w-full text-gray-700 dark:text-gray-300 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-center text-center sm:text-left">
+            ) : hasLoadedPaymentsOnce ? (
+              // Показ "нет данных" только после подтвержденной успешной загрузки
+              <div className="w-full h-44 pb-4 text-gray-700 dark:text-gray-300 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-center text-center sm:text-left">
                 <span className="text-lg font-medium sm:mr-6">
                   Нет предстоящих или просроченных платежей.
                 </span>
-                <img
-                  src="/no-items.png"
-                  alt="Нет платежей"
-                  className="mb-2 sm:mb-0 w-48 h-48 object-contain opacity-80 dark:filter"
-                  draggable={false}
-                />
               </div>
-            )}
+            ) : null}
           </>
         )}
 
@@ -876,8 +898,20 @@ const HomePage: React.FC = () => {
           </div>
           {/* Состояния загрузки или ошибки для статистики */}
           {isLoadingStats && (
-            <div className="flex justify-center items-center py-10">
-              <Spinner />
+            // Стабильный скелетон для блока статистики чтобы избежать мигания
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-28 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-800 animate-pulse"
+                  />
+                ))}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-800 animate-pulse" />
+                <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-800 animate-pulse" />
+              </div>
             </div>
           )}
           {errorStats && (
@@ -947,7 +981,7 @@ const HomePage: React.FC = () => {
                     Кликните на точку на графике, чтобы увидеть детали за день.
                   </p>
                   {noDailyData ? (
-                    <div className="flex items-center justify-center h-full text-center text-gray-700 dark:text-gray-300 py-10">
+                    <div className="flex items-center justify-center h-64 text-center text-gray-700 dark:text-gray-300">
                       Нет данных о платежной нагрузке за этот период.
                     </div>
                   ) : (

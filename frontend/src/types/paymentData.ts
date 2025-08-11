@@ -7,7 +7,9 @@ export interface PaymentData {
   amount: number; // number after conversion
   dueDate: string; // YYYY-MM-DD
   status: "upcoming" | "overdue" | "completed" | "deleted";
+  isVirtual?: boolean;
   completedAt?: string | null; // Add completedAt property
+  remind: boolean;
   seriesId?: string | null; // Link to RecurringSeries
   createdAt: string; // Creation date
   updatedAt: string; // Last update date
@@ -29,5 +31,6 @@ export interface PaymentData {
     recurrenceEndDate?: string | null;
     builtinIconName?: BuiltinIcon | null; // Use BuiltinIcon type
     isActive: boolean;
+    generatedUntil?: string | null;
   } | null;
 }

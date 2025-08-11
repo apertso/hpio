@@ -8,6 +8,7 @@ export const config = {
   jwtPasswordResetSecret:
     process.env.JWT_RESET_SECRET || "anotherSuperSecretForPasswordReset", // Секрет для токена сброса пароля
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
+  defaultTimezone: process.env.TZ || "UTC",
   database: {
     host: process.env.DB_HOST || "localhost",
     port: parseInt(process.env.DB_PORT || "1433", 10),
@@ -33,5 +34,10 @@ export const config = {
     pass: process.env.SMTP_PASS,
     fromName: process.env.SMTP_FROM_NAME,
     fromEmail: process.env.SMTP_FROM_EMAIL,
+  },
+  fluentBit: {
+    host: process.env.FLUENT_BIT_HOST,
+    port: parseInt(process.env.FLUENT_BIT_PORT || "24224", 10),
+    timeout: 3.0,
   },
 };

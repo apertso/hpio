@@ -81,6 +81,7 @@ export const registerUser = async (
         email,
         password: hashedPassword,
         isVerified: false,
+        timezone: config.defaultTimezone,
       },
       { transaction }
     );
@@ -134,6 +135,7 @@ export const registerUser = async (
       token: generateToken(user.id),
       isVerified: user.isVerified,
       photoPath: user.photoPath,
+      timezone: user.timezone, // <-- ADD THIS LINE
     };
   } catch (error) {
     await transaction.rollback();
@@ -166,6 +168,9 @@ export const loginUser = async (email: string, password: string) => {
       token: generateToken(user.id),
       isVerified: user.isVerified,
       photoPath: user.photoPath,
+      notificationMethod: user.notificationMethod,
+      notificationTime: user.notificationTime,
+      timezone: user.timezone, // <-- ADD THIS LINE
     };
   } else {
     throw new Error("Неверный Email или пароль.");
@@ -248,7 +253,17 @@ export const resetPassword = async (token: string, newPassword: string) => {
 // Получение профиля пользователя
 export const getUserProfile = async (userId: string) => {
   const user = await db.User.findByPk(userId, {
-    attributes: ["id", "email", "name", "photoPath", "createdAt", "isVerified"],
+    attributes: [
+      "id",
+      "email",
+      "name",
+      "photoPath",
+      "createdAt",
+      "isVerified",
+      "notificationMethod",
+      "notificationTime",
+      "timezone", // <-- ADD THIS LINE
+    ],
   });
 
   if (!user) {
@@ -265,6 +280,9 @@ export const updateUserProfile = async (
     email?: string;
     password?: string;
     currentPassword?: string;
+    notificationMethod?: "email" | "push" | "none";
+    notificationTime?: string;
+    timezone?: string; // <-- ADD THIS LINE
   }
 ) => {
   const user = await db.User.findByPk(userId);
@@ -275,6 +293,21 @@ export const updateUserProfile = async (
   // Обновление имени
   if (data.name) {
     user.name = data.name;
+  }
+
+  // Update notification settings
+  if (data.notificationMethod) {
+    user.notificationMethod = data.notificationMethod;
+  }
+  if (data.notificationTime) {
+    // TODO: Validate HH:mm format
+    user.notificationTime = data.notificationTime;
+  }
+
+  if (data.timezone) {
+    // <-- ADD THIS BLOCK
+    // TODO: Optionally validate against a list of IANA timezones
+    user.timezone = data.timezone;
   }
 
   // Обновление email

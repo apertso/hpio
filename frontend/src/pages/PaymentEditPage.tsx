@@ -49,16 +49,31 @@ const PaymentEditPage: React.FC = () => {
 
   const isSeriesPayment = !!initialData?.seriesId;
 
-  const canEditSeries =
-    isSeriesPayment &&
-    initialData?.status !== "completed" &&
-    initialData?.status !== "deleted";
+  // const canEditSeries =
+  //   isSeriesPayment &&
+  //   initialData?.status !== "completed" &&
+  //   initialData?.status !== "deleted";
 
   const headerText = isEditMode
     ? editScope === "single"
       ? "Редактировать платеж"
       : "Редактировать серию"
     : "Добавить платеж";
+
+  const seriesInactive =
+    editScope === "series" && !!initialData?.series
+      ? !initialData.series.isActive ||
+        (!!initialData.series.recurrenceEndDate &&
+          (() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const end = new Date(
+              initialData.series!.recurrenceEndDate as string
+            );
+            end.setHours(0, 0, 0, 0);
+            return end < today;
+          })())
+      : false;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -70,8 +85,13 @@ const PaymentEditPage: React.FC = () => {
         >
           <ArrowLeftIcon className="h-6 w-6" />
         </button>
-        <h2 className="text-2xl font-bold ml-4 text-gray-900 dark:text-white">
+        <h2 className="text-2xl font-bold ml-4 text-gray-900 dark:text-white flex items-center gap-3">
           {headerText}
+          {seriesInactive && (
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600">
+              Серия неактивна
+            </span>
+          )}
         </h2>
       </div>
 
@@ -89,7 +109,7 @@ const PaymentEditPage: React.FC = () => {
           </div>
         ) : (
           <>
-            {isEditMode && canEditSeries && (
+            {isEditMode && isSeriesPayment && (
               <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
                 <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Это повторяющийся платеж. Что вы хотите изменить?
@@ -119,7 +139,8 @@ const PaymentEditPage: React.FC = () => {
               onSuccess={handleSuccess}
               onCancel={handleCancel}
               initialData={initialData}
-              editScope={canEditSeries ? editScope : "single"}
+              editScope={isSeriesPayment ? editScope : "single"}
+              isSeriesInactive={seriesInactive}
             />
           </>
         )}

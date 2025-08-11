@@ -1,7 +1,6 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef } from "react";
 import { useDropdown } from "../hooks/useDropdown";
 import DropdownOverlay from "./DropdownOverlay";
-import Scrollbar from "./Scrollbar";
 
 export interface DropdownOption {
   label: string;
@@ -28,15 +27,6 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
 }) => {
   const { isOpen, setIsOpen, containerRef } = useDropdown();
   const optionsRef = useRef<HTMLDivElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const el = optionsRef.current;
-    if (el) {
-      setIsOverflowing(el.scrollHeight > el.clientHeight);
-    }
-  }, [isOpen, options]);
 
   const classes =
     `flex items-center justify-center focus:outline-none cursor-pointer ${className}`.trim();
@@ -68,13 +58,15 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
         </span>
       </button>
 
-      <DropdownOverlay isOpen={isOpen} align="left" widthClass="min-w-full">
-        <Scrollbar containerRef={optionsRef} />
+      <DropdownOverlay
+        isOpen={isOpen}
+        align="left"
+        widthClass="min-w-full"
+        anchorRef={containerRef}
+      >
         <div
           ref={optionsRef}
-          className={`relative max-h-60 overflow-y-auto${
-            isOverflowing ? " pr-4" : ""
-          }`}
+          className="relative max-h-60 overflow-y-auto"
           style={{ position: "relative" }}
         >
           {options.map((option, idx) => (

@@ -1,3 +1,6 @@
+import { initTracing } from "./config/tracing";
+initTracing(); // 👈 MUST BE THE FIRST LINE
+
 import express from "express";
 import cors from "cors";
 import db from "./models"; // Подключение к БД и инициализация моделей
@@ -5,7 +8,7 @@ import { config } from "./config/appConfig";
 import apiRoutes from "./routes";
 import { setupCronJobs } from "./utils/cronJobs";
 import logger from "./config/logger";
-import { actualizeDataMiddleware } from "./middleware/actualizeDataMiddleware"; // <-- Добавить
+import { errorHandler } from "./middleware/errorMiddleware"; // 👈 1. Import the new middleware
 import path from "path"; // Для работы с путями файлов
 
 const app = express();
@@ -13,8 +16,7 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:5173", // Разрешить запросы с фронтенда на Vite (обычно 5173)
-    // В продакшене настроить на домен фронтенда
+    origin: config.frontendUrl || "http://localhost:5173", // Используем URL фронтенда из конфигурации для поддержки разных окружений (dev, prod)
   })
 );
 app.use(express.json()); // Для парсинга JSON-тела запросов
@@ -31,7 +33,8 @@ app.use(express.urlencoded({ extended: false })); // Для парсинга URL
 // app.use('/uploads', express.static(path.join(__dirname, '..', config.uploadDir)));
 
 // Маршруты API
-app.use("/api", actualizeDataMiddleware, apiRoutes);
+app.use("/api", apiRoutes);
+app.use(errorHandler);
 
 // Тестовый маршрут (не защищенный)
 app.get("/", (req, res) => {
@@ -41,6 +44,20 @@ app.get("/", (req, res) => {
 // TODO: Добавить обработку ошибок (middleware для обработки ошибок)
 
 const startServer = async () => {
+  process.on("uncaughtException", (err) => {
+    logger.error("UNCAUGHT EXCEPTION! 💥", {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    });
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    logger.error("UNHANDLED REJECTION! 💥", {
+      reason,
+    });
+  });
+
   try {
     // Подключение к базе данных (уже происходит при импорте db)
     await db.sequelize.authenticate();

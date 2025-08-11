@@ -48,7 +48,12 @@ export const YearSelectorDropdown: React.FC<YearSelectorDropdownProps> = ({
         </span>
       </button>
 
-      <DropdownOverlay isOpen={isOpen} align="left" widthClass="min-w-60">
+      <DropdownOverlay
+        isOpen={isOpen}
+        align="left"
+        widthClass="min-w-60"
+        anchorRef={containerRef}
+      >
         <div className="flex gap-2 p-2">
           {yearColumns.map((col, colIdx) => (
             <div key={colIdx} className="flex flex-col">

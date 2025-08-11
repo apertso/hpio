@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useDropzone } from "react-dropzone";
-import logger from "../utils/logger";
 import getErrorMessage from "../utils/getErrorMessage";
 import Spinner from "../components/Spinner";
 import Modal from "../components/Modal";
@@ -13,17 +12,24 @@ import {
   UserIcon,
   CheckBadgeIcon,
   ExclamationCircleIcon,
-  PencilIcon,
 } from "@heroicons/react/24/solid";
 import userApi, { PHOTO_URL } from "../api/userApi";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
-import { useTheme } from "../context/ThemeContext";
-import { useToast } from "../context/ToastContext"; // Import useToast
+// import { useTheme } from "../context/ThemeContext";
+import { useToast } from "../context/ToastContext";
+import { timezones } from "../utils/timezones";
+import Select from "../components/Select";
 
-const profileSchema = z.object({
+// Схема для всех настроек профиля
+const settingsSchema = z.object({
   name: z.string().min(1, "Имя обязательно для заполнения."),
   email: z.string().email("Неверный формат email."),
+  notificationMethod: z.enum(["email", "push", "none"]),
+  notificationTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
+    message: "Неверный формат времени (HH:mm)",
+  }),
+  timezone: z.string().min(1, "Часовой пояс обязателен."),
 });
 
 const passwordSchema = z
@@ -46,55 +52,43 @@ const passwordSchema = z
     path: ["confirmPassword"],
   });
 
-type ProfileInputs = z.infer<typeof profileSchema>;
+type SettingsInputs = z.infer<typeof settingsSchema>;
 type PasswordInputs = z.infer<typeof passwordSchema>;
 
-interface ToggleSwitchProps {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-}
-
-const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
-  checked,
-  onChange,
-  disabled,
-}) => (
-  <label className="relative inline-flex items-center cursor-pointer">
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="sr-only peer"
-      disabled={disabled}
-    />
-    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-  </label>
-);
+// const ToggleSwitch: React.FC<{
+//   checked: boolean;
+//   onChange: (checked: boolean) => void;
+//   disabled?: boolean;
+// }> = ({ checked, onChange, disabled }) => (
+//   <label className="relative inline-flex items-center cursor-pointer">
+//     <input
+//       type="checkbox"
+//       checked={checked}
+//       onChange={(e) => onChange(e.target.checked)}
+//       className="sr-only peer"
+//       disabled={disabled}
+//     />
+//     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+//   </label>
+// );
 
 const SettingsPage: React.FC = () => {
   const { user, refreshUser, logout, token } = useAuth();
-  const { resolvedTheme, setTheme } = useTheme();
-  const { showToast } = useToast(); // Import useToast
+  const { showToast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
-  const [isEmailEditing, setIsEmailEditing] = useState(false);
   const [avatarKey, setAvatarKey] = useState(Date.now());
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
 
-  // Hard-coded state for notification toggles
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(false);
-  const [paymentReminders, setPaymentReminders] = useState(true);
-
   const {
-    register: registerProfile,
-    handleSubmit: handleProfileSubmit,
-    formState: { errors: profileErrors, isSubmitting: isProfileSubmitting },
-    setError: setProfileError,
-  } = useForm<ProfileInputs>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: { name: user?.name || "", email: user?.email || "" },
+    register: registerSettings,
+    handleSubmit: handleSettingsSubmit,
+    formState: { errors: settingsErrors, isSubmitting: isSettingsSubmitting },
+    setError: setSettingsError,
+    control: settingsControl,
+    reset: resetSettingsForm,
+  } = useForm<SettingsInputs>({
+    resolver: zodResolver(settingsSchema),
   });
 
   const {
@@ -107,6 +101,19 @@ const SettingsPage: React.FC = () => {
     resolver: zodResolver(passwordSchema),
   });
 
+  // Set form values when user data is available
+  useEffect(() => {
+    if (user) {
+      resetSettingsForm({
+        name: user.name || "",
+        email: user.email || "",
+        notificationMethod: user.notificationMethod || "email",
+        notificationTime: user.notificationTime || "09:30",
+        timezone: user.timezone || "UTC",
+      });
+    }
+  }, [user, resetSettingsForm]);
+
   const onDrop = async (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) return;
     const file = acceptedFiles[0];
@@ -118,9 +125,9 @@ const SettingsPage: React.FC = () => {
       await userApi.uploadPhoto(formData);
       await refreshUser();
       setAvatarKey(Date.now());
-      logger.info("Photo uploaded successfully.");
+      showToast("Фото профиля обновлено.", "success");
     } catch (error) {
-      logger.error("Photo upload failed:", error);
+      showToast(`Ошибка загрузки фото: ${getErrorMessage(error)}`, "error");
     } finally {
       setIsUploading(false);
     }
@@ -132,23 +139,22 @@ const SettingsPage: React.FC = () => {
     multiple: false,
   });
 
-  const onProfileSubmit: SubmitHandler<ProfileInputs> = async (data) => {
+  const onSettingsSubmit: SubmitHandler<SettingsInputs> = async (data) => {
     try {
       const emailChanged = data.email !== user?.email;
-      await userApi.updateProfile({ name: data.name, email: data.email });
+      await userApi.updateProfile(data);
       await refreshUser();
       if (emailChanged) {
         showToast(
-          "Профиль успешно обновлен. Мы отправили ссылку для подтверждения на ваш новый email.",
+          "Настройки сохранены. Мы отправили ссылку для подтверждения на ваш новый email.",
           "success"
         );
       } else {
-        showToast("Профиль успешно обновлен.", "success");
+        showToast("Настройки успешно сохранены.", "success");
       }
-      setIsEmailEditing(false);
     } catch (error) {
       const message = getErrorMessage(error);
-      setProfileError("root.serverError", { type: "manual", message });
+      setSettingsError("root.serverError", { type: "manual", message });
     }
   };
 
@@ -186,22 +192,27 @@ const SettingsPage: React.FC = () => {
   return (
     <>
       <title>Хочу Плачу - Настройки</title>
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto py-8 px-4 sm:px-2 lg:px-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Настройки профиля
+            Настройки
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Profile Section */}
-            <FormBlock>
+        <div className="space-y-8">
+          {/* Profile Section */}
+          <form onSubmit={handleSettingsSubmit(onSettingsSubmit)}>
+            <FormBlock className="w-full">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                Основная информация
+                Профиль и уведомления
               </h3>
+              {settingsErrors.root?.serverError && (
+                <p className="text-red-500 text-sm mb-4">
+                  {settingsErrors.root.serverError.message}
+                </p>
+              )}
               <div className="flex flex-col md:flex-row items-start space-y-6 md:space-y-0 md:space-x-6">
+                {/* Avatar Section */}
                 <div className="relative flex-shrink-0">
                   <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
                     {user?.photoPath ? (
@@ -230,204 +241,148 @@ const SettingsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <form
-                onSubmit={handleProfileSubmit(onProfileSubmit)}
-                className="space-y-4 mt-6"
-              >
+
+              {/* Profile Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <Input
+                  label="Имя"
+                  id="name"
+                  type="text"
+                  {...registerSettings("name")}
+                  error={settingsErrors.name?.message}
+                />
                 <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Имя
-                  </label>
-                  <Input
-                    id="name"
-                    type="text"
-                    className="w-full bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                    {...registerProfile("name")}
-                    error={profileErrors.name?.message}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Email
-                  </label>
-                  <div className="relative">
-                    <Input
-                      id="email"
-                      type="email"
-                      className="w-full bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 pr-20"
-                      {...registerProfile("email")}
-                      error={profileErrors.email?.message}
-                      disabled={!isEmailEditing}
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center space-x-2">
-                      {user?.isVerified ? (
-                        <CheckBadgeIcon
-                          className="h-5 w-5 text-green-500"
-                          title="Email подтвержден"
-                        />
-                      ) : (
-                        <ExclamationCircleIcon
-                          className="h-5 w-5 text-yellow-500"
-                          title="Email не подтвержден"
-                        />
-                      )}
-                      {!isEmailEditing && (
-                        <button
-                          type="button"
-                          onClick={() => setIsEmailEditing(true)}
-                          className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 cursor-pointer"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                      )}
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Email
+                    </label>
+                    {user?.isVerified ? (
+                      <span className="text-xs flex items-center text-green-600 dark:text-green-400">
+                        <CheckBadgeIcon className="h-4 w-4 mr-1" /> Подтвержден
+                      </span>
+                    ) : (
+                      <span className="text-xs flex items-center text-yellow-600 dark:text-yellow-400">
+                        <ExclamationCircleIcon className="h-4 w-4 mr-1" /> Не
+                        подтвержден
+                      </span>
+                    )}
                   </div>
-                  {profileErrors.root?.serverError && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {profileErrors.root.serverError.message}
-                    </p>
+                  <Input
+                    id="email"
+                    type="email"
+                    {...registerSettings("email")}
+                    error={settingsErrors.email?.message}
+                  />
+                </div>
+                <Controller
+                  name="notificationMethod"
+                  control={settingsControl}
+                  defaultValue={user?.notificationMethod || "email"}
+                  render={({ field }) => (
+                    <Select
+                      label="Напоминания о платежах"
+                      options={[
+                        { label: "Email", value: "email" },
+                        { label: "Пуш-уведомление (скоро)", value: "push" },
+                        { label: "Выключены", value: "none" },
+                      ]}
+                      value={field.value}
+                      onChange={field.onChange}
+                      error={settingsErrors.notificationMethod?.message}
+                    />
                   )}
-                </div>
-                <div className="text-right">
-                  <button
-                    type="submit"
-                    disabled={isProfileSubmitting}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
-                  >
-                    {isProfileSubmitting
-                      ? "Сохранение..."
-                      : "Сохранить профиль"}
-                  </button>
-                </div>
-              </form>
-            </FormBlock>
-
-            {/* Password Section */}
-            <FormBlock>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                Сменить пароль
-              </h3>
-              <form
-                onSubmit={handlePasswordSubmit(onPasswordSubmit)}
-                className="space-y-4"
-              >
-                <Input
-                  id="currentPassword"
-                  label="Текущий пароль"
-                  type="password"
-                  className="w-full bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                  {...registerPassword("currentPassword")}
-                  error={passwordErrors.currentPassword?.message}
                 />
                 <Input
-                  id="newPassword"
-                  label="Новый пароль"
-                  type="password"
-                  className="w-full bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                  {...registerPassword("newPassword")}
-                  error={passwordErrors.newPassword?.message}
+                  label="Напоминать в"
+                  id="notificationTime"
+                  type="time"
+                  {...registerSettings("notificationTime")}
+                  error={settingsErrors.notificationTime?.message}
                 />
-                <Input
-                  id="confirmPassword"
-                  label="Подтвердите новый пароль"
-                  type="password"
-                  className="w-full bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                  {...registerPassword("confirmPassword")}
-                  error={passwordErrors.confirmPassword?.message}
+                <Controller
+                  name="timezone"
+                  control={settingsControl}
+                  defaultValue={user?.timezone || "UTC"}
+                  render={({ field }) => (
+                    <Select
+                      label="Часовой пояс"
+                      options={timezones}
+                      value={field.value}
+                      onChange={field.onChange}
+                      error={settingsErrors.timezone?.message}
+                    />
+                  )}
                 />
-                {passwordErrors.root?.serverError && (
-                  <p className="text-red-500 text-sm">
-                    {passwordErrors.root.serverError.message}
-                  </p>
-                )}
-                <div className="text-right">
-                  <button
-                    type="submit"
-                    disabled={isPasswordSubmitting}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
-                  >
-                    {isPasswordSubmitting ? "Сохранение..." : "Сменить пароль"}
-                  </button>
-                </div>
-              </form>
-            </FormBlock>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-8 w-92">
-            <FormBlock>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                Уведомления
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Push-уведомления
-                  </span>
-                  <ToggleSwitch
-                    checked={pushNotifications}
-                    onChange={setPushNotifications}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Уведомления по Email
-                  </span>
-                  <ToggleSwitch
-                    checked={emailNotifications}
-                    onChange={setEmailNotifications}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Напоминания о платежах
-                  </span>
-                  <ToggleSwitch
-                    checked={paymentReminders}
-                    onChange={setPaymentReminders}
-                  />
-                </div>
               </div>
               <div className="text-right mt-6">
                 <button
-                  type="button"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md"
+                  type="submit"
+                  disabled={isSettingsSubmitting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
                 >
-                  Сохранить настройки
+                  {isSettingsSubmitting ? "Сохранение..." : "Сохранить"}
                 </button>
               </div>
             </FormBlock>
-            <FormBlock>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                Тема оформления
-              </h3>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700 dark:text-gray-300">
-                  Темная тема
-                </span>
-                <ToggleSwitch
-                  checked={resolvedTheme === "dark"}
-                  onChange={() =>
-                    setTheme(resolvedTheme === "dark" ? "light" : "dark")
-                  }
-                />
+          </form>
+
+          {/* Password Section */}
+          <FormBlock className="w-full">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+              Сменить пароль
+            </h3>
+            <form
+              onSubmit={handlePasswordSubmit(onPasswordSubmit)}
+              className="space-y-4"
+            >
+              <Input
+                id="currentPassword"
+                label="Текущий пароль"
+                type="password"
+                {...registerPassword("currentPassword")}
+                error={passwordErrors.currentPassword?.message}
+              />
+              <Input
+                id="newPassword"
+                label="Новый пароль"
+                type="password"
+                {...registerPassword("newPassword")}
+                error={passwordErrors.newPassword?.message}
+              />
+              <Input
+                id="confirmPassword"
+                label="Подтвердите новый пароль"
+                type="password"
+                {...registerPassword("confirmPassword")}
+                error={passwordErrors.confirmPassword?.message}
+              />
+              {passwordErrors.root?.serverError && (
+                <p className="text-red-500 text-sm">
+                  {passwordErrors.root.serverError.message}
+                </p>
+              )}
+              <div className="text-right">
+                <button
+                  type="submit"
+                  disabled={isPasswordSubmitting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
+                >
+                  {isPasswordSubmitting ? "Сохранение..." : "Сменить пароль"}
+                </button>
               </div>
-            </FormBlock>
-            <div className="mt-8 text-center lg:text-right">
-              <button
-                type="button"
-                onClick={() => setDeleteModalOpen(true)}
-                className="text-gray-500 hover:text-red-500 dark:hover:text-red-400 text-sm font-medium transition-colors cursor-pointer"
-              >
-                Удалить аккаунт
-              </button>
-            </div>
+            </form>
+          </FormBlock>
+          <div className="mt-8 text-center mt-12 lg:text-center">
+            <button
+              type="button"
+              onClick={() => setDeleteModalOpen(true)}
+              className="text-gray-400 dark:text-gray-800 hover:text-red-600 dark:hover:text-red-500 text-sm font-medium transition-colors cursor-pointer"
+            >
+              Удалить аккаунт
+            </button>
           </div>
         </div>
         <p className="mt-12 text-center text-xs text-gray-500 dark:text-gray-600">

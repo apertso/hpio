@@ -5,6 +5,9 @@ import { deleteFileFromFS } from "./fileService"; // Переиспользуе�
 import { PaymentInstance } from "../models/Payment";
 import { CategoryInstance } from "../models/Category";
 import { RRule } from "rrule";
+import { normalizeDateToUTC } from "../utils/dateUtils";
+import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
+import { config } from "../config/appConfig";
 
 // Пример интерфейса для данных платежа (опционально, для строгой типизации)
 interface PaymentData {
@@ -12,6 +15,7 @@ interface PaymentData {
   amount: number;
   dueDate: string; // YYYY-MM-DD
   categoryId?: string | null; // Allow null for category
+  remind?: boolean;
   // Fields for creating a new recurring series (only used during creation)
   recurrenceRule?: string; // Новое поле для RRULE
   recurrenceEndDate?: string; // YYYY-MM-DD string for input
@@ -29,33 +33,28 @@ interface PaymentData {
 const calculateNextDueDate = (
   rruleString: string,
   seriesStartDate: Date,
+  lastDueDate: Date,
   seriesEndDate?: Date | null
 ): Date | null => {
   try {
     if (!rruleString || rruleString.trim() === "") {
       return null;
     }
-    // Временное исправление для некорректно сгенерированных строк rrule.
-    // Используем RegExp с word boundary (\b), чтобы не заменять 'FREQ=MONTHLY' на 'FREQ=MONTHLYLY'.
-    const correctedRruleString = rruleString
-      .trim()
-      .replace(/FREQ=DAY\b/g, "FREQ=DAILY")
-      .replace(/FREQ=WEEK\b/g, "FREQ=WEEKLY")
-      .replace(/FREQ=MONTH\b/g, "FREQ=MONTHLY")
-      .replace(/FREQ=YEAR\b/g, "FREQ=YEARLY");
 
-    const rule = RRule.fromString(correctedRruleString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    // `dtstart` важен, чтобы правило знало отправную точку для расчета.
-    // rrule.js работает с датами JS. Модели Sequelize с DATEONLY (`YYYY-MM-DD`)
-    // при `new Date()` создают объект Date в UTC 00:00, что является правильным поведением.
-    rule.options.dtstart = seriesStartDate;
-    // Ищем следующую дату СТРОГО после lastDueDate.
-    // inc=false означает, что если lastDueDate сама является валидной датой, она не будет возвращена,
-    // а будет найдена следующая за ней.
-    const nextDate = rule.after(today, false);
-    if (seriesEndDate && nextDate > seriesEndDate) {
+    // ПАРСИНГ: Сначала парсим строку в объект опций.
+    const options = RRule.parseString(rruleString);
+
+    // ИНИЦИАЛИЗАЦИЯ: Устанавливаем dtstart в опциях, используя нормализованную дату.
+    // Это гарантирует, что время и часовой пояс не повлияют на расчет.
+    options.dtstart = normalizeDateToUTC(seriesStartDate);
+
+    // СОЗДАНИЕ ПРАВИЛА: Создаем экземпляр RRule с полным набором опций.
+    const rule = new RRule(options);
+
+    // РАСЧЕТ: Ищем следующую дату, используя нормализованную последнюю дату.
+    const nextDate = rule.after(normalizeDateToUTC(lastDueDate), false);
+
+    if (seriesEndDate && nextDate && nextDate > seriesEndDate) {
       return null;
     }
     return nextDate;
@@ -101,7 +100,104 @@ export const getUpcomingPayments = async (userId: string, days: number) => {
     logger.info(
       `Fetched ${payments.length} upcoming/overdue payments for user ${userId} for the next ${days} days`
     );
-    return payments; // Возвращаем модели Sequelize, Frontend обработает их
+    // --- Виртуальные платежи: добавляем отображение будущих экземпляров серий без записи в БД ---
+    // Строим индекс существующих дат по сериям, чтобы не дублировать реальными платежами
+    const existingDatesBySeries = new Map<string, Set<string>>();
+    for (const p of payments as any[]) {
+      const seriesId: string | null = (p as any).seriesId || null;
+      if (!seriesId) continue;
+      const dueStr: string = String((p as any).dueDate);
+      if (!existingDatesBySeries.has(seriesId)) {
+        existingDatesBySeries.set(seriesId, new Set<string>());
+      }
+      existingDatesBySeries.get(seriesId)!.add(dueStr);
+    }
+
+    // Границы окна отбора
+    const windowStart = new Date(now);
+    const windowEnd = new Date(daysFromNow);
+
+    // Получаем активные серии пользователя
+    const seriesList = await db.RecurringSeries.findAll({
+      where: { userId: userId, isActive: true },
+    });
+
+    const virtualPayments: any[] = [];
+    for (const series of seriesList as any[]) {
+      try {
+        if (!series.recurrenceRule) continue;
+
+        // Определяем границу начала генерации: следующий день после generatedUntil (если есть), иначе после startDate
+        const baseBoundary: string = series.generatedUntil || series.startDate;
+        const boundary = new Date(baseBoundary);
+        boundary.setHours(0, 0, 0, 0);
+        boundary.setDate(boundary.getDate() + 1);
+
+        const effectiveStart =
+          boundary > windowStart ? new Date(boundary) : new Date(windowStart);
+
+        // Ограничиваем конец окном и концом серии, если задано
+        let effectiveEnd = new Date(windowEnd);
+        if (series.recurrenceEndDate) {
+          const endBySeries = new Date(series.recurrenceEndDate as any);
+          endBySeries.setHours(23, 59, 59, 999);
+          if (endBySeries < effectiveEnd) {
+            effectiveEnd = endBySeries;
+          }
+        }
+
+        if (effectiveStart > effectiveEnd) continue;
+
+        const options = RRule.parseString(series.recurrenceRule as string);
+        options.dtstart = normalizeDateToUTC(new Date(series.startDate as any));
+        const rule = new RRule(options);
+
+        const hits = rule.between(
+          normalizeDateToUTC(effectiveStart),
+          normalizeDateToUTC(effectiveEnd),
+          true
+        );
+
+        const existing =
+          existingDatesBySeries.get(series.id) || new Set<string>();
+        for (const d of hits) {
+          const dStr = d.toISOString().slice(0, 10);
+          if (existing.has(dStr)) continue; // уже есть реальный платеж на эту дату
+          virtualPayments.push({
+            id: `virtual:${series.id}:${dStr}`,
+            userId: userId,
+            title: series.title,
+            amount: Number(series.amount),
+            dueDate: dStr,
+            status: "upcoming",
+            remind: series.remind,
+            seriesId: series.id,
+            builtinIconName: series.builtinIconName,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isVirtual: true,
+          });
+        }
+      } catch (e) {
+        // Ошибку парсинга правил или генерации пропускаем, чтобы не ломать общий ответ
+        logger.warn(
+          `Failed to compute virtual occurrences for series ${series.id}`,
+          e
+        );
+      }
+    }
+
+    const combined = [...(payments as any[]), ...virtualPayments].sort(
+      (a, b) => {
+        const aDate =
+          a.dueDate instanceof Date ? a.dueDate : new Date(String(a.dueDate));
+        const bDate =
+          b.dueDate instanceof Date ? b.dueDate : new Date(String(b.dueDate));
+        return aDate.getTime() - bDate.getTime();
+      }
+    );
+
+    return combined;
   } catch (error) {
     logger.error(`Error fetching upcoming payments for user ${userId}:`, error);
     throw new Error("Не удалось получить предстоящие платежи.");
@@ -211,12 +307,22 @@ export const createPayment = async (
         recurrenceRule: paymentData.recurrenceRule, // Используем новое поле
         recurrenceEndDate: recurrenceEndDate,
         builtinIconName: paymentData.builtinIconName || null,
+        remind: paymentData.remind || false,
         isActive: true,
       });
       seriesId = newSeries.id;
       logger.info(
         `Created new recurring series (ID: ${seriesId}, User: ${userId})`
       );
+
+      // Инициализируем generatedUntil датой startDate (dueDate первого платежа) для детерминированной границы
+      try {
+        await newSeries.update({ generatedUntil: paymentData.dueDate });
+      } catch (e) {
+        logger.warn(
+          `Could not initialize generatedUntil for series ${newSeries.id}. Field may not exist in DB yet.`
+        );
+      }
     }
 
     // Create the payment instance
@@ -227,6 +333,7 @@ export const createPayment = async (
       amount: paymentData.amount,
       dueDate: paymentData.dueDate,
       seriesId: seriesId, // Link to the recurring series (or null for non-recurring)
+      remind: paymentData.remind || false,
 
       status: paymentData.createAsCompleted ? "completed" : "upcoming",
       completedAt: paymentData.createAsCompleted
@@ -270,6 +377,7 @@ export const getPaymentById = async (paymentId: string, userId: string) => {
         "fileName", // Include file fields
         "builtinIconName",
         "seriesId", // Include seriesId
+        "remind",
       ],
       include: [
         {
@@ -393,6 +501,7 @@ export const updatePayment = async (
       "fileName",
       "builtinIconName",
       "completedAt",
+      "remind",
     ];
 
     allowedFields.forEach((field) => {
@@ -545,12 +654,11 @@ export const deletePayment = async (paymentId: string, userId: string) => {
     `Attempting to soft-delete payment (ID: ${paymentId}, User: ${userId})`
   );
   try {
-    // Находим платеж, чтобы убедиться, что он принадлежит пользователю
     const payment = await db.Payment.findOne({
       where: {
         id: paymentId,
         userId: userId,
-        status: { [Op.ne]: "deleted" }, // Cannot delete if already logically deleted
+        status: { [Op.ne]: "deleted" },
       },
     });
 
@@ -558,30 +666,20 @@ export const deletePayment = async (paymentId: string, userId: string) => {
       logger.warn(
         `Payment not found for soft delete or no access (ID: ${paymentId}, User: ${userId})`
       );
-      return null; // Payment not found, does not belong to the user, or already deleted
+      return null;
     }
 
-    // Store the original seriesId before updating
     const originalSeriesId = payment.seriesId;
     const originalStatus = payment.status;
 
-    // If a file is attached, delete it
-    // If a file is attached, do NOT delete it on logical delete (Option B)
-    // The file will be deleted on permanent deletion from the archive.
-    // Clear file metadata from the payment record after deletion
-    // Note: The actual file remains in the file system until permanent deletion.
-
-    // Update status to 'deleted' and dissociate from series
     await payment.update({
       status: "deleted",
-      // completedAt = null? No, if it was completed, status changes to deleted, completedAt remains
     });
 
-    logger.info(
-      `Payment soft-deleted (ID: ${payment.id}, User: ${userId}). Dissociated from series ${originalSeriesId}.`
-    );
+    logger.info(`Payment soft-deleted (ID: ${payment.id}, User: ${userId}).`);
 
-    // Если удаленный платеж был активной частью серии, генерируем следующий
+    // На удалении: 1) обновляем generatedUntil как минимум до даты удаленного платежа,
+    // 2) создаем следующий экземпляр СТРОГО после границы (никогда не на удаленную дату).
     if (
       originalSeriesId &&
       (originalStatus === "upcoming" || originalStatus === "overdue")
@@ -589,83 +687,35 @@ export const deletePayment = async (paymentId: string, userId: string) => {
       const series = await db.RecurringSeries.findOne({
         where: { id: originalSeriesId, isActive: true },
       });
-
       if (series) {
-        const nextDueDate = calculateNextDueDate(
-          series.recurrenceRule,
-          new Date(series.startDate)
-        );
-
-        if (nextDueDate) {
-          const seriesEndDate = series.recurrenceEndDate
-            ? new Date(series.recurrenceEndDate)
+        // 1) Обновляем границу до даты удаленного экземпляра
+        try {
+          const currentBoundary = series.generatedUntil
+            ? new Date(series.generatedUntil)
             : null;
-          if (seriesEndDate) {
-            seriesEndDate.setHours(0, 0, 0, 0);
+          const thisDate = new Date(payment.dueDate);
+          if (!currentBoundary || thisDate > currentBoundary) {
+            await series.update({ generatedUntil: payment.dueDate });
           }
+        } catch (e) {
+          logger.warn(
+            `Could not update generatedUntil for series ${series.id} on delete of payment ${payment.id}.`
+          );
+        }
 
-          if (!seriesEndDate || nextDueDate <= seriesEndDate) {
-            const nextDueDateString = nextDueDate.toISOString().split("T")[0];
-
-            const existingNextPayment = await db.Payment.findOne({
-              where: {
-                seriesId: series.id,
-                dueDate: nextDueDateString,
-              },
-            });
-
-            if (!existingNextPayment) {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const newPaymentStatus =
-                new Date(nextDueDateString) < today ? "overdue" : "upcoming";
-
-              await db.Payment.create({
-                userId: series.userId,
-                categoryId: series.categoryId,
-                title: series.title,
-                amount: series.amount,
-                dueDate: nextDueDateString,
-                status: newPaymentStatus,
-                seriesId: series.id,
-                builtinIconName: series.builtinIconName,
-              });
-              logger.info(
-                `Generated next recurring payment (Series ID: ${series.id}, Due Date: ${nextDueDateString}) after deleting instance ${payment.id}.`
-              );
-            }
-          }
+        // 2) Генерируем следующий экземпляр единым хелпером
+        try {
+          await generateNextRecurrentPaymentForSeries(series.id);
+        } catch (e) {
+          logger.error(
+            `Error generating next instance on delete for series ${series.id}:`,
+            e
+          );
         }
       }
     }
 
-    // If the payment was part of a recurring series, check if the series should be deleted
-    if (originalSeriesId) {
-      // Check if there are any remaining payments linked to this series
-      const remainingCount = await db.Payment.count({
-        where: {
-          seriesId: originalSeriesId,
-          // Consider only non-deleted payments for counting remaining instances
-          status: { [Op.ne]: "deleted" },
-        },
-      });
-
-      if (remainingCount === 0) {
-        // If no remaining payments, delete the recurring series
-        await db.RecurringSeries.destroy({
-          where: { id: originalSeriesId },
-        });
-        logger.info(
-          `Recurring series with ID ${originalSeriesId} deleted as it has no remaining payments.`
-        );
-      } else {
-        logger.info(
-          `Recurring series with ID ${originalSeriesId} still has ${remainingCount} remaining payments.`
-        );
-      }
-    }
-
-    return payment; // Return the updated (with deleted status) payment
+    return payment;
   } catch (error) {
     logger.error(
       `Error soft-deleting payment (ID: ${paymentId}, User: ${userId}):`,
@@ -952,7 +1002,8 @@ export const completePayment = async (
           // Рассчитываем дату следующего платежа
           const nextDueDate = calculateNextDueDate(
             series.recurrenceRule || "", // Передаем recurrenceRule
-            new Date(series.startDate) // Передаем startDate серии
+            new Date(series.startDate), // Передаем startDate серии,
+            new Date(payment.dueDate) // Передаем дату выполненного платежа
           );
 
           // Еще одна проверка на дату окончания серии для *следующего* вычисленного платежа
@@ -973,40 +1024,21 @@ export const completePayment = async (
           }
 
           if (canGenerateNext && nextDueDate) {
-            const nextDueDateString = nextDueDate.toISOString().split("T")[0];
-
-            // Проверяем, существует ли уже следующий платеж в серии
-            const existingNextPayment = await db.Payment.findOne({
-              where: {
-                seriesId: series.id,
-                dueDate: nextDueDateString,
-              },
-            });
-
-            // Создаем только если его еще нет
-            if (!existingNextPayment) {
-              const newPaymentStatus =
-                new Date(nextDueDateString) < today ? "overdue" : "upcoming";
-              // Создаем новый платеж
-              await db.Payment.create({
-                userId: series.userId,
-                categoryId: series.categoryId,
-                title: series.title, // Используем данные из серии
-                amount: series.amount, // Используем данные из серии
-                dueDate: nextDueDateString,
-                status: newPaymentStatus,
-                seriesId: series.id,
-                // Копируем детали иконки из серии
-                builtinIconName: series.builtinIconName,
-              });
-              logger.info(
-                `Generated next recurring payment (Series ID: ${series.id}, Due Date: ${nextDueDateString}) by completePayment for ${payment.id}.`
-              );
-            } else {
-              logger.info(
-                `Next payment for series ${series.id} on ${nextDueDateString} already exists. Skipping generation.`
+            // Обновляем границу до даты завершенного экземпляра, затем создаем следующий
+            try {
+              const currentBoundary = series.generatedUntil
+                ? new Date(series.generatedUntil)
+                : null;
+              const completedScheduled = new Date(payment.dueDate);
+              if (!currentBoundary || completedScheduled > currentBoundary) {
+                await series.update({ generatedUntil: payment.dueDate });
+              }
+            } catch (e) {
+              logger.warn(
+                `Could not update generatedUntil for series ${series.id} during complete of payment ${payment.id}.`
               );
             }
+            await generateNextRecurrentPaymentForSeries(series.id);
           }
         }
       } else {
@@ -1043,20 +1075,8 @@ export const generateNextRecurrentPayments = async () => {
   let createdCount = 0;
   let checkedSeriesCount = 0;
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set time to midnight for date comparison
-
-    // Find all active recurring series that have not ended
     const activeSeries = await db.RecurringSeries.findAll({
-      where: {
-        isActive: true,
-        recurrenceEndDate: {
-          [Op.or]: [
-            { [Op.gte]: today }, // End date is in the future or today
-            { [Op.eq]: null }, // Or no end date is specified
-          ],
-        },
-      },
+      where: { isActive: true },
     });
 
     checkedSeriesCount = activeSeries.length;
@@ -1065,69 +1085,117 @@ export const generateNextRecurrentPayments = async () => {
     );
 
     for (const series of activeSeries) {
-      // Find the latest payment instance for this series
-      const lastPayment = await db.Payment.findOne({
-        where: {
-          seriesId: series.id,
-          dueDate: { [Op.gt]: today },
-        },
-      });
-
-      if (lastPayment) {
-        continue;
+      const result = await generateNextRecurrentPaymentForSeries(series.id);
+      if (result) {
+        createdCount++;
       }
-
-      logger.info(
-        `No payments found for series ${series.id}. Starting generation from series start date: ${series.startDate}.`
-      );
-
-      const seriesEndDate = series.recurrenceEndDate
-        ? new Date(series.recurrenceEndDate)
-        : null;
-
-      // Loop to generate all missing payments up to today
-      const nextDueDate = calculateNextDueDate(
-        series.recurrenceRule,
-        new Date(series.startDate),
-        seriesEndDate
-      );
-
-      if (!nextDueDate) {
-        logger.info(
-          `No next due date found for series ${series.id}. Skipping.`
-        );
-        await series.update({ isActive: false });
-        logger.info(
-          `Deactivating series ${series.id} as it reached its end date.`
-        );
-        continue;
-      }
-
-      const nextDueDateString = nextDueDate.toISOString().split("T")[0];
-
-      await db.Payment.create({
-        userId: series.userId,
-        categoryId: series.categoryId,
-        title: series.title,
-        amount: series.amount,
-        dueDate: nextDueDateString,
-        status: "upcoming",
-        seriesId: series.id,
-        builtinIconName: series.builtinIconName,
-      });
-      logger.info(
-        `Generated new recurring payment for series ${series.id} on ${nextDueDateString}`
-      );
-      createdCount++;
     }
 
     logger.info(
-      `generateNextRecurrentPayments job finished. Created: ${createdCount} payments for ${checkedSeriesCount} series.`
+      `generateNextRecurrentPayments job finished. Checked ${checkedSeriesCount} series, created ${createdCount} payments.`
     );
     return { createdCount, checkedSeriesCount };
   } catch (error) {
     logger.error("Error in generateNextRecurrentPayments job:", error);
-    throw error; // Пробрасываем ошибку для executeWithTaskLock
+    throw error;
+  }
+};
+
+/**
+ * Сгенерировать следующий платеж для КОНКРЕТНОЙ серии.
+ * Правила:
+ * - Если для серии уже есть активный платеж (upcoming/overdue), ничего не делать (вернуть null).
+ * - Граница берется из series.generatedUntil (если null — день до startDate).
+ * - Рассчитать следующую дату строго ПОСЛЕ границы по RRULE и с учетом recurrenceEndDate.
+ * - Создать ровно один платеж и вернуть его.
+ * - Если подходящей даты нет — деактивировать серию и вернуть null.
+ */
+export const generateNextRecurrentPaymentForSeries = async (
+  seriesId: string
+) => {
+  try {
+    const series = await db.RecurringSeries.findOne({
+      where: { id: seriesId },
+    });
+    if (!series) {
+      logger.warn(`Series ${seriesId} not found.`);
+      return null;
+    }
+    if (!series.isActive) {
+      logger.info(`Series ${series.id} is inactive. Skipping next generation.`);
+      return null;
+    }
+
+    // Если уже есть активный экземпляр — выходим
+    const activePaymentCount = await db.Payment.count({
+      where: {
+        seriesId: series.id,
+        status: { [Op.in]: ["upcoming", "overdue"] },
+      },
+    });
+    if (activePaymentCount > 0) {
+      logger.info(
+        `Series ${series.id} already has an active payment. Skipping single-series generation.`
+      );
+      return null;
+    }
+
+    // Граница
+    const boundary = series.generatedUntil
+      ? new Date(series.generatedUntil)
+      : new Date(new Date(series.startDate).getTime() - 24 * 60 * 60 * 1000);
+
+    // Следующая дата
+    let nextDueDate: Date | null = null;
+    try {
+      const options = RRule.parseString(series.recurrenceRule);
+      options.dtstart = normalizeDateToUTC(new Date(series.startDate));
+      const rule = new RRule(options);
+      nextDueDate = rule.after(normalizeDateToUTC(boundary), false);
+    } catch (e) {
+      logger.error(`Error parsing RRULE for series ${series.id}`, e);
+    }
+
+    const seriesEndDate = series.recurrenceEndDate
+      ? new Date(series.recurrenceEndDate)
+      : null;
+
+    if (!nextDueDate || (seriesEndDate && nextDueDate > seriesEndDate)) {
+      await series.update({ isActive: false });
+      logger.info(
+        `Deactivated series ${series.id} as there is no valid next occurrence for single-series generation.`
+      );
+      return null;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextDueDateString = nextDueDate.toISOString().split("T")[0];
+    const status = nextDueDate < today ? "overdue" : "upcoming";
+
+    const newPayment = await db.Payment.create({
+      userId: series.userId,
+      categoryId: series.categoryId,
+      title: series.title,
+      amount: series.amount,
+      dueDate: nextDueDateString,
+      status,
+      seriesId: series.id,
+      builtinIconName: series.builtinIconName,
+      remind: series.remind,
+    });
+
+    logger.info(
+      `Generated next recurring payment for series ${series.id} on ${nextDueDateString} via single-series generation.`
+    );
+
+    return newPayment;
+  } catch (error) {
+    logger.error(
+      `Error generating next recurring payment for series ${seriesId}:`,
+      error
+    );
+    throw error;
   }
 };
 
@@ -1173,16 +1241,32 @@ export const getDashboardStats = async (
   endDate?: string
 ) => {
   try {
+    const user = await db.User.findByPk(userId, {
+      attributes: ["timezone"],
+    });
+    const userTimezone = user?.timezone || config.defaultTimezone;
+
     const now = new Date();
-    // Определяем начало и конец периода, используя UTC, чтобы избежать смещения часовых поясов.
-    const periodStart = startDate
-      ? new Date(startDate + "T00:00:00.000Z") // UTC
-      : new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
-    const periodEnd = endDate
-      ? new Date(endDate + "T23:59:59.999Z") // UTC
-      : new Date(
-          Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-        );
+    const periodStartDate = startDate
+      ? new Date(startDate)
+      : new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEndDate = endDate
+      ? new Date(endDate)
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Для `dueDate` (DATEONLY) используем строковое сравнение.
+    const periodStartString = periodStartDate.toISOString().split("T")[0];
+    const periodEndString = periodEndDate.toISOString().split("T")[0];
+
+    // Для `completedAt` (DATETIME) создаем UTC-диапазон, соответствующий полному дню в таймзоне пользователя.
+    const periodStartUTC = fromZonedTime(
+      `${periodStartString}T00:00:00`,
+      userTimezone
+    );
+    const periodEndUTC = fromZonedTime(
+      `${periodEndString}T23:59:59.999`,
+      userTimezone
+    );
 
     // Один запрос для получения всех платежей, релевантных для статистики
     const relevantPayments: (PaymentInstance & {
@@ -1192,25 +1276,19 @@ export const getDashboardStats = async (
         userId: userId,
         [Op.or]: [
           {
-            // Платежи, у которых СРОК ОПЛАТЫ в периоде
+            // Платежи, у которых СРОК ОПЛАТЫ (DATEONLY) в периоде.
             dueDate: {
-              [Op.between]: [
-                periodStart.toISOString(),
-                periodEnd.toISOString(),
-              ],
+              [Op.between]: [periodStartString, periodEndString],
             },
             status: {
               [Op.notIn]: ["deleted", "completed"],
             },
           },
           {
-            // ИЛИ платежи, которые были ЗАВЕРШЕНЫ в периоде
+            // ИЛИ платежи, которые были ЗАВЕРШЕНЫ (DATETIME) в UTC-диапазоне, эквивалентном периоду в таймзоне пользователя.
             status: "completed",
             completedAt: {
-              [Op.between]: [
-                periodStart.toISOString(),
-                periodEnd.toISOString(),
-              ],
+              [Op.between]: [periodStartUTC, periodEndUTC],
             },
           },
         ],
@@ -1242,26 +1320,18 @@ export const getDashboardStats = async (
 
     for (const payment of relevantPayments) {
       const amount = parseFloat(payment.amount.toString());
-      const paymentDueDate = new Date(payment.dueDate + "T00:00:00.000Z");
 
-      // Рассчитываем "Предстоящие" - это upcoming и overdue с dueDate в периоде
-      if (
-        (payment.status === "upcoming" || payment.status === "overdue") &&
-        paymentDueDate >= periodStart &&
-        paymentDueDate <= periodEnd
-      ) {
+      // Рассчитываем "Предстоящие"
+      if (payment.status === "upcoming" || payment.status === "overdue") {
         totalUpcomingAmount += amount;
       }
 
-      // Рассчитываем "Выполненные" - это completed с completedAt в периоде
+      // Рассчитываем "Выполненные"
       if (payment.status === "completed" && payment.completedAt) {
-        const completedDate = new Date(payment.completedAt.toString());
-        if (completedDate >= periodStart && completedDate <= periodEnd) {
-          totalCompletedAmount += amount;
-        }
+        totalCompletedAmount += amount;
       }
 
-      // Распределение по категориям (для всех платежей в выборке)
+      // Распределение по категориям
       const categoryId = payment.category?.id || "no-category";
       const categoryName = payment.category?.name || "Без категории";
       if (!categoriesStats[categoryId]) {
@@ -1271,17 +1341,22 @@ export const getDashboardStats = async (
           amount: 0,
         };
       }
-      // Суммируем в категорию, только если платеж не "удален"
       if (payment.status !== "deleted") {
         categoriesStats[categoryId].amount += amount;
       }
 
-      // Статистика по дням (для всех платежей в выборке)
-      // Используем completedAt для выполненных платежей и dueDate для остальных
-      const dateKey =
-        payment.status === "completed" && payment.completedAt
-          ? new Date(payment.completedAt as Date).toISOString().split("T")[0]
-          : payment.dueDate;
+      // Статистика по дням с учетом таймзоны
+      let dateKey: string;
+      if (payment.status === "completed" && payment.completedAt) {
+        // Конвертируем UTC дату выполнения в дату в таймзоне пользователя
+        const completedDateInUserTZ = toZonedTime(
+          payment.completedAt as Date,
+          userTimezone
+        );
+        dateKey = format(completedDateInUserTZ, "yyyy-MM-dd");
+      } else {
+        dateKey = payment.dueDate;
+      }
 
       if (!dailyStats[dateKey]) {
         dailyStats[dateKey] = { date: dateKey, amount: 0 };
@@ -1299,14 +1374,16 @@ export const getDashboardStats = async (
     );
 
     return {
-      month: `${periodStart.getFullYear()}-${(periodStart.getMonth() + 1)
+      month: `${periodStartDate.getFullYear()}-${(
+        periodStartDate.getMonth() + 1
+      )
         .toString()
         .padStart(2, "0")}`,
       totalUpcomingAmount: totalUpcomingAmount.toFixed(2),
       totalCompletedAmount: totalCompletedAmount.toFixed(2),
       categoriesDistribution,
       dailyPaymentLoad,
-      allPaymentsInMonth: relevantPayments, // Возвращаем для фильтрации на фронте
+      allPaymentsInMonth: relevantPayments,
     };
   } catch (error) {
     logger.error(

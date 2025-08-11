@@ -22,6 +22,7 @@ interface PaymentAttributes {
   fileSize?: number | null; // Size of the uploaded file in bytes
   uploadedAt?: Date | null; // Timestamp of when the file was uploaded
   builtinIconName?: string | null;
+  remind: boolean;
   createdAt: Date;
   updatedAt: Date;
   seriesId?: string | null; // Link to RecurringSeries
@@ -39,6 +40,7 @@ interface PaymentCreationAttributes
     | "fileSize"
     | "uploadedAt"
     | "builtinIconName"
+    | "remind"
     | "createdAt"
     | "updatedAt"
     | "seriesId" // Add seriesId to optional fields
@@ -124,6 +126,11 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       builtinIconName: {
         type: dataTypes.STRING,
         allowNull: true,
+      },
+      remind: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
       seriesId: {
         type: dataTypes.UUID,

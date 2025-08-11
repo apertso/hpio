@@ -116,6 +116,7 @@ export const updateRecurringSeries = async (
           newSeriesData.builtinIconName !== undefined
             ? newSeriesData.builtinIconName
             : oldSeries.builtinIconName,
+        remind: newSeriesData.remind ?? oldSeries.remind,
         isActive: true,
       },
       { transaction }

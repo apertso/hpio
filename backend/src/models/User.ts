@@ -9,6 +9,9 @@ interface UserAttributes {
   isVerified: boolean;
   verificationToken?: string | null;
   verificationTokenExpires?: Date | null;
+  notificationMethod: "email" | "push" | "none";
+  notificationTime: string; // Format HH:mm
+  timezone: string;
   createdAt: Date;
   updatedAt: Date;
   // Add other user attributes here if needed
@@ -24,6 +27,9 @@ interface UserCreationAttributes
     | "isVerified"
     | "verificationToken"
     | "verificationTokenExpires"
+    | "notificationMethod"
+    | "notificationTime"
+    | "timezone"
   > {}
 
 export interface UserInstance
@@ -73,6 +79,21 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       verificationTokenExpires: {
         type: dataTypes.DATE,
         allowNull: true,
+      },
+      notificationMethod: {
+        type: dataTypes.ENUM("email", "push", "none"),
+        allowNull: false,
+        defaultValue: "email",
+      },
+      notificationTime: {
+        type: dataTypes.STRING(5), // HH:mm
+        allowNull: false,
+        defaultValue: "09:30",
+      },
+      timezone: {
+        type: dataTypes.STRING,
+        allowNull: false,
+        defaultValue: "UTC",
       },
       createdAt: {
         type: dataTypes.DATE,

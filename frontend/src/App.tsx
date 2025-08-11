@@ -26,7 +26,7 @@ const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Scrollbar from "./components/Scrollbar";
+
 import { useDropdown } from "./hooks/useDropdown";
 import DropdownOverlay from "./components/DropdownOverlay";
 import {
@@ -43,15 +43,19 @@ import VerificationBanner from "./components/VerificationBanner";
 import { useReset } from "./context/ResetContext";
 import Spinner from "./components/Spinner";
 
-// TODO: Создать компонент ThemeSwitcher
 const ThemeSwitcher = () => {
   const { setTheme, resolvedTheme } = useTheme();
   return (
     <button
       onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-      className="p-2 rounded-md bg-gray-200 dark:bg-card-bg text-gray-800 dark:text-gray-200 cursor-pointer"
+      className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+      aria-label="Переключить тему"
     >
-      {resolvedTheme === "light" ? "🌙" : "☀️"}{" "}
+      {resolvedTheme === "light" ? (
+        <MoonIcon className="h-5 w-5" />
+      ) : (
+        <SunIcon className="h-5 w-5" />
+      )}
     </button>
   );
 };
@@ -70,7 +74,6 @@ const Navigation: React.FC = () => {
     setIsOpen: setIsMobileMenuOpen,
     containerRef: mobileMenuRef,
   } = useDropdown();
-  const { setTheme, resolvedTheme } = useTheme();
   const [avatarKey, setAvatarKey] = useState(Date.now());
 
   useEffect(() => {
@@ -87,11 +90,7 @@ const Navigation: React.FC = () => {
     "/verify-email",
   ];
   if (authPaths.includes(location.pathname)) {
-    return (
-      <nav>
-        <ThemeSwitcher />
-      </nav>
-    );
+    return;
   }
 
   return (
@@ -136,6 +135,7 @@ const Navigation: React.FC = () => {
                 isOpen={isMobileMenuOpen}
                 align="right"
                 widthClass="w-56"
+                anchorRef={mobileMenuRef}
               >
                 <div className="py-1">
                   <Link
@@ -194,6 +194,7 @@ const Navigation: React.FC = () => {
                 isOpen={isUserPopoverOpen}
                 align="right"
                 widthClass="w-72"
+                anchorRef={popoverRef}
               >
                 <div
                   role="menu"
@@ -224,20 +225,6 @@ const Navigation: React.FC = () => {
                       <Cog6ToothIcon className="mr-3 h-5 w-5 text-gray-500 dark:text-slate-400" />
                       Настройки
                     </Link>
-                    <button
-                      onClick={() => {
-                        setTheme(resolvedTheme === "light" ? "dark" : "light");
-                      }}
-                      className="w-full text-left text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-1.5 px-3 rounded-md transition-colors flex items-center text-sm mt-0.5 cursor-pointer"
-                      role="menuitem"
-                    >
-                      {resolvedTheme === "light" ? (
-                        <MoonIcon className="mr-3 h-5 w-5 text-gray-500 dark:text-slate-400" />
-                      ) : (
-                        <SunIcon className="mr-3 h-5 w-5 text-gray-500 dark:text-slate-400" />
-                      )}
-                      Тема
-                    </button>
                   </div>
                   <div className="py-2 px-4 border-t border-gray-200 dark:border-slate-700">
                     <button
@@ -266,7 +253,6 @@ const Navigation: React.FC = () => {
             <ArrowRightOnRectangleIcon className="h-5 w-5" />
             <span>Войти</span>
           </Link>
-          <ThemeSwitcher />
         </div>
       )}
     </nav>
@@ -274,7 +260,6 @@ const Navigation: React.FC = () => {
 };
 
 function App() {
-  const scrollableContainerRef = React.useRef<HTMLDivElement>(null);
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -290,103 +275,110 @@ function App() {
       navigate(targetUrl);
     }
   };
-  return (
-    <div className="relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans">
-      <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20">
-        <a
-          href={isAuthenticated ? "/dashboard" : "/"}
-          onClick={handleLogoClick}
-          className="flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
-          style={{ textDecoration: "none" }}
-        >
-          <div className="size-4 text-black dark:text-white">
-            <svg
-              viewBox="0 0 48 48"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z"
-                fill="currentColor"
-              ></path>
-            </svg>
-          </div>
-          <h1 className="text-lg font-bold leading-tight tracking-[-0.015em]">
-            Хочу Плачу
-          </h1>
-        </a>
-        <Navigation /> {/* Используем компонент навигации */}
-      </header>
 
-      {/* Banner for email verification */}
-      <VerificationBanner />
+  const header = (
+    <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20">
+      <a
+        href={isAuthenticated ? "/dashboard" : "/"}
+        onClick={handleLogoClick}
+        className="flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
+        style={{ textDecoration: "none" }}
+      >
+        <div className="size-4 text-black dark:text-white">
+          <svg
+            viewBox="0 0 48 48"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z"
+              fill="currentColor"
+            ></path>
+          </svg>
+        </div>
+        <h1 className="text-lg font-bold leading-tight tracking-[-0.015em]">
+          Хочу Плачу
+        </h1>
+      </a>
+      <Navigation /> {/* Используем компонент навигации */}
+    </header>
+  );
 
-      <div className="flex-1 relative overflow-hidden">
-        <Scrollbar containerRef={scrollableContainerRef} />
-        <div
-          ref={scrollableContainerRef}
-          className="absolute inset-0 overflow-y-auto scrollbar-hide flex flex-col"
-        >
-          {/* Основное содержимое с роутингом */}
-          <main className="px-4 sm:px-10 flex flex-1 justify-center py-5">
-            <div className="flex flex-col flex-1 w-full">
-              <Suspense
-                fallback={
-                  <div className="flex justify-center items-center h-full">
-                    <Spinner size="lg" />
-                  </div>
-                }
-              >
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  <Route
-                    path="/forgot-password"
-                    element={<PasswordResetPage />}
-                  />
-                  <Route
-                    path="/reset-password"
-                    element={<ResetPasswordPage />}
-                  />
-                  <Route path="/verify-email" element={<VerifyEmailPage />} />
-                  {/* Protected routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<HomePage />} />
-                    <Route path="/payments" element={<PaymentsList />} />
-                    <Route path="/payments/new" element={<PaymentEditPage />} />
-                    <Route
-                      path="/payments/edit/:id"
-                      element={<PaymentEditPage />}
-                    />
-                    <Route path="/categories" element={<CategoriesPage />} />
-                    <Route
-                      path="/categories/new"
-                      element={<CategoryEditPage />}
-                    />
-                    <Route
-                      path="/categories/edit/:id"
-                      element={<CategoryEditPage />}
-                    />
-                    <Route path="/archive" element={<ArchivePage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                  </Route>
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </Suspense>
+  const mainContent = (
+    <main className="px-4 sm:px-10 flex flex-1 justify-center py-5">
+      <div className="flex flex-col flex-1 w-full">
+        <Suspense
+          fallback={
+            <div className="flex justify-center items-center h-full">
+              <Spinner size="lg" />
             </div>
-          </main>
+          }
+        >
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<PasswordResetPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<HomePage />} />
+              <Route path="/payments" element={<PaymentsList />} />
+              <Route path="/payments/new" element={<PaymentEditPage />} />
+              <Route path="/payments/edit/:id" element={<PaymentEditPage />} />
+              <Route path="/categories" element={<CategoriesPage />} />
+              <Route path="/categories/new" element={<CategoryEditPage />} />
+              <Route
+                path="/categories/edit/:id"
+                element={<CategoryEditPage />}
+              />
+              <Route path="/archive" element={<ArchivePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
+      </div>
+    </main>
+  );
 
-          <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-6 text-center text-sm text-gray-500 dark:text-text-secondary">
-            <p>© {new Date().getFullYear()} Хочу Плачу. Все права защищены.</p>
-          </footer>
+  const footer = (
+    <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-6 text-center text-sm text-gray-500 dark:text-text-secondary flex justify-center items-center relative">
+      <p>© {new Date().getFullYear()} Хочу Плачу.</p>
+      <div className="absolute right-4 sm:right-10">
+        <ThemeSwitcher />
+      </div>
+    </footer>
+  );
+
+  if (isAuthenticated) {
+    // --- Лэйаут для авторизованного пользователя (фиксированный хедер) ---
+    return (
+      <div className="relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans">
+        {header}
+        <VerificationBanner />
+        <div className="flex-1 relative overflow-hidden">
+          <div className="absolute inset-0 overflow-y-auto flex flex-col">
+            {mainContent}
+            {footer}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  } else {
+    // --- Лэйаут для гостя (скролл всей страницы) ---
+    return (
+      <div className="relative flex min-h-screen flex-col bg-white dark:bg-dark-bg group/design-root font-sans">
+        {header}
+        {mainContent}
+        {footer}
+      </div>
+    );
+  }
 }
 
 export default App;

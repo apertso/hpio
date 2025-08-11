@@ -1,5 +1,5 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowPathIcon,
   CalendarDaysIcon,
@@ -7,6 +7,8 @@ import {
   TagIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "../components/Button";
+import { useAuth } from "../context/AuthContext";
+import Spinner from "../components/Spinner";
 
 const Feature = ({
   icon: Icon,
@@ -27,6 +29,23 @@ const Feature = ({
 );
 
 const LandingPage: React.FC = () => {
+  const { isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
+
+  if (loading || isAuthenticated) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-6xl mx-auto text-gray-900 dark:text-gray-100">
       {/* Hero Section */}
@@ -36,17 +55,17 @@ const LandingPage: React.FC = () => {
           <span className="text-indigo-500">Легко.</span>
         </h1>
         <p className="max-w-2xl mx-auto mt-6 text-lg text-gray-600 dark:text-gray-300">
-          «Хочу Плачу» — это умный помощник для отслеживания регулярных и
-          разовых платежей. Забудьте о просрочках и возьмите бюджет под
-          контроль.
+          Забудьте о просрочках, отслеживайте регулярные платежи и держите
+          бюджет под контролем. Бесплатно.
         </p>
         <div className="inline-block px-4 py-2 mt-6 font-semibold text-green-800 bg-green-100 border border-green-200 rounded-full dark:bg-green-900/30 dark:text-green-300 dark:border-green-700">
-          🎉 Сервис на стадии бета-тестирования и полностью бесплатен!
+          🚀 Мы растём и развиваемся — сейчас сервис в бета-тестировании, и нам
+          важна ваша обратная связь.
         </div>
         <div className="mt-8 flex justify-center">
           <Link to="/register">
             <Button
-              label="Начать бесплатно"
+              label="Присоединиться к тесту"
               className="px-8 py-3 text-lg font-bold animate-pulse"
             />
           </Link>

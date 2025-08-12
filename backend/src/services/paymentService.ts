@@ -94,7 +94,27 @@ export const getUpcomingPayments = async (userId: string, days: number) => {
         },
       },
       order: [["dueDate", "ASC"]],
-      // TODO: include: [{ model: db.Category, as: 'category' }] // Включить категорию после ее создания
+      include: [
+        {
+          model: db.Category,
+          as: "category",
+          attributes: ["id", "name", "builtinIconName"],
+        },
+        {
+          model: db.RecurringSeries,
+          as: "series",
+          attributes: [
+            "id",
+            "title",
+            "amount",
+            "recurrenceRule",
+            "recurrenceEndDate",
+            "builtinIconName",
+            "isActive",
+            "generatedUntil",
+          ],
+        },
+      ],
     });
 
     logger.info(
@@ -176,6 +196,17 @@ export const getUpcomingPayments = async (userId: string, days: number) => {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isVirtual: true,
+            // Добавляем объект series, чтобы фронтенд мог отобразить данные повторения
+            series: {
+              id: series.id,
+              title: series.title,
+              amount: Number(series.amount),
+              recurrenceRule: series.recurrenceRule,
+              recurrenceEndDate: series.recurrenceEndDate,
+              builtinIconName: series.builtinIconName,
+              isActive: series.isActive,
+              generatedUntil: (series as any).generatedUntil || null,
+            },
           });
         }
       } catch (e) {
@@ -1307,9 +1338,119 @@ export const getDashboardStats = async (
         "dueDate",
         "status",
         "categoryId",
+        "seriesId",
         "completedAt",
       ],
     });
+
+    // Виртуальные платежи для выбранного периода
+    const existingDatesBySeries = new Map<string, Set<string>>();
+    for (const p of relevantPayments as any[]) {
+      const seriesId: string | null = (p as any).seriesId || null;
+      if (!seriesId) continue;
+      const dueStr: string = String((p as any).dueDate);
+      if (!existingDatesBySeries.has(seriesId)) {
+        existingDatesBySeries.set(seriesId, new Set<string>());
+      }
+      existingDatesBySeries.get(seriesId)!.add(dueStr);
+    }
+
+    const seriesList = await db.RecurringSeries.findAll({
+      where: { userId: userId, isActive: true },
+      include: [
+        {
+          model: db.Category,
+          as: "category",
+          attributes: ["id", "name", "builtinIconName"],
+        },
+      ],
+    });
+
+    const virtualPayments: any[] = [];
+    const periodStart = new Date(periodStartString);
+    periodStart.setHours(0, 0, 0, 0);
+    const periodEnd = new Date(periodEndString);
+    periodEnd.setHours(23, 59, 59, 999);
+    const todayDateOnly = new Date();
+    todayDateOnly.setHours(0, 0, 0, 0);
+
+    for (const series of seriesList as any[]) {
+      try {
+        if (!series.recurrenceRule) continue;
+
+        const baseBoundaryStr: string =
+          series.generatedUntil || series.startDate;
+        // Начало генерации: следующий день после baseBoundary и не раньше начала периода
+        const boundary = new Date(baseBoundaryStr);
+        boundary.setHours(0, 0, 0, 0);
+        boundary.setDate(boundary.getDate() + 1);
+        const effectiveStart =
+          boundary > periodStart ? new Date(boundary) : new Date(periodStart);
+
+        // Конец генерации: конец периода, ограниченный концом серии (если задан)
+        let effectiveEnd = new Date(periodEnd);
+        if (series.recurrenceEndDate) {
+          const endBySeries = new Date(series.recurrenceEndDate as any);
+          endBySeries.setHours(23, 59, 59, 999);
+          if (endBySeries < effectiveEnd) {
+            effectiveEnd = endBySeries;
+          }
+        }
+
+        if (effectiveStart > effectiveEnd) continue;
+
+        const options = RRule.parseString(series.recurrenceRule as string);
+        options.dtstart = normalizeDateToUTC(new Date(series.startDate as any));
+        const rule = new RRule(options);
+
+        const hits = rule.between(
+          normalizeDateToUTC(effectiveStart),
+          normalizeDateToUTC(effectiveEnd),
+          true
+        );
+
+        const existing =
+          existingDatesBySeries.get(series.id) || new Set<string>();
+        for (const d of hits) {
+          const dStr = d.toISOString().slice(0, 10);
+          if (existing.has(dStr)) continue;
+          const status =
+            new Date(dStr) < todayDateOnly ? "overdue" : "upcoming";
+          virtualPayments.push({
+            id: `virtual:${series.id}:${dStr}`,
+            userId: userId,
+            title: series.title,
+            amount: Number(series.amount),
+            dueDate: dStr,
+            status,
+            remind: series.remind,
+            seriesId: series.id,
+            builtinIconName: series.builtinIconName,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isVirtual: true,
+            category: series.category
+              ? {
+                  id: series.category.id,
+                  name: series.category.name,
+                  builtinIconName: series.category.builtinIconName,
+                }
+              : null,
+          });
+        }
+      } catch (e) {
+        // Ошибки генерации конкретной серии не должны ломать расчет статистики
+        logger.warn(
+          `Failed to compute virtual occurrences for series ${series.id}`,
+          e
+        );
+      }
+    }
+
+    const combinedPayments: any[] = [
+      ...(relevantPayments as any[]),
+      ...virtualPayments,
+    ];
 
     let totalUpcomingAmount = 0;
     let totalCompletedAmount = 0;
@@ -1318,6 +1459,7 @@ export const getDashboardStats = async (
     } = {};
     const dailyStats: { [key: string]: { date: string; amount: number } } = {};
 
+    // Считаем выполненные только по реальным платежам
     for (const payment of relevantPayments) {
       const amount = parseFloat(payment.amount.toString());
 
@@ -1366,6 +1508,32 @@ export const getDashboardStats = async (
       }
     }
 
+    // Добавляем виртуальные платежи в распределения и "предстоящие"
+    for (const payment of virtualPayments as any[]) {
+      const amount = parseFloat(String(payment.amount));
+
+      if (payment.status === "upcoming" || payment.status === "overdue") {
+        totalUpcomingAmount += amount;
+      }
+
+      const categoryId = payment.category?.id || "no-category";
+      const categoryName = payment.category?.name || "Без категории";
+      if (!categoriesStats[categoryId]) {
+        categoriesStats[categoryId] = {
+          id: categoryId !== "no-category" ? categoryId : undefined,
+          name: categoryName,
+          amount: 0,
+        };
+      }
+      categoriesStats[categoryId].amount += amount;
+
+      const dateKey: string = payment.dueDate;
+      if (!dailyStats[dateKey]) {
+        dailyStats[dateKey] = { date: dateKey, amount: 0 };
+      }
+      dailyStats[dateKey].amount += amount;
+    }
+
     const categoriesDistribution = Object.values(categoriesStats).filter(
       (c) => c.amount > 0
     );
@@ -1383,7 +1551,7 @@ export const getDashboardStats = async (
       totalCompletedAmount: totalCompletedAmount.toFixed(2),
       categoriesDistribution,
       dailyPaymentLoad,
-      allPaymentsInMonth: relevantPayments,
+      allPaymentsInMonth: combinedPayments,
     };
   } catch (error) {
     logger.error(

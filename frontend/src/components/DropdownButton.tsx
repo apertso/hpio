@@ -61,7 +61,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
       <DropdownOverlay
         isOpen={isOpen}
         align="left"
-        widthClass="min-w-full"
+        widthClass="min-w-24"
         anchorRef={containerRef}
       >
         <div

@@ -3,10 +3,11 @@ import React, { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 // Переиспользуем компоненты для отображения платежа и иконки
-import PaymentIconDisplay from "../components/PaymentIconDisplay";
+// import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import ArchiveTable from "../components/ArchiveTable";
+import PaymentListCard from "../components/PaymentListCard";
 // Импортируем иконки действий
-import { PaperClipIcon } from "@heroicons/react/24/outline"; // Add import
+// import { PaperClipIcon, ArrowPathIcon } from "@heroicons/react/24/outline"; // Add import
 import { PaymentData } from "../types/paymentData";
 import useApi from "../hooks/useApi"; // Import useApi
 import Spinner from "../components/Spinner";
@@ -92,57 +93,7 @@ const MobileActionsOverlay: React.FC<{
     </div>
   );
 };
-const ArchivedPaymentListItem: React.FC<{
-  payment: PaymentData;
-  onClick: () => void;
-}> = ({ payment, onClick }) => (
-  <button
-    onClick={onClick}
-    className="w-full text-left flex flex-col p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow space-y-3"
-  >
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <PaymentIconDisplay payment={payment} sizeClass="h-8 w-8" />
-        <div>
-          <p className="font-medium text-gray-900 dark:text-gray-100">
-            {payment.title}
-          </p>
-          <p
-            className={`text-sm ${
-              payment.status === "completed"
-                ? "text-green-600 dark:text-green-400"
-                : "text-gray-500 dark:text-gray-400"
-            }`}
-          >
-            {payment.status === "completed" ? "Выполнен" : "Удален"}
-          </p>
-        </div>
-      </div>
-      <div className="text-right">
-        <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
-          {new Intl.NumberFormat("ru-RU", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(payment.amount)}
-          <span className="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">
-            ₽
-          </span>
-        </p>
-      </div>
-    </div>
-    <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-3 mt-2">
-      <div>
-        <p>
-          Дата:{" "}
-          {new Date(
-            payment.completedAt || payment.updatedAt
-          ).toLocaleDateString("ru-RU")}
-        </p>
-      </div>
-      {payment.filePath && <PaperClipIcon className="h-5 w-5" />}
-    </div>
-  </button>
-);
+// Replaced by generic PaymentListCard
 
 // --- ReactivateSeriesModal component ---
 const ReactivateSeriesModal: React.FC<{
@@ -454,10 +405,12 @@ const ArchivePage: React.FC = () => {
             {!isLoadingArchive && (
               <div className="block md:hidden space-y-3 p-2">
                 {archivedPayments.map((payment) => (
-                  <ArchivedPaymentListItem
+                  <PaymentListCard
                     key={payment.id}
                     payment={payment}
+                    context="archive"
                     onClick={() => setMobileActionsPayment(payment)}
+                    onDownloadFile={handleDownloadFile}
                   />
                 ))}
               </div>

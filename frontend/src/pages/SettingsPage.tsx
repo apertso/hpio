@@ -6,13 +6,13 @@ import { z } from "zod";
 import { useDropzone } from "react-dropzone";
 import getErrorMessage from "../utils/getErrorMessage";
 import Spinner from "../components/Spinner";
-import Modal from "../components/Modal";
 import axiosInstance from "../api/axiosInstance";
 import {
   UserIcon,
   CheckBadgeIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/24/solid";
+import { LockClosedIcon, TrashIcon } from "@heroicons/react/24/outline";
 import userApi, { PHOTO_URL } from "../api/userApi";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
@@ -55,6 +55,78 @@ const passwordSchema = z
 type SettingsInputs = z.infer<typeof settingsSchema>;
 type PasswordInputs = z.infer<typeof passwordSchema>;
 
+const MobileActionPanel: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}> = ({ isOpen, onClose, title, children }) => {
+  const [isVisible, setIsVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      // Short delay to allow the component to mount before animating in
+      const timer = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsVisible(false);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    // Allow animation to finish before calling onClose which unmounts the component
+    setTimeout(onClose, 300);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="md:hidden" aria-modal="true" role="dialog">
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ${
+          isVisible ? "bg-black/40" : "bg-black/0"
+        }`}
+        onClick={handleClose}
+        aria-hidden="true"
+      ></div>
+
+      {/* Panel */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out ${
+          isVisible ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {title}
+          </h3>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div>{children}</div>
+      </div>
+    </div>
+  );
+};
+
 // const ToggleSwitch: React.FC<{
 //   checked: boolean;
 //   onChange: (checked: boolean) => void;
@@ -77,7 +149,9 @@ const SettingsPage: React.FC = () => {
   const { showToast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [avatarKey, setAvatarKey] = useState(Date.now());
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<
+    "password" | "delete" | null
+  >(null);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
 
   const {
@@ -192,7 +266,7 @@ const SettingsPage: React.FC = () => {
   return (
     <>
       <title>Хочу Плачу - Настройки</title>
-      <div className="max-w-full mx-auto py-8 px-4 sm:px-2 lg:px-0">
+      <div className="w-full md:w-2xl lg:w-3xl mx-auto py-8 px-4 sm:px-2 lg:px-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
             Настройки
@@ -331,75 +405,206 @@ const SettingsPage: React.FC = () => {
 
           {/* Password Section */}
           <FormBlock className="w-full">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-              Сменить пароль
-            </h3>
-            <form
-              onSubmit={handlePasswordSubmit(onPasswordSubmit)}
-              className="space-y-4"
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Безопасность
+              </h3>
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedSection(
+                    expandedSection === "password" ? null : "password"
+                  )
+                }
+                className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-500"
+              >
+                <LockClosedIcon className="w-5 h-5" />
+                <span>Сменить пароль</span>
+              </button>
+            </div>
+            {/* Desktop Inline Form */}
+            <div
+              className={`hidden md:block overflow-hidden transition-all duration-300 ease-in-out ${
+                expandedSection === "password" ? "max-h-screen mt-6" : "max-h-0"
+              }`}
             >
-              <Input
-                id="currentPassword"
-                label="Текущий пароль"
-                type="password"
-                {...registerPassword("currentPassword")}
-                error={passwordErrors.currentPassword?.message}
-              />
-              <Input
-                id="newPassword"
-                label="Новый пароль"
-                type="password"
-                {...registerPassword("newPassword")}
-                error={passwordErrors.newPassword?.message}
-              />
-              <Input
-                id="confirmPassword"
-                label="Подтвердите новый пароль"
-                type="password"
-                {...registerPassword("confirmPassword")}
-                error={passwordErrors.confirmPassword?.message}
-              />
-              {passwordErrors.root?.serverError && (
-                <p className="text-red-500 text-sm">
-                  {passwordErrors.root.serverError.message}
-                </p>
-              )}
-              <div className="text-right">
-                <button
-                  type="submit"
-                  disabled={isPasswordSubmitting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
+              {expandedSection === "password" && (
+                <form
+                  onSubmit={handlePasswordSubmit(onPasswordSubmit)}
+                  className="space-y-4"
                 >
-                  {isPasswordSubmitting ? "Сохранение..." : "Сменить пароль"}
-                </button>
-              </div>
-            </form>
+                  <Input
+                    id="currentPassword"
+                    label="Текущий пароль"
+                    type="password"
+                    {...registerPassword("currentPassword")}
+                    error={passwordErrors.currentPassword?.message}
+                  />
+                  <Input
+                    id="newPassword"
+                    label="Новый пароль"
+                    type="password"
+                    {...registerPassword("newPassword")}
+                    error={passwordErrors.newPassword?.message}
+                  />
+                  <Input
+                    id="confirmPassword"
+                    label="Подтвердите новый пароль"
+                    type="password"
+                    {...registerPassword("confirmPassword")}
+                    error={passwordErrors.confirmPassword?.message}
+                  />
+                  {passwordErrors.root?.serverError && (
+                    <p className="text-red-500 text-sm">
+                      {passwordErrors.root.serverError.message}
+                    </p>
+                  )}
+                  <div className="text-right">
+                    <button
+                      type="submit"
+                      disabled={isPasswordSubmitting}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
+                    >
+                      {isPasswordSubmitting
+                        ? "Сохранение..."
+                        : "Сменить пароль"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </FormBlock>
-          <div className="mt-8 text-center mt-12 lg:text-center">
-            <button
-              type="button"
-              onClick={() => setDeleteModalOpen(true)}
-              className="text-gray-400 dark:text-gray-800 hover:text-red-600 dark:hover:text-red-500 text-sm font-medium transition-colors cursor-pointer"
+          {/* Delete Account Section */}
+          <FormBlock className="w-full">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Удалить аккаунт
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Это действие необратимо. Пожалуйста, будьте осторожны.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedSection(
+                    expandedSection === "delete" ? null : "delete"
+                  )
+                }
+                className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-500"
+              >
+                <TrashIcon className="w-5 h-5" />
+                <span>Удалить мой аккаунт</span>
+              </button>
+            </div>
+            {/* Desktop Inline Form */}
+            <div
+              className={`hidden md:block overflow-hidden transition-all duration-300 ease-in-out ${
+                expandedSection === "delete" ? "max-h-screen mt-6" : "max-h-0"
+              }`}
             >
-              Удалить аккаунт
-            </button>
-          </div>
+              {expandedSection === "delete" && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleDeleteAccount();
+                  }}
+                  className="space-y-4 pt-4 border-t border-red-500/20"
+                >
+                  <p className="text-gray-700 dark:text-gray-300">
+                    Для подтверждения, пожалуйста, введите{" "}
+                    <strong className="text-red-500">УДАЛИТЬ АККАУНТ</strong> в
+                    поле ниже.
+                  </p>
+                  <Input
+                    type="text"
+                    value={deleteConfirmationText}
+                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                    className="w-full"
+                    placeholder="УДАЛИТЬ АККАУНТ"
+                  />
+                  <button
+                    type="submit"
+                    disabled={deleteConfirmationText !== "УДАЛИТЬ АККАУНТ"}
+                    className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed"
+                  >
+                    Удалить мой аккаунт
+                  </button>
+                </form>
+              )}
+            </div>
+          </FormBlock>
         </div>
         <p className="mt-12 text-center text-xs text-gray-500 dark:text-gray-600">
-          Версия приложения: 0.0.7
+          Версия приложения: 0.0.8
         </p>
       </div>
 
-      <Modal
-        isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title="Подтверждение удаления аккаунта"
+      {/* Mobile Panels */}
+      <MobileActionPanel
+        isOpen={expandedSection === "password"}
+        onClose={() => setExpandedSection(null)}
+        title="Сменить пароль"
       >
-        <div className="space-y-4">
+        <form
+          onSubmit={handlePasswordSubmit(onPasswordSubmit)}
+          className="space-y-4"
+        >
+          <Input
+            id="currentPasswordMobile"
+            label="Текущий пароль"
+            type="password"
+            {...registerPassword("currentPassword")}
+            error={passwordErrors.currentPassword?.message}
+          />
+          <Input
+            id="newPasswordMobile"
+            label="Новый пароль"
+            type="password"
+            {...registerPassword("newPassword")}
+            error={passwordErrors.newPassword?.message}
+          />
+          <Input
+            id="confirmPasswordMobile"
+            label="Подтвердите новый пароль"
+            type="password"
+            {...registerPassword("confirmPassword")}
+            error={passwordErrors.confirmPassword?.message}
+          />
+          {passwordErrors.root?.serverError && (
+            <p className="text-red-500 text-sm">
+              {passwordErrors.root.serverError.message}
+            </p>
+          )}
+          <div className="text-right">
+            <button
+              type="submit"
+              disabled={isPasswordSubmitting}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
+            >
+              {isPasswordSubmitting ? "Сохранение..." : "Сменить пароль"}
+            </button>
+          </div>
+        </form>
+      </MobileActionPanel>
+
+      <MobileActionPanel
+        isOpen={expandedSection === "delete"}
+        onClose={() => setExpandedSection(null)}
+        title="Подтверждение удаления"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleDeleteAccount();
+          }}
+          className="space-y-4"
+        >
           <p className="text-gray-700 dark:text-gray-300">
-            Это действие невозможно отменить. Для подтверждения, пожалуйста,
-            введите <strong className="text-red-500">УДАЛИТЬ АККАУНТ</strong> в
-            поле ниже.
+            Для подтверждения, пожалуйста, введите{" "}
+            <strong className="text-red-500">УДАЛИТЬ АККАУНТ</strong> в поле
+            ниже.
           </p>
           <Input
             type="text"
@@ -409,14 +614,14 @@ const SettingsPage: React.FC = () => {
             placeholder="УДАЛИТЬ АККАУНТ"
           />
           <button
-            onClick={handleDeleteAccount}
+            type="submit"
             disabled={deleteConfirmationText !== "УДАЛИТЬ АККАУНТ"}
             className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             Я понимаю последствия, удалить мой аккаунт
           </button>
-        </div>
-      </Modal>
+        </form>
+      </MobileActionPanel>
     </>
   );
 };

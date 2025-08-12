@@ -3,6 +3,7 @@ import Table, { TableColumn } from "./Table";
 import PaymentIconDisplay from "./PaymentIconDisplay";
 import { PaymentData } from "../types/paymentData";
 import { getPaymentColorClass } from "../utils/paymentColors";
+import { formatRecurrenceRule } from "../utils/formatRecurrence";
 import { PaperClipIcon } from "@heroicons/react/24/outline";
 import {
   PencilIcon,
@@ -19,15 +20,6 @@ interface ArchiveTableProps {
   onDownloadFile: (id: string, fileName: string) => void;
 }
 
-const formatRecurrenceRule = (rule: string | undefined): string => {
-  if (!rule) return "Разовый";
-  if (rule.includes("FREQ=DAILY")) return "Ежедневно";
-  if (rule.includes("FREQ=WEEKLY")) return "Еженедельно";
-  if (rule.includes("FREQ=MONTHLY")) return "Ежемесячно";
-  if (rule.includes("FREQ=YEARLY")) return "Ежегодно";
-  return "Повторяющийся";
-};
-
 const ArchiveTable: React.FC<ArchiveTableProps> = ({
   data,
   isLoading,
@@ -36,10 +28,13 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
   onPermanentDelete,
   onDownloadFile,
 }) => {
+  const thBaseClassName =
+    "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
   const columns: TableColumn<PaymentData>[] = [
     {
       id: "icon",
       header: "Иконка",
+      thClassName: `${thBaseClassName} w-20`,
       cell: (payment) => (
         <PaymentIconDisplay payment={payment} sizeClass="h-6 w-6" />
       ),
@@ -47,6 +42,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
     {
       id: "status",
       header: "Статус",
+      thClassName: `${thBaseClassName} w-28`,
       cell: (payment) => (
         <div className="text-sm text-gray-900 dark:text-gray-100">
           <span
@@ -69,6 +65,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
     {
       id: "recurrence",
       header: "Повторение",
+      thClassName: `${thBaseClassName} w-48`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
@@ -91,6 +88,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
     {
       id: "amount",
       header: "Сумма",
+      thClassName: `${thBaseClassName} w-32`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
@@ -108,6 +106,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
     {
       id: "dueDate",
       header: "Срок оплаты",
+      thClassName: `${thBaseClassName} w-36`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => <>{new Date(payment.dueDate).toLocaleDateString()}</>,
@@ -115,6 +114,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
     {
       id: "completedOrDeleted",
       header: "Выполнен/Удален",
+      thClassName: `${thBaseClassName} w-48`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
@@ -129,12 +129,13 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       id: "category",
       header: "Категория",
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
+        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 truncate",
       cell: (payment) => <>{payment.category ? payment.category.name : "-"}</>,
     },
     {
       id: "file",
       header: "Файл",
+      thClassName: `${thBaseClassName} w-16`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (

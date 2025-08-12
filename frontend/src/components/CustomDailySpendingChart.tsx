@@ -160,37 +160,80 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
       yAxisTicks: calculatedYAxisTicks,
       xAxisTicks: calculatedXAxisTicks,
     };
-  }, [data, rawDates, width, height, startDate, endDate]);
+  }, [
+    data,
+    rawDates,
+    width,
+    height,
+    startDate,
+    endDate,
+    yAxisAreaWidth,
+    padding.top,
+    padding.right,
+    padding.bottom,
+    padding.left,
+  ]);
 
   // Strict hit radius for pointer and touch
   const HIT_RADIUS = 8; // px in SVG units
+  // const TOUCH_HIT_RADIUS = 16; // px in SVG units для тача
 
-  const getPointAtEvent = useCallback(
-    (clientX: number, clientY: number): number | null => {
+  // const TOUCH_HIT_RADIUS = 16; // px in SVG units для тача (не используется при X-снапе)
+  // Функция попадания по окружности более не используется после перехода на X-снап
+  // const getPointAtEvent = useCallback(
+  //   (
+  //     clientX: number,
+  //     clientY: number,
+  //     overrideRadius?: number
+  //   ): number | null => {
+  //     const svg = svgRef.current;
+  //     if (!svg || points.length === 0) return null;
+  //     const p = svg.createSVGPoint();
+  //     p.x = clientX;
+  //     p.y = clientY;
+  //     const svgPoint = p.matrixTransform(svg.getScreenCTM()!.inverse());
+  //     let found: number | null = null;
+  //     for (let i = 0; i < points.length; i++) {
+  //       const dx = points[i].x - svgPoint.x;
+  //       const dy = points[i].y - svgPoint.y;
+  //       const dist = Math.sqrt(dx * dx + dy * dy);
+  //       const radius = overrideRadius ?? HIT_RADIUS;
+  //       if (dist <= radius) {
+  //         found = i;
+  //         break;
+  //       }
+  //     }
+  //     return found;
+  //   },
+  //   [points]
+  // );
+
+  // Поиск ближайшей точки по оси X (игнорируя отклонение по Y)
+  const getNearestIndexByClientX = useCallback(
+    (clientX: number): number | null => {
       const svg = svgRef.current;
       if (!svg || points.length === 0) return null;
       const p = svg.createSVGPoint();
       p.x = clientX;
-      p.y = clientY;
+      p.y = 0;
       const svgPoint = p.matrixTransform(svg.getScreenCTM()!.inverse());
-      let found: number | null = null;
-      for (let i = 0; i < points.length; i++) {
-        const dx = points[i].x - svgPoint.x;
-        const dy = points[i].y - svgPoint.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist <= HIT_RADIUS) {
-          found = i;
-          break;
+      let nearestIndex = 0;
+      let minDx = Math.abs(points[0].x - svgPoint.x);
+      for (let i = 1; i < points.length; i++) {
+        const dx = Math.abs(points[i].x - svgPoint.x);
+        if (dx < minDx) {
+          minDx = dx;
+          nearestIndex = i;
         }
       }
-      return found;
+      return nearestIndex;
     },
     [points]
   );
 
   const handleMouseMove = useCallback(
     (event: React.MouseEvent<SVGSVGElement>) => {
-      const idx = getPointAtEvent(event.clientX, event.clientY);
+      const idx = getNearestIndexByClientX(event.clientX);
       if (idx === null) {
         setHoveredIndex(null);
         setTooltip(null);
@@ -206,7 +249,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         index: idx,
       });
     },
-    [getPointAtEvent, points, data]
+    [getNearestIndexByClientX, points, data]
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -217,11 +260,11 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
   const handleMouseClick = useCallback(
     (event: React.MouseEvent<SVGSVGElement>) => {
       if (!onPointClick) return;
-      const idx = getPointAtEvent(event.clientX, event.clientY);
-      if (idx === null) return; // click ignored unless on point
+      const idx = getNearestIndexByClientX(event.clientX);
+      if (idx === null) return;
       onPointClick(rawDates[idx], data[idx], "daily-spending");
     },
-    [getPointAtEvent, onPointClick, rawDates, data]
+    [getNearestIndexByClientX, onPointClick, rawDates, data]
   );
 
   // Keyboard accessibility
@@ -236,18 +279,84 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
     [onPointClick, rawDates, data]
   );
 
-  // Touch (mobile) - tap directly on point only
+  // Touch (mobile): drag shows tooltip, tap opens details
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchMovedRef = useRef<boolean>(false);
+  const [isTouching, setIsTouching] = useState(false);
+
   const handleTouchStart = useCallback(
     (e: React.TouchEvent<SVGSVGElement>) => {
-      if (!onPointClick) return;
       const touch = e.changedTouches[0];
-      const idx = getPointAtEvent(touch.clientX, touch.clientY);
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      touchMovedRef.current = false;
+      setIsTouching(true);
+      const idx = getNearestIndexByClientX(touch.clientX);
       if (idx !== null) {
-        onPointClick(rawDates[idx], data[idx], "daily-spending");
+        const pt = points[idx];
+        setHoveredIndex(idx);
+        setTooltip({
+          visible: true,
+          x: pt.x,
+          y: pt.y,
+          value: data[idx],
+          index: idx,
+        });
       }
     },
-    [getPointAtEvent, onPointClick, rawDates, data]
+    [getNearestIndexByClientX, points, data]
   );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent<SVGSVGElement>) => {
+      if (!isTouching) return;
+      // Блокируем прокрутку во время перетаскивания по графику
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      // Помечаем, что было движение
+      if (touchStartRef.current) {
+        const dx = touch.clientX - touchStartRef.current.x;
+        const dy = touch.clientY - touchStartRef.current.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 6) {
+          touchMovedRef.current = true;
+        }
+      }
+      const idx = getNearestIndexByClientX(touch.clientX);
+      if (idx !== null) {
+        const pt = points[idx];
+        setHoveredIndex(idx);
+        setTooltip({
+          visible: true,
+          x: pt.x,
+          y: pt.y,
+          value: data[idx],
+          index: idx,
+        });
+      }
+    },
+    [isTouching, getNearestIndexByClientX, points, data]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent<SVGSVGElement>) => {
+      const touch = e.changedTouches[0];
+      const isTap = !touchMovedRef.current;
+      const idx = getNearestIndexByClientX(touch.clientX);
+      if (isTap && idx !== null && onPointClick) {
+        onPointClick(rawDates[idx], data[idx], "daily-spending");
+      }
+      // Подсказку не скрываем: должна оставаться видимой до следующего взаимодействия
+      touchStartRef.current = null;
+      touchMovedRef.current = false;
+      setIsTouching(false);
+    },
+    [getNearestIndexByClientX, onPointClick, rawDates, data]
+  );
+
+  const handleTouchCancel = useCallback(() => {
+    touchStartRef.current = null;
+    touchMovedRef.current = false;
+    setIsTouching(false);
+  }, []);
 
   const lineColor = theme === "dark" ? "#a78bfa" : "#6d28d9";
   const gradientStartColor = theme === "dark" ? "#5b21b6" : "#c4b5fd";
@@ -267,7 +376,10 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         onMouseLeave={handleMouseLeave}
         onClick={handleMouseClick}
         onTouchStart={handleTouchStart}
-        style={{ cursor: cursorStyle }}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+        style={{ cursor: cursorStyle, touchAction: "none" }}
         role="img"
         aria-label="График платежной нагрузки по дням"
       >
@@ -344,14 +456,13 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
           const isHovered = hoveredIndex === idx;
           return (
             <g key={`pt-${idx}`}>
-              {/* Visible point for hover feedback */}
+              {/* Visible point for hover feedback (уменьшен размер, однотонная заливка, без белой обводки) */}
               <circle
                 cx={pt.x}
                 cy={pt.y}
-                r={isHovered ? 6 : 4}
-                fill={theme === "dark" ? "#0a0a0a" : "#ffffff"}
-                stroke={lineColor}
-                strokeWidth={isHovered ? 3 : 2}
+                r={isHovered ? 4 : 3}
+                fill={lineColor}
+                stroke="none"
                 pointerEvents="none"
               />
               {/* Strict hit target */}
@@ -361,24 +472,14 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
                 r={HIT_RADIUS}
                 fill="transparent"
                 stroke="transparent"
-                tabIndex={0}
+                tabIndex={-1}
                 aria-label={`${labels[idx]}: ${new Intl.NumberFormat("ru-RU", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 }).format(data[idx])} ₽`}
-                onFocus={() => {
-                  setHoveredIndex(idx);
-                  setTooltip({
-                    visible: true,
-                    x: pt.x,
-                    y: pt.y,
-                    value: data[idx],
-                    index: idx,
-                  });
-                }}
-                onBlur={() => {
-                  setHoveredIndex(null);
-                  setTooltip(null);
+                onFocus={(e) => {
+                  // Убираем фокусное кольцо по табу
+                  (e.target as SVGCircleElement).blur();
                 }}
                 onKeyDown={(e) => handlePointKeyDown(e, idx)}
                 onMouseEnter={() => {
@@ -396,19 +497,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
                   setTooltip(null);
                 }}
               />
-              {/* Focus ring */}
-              {isHovered && (
-                <circle
-                  cx={pt.x}
-                  cy={pt.y}
-                  r={HIT_RADIUS + 3}
-                  fill="none"
-                  stroke={theme === "dark" ? "#9ca3af" : "#6b7280"}
-                  strokeDasharray="2 3"
-                  strokeWidth={1}
-                  pointerEvents="none"
-                />
-              )}
+              {/* Focus ring убран */}
             </g>
           );
         })}

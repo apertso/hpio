@@ -2,26 +2,27 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
-import { getPaymentColorClass } from "../utils/paymentColors"; // Для цветовой индикации в таблице
-import PaymentIconDisplay from "../components/PaymentIconDisplay"; // !!! Импорт компонента отображения иконки
+// import { getPaymentColorClass } from "../utils/paymentColors"; // Для цветовой индикации в таблице
+// import PaymentIconDisplay from "../components/PaymentIconDisplay"; // !!! Импорт компонента отображения иконки
+import PaymentListCard from "../components/PaymentListCard";
 import useApi from "../hooks/useApi"; // Import useApi
 // Импортируем иконки (пример с Heroicons - нужно установить иконки, если еще не сделали)
 // npm install @heroicons/react
 import { Button } from "../components/Button"; // Import the Button component
 import { PaymentData } from "../types/paymentData";
-import Spinner from "../components/Spinner";
 import PaymentsTable from "../components/PaymentsTable";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal"; // Import ConfirmCompletionDateModal
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
-import Modal from "../components/Modal";
+import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 import getErrorMessage from "../utils/getErrorMessage";
 import {
   PencilIcon as PencilSolidIcon,
   CheckCircleIcon as CheckSolidIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
+// import { ArrowPathIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 // For MobileActionsOverlay
 type MobileActionsOverlayProps = {
   payment: PaymentData | null;
@@ -103,74 +104,7 @@ const MobileActionsOverlay = ({
     </div>
   );
 };
-const PaymentListItem = ({
-  payment,
-  onClick,
-}: {
-  payment: PaymentData;
-  onClick: () => void;
-}) => (
-  <button
-    onClick={onClick}
-    className="w-full text-left flex flex-col p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow space-y-3"
-  >
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <PaymentIconDisplay payment={payment} sizeClass="h-8 w-8" />
-        <div>
-          <p className="font-medium text-gray-900 dark:text-gray-100">
-            {payment.title}
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {payment.category?.name || "Без категории"}
-          </p>
-        </div>
-      </div>
-      <div className="text-right">
-        <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
-          {new Intl.NumberFormat("ru-RU", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(payment.amount)}
-          <span className="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">
-            ₽
-          </span>
-        </p>
-      </div>
-    </div>
-    <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
-      <div>
-        <p>Срок: {new Date(payment.dueDate).toLocaleDateString("ru-RU")}</p>
-        <p>
-          {payment.seriesId && payment.series?.isActive
-            ? formatRecurrenceRule(payment.series?.recurrenceRule)
-            : "Разовый"}
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        <span
-          className={`inline-block w-3 h-3 rounded-full ${getPaymentColorClass(
-            payment
-          )}`}
-        ></span>
-        <span>
-          {payment.status === "upcoming" && "Предстоящий"}
-          {payment.status === "overdue" && "Просрочен"}
-        </span>
-      </div>
-    </div>
-  </button>
-);
-
-// TODO: Хелпер для форматирования шаблона повторения на русский
-export const formatRecurrenceRule = (rule: string | undefined): string => {
-  if (!rule) return "Разовый";
-  if (rule.includes("FREQ=DAILY")) return "Ежедневно";
-  if (rule.includes("FREQ=WEEKLY")) return "Еженедельно";
-  if (rule.includes("FREQ=MONTHLY")) return "Ежемесячно";
-  if (rule.includes("FREQ=YEARLY")) return "Ежегодно";
-  return "Повторяющийся";
-};
+// Deprecated: PaymentListItem replaced by generic PaymentListCard
 
 // Define the raw API fetch function for all payments
 const fetchAllPaymentsApi = async (): Promise<PaymentData[]> => {
@@ -178,61 +112,6 @@ const fetchAllPaymentsApi = async (): Promise<PaymentData[]> => {
   // const res = await axiosInstance.get('/payments/list', { params: { ...filters, ...sort, ...pagination } });
   const res = await axiosInstance.get("/payments/list"); // Пока без параметров
   return res.data;
-};
-
-const DeleteRecurringPaymentModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onDeleteInstance: () => void;
-  onDeleteSeries: () => void;
-  isProcessing: boolean;
-}> = ({ isOpen, onClose, onDeleteInstance, onDeleteSeries, isProcessing }) => {
-  if (!isOpen) return null;
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Удаление повторяющегося платежа"
-    >
-      <div className="space-y-4">
-        <p className="text-gray-700 dark:text-gray-300">
-          Это повторяющийся платеж. Вы хотите удалить только этот экземпляр или
-          всю серию платежей?
-        </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          При удалении серии все будущие запланированные платежи будут отменены,
-          а сама серия станет неактивной.
-        </p>
-        <div className="flex flex-wrap justify-end gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            type="button"
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
-            disabled={isProcessing}
-          >
-            Отмена
-          </button>
-          <button
-            onClick={onDeleteInstance}
-            disabled={isProcessing}
-            type="button"
-            className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-[120px]"
-          >
-            {isProcessing ? <Spinner size="sm" /> : "Только этот"}
-          </button>
-          <button
-            onClick={onDeleteSeries}
-            disabled={isProcessing}
-            type="button"
-            className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 min-w-[140px]"
-          >
-            {isProcessing ? <Spinner size="sm" /> : "Удалить серию"}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
 };
 
 const PaymentsList: React.FC = () => {
@@ -505,10 +384,12 @@ const PaymentsList: React.FC = () => {
             {!isLoadingPayments && (
               <div className="block md:hidden space-y-3">
                 {allPayments.map((payment) => (
-                  <PaymentListItem
+                  <PaymentListCard
                     key={payment.id}
                     payment={payment}
+                    context="payments"
                     onClick={() => setMobileActionsPayment(payment)}
+                    onDownloadFile={handleDownloadFile}
                   />
                 ))}
               </div>

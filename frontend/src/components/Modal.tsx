@@ -1,5 +1,5 @@
 // src/components/Modal.tsx
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 
 interface ModalProps {
@@ -12,11 +12,27 @@ interface ModalProps {
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
 
+  const openedAtRef = useRef<number>(0);
+  useEffect(() => {
+    openedAtRef.current = performance.now();
+  }, []);
+
+  // Игнорируем «призрачный» клик, который может прийти сразу после открытия модалки (тач → синтетический click)
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const sinceOpenMs = performance.now() - openedAtRef.current;
+    if (sinceOpenMs < 350) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    onClose();
+  };
+
   // Используем React Portal для рендеринга модального окна вне основного DOM-дерева
   return ReactDOM.createPortal(
     <div
       className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50"
-      onClick={onClose}
+      onClick={handleBackdropClick}
     >
       <div
         className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"

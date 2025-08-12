@@ -21,7 +21,10 @@ const LandingPage = React.lazy(() => import("./pages/LandingPage"));
 const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
 const PaymentEditPage = React.lazy(() => import("./pages/PaymentEditPage"));
 const CategoryEditPage = React.lazy(() => import("./pages/CategoryEditPage"));
-const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
+const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage.tsx"));
+const TermsPage = React.lazy(() => import("./pages/TermsPage.tsx"));
+const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage.tsx"));
+const AboutPage = React.lazy(() => import("./pages/AboutPage.tsx"));
 
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
@@ -324,6 +327,9 @@ function App() {
             <Route path="/forgot-password" element={<PasswordResetPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/about" element={<AboutPage />} />
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<HomePage />} />
@@ -347,9 +353,56 @@ function App() {
   );
 
   const footer = (
-    <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-6 text-center text-sm text-gray-500 dark:text-text-secondary flex justify-center items-center relative">
-      <p>© {new Date().getFullYear()} Хочу Плачу.</p>
-      <div className="absolute right-4 sm:right-10">
+    <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-4 sm:p-6 text-sm text-gray-600 dark:text-slate-300">
+      <div className="hidden sm:flex items-center w-full gap-4">
+        <div className="flex-1" aria-hidden></div>
+        <p className="text-center whitespace-nowrap">
+          © {new Date().getFullYear()} Хочу Плачу.
+        </p>
+        <nav className="flex-1 flex justify-evenly">
+          <Link
+            to="/terms"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          >
+            Пользовательское соглашение
+          </Link>
+          <Link
+            to="/privacy"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          >
+            Политика конфиденциальности
+          </Link>
+          <Link
+            to="/about"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          >
+            О нас
+          </Link>
+        </nav>
+        <ThemeSwitcher />
+      </div>
+      <div className="sm:hidden flex flex-col items-center gap-3">
+        <p className="text-center">© {new Date().getFullYear()} Хочу Плачу.</p>
+        <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+          <Link
+            to="/terms"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline"
+          >
+            Пользовательское соглашение
+          </Link>
+          <Link
+            to="/privacy"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline"
+          >
+            Политика конфиденциальности
+          </Link>
+          <Link
+            to="/about"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline"
+          >
+            О нас
+          </Link>
+        </nav>
         <ThemeSwitcher />
       </div>
     </footer>

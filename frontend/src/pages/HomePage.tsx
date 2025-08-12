@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react";
 import PaymentCard from "../components/PaymentCard"; // Для отображения карточек
+import PaymentListCard from "../components/PaymentListCard";
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import axiosInstance from "../api/axiosInstance"; // Для получения данных
 import logger from "../utils/logger";
@@ -15,7 +16,6 @@ import { useTheme } from "../context/ThemeContext"; // Import useTheme
 import { Button } from "../components/Button";
 import { DropdownButton } from "../components/DropdownButton";
 import { YearSelectorDropdown } from "../components/YearSelectorDropdown";
-import Spinner from "../components/Spinner";
 import CategoryDistributionBars from "../components/CategoryDistributionBars";
 
 import { useNavigate } from "react-router-dom";
@@ -28,7 +28,8 @@ import { useReset } from "../context/ResetContext";
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import { PaymentData } from "../types/paymentData";
 import getErrorMessage from "../utils/getErrorMessage";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
+// Icons for list items are handled inside PaymentListCard
+// import { ArrowPathIcon, CalendarDaysIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 
 // Utility function to format date in local timezone (YYYY-MM-DD)
 const formatDateToLocal = (date: Date): string => {
@@ -110,16 +111,9 @@ import {
   CheckCircleIcon,
   TrashIcon,
 } from "@heroicons/react/24/solid";
+import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 
-// Helper to format recurrence rules
-const formatRecurrenceRule = (rule: string | undefined): string => {
-  if (!rule) return "Разовый";
-  if (rule.includes("FREQ=DAILY")) return "Ежедневно";
-  if (rule.includes("FREQ=WEEKLY")) return "Еженедельно";
-  if (rule.includes("FREQ=MONTHLY")) return "Ежемесячно";
-  if (rule.includes("FREQ=YEARLY")) return "Ежегодно";
-  return "Повторяющийся";
-};
+// Recurrence and status formatting moved to PaymentListCard
 
 // Inside HomePage component, before UpcomingPaymentListItem
 const MobileActionsOverlay: React.FC<{
@@ -191,123 +185,7 @@ const MobileActionsOverlay: React.FC<{
   );
 };
 
-// Replace UpcomingPaymentListItem with the new version
-const UpcomingPaymentListItem: React.FC<{
-  payment: PaymentData;
-  onClick: () => void;
-}> = ({ payment, onClick }) => {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left flex flex-col p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow space-y-3"
-    >
-      {/* Top Part */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <PaymentIconDisplay payment={payment} sizeClass="h-8 w-8" />
-          <div>
-            <p className="font-medium text-gray-900 dark:text-gray-100">
-              {payment.title}
-            </p>
-            <p
-              className={`text-sm ${
-                payment.status === "overdue"
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-gray-500 dark:text-gray-400"
-              }`}
-            >
-              {payment.status === "upcoming" && "Предстоящий"}
-              {payment.status === "overdue" && "Просрочен"}
-            </p>
-            {payment.isVirtual && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mt-1">
-                Виртуальный
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="text-right flex-shrink-0">
-          <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
-            {new Intl.NumberFormat("ru-RU", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(payment.amount)}
-            <span className="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">
-              ₽
-            </span>
-          </p>
-        </div>
-      </div>
-      {/* Bottom Part */}
-      <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-3">
-        <div>
-          <p>Срок: {new Date(payment.dueDate).toLocaleDateString("ru-RU")}</p>
-        </div>
-        {payment.seriesId && payment.series?.isActive && (
-          <div className="flex items-center">
-            <ArrowPathIcon className="h-4 w-4 mr-1" />
-            <span>{formatRecurrenceRule(payment.series?.recurrenceRule)}</span>
-          </div>
-        )}
-      </div>
-    </button>
-  );
-};
-
-const DeleteRecurringPaymentModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onDeleteInstance: () => void;
-  onDeleteSeries: () => void;
-  isProcessing: boolean;
-}> = ({ isOpen, onClose, onDeleteInstance, onDeleteSeries, isProcessing }) => {
-  if (!isOpen) return null;
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Удаление повторяющегося платежа"
-    >
-      <div className="space-y-4">
-        <p className="text-gray-700 dark:text-gray-300">
-          Это повторяющийся платеж. Вы хотите удалить только этот экземпляр или
-          всю серию платежей?
-        </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          При удалении серии все будущие запланированные платежи будут отменены,
-          а сама серия станет неактивной.
-        </p>
-        <div className="flex flex-wrap justify-end gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            type="button"
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
-            disabled={isProcessing}
-          >
-            Отмена
-          </button>
-          <button
-            onClick={onDeleteInstance}
-            disabled={isProcessing}
-            type="button"
-            className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-[120px]"
-          >
-            {isProcessing ? <Spinner size="sm" /> : "Только этот"}
-          </button>
-          <button
-            onClick={onDeleteSeries}
-            disabled={isProcessing}
-            type="button"
-            className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 min-w-[140px]"
-          >
-            {isProcessing ? <Spinner size="sm" /> : "Удалить серию"}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-};
+// Deprecated: UpcomingPaymentListItem replaced by generic PaymentListCard
 
 const HomePage: React.FC = () => {
   const { resolvedTheme } = useTheme(); // Access the theme
@@ -490,6 +368,32 @@ const HomePage: React.FC = () => {
 
   const handleEditPayment = (paymentId: string) => {
     navigate(`/payments/edit/${paymentId}`);
+  };
+
+  // File download for attachments shown in PaymentListCard
+  const handleDownloadFile = async (paymentId: string, fileName: string) => {
+    try {
+      const res = await axiosInstance.get(`/files/payment/${paymentId}`, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      logger.info(`File downloaded for payment ${paymentId}`);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      logger.error(
+        `Failed to download file for payment ${paymentId}:`,
+        errorMessage
+      );
+      showToast(`Не удалось скачать файл: ${errorMessage}`, "error");
+    }
   };
 
   // --- Обработчики действий для карточек платежей ---
@@ -762,13 +666,15 @@ const HomePage: React.FC = () => {
                     ? upcomingPayments
                     : upcomingPayments.slice(0, 5)
                   ).map((payment) => (
-                    <UpcomingPaymentListItem
+                    <PaymentListCard
                       key={payment.id}
                       payment={payment}
+                      context="home"
                       onClick={() => {
                         if (!payment.isVirtual)
                           setMobileActionsPayment(payment);
                       }}
+                      onDownloadFile={handleDownloadFile}
                     />
                   ))}
                   {!showAllUpcoming && upcomingPayments.length > 5 && (

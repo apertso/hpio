@@ -13,6 +13,7 @@ import {
 import { useDropdown } from "../hooks/useDropdown";
 import DropdownOverlay from "./DropdownOverlay";
 import PaymentIconDisplay from "./PaymentIconDisplay";
+import { formatRecurrenceRule } from "../utils/formatRecurrence";
 
 interface PaymentCardProps {
   payment: {
@@ -22,7 +23,7 @@ interface PaymentCardProps {
     dueDate: string;
     status: "upcoming" | "overdue" | "completed" | "deleted";
     seriesId?: string | null;
-    series?: { id: string; isActive: boolean } | null;
+    series?: { id: string; isActive: boolean; recurrenceRule?: string } | null;
     isVirtual?: boolean;
   };
   onEdit: () => void;
@@ -136,7 +137,8 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
         {/* Recurring status */}
         {isEffectivelyRecurring && (
           <p className="text-xs text-[#3F51B5] dark:text-indigo-400 mb-1 flex items-center font-normal">
-            <ArrowPathIcon className="h-3 w-3 mr-1" /> Повторяющийся
+            <ArrowPathIcon className="h-3 w-3 mr-1" />{" "}
+            {formatRecurrenceRule(payment.series?.recurrenceRule)}
           </p>
         )}
         {payment.isVirtual && (

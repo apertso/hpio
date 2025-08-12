@@ -3,6 +3,7 @@ import Table, { TableColumn } from "./Table";
 import PaymentIconDisplay from "./PaymentIconDisplay";
 import { PaymentData } from "../types/paymentData";
 import { getPaymentColorClass } from "../utils/paymentColors";
+import { formatRecurrenceRule } from "../utils/formatRecurrence";
 import { ArrowPathIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 import {
   PencilIcon,
@@ -19,15 +20,6 @@ interface PaymentsTableProps {
   onDownloadFile: (id: string, fileName: string) => void;
 }
 
-const formatRecurrenceRule = (rule: string | undefined): string => {
-  if (!rule) return "Разовый";
-  if (rule.includes("FREQ=DAILY")) return "Ежедневно";
-  if (rule.includes("FREQ=WEEKLY")) return "Еженедельно";
-  if (rule.includes("FREQ=MONTHLY")) return "Ежемесячно";
-  if (rule.includes("FREQ=YEARLY")) return "Ежегодно";
-  return "Повторяющийся";
-};
-
 const PaymentsTable: React.FC<PaymentsTableProps> = ({
   data,
   isLoading,
@@ -36,10 +28,14 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
   onDelete,
   onDownloadFile,
 }) => {
+  const thBaseClassName =
+    "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
+
   const columns: TableColumn<PaymentData>[] = [
     {
       id: "icon",
       header: "Иконка",
+      thClassName: `${thBaseClassName} w-20`,
       cell: (payment) => (
         <PaymentIconDisplay payment={payment} sizeClass="h-6 w-6" />
       ),
@@ -47,6 +43,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
     {
       id: "status",
       header: "Статус",
+      thClassName: `${thBaseClassName} w-40`,
       cell: (payment) => (
         <div className="text-sm text-gray-900 dark:text-gray-100">
           <span
@@ -71,6 +68,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
     {
       id: "recurrence",
       header: "Повторение",
+      thClassName: `${thBaseClassName} w-48`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
@@ -98,6 +96,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
     {
       id: "amount",
       header: "Сумма",
+      thClassName: `${thBaseClassName} w-32`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
@@ -115,6 +114,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
     {
       id: "dueDate",
       header: "Срок оплаты",
+      thClassName: `${thBaseClassName} w-36`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => <>{new Date(payment.dueDate).toLocaleDateString()}</>,
@@ -123,12 +123,13 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
       id: "category",
       header: "Категория",
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
+        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 truncate",
       cell: (payment) => <>{payment.category ? payment.category.name : "-"}</>,
     },
     {
       id: "file",
       header: "Файл",
+      thClassName: `${thBaseClassName} w-16`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (

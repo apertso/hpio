@@ -1,4 +1,3 @@
-// frontend/src/components/CategoriesTable.tsx
 import React from "react";
 import Table, { TableColumn } from "./Table";
 import PaymentIconDisplay from "./PaymentIconDisplay";
@@ -25,10 +24,13 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const thBaseClassName =
+    "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
   const columns: TableColumn<Category>[] = [
     {
       id: "icon",
       header: "Иконка",
+      thClassName: `${thBaseClassName} w-20`,
       cell: (category) => (
         <PaymentIconDisplay
           payment={{
@@ -43,7 +45,7 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
       id: "name",
       header: "Название",
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100",
+        "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate",
       cell: (category) => <>{category.name}</>,
     },
   ];

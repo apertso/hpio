@@ -80,7 +80,7 @@ function Table<T>(props: TableProps<T>) {
   const totalColumns = columns.length + (rowActions ? 1 : 0);
 
   return (
-    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+    <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
       <thead className="bg-gray-50 dark:bg-gray-700">
         <tr>
           {columns.map((col) => (
@@ -96,11 +96,8 @@ function Table<T>(props: TableProps<T>) {
             </th>
           ))}
           {rowActions && (
-            <th
-              scope="col"
-              className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-            >
-              Действия
+            <th scope="col" className="relative pr-6 py-4 w-8">
+              <span className="sr-only">Действия</span>
             </th>
           )}
         </tr>
@@ -135,7 +132,7 @@ function Table<T>(props: TableProps<T>) {
                 </td>
               ))}
               {rowActions && (
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="pr-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <RowActions options={rowActions(row)} />
                 </td>
               )}

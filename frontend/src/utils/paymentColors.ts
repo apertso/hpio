@@ -8,7 +8,7 @@ export function getPaymentColorClass(payment: {
   isRecurrent?: boolean;
 }): string {
   if (payment.status === "overdue") return "bg-[#f02626] text-white"; // ярко-красный
-  if (payment.status === "completed") return "bg-gray-400 dark:bg-gray-700";
+  if (payment.status === "completed") return "bg-green-500 dark:bg-green-700";
   if (payment.status === "deleted") return "bg-red-500 dark:bg-red-600";
 
   const now = new Date();
@@ -23,6 +23,34 @@ export function getPaymentColorClass(payment: {
   if (daysLeft <= 3) return "bg-green-600 text-white"; // Скоро
   if (daysLeft <= 7) return "bg-[#35605a] text-white"; // На горизонте
   return "bg-gray-500 dark:bg-gray-600"; // Спокойный цвет
+}
+
+// Классы для бейджа "Предстоящий" с той же логикой градаций зелёного
+export function getUpcomingBadgeClasses(dueDate: string): {
+  badgeClass: string;
+  iconClass: string;
+} {
+  const now = new Date();
+  const dueDateTime = new Date(dueDate);
+  now.setHours(0, 0, 0, 0);
+  dueDateTime.setHours(0, 0, 0, 0);
+  const daysLeft = Math.ceil(
+    (dueDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysLeft <= 1)
+    return { badgeClass: "bg-green-700 text-white", iconClass: "text-white" };
+  if (daysLeft <= 3)
+    return { badgeClass: "bg-green-600 text-white", iconClass: "text-white" };
+  if (daysLeft <= 7)
+    return {
+      badgeClass: "bg-[#35605a] text-white",
+      iconClass: "text-white",
+    };
+  return {
+    badgeClass: "bg-green-100 text-green-800",
+    iconClass: "text-green-600",
+  };
 }
 
 const iconColorMap: Record<BuiltinIcon, string> = {

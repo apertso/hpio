@@ -1,0 +1,19 @@
+User-agent: *
+Disallow: /
+Allow: /$
+Allow: /terms$
+Allow: /privacy$
+Allow: /about$
+Allow: /login$
+Allow: /register$
+Allow: /forgot-password$
+Allow: /assets/
+Allow: /icons/
+Allow: /screenshot.png
+Allow: /me.png
+Crawl-delay: 10
+Sitemap: https://hpio.ru/sitemap.xml
+
+# Disallow HTTP to prevent indexing
+User-agent: *
+Disallow: http://hpio.ru/*

@@ -109,6 +109,7 @@ const LandingPage: React.FC = () => {
             <img
               src="/screenshot.png"
               alt="Скриншот дашборда приложения Хочу Плачу"
+              title="Главная страница приложения Хочу Плачу"
               className="w-full h-[36rem] bg-dark-bg object-contain rounded-xl border-4 border-gray-300 dark:border-gray-700 shadow-lg"
             />
           </div>

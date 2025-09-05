@@ -2,83 +2,92 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Следите за регулярными платежами, подписками и кредитами. Бесплатное приложение с уведомлениями и анализом расходов — начните вести финансы онлайн!"
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/icons/favicon.ico" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/icons/favicon-16x16.png"
     />
-    <meta name="robots" content="index, follow" />
-    <title>
-      Хочу Плачу — Сервис для учёта расходов и напоминаний о платежах
-    </title>
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/icons/favicon-32x32.png"
+    />
+    <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />
+
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+    <!-- Android Chrome Icons -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="/icons/android-chrome-192x192.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="/icons/android-chrome-512x512.png"
+    />
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/icons/site.webmanifest" />
+
+    <script>
+      // Apply theme immediately to prevent flash
+      (function () {
+        try {
+          const theme = localStorage.getItem("theme") || "system";
+          let resolvedTheme = "light";
+
+          if (theme === "system") {
+            resolvedTheme = window.matchMedia("(prefers-color-scheme: dark)")
+              .matches
+              ? "dark"
+              : "light";
+          } else {
+            resolvedTheme = theme;
+          }
+
+          document.documentElement.classList.add(resolvedTheme);
+        } catch (e) {
+          // Fallback to light theme if anything goes wrong
+          document.documentElement.classList.add("light");
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
     <link
-      rel="stylesheet"
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
       as="style"
       onload="this.rel='stylesheet'"
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
     />
-  </head>
-  <!-- Google tag (gtag.js) -->
-  <script
-    async
-    src="https://www.googletagmanager.com/gtag/js?id=G-QJH6DN1RSY"
-  ></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() {
-      dataLayer.push(arguments);
-    }
-    gtag("js", new Date());
-
-    gtag("config", "G-QJH6DN1RSY");
-  </script>
-
-  <!-- Yandex.Metrika counter -->
-  <script type="text/javascript">
-    (function (m, e, t, r, i, k, a) {
-      m[i] =
-        m[i] ||
-        function () {
-          (m[i].a = m[i].a || []).push(arguments);
-        };
-      m[i].l = 1 * new Date();
-      for (var j = 0; j < document.scripts.length; j++) {
-        if (document.scripts[j].src === r) {
-          return;
-        }
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      />
+    </noscript>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Хочу Плачу",
+        "url": "https://hpio.ru/",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web"
       }
-      (k = e.createElement(t)),
-        (a = e.getElementsByTagName(t)[0]),
-        (k.async = 1),
-        (k.src = r),
-        a.parentNode.insertBefore(k, a);
-    })(
-      window,
-      document,
-      "script",
-      "https://mc.yandex.ru/metrika/tag.js?id=103948362",
-      "ym"
-    );
-
-    ym(103948362, "init", {
-      ssr: true,
-      webvisor: true,
-      clickmap: true,
-      ecommerce: "dataLayer",
-      accurateTrackBounce: true,
-      trackLinks: true,
-    });
-  </script>
-  <noscript
-    ><div>
-      <img
-        src="https://mc.yandex.ru/watch/103948362"
-        style="position: absolute; left: -9999px"
-        alt=""
-      /></div
-  ></noscript>
+    </script>
+  </head>
+  @@ANALYTICS@@
 
   <body>
     <div id="root"></div>

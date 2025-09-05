@@ -3,7 +3,14 @@ import React from "react";
 const PrivacyPage: React.FC = () => {
   return (
     <>
-      <title>Хочу Плачу — Политика конфиденциальности</title>
+      <title>Политика конфиденциальности — Хочу Плачу</title>
+      <meta
+        name="description"
+        content="Политика конфиденциальности приложения Хочу Плачу. Как мы защищаем ваши данные."
+      />
+      <link rel="canonical" href="https://hpio.ru/privacy" />
+      <meta name="robots" content="index, follow" />
+
       <section className="w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg mb-10">
         <div className="prose dark:prose-invert max-w-none">
           <h1 className="text-2xl font-bold mb-4">
@@ -63,16 +70,12 @@ const PrivacyPage: React.FC = () => {
           </p>
 
           <h2 className="text-xl font-bold my-6">6. Права пользователя</h2>
-          <p>
-            6.1. Пользователь имеет право:
-            <ul className="list-disc list-inside ml-6">
-              <li>запрашивать копию своих персональных данных;</li>
-              <li>требовать их исправления или удаления;</li>
-              <li>
-                удалять свой аккаунт через соответствующую функцию сервиса.
-              </li>
-            </ul>
-          </p>
+          <p>6.1. Пользователь имеет право:</p>
+          <ul className="list-disc list-inside ml-6">
+            <li>запрашивать копию своих персональных данных;</li>
+            <li>требовать их исправления или удаления;</li>
+            <li>удалять свой аккаунт через соответствующую функцию сервиса.</li>
+          </ul>
 
           <h2 className="text-xl font-bold my-6">7. Изменения политики</h2>
           <p>

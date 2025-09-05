@@ -1,4 +1,4 @@
-// src/pages/PaymentsList.tsx
+// src/pages/PaymentsPage.tsx
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
@@ -114,7 +114,7 @@ const fetchAllPaymentsApi = async (): Promise<PaymentData[]> => {
   return res.data;
 };
 
-const PaymentsList: React.FC = () => {
+const PaymentsPage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
 
   // Use useApi for fetching all payments
@@ -341,7 +341,10 @@ const PaymentsList: React.FC = () => {
 
   return (
     <>
-      <title>Хочу Плачу - Список платежей</title>
+      <title>Список платежей — Хочу Плачу</title>
+
+      <meta name="robots" content="noindex, nofollow" />
+
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -450,4 +453,4 @@ const PaymentsList: React.FC = () => {
   );
 };
 
-export default PaymentsList;
+export default PaymentsPage;

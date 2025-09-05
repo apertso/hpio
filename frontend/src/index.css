@@ -3,12 +3,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Roboto", sans-serif;
+  --font-sans: "Roboto", "Segoe UI", "Tahoma", "Arial", "Helvetica", sans-serif;
   --color-dark-bg: #0a0a0a;
   --color-card-bg: #303030;
   --color-border-dark: #303030;
   --color-text-secondary: #ababab;
   --color-dark-gray: #303030;
+  --animate-subtle-pulse: subtle-pulse 4s ease-in-out infinite;
 }
 
 html,
@@ -53,4 +54,15 @@ body {
 /* Firefox scrollbar */
 * {
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+/* Custom animations */
+@keyframes subtle-pulse {
+  0%,
+  100% {
+    background-color: rgb(99 102 241);
+  }
+  50% {
+    background-color: rgb(79 70 229);
+  }
 }

@@ -265,7 +265,10 @@ const SettingsPage: React.FC = () => {
 
   return (
     <>
-      <title>Хочу Плачу - Настройки</title>
+      <title>Настройки — Хочу Плачу</title>
+
+      <meta name="robots" content="noindex, nofollow" />
+
       <div className="w-full md:w-2xl lg:w-3xl mx-auto py-8 px-4 sm:px-2 lg:px-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">

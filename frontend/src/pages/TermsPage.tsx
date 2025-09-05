@@ -3,7 +3,14 @@ import React from "react";
 const TermsPage: React.FC = () => {
   return (
     <>
-      <title>Хочу Плачу — Пользовательское соглашение</title>
+      <title>Пользовательское соглашение — Хочу Плачу</title>
+      <meta
+        name="description"
+        content="Условия использования сервиса Хочу Плачу. Правила и положения для пользователей приложения."
+      />
+      <link rel="canonical" href="https://hpio.ru/terms" />
+      <meta name="robots" content="index, follow" />
+
       <section className="w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg mb-10">
         <div className="prose dark:prose-invert max-w-none">
           <h1 className="text-2xl font-bold mb-4">

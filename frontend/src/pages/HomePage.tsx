@@ -567,7 +567,10 @@ const HomePage: React.FC = () => {
 
   return (
     <>
-      <title>Хочу Плачу - Главная</title>
+      <title>Главная — Хочу Плачу</title>
+
+      <meta name="robots" content="noindex, nofollow" />
+
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 inline-block">

@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Routes,
   Route,
@@ -7,24 +7,6 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-// Replace static page imports with lazy imports
-const HomePage = React.lazy(() => import("./pages/HomePage"));
-const PaymentsList = React.lazy(() => import("./pages/PaymentsList"));
-const CategoriesPage = React.lazy(() => import("./pages/CategoriesPage"));
-const ArchivePage = React.lazy(() => import("./pages/ArchivePage"));
-const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
-const LoginPage = React.lazy(() => import("./pages/LoginPage"));
-const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
-const PasswordResetPage = React.lazy(() => import("./pages/PasswordResetPage"));
-const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage"));
-const LandingPage = React.lazy(() => import("./pages/LandingPage"));
-const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
-const PaymentEditPage = React.lazy(() => import("./pages/PaymentEditPage"));
-const CategoryEditPage = React.lazy(() => import("./pages/CategoryEditPage"));
-const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage.tsx"));
-const TermsPage = React.lazy(() => import("./pages/TermsPage.tsx"));
-const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage.tsx"));
-const AboutPage = React.lazy(() => import("./pages/AboutPage.tsx"));
 
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
@@ -42,9 +24,30 @@ import {
 } from "@heroicons/react/24/outline";
 import axiosInstance from "./api/axiosInstance";
 import { PHOTO_URL } from "./api/userApi";
-import VerificationBanner from "./components/VerificationBanner";
 import { useReset } from "./context/ResetContext";
-import Spinner from "./components/Spinner";
+
+// Replace static page imports with lazy imports
+const HomePage = React.lazy(() => import("./pages/HomePage"));
+const PaymentsList = React.lazy(() => import("./pages/PaymentsPage"));
+const CategoriesPage = React.lazy(() => import("./pages/CategoriesPage"));
+const ArchivePage = React.lazy(() => import("./pages/ArchivePage"));
+const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
+const LoginPage = React.lazy(() => import("./pages/LoginPage"));
+const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
+const PasswordResetPage = React.lazy(() => import("./pages/PasswordResetPage"));
+const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage"));
+const LandingPage = React.lazy(() => import("./pages/LandingPage"));
+const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
+const PaymentEditPage = React.lazy(() => import("./pages/PaymentEditPage"));
+const CategoryEditPage = React.lazy(() => import("./pages/CategoryEditPage"));
+const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
+const TermsPage = React.lazy(() => import("./pages/TermsPage"));
+const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage"));
+const AboutPage = React.lazy(() => import("./pages/AboutPage"));
+
+const VerificationBanner = React.lazy(
+  () => import("./components/VerificationBanner")
+);
 
 const ThemeSwitcher = () => {
   const { setTheme, resolvedTheme } = useTheme();
@@ -267,6 +270,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { triggerReset } = useReset();
+  const githubUrl = import.meta.env.VITE_GITHUB_URL;
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -301,9 +305,9 @@ function App() {
             ></path>
           </svg>
         </div>
-        <h1 className="text-lg font-bold leading-tight tracking-[-0.015em]">
+        <div className="text-lg font-bold leading-tight tracking-[-0.015em]">
           Хочу Плачу
-        </h1>
+        </div>
       </a>
       <Navigation /> {/* Используем компонент навигации */}
     </header>
@@ -312,42 +316,31 @@ function App() {
   const mainContent = (
     <main className="px-4 sm:px-10 flex flex-1 justify-center py-5">
       <div className="flex flex-col flex-1 w-full">
-        <Suspense
-          fallback={
-            <div className="flex justify-center items-center h-full">
-              <Spinner size="lg" />
-            </div>
-          }
-        >
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<PasswordResetPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/verify-email" element={<VerifyEmailPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<HomePage />} />
-              <Route path="/payments" element={<PaymentsList />} />
-              <Route path="/payments/new" element={<PaymentEditPage />} />
-              <Route path="/payments/edit/:id" element={<PaymentEditPage />} />
-              <Route path="/categories" element={<CategoriesPage />} />
-              <Route path="/categories/new" element={<CategoryEditPage />} />
-              <Route
-                path="/categories/edit/:id"
-                element={<CategoryEditPage />}
-              />
-              <Route path="/archive" element={<ArchivePage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-            </Route>
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<PasswordResetPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          {/* Protected routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<HomePage />} />
+            <Route path="/payments" element={<PaymentsList />} />
+            <Route path="/payments/new" element={<PaymentEditPage />} />
+            <Route path="/payments/edit/:id" element={<PaymentEditPage />} />
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/categories/new" element={<CategoryEditPage />} />
+            <Route path="/categories/edit/:id" element={<CategoryEditPage />} />
+            <Route path="/archive" element={<ArchivePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
       </div>
     </main>
   );
@@ -379,7 +372,28 @@ function App() {
             О нас
           </Link>
         </nav>
-        <ThemeSwitcher />
+        <div className="flex items-center gap-2">
+          {githubUrl && (
+            <a
+              href={githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="GitHub"
+              title="GitHub"
+              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.23.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
+              </svg>
+            </a>
+          )}
+          <ThemeSwitcher />
+        </div>
       </div>
       <div className="sm:hidden flex flex-col items-center gap-3">
         <p className="text-center">© {new Date().getFullYear()} Хочу Плачу.</p>
@@ -403,7 +417,28 @@ function App() {
             О нас
           </Link>
         </nav>
-        <ThemeSwitcher />
+        <div className="flex items-center gap-2">
+          {githubUrl && (
+            <a
+              href={githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="GitHub"
+              title="GitHub"
+              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.23.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
+              </svg>
+            </a>
+          )}
+          <ThemeSwitcher />
+        </div>
       </div>
     </footer>
   );

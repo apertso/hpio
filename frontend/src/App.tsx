@@ -30,7 +30,7 @@ import { useReset } from "./context/ResetContext";
 
 // Replace static page imports with lazy imports
 const HomePage = React.lazy(() => import("./pages/HomePage"));
-const PaymentsList = React.lazy(() => import("./pages/PaymentsPage"));
+const PaymentsPage = React.lazy(() => import("./pages/PaymentsPage"));
 const CategoriesPage = React.lazy(() => import("./pages/CategoriesPage"));
 const ArchivePage = React.lazy(() => import("./pages/ArchivePage"));
 const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
@@ -51,6 +51,7 @@ const DownloadPage = React.lazy(() => import("./pages/DownloadPage"));
 const VerificationBanner = React.lazy(
   () => import("./components/VerificationBanner")
 );
+const FeedbackWidget = React.lazy(() => import("./components/FeedbackWidget"));
 
 const ThemeSwitcher = () => {
   const { setTheme, resolvedTheme } = useTheme();
@@ -343,7 +344,7 @@ function App() {
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<HomePage />} />
-            <Route path="/payments" element={<PaymentsList />} />
+            <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/payments/new" element={<PaymentEditPage />} />
             <Route path="/payments/edit/:id" element={<PaymentEditPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
@@ -360,56 +361,78 @@ function App() {
 
   const footer = (
     <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-4 sm:p-6 text-sm text-gray-600 dark:text-slate-300">
-      <div className="hidden sm:flex items-center w-full gap-4">
-        <div className="flex-1" aria-hidden></div>
-        <p className="text-center whitespace-nowrap">
-          © {new Date().getFullYear()} Хочу Плачу.
+      <div className="hidden sm:flex items-center justify-between w-full">
+        <p className="whitespace-nowrap">
+          Создано{" "}
+          <a
+            href="https://linkedin.com/in/artur-pertsev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors underline-offset-2 hover:underline"
+          >
+            apertso
+          </a>{" "}
+          · 2025
         </p>
-        <nav className="flex-1 flex justify-evenly">
-          <Link
-            to="/terms"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-          >
-            Пользовательское соглашение
-          </Link>
-          <Link
-            to="/privacy"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-          >
-            Политика конфиденциальности
-          </Link>
-          <Link
-            to="/about"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-          >
-            О нас
-          </Link>
-        </nav>
-        <div className="flex items-center gap-2">
-          {githubUrl && (
-            <a
-              href={githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="GitHub"
-              title="GitHub"
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+        <div className="flex items-center gap-6">
+          <nav className="flex items-center gap-6">
+            <Link
+              to="/terms"
+              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-5 w-5"
-                aria-hidden="true"
+              Пользовательское соглашение
+            </Link>
+            <Link
+              to="/privacy"
+              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+            >
+              Политика конфиденциальности
+            </Link>
+            <Link
+              to="/about"
+              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+            >
+              О нас
+            </Link>
+          </nav>
+          <div className="flex items-center gap-2">
+            {githubUrl && (
+              <a
+                href={githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="GitHub"
+                title="GitHub"
+                className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
               >
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.23.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
-              </svg>
-            </a>
-          )}
-          <ThemeSwitcher />
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.23.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
+                </svg>
+              </a>
+            )}
+            <ThemeSwitcher />
+            {isAuthenticated && <FeedbackWidget />}
+          </div>
         </div>
       </div>
-      <div className="sm:hidden flex flex-col items-center gap-3">
-        <p className="text-center">© {new Date().getFullYear()} Хочу Плачу.</p>
+      <div className="sm:hidden flex flex-col items-center gap-2">
+        <p className="text-center">
+          Создано{" "}
+          <a
+            href="https://linkedin.com/in/apertso"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors underline-offset-2 hover:underline"
+          >
+            apertso
+          </a>{" "}
+          · 2025
+        </p>
         <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2">
           <Link
             to="/terms"
@@ -446,11 +469,12 @@ function App() {
                 className="h-5 w-5"
                 aria-hidden="true"
               >
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.23.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.30.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
               </svg>
             </a>
           )}
           <ThemeSwitcher />
+          {isAuthenticated && <FeedbackWidget />}
         </div>
       </div>
     </footer>

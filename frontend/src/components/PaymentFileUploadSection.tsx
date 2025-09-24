@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import FileUpload from "./FileUpload"; // Import the FileUpload component
 
 interface PaymentFileUploadSectionProps {
@@ -6,6 +6,7 @@ interface PaymentFileUploadSectionProps {
   isSubmitting: boolean;
   setFormError: React.Dispatch<React.SetStateAction<string | null>>; // Keep setFormError prop
   initialFile?: { filePath: string; fileName: string } | null; // Optional initial file prop
+  onPendingFileChange?: (file: File | null) => void; // Notify parent about selected file before creation
 }
 
 const PaymentFileUploadSection: React.FC<PaymentFileUploadSectionProps> = ({
@@ -13,12 +14,19 @@ const PaymentFileUploadSection: React.FC<PaymentFileUploadSectionProps> = ({
   isSubmitting,
   setFormError, // Keep setFormError prop
   initialFile, // Optional initial file prop
+  onPendingFileChange,
 }) => {
   // State for attached file
   const [attachedFile, setAttachedFile] = useState<{
     filePath: string;
     fileName: string;
-  } | null>(initialFile || null);
+  } | null>(null);
+
+  useEffect(() => {
+    if (initialFile) {
+      setAttachedFile(initialFile);
+    }
+  }, [initialFile]);
 
   // Handlers for FileUpload callbacks
   const handleFileUploadSuccess = useCallback(
@@ -51,6 +59,7 @@ const PaymentFileUploadSection: React.FC<PaymentFileUploadSectionProps> = ({
         onFileDeleteSuccess={handleFileDeleteSuccess} // Use local handler
         onError={handleFileUploadError} // Use local handler
         isSubmitting={isSubmitting} // Pass isSubmitting to disable upload during form submission
+        onPendingFileChange={onPendingFileChange}
       />
     </div>
   );

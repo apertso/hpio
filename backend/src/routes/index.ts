@@ -7,6 +7,7 @@ import archiveRoutes from "./archiveRoutes"; // !!! Импорт маршрут�
 import statsRoutes from "./statsRoutes"; // !!! Импорт маршрутов статистики
 import seriesRoutes from "./seriesRoutes"; // Import recurring series routes
 import userRoutes from "./userRoutes"; // <-- ADD THIS
+import feedbackRoutes from "./feedbackRoutes";
 // Импортируйте другие маршруты
 
 const router = Router();
@@ -19,6 +20,7 @@ router.use("/archive", archiveRoutes); // !!! Использование мар�
 router.use("/stats", statsRoutes); // !!! Использование маршрутов статистики
 router.use("/series", seriesRoutes); // Use recurring series routes
 router.use("/user", userRoutes); // <-- ADD THIS
+router.use("/feedback", feedbackRoutes);
 // Используйте другие маршруты:
 // router.use('/notifications', notificationRoutes);
 // router.use('/notifications', notificationRoutes);

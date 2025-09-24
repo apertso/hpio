@@ -8,6 +8,7 @@ interface PaymentCategorySelectProps {
   setValue: UseFormSetValue<PaymentFormInputs>;
   watchCategoryId: string | null | undefined;
   isSubmitting: boolean;
+  onUserCategoryChange?: (value: string | null) => void;
 }
 
 function PaymentCategorySelect({
@@ -15,6 +16,7 @@ function PaymentCategorySelect({
   setValue,
   watchCategoryId,
   isSubmitting,
+  onUserCategoryChange,
 }: PaymentCategorySelectProps) {
   const { categories, isLoading, error } = useCategories();
 
@@ -52,9 +54,10 @@ function PaymentCategorySelect({
       label="Категория"
       options={options}
       value={watchCategoryId || null}
-      onChange={(value) =>
-        setValue("categoryId", value, { shouldValidate: true })
-      }
+      onChange={(value) => {
+        setValue("categoryId", value, { shouldValidate: true });
+        onUserCategoryChange?.(value as string | null);
+      }}
       error={errors.categoryId?.message as string}
       disabled={isSubmitting || categories?.length === 0}
       placeholder="-- Без категории --"

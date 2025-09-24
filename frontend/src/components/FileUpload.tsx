@@ -22,6 +22,7 @@ interface FileUploadProps {
   onFileDeleteSuccess?: () => void;
   onError?: (message: string) => void;
   isSubmitting?: boolean;
+  onPendingFileChange?: (file: File | null) => void;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
@@ -31,6 +32,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   onFileDeleteSuccess,
   onError,
   isSubmitting,
+  onPendingFileChange,
 }) => {
   const [file, setFile] = useState<{
     filePath: string;
@@ -56,6 +58,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
     },
     onError,
     isSubmitting,
+    onPendingFileSelected: (f) => {
+      // Отображаем выбранный (еще не загруженный) файл сразу в UI
+      setFile({ filePath: "", fileName: f.name });
+      onPendingFileChange?.(f);
+    },
   });
 
   const { isDeleting, deleteError, handleDeleteFile } = useFileDeletionLogic({
@@ -97,7 +104,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
           {getFileIcon(file.fileName)}
           <span className="flex-1 truncate">{file.fileName}</span>
           <button
-            onClick={handleDeleteFile}
+            onClick={(e) => {
+              e.preventDefault();
+              if (!paymentId) {
+                setFile(null);
+                onPendingFileChange?.(null);
+                onFileDeleteSuccess?.();
+                return;
+              }
+              handleDeleteFile();
+            }}
             disabled={isDeleting || isSubmitting} // Отключаем кнопку, если удаляется или форма отправляется
             className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-600 disabled:opacity-50"
             title={isDeleting ? "Удаление..." : "Удалить файл"}
@@ -120,20 +136,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
                               : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
                           }
                           ${
-                            isUploading ||
-                            isDeleting ||
-                            isSubmitting ||
-                            !paymentId
+                            isUploading || isDeleting || isSubmitting
                               ? "opacity-50 cursor-not-allowed"
                               : ""
                           }`} // Отключаем, если идет загрузка/удаление, форма отправляется или нет paymentId
-          aria-disabled={
-            isUploading || isDeleting || isSubmitting || !paymentId
-          } // Добавляем для доступности
+          aria-disabled={isUploading || isDeleting || isSubmitting} // Добавляем для доступности
         >
           <input
             {...getInputProps()}
-            disabled={isUploading || isDeleting || isSubmitting || !paymentId}
+            disabled={isUploading || isDeleting || isSubmitting}
           />{" "}
           {/* Скрытый input */}
           {isUploading ? (
@@ -170,9 +181,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   maxFileSize / 1024 / 1024
                 }МБ)`}
               </p>
-              {!paymentId && ( // Если нет paymentId, объясняем почему нельзя загрузить
+              {!paymentId && ( // Если нет paymentId, объясняем, что загрузка произойдет после сохранения
                 <p className="mt-2 text-sm font-semibold text-red-500 dark:text-red-400">
-                  Сначала сохраните платеж, чтобы прикрепить файл.
+                  Файл будет загружен автоматически после сохранения платежа.
                 </p>
               )}
             </div>

@@ -22,6 +22,7 @@ import { timezones } from "../utils/timezones";
 import Select from "../components/Select";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import { submitFeedback } from "../api/feedbackApi";
 
 // Схема для всех настроек профиля
 const settingsSchema = z.object({
@@ -156,6 +157,9 @@ const SettingsPage: React.FC = () => {
     "password" | "delete" | null
   >(null);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+  const [deleteFeedbackText, setDeleteFeedbackText] = useState("");
+  const [deleteFile, setDeleteFile] = useState<File | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     register: registerSettings,
@@ -255,6 +259,17 @@ const SettingsPage: React.FC = () => {
       return;
     }
     try {
+      setIsDeleting(true);
+      if (deleteFeedbackText.trim().length > 0 || deleteFile) {
+        try {
+          await submitFeedback(
+            deleteFeedbackText.trim(),
+            deleteFile || undefined
+          );
+        } catch (e) {
+          // ошибку отправки отзыва игнорируем
+        }
+      }
       await userApi.deleteAccount();
       showToast("Ваш аккаунт был успешно удален.", "success");
       logout();
@@ -263,6 +278,8 @@ const SettingsPage: React.FC = () => {
         `Ошибка при удалении аккаунта: ${getErrorMessage(error)}`,
         "error"
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -516,25 +533,58 @@ const SettingsPage: React.FC = () => {
                   }}
                   className="space-y-4 pt-4 border-t border-red-500/20"
                 >
-                  <p className="text-gray-700 dark:text-gray-300">
-                    Для подтверждения, пожалуйста, введите{" "}
-                    <strong className="text-red-500">УДАЛИТЬ АККАУНТ</strong> в
-                    поле ниже.
-                  </p>
-                  <Input
-                    type="text"
-                    value={deleteConfirmationText}
-                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
-                    className="w-full"
-                    placeholder="УДАЛИТЬ АККАУНТ"
-                  />
-                  <button
-                    type="submit"
-                    disabled={deleteConfirmationText !== "УДАЛИТЬ АККАУНТ"}
-                    className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed"
-                  >
-                    Удалить мой аккаунт
-                  </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      Почему вы удаляете аккаунт? (необязательно)
+                    </label>
+                    <textarea
+                      className="block w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white dark:placeholder-gray-500"
+                      rows={3}
+                      value={deleteFeedbackText}
+                      onChange={(e) => setDeleteFeedbackText(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      Прикрепить файл (до 5 МБ, необязательно)
+                    </label>
+                    <input
+                      type="file"
+                      accept="*/*"
+                      onChange={(e) =>
+                        setDeleteFile(e.target.files?.[0] || null)
+                      }
+                      className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-slate-700 dark:file:text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 mt-8">
+                      Для подтверждения, пожалуйста, введите{" "}
+                      <strong className="text-red-500">УДАЛИТЬ АККАУНТ</strong>{" "}
+                      в поле ниже.
+                    </label>
+                    <Input
+                      type="text"
+                      value={deleteConfirmationText}
+                      onChange={(e) =>
+                        setDeleteConfirmationText(e.target.value)
+                      }
+                      className="w-full"
+                      placeholder="УДАЛИТЬ АККАУНТ"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 justify-end">
+                    <button
+                      type="submit"
+                      disabled={
+                        deleteConfirmationText !== "УДАЛИТЬ АККАУНТ" ||
+                        isDeleting
+                      }
+                      className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed"
+                    >
+                      {isDeleting ? "Удаление..." : "Удалить мой аккаунт"}
+                    </button>
+                  </div>
                 </form>
               )}
             </div>
@@ -605,25 +655,53 @@ const SettingsPage: React.FC = () => {
           }}
           className="space-y-4"
         >
-          <p className="text-gray-700 dark:text-gray-300">
-            Для подтверждения, пожалуйста, введите{" "}
-            <strong className="text-red-500">УДАЛИТЬ АККАУНТ</strong> в поле
-            ниже.
-          </p>
-          <Input
-            type="text"
-            value={deleteConfirmationText}
-            onChange={(e) => setDeleteConfirmationText(e.target.value)}
-            className="w-full"
-            placeholder="УДАЛИТЬ АККАУНТ"
-          />
-          <button
-            type="submit"
-            disabled={deleteConfirmationText !== "УДАЛИТЬ АККАУНТ"}
-            className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            Я понимаю последствия, удалить мой аккаунт
-          </button>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              Почему вы удаляете аккаунт? (необязательно)
+            </label>
+            <textarea
+              className="block w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white dark:placeholder-gray-500"
+              rows={3}
+              value={deleteFeedbackText}
+              onChange={(e) => setDeleteFeedbackText(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              Прикрепить файл (до 5 МБ, необязательно)
+            </label>
+            <input
+              type="file"
+              accept="*/*"
+              onChange={(e) => setDeleteFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-slate-700 dark:file:text-slate-200"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 mt-8">
+              Для подтверждения, пожалуйста, введите{" "}
+              <strong className="text-red-500">УДАЛИТЬ АККАУНТ</strong> в поле
+              ниже.
+            </label>
+            <Input
+              type="text"
+              value={deleteConfirmationText}
+              onChange={(e) => setDeleteConfirmationText(e.target.value)}
+              className="w-full"
+              placeholder="УДАЛИТЬ АККАУНТ"
+            />
+          </div>
+          <div className="flex items-center gap-3 justify-end">
+            <button
+              type="submit"
+              disabled={
+                deleteConfirmationText !== "УДАЛИТЬ АККАУНТ" || isDeleting
+              }
+              className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isDeleting ? "Удаление..." : "Удалить мой аккаунт"}
+            </button>
+          </div>
         </form>
       </MobileActionPanel>
     </>

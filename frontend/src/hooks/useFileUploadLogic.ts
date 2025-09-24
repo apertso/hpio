@@ -14,6 +14,7 @@ interface UseFileUploadLogicProps {
   }) => void;
   onError?: (message: string) => void;
   isSubmitting?: boolean;
+  onPendingFileSelected?: (file: File) => void;
 }
 
 interface UploadResponse {
@@ -57,6 +58,7 @@ const useFileUploadLogic = ({
   onFileUploadSuccess,
   onError,
   isSubmitting,
+  onPendingFileSelected,
 }: UseFileUploadLogicProps) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const {
@@ -79,11 +81,7 @@ const useFileUploadLogic = ({
 
   const onDrop = useCallback(
     async (acceptedFiles: File[], fileRejections: FileRejection[]) => {
-      if (!paymentId) {
-        const msg = "Невозможно загрузить файл без ID платежа.";
-        onError?.(msg);
-        return;
-      }
+      // Если paymentId отсутствует, выбор файла допустим, но загрузку выполнит родитель после создания платежа.
 
       if (fileRejections.length > 0) {
         const code = fileRejections[0].errors[0]?.code;
@@ -98,6 +96,13 @@ const useFileUploadLogic = ({
       }
 
       if (acceptedFiles.length === 0) return;
+
+      if (!paymentId) {
+        if (acceptedFiles[0]) {
+          onPendingFileSelected?.(acceptedFiles[0]);
+        }
+        return;
+      }
 
       setUploadProgress(0);
       const formData = new FormData();
@@ -121,7 +126,7 @@ const useFileUploadLogic = ({
       {}
     ),
     maxSize: maxFileSize,
-    disabled: isUploading || isSubmitting || !paymentId,
+    disabled: isUploading || isSubmitting,
   });
 
   return {

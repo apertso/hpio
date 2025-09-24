@@ -15,6 +15,7 @@ import PaymentRecurrenceSection from "./PaymentRecurrenceSection";
 import PaymentFileUploadSection from "./PaymentFileUploadSection";
 import IconSelector from "./IconSelector";
 import { BuiltinIcon } from "../utils/builtinIcons";
+import useCategories from "../hooks/useCategories";
 import Spinner from "./Spinner";
 import ToggleSwitch from "./ToggleSwitch";
 import { PaymentData } from "../types/paymentData";
@@ -112,7 +113,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     filePath: string;
     fileName: string;
   } | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const { categories } = useCategories();
 
   const disableForInactiveSeries =
     isEditMode && editScope === "series" && !!isSeriesInactive;
@@ -259,6 +262,29 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         const res = await axiosInstance.post("/payments", payload);
         const newPaymentId = res.data.id;
         logger.info("Payment created", res.data);
+
+        // Если выбран файл до создания, загружаем его автоматически
+        if (pendingFile) {
+          try {
+            const formData = new FormData();
+            formData.append("paymentFile", pendingFile);
+            await axiosInstance.post(
+              `/files/upload/payment/${newPaymentId}`,
+              formData,
+              {
+                headers: { "Content-Type": "multipart/form-data" },
+              }
+            );
+          } catch {
+            // Короткое сообщение пользователю; сам платеж уже создан
+            setFormError(
+              "Платеж создан, но файл не удалось загрузить. Попробуйте прикрепить файл в режиме редактирования."
+            );
+          } finally {
+            setPendingFile(null);
+          }
+        }
+
         onSuccess(newPaymentId);
       }
     } catch (error: unknown) {
@@ -276,6 +302,29 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const watchDueDate = watch("dueDate");
   const watchCategoryId = watch("categoryId");
   const currentRule = watch("recurrenceRule");
+
+  const findCategoryIcon = useCallback(
+    (categoryId: string | null | undefined) => {
+      if (!categoryId) return null;
+      const category = categories?.find((c) => c.id === categoryId);
+      return category?.builtinIconName;
+    },
+    [categories]
+  );
+
+  useEffect(() => {
+    if (initialData) {
+      setSelectedIconName(initialData.builtinIconName || null);
+    }
+  }, [initialData]);
+
+  const [newCategoryId, setNewCategoryId] = useState<string | null>();
+
+  // Автовыбор иконки при смене категории (применяем, только если выбор сделан пользователем)
+  useEffect(() => {
+    const catIconName = findCategoryIcon(newCategoryId);
+    setSelectedIconName((catIconName || null) as BuiltinIcon | null);
+  }, [newCategoryId, findCategoryIcon]);
 
   // Определяем, показывать ли блок повторения
   // Показываем при создании нового платежа ИЛИ при редактировании серии
@@ -317,6 +366,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               setValue={setValue}
               watchCategoryId={watchCategoryId}
               isSubmitting={isSubmitting}
+              onUserCategoryChange={(newCategoryId: string | null) =>
+                setNewCategoryId(newCategoryId)
+              }
             />
 
             {showRecurrence && (
@@ -353,6 +405,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 initialFile={attachedFile}
                 isSubmitting={isSubmitting}
                 setFormError={setFormError}
+                onPendingFileChange={setPendingFile}
               />
             )}
 

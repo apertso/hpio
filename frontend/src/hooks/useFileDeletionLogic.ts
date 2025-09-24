@@ -41,8 +41,8 @@ const useFileDeletionLogic = ({
   );
 
   const handleDeleteFile = useCallback(
-    async (event: React.MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
+    async (event?: React.MouseEvent<HTMLButtonElement>) => {
+      event?.preventDefault();
       if (!paymentId || !initialFile?.filePath) return;
       if (!window.confirm("Вы уверены, что хотите удалить прикрепленный файл?"))
         return;

@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import useApi from "./useApi"; // Import the new hook
+import { BuiltinIcon } from "../utils/builtinIcons";
 
 interface Category {
   id: string;
   name: string;
+  builtinIconName?: BuiltinIcon | null;
 }
 
 const fetchCategoriesApi = async (): Promise<Category[]> => {

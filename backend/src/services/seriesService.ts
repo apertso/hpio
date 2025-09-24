@@ -177,19 +177,22 @@ export const deleteRecurringSeries = async (
     // Deactivate the series
     await series.update({ isActive: false }, { transaction });
 
-    // Delete future (upcoming or overdue) payments for this series
-    await db.Payment.destroy({
-      where: {
-        seriesId: seriesId,
-        status: { [Op.in]: ["upcoming", "overdue"] },
-      },
-      transaction,
-    });
+    // Archive future (upcoming or overdue) payments for this series instead of deleting
+    await db.Payment.update(
+      { status: "deleted" },
+      {
+        where: {
+          seriesId: seriesId,
+          status: { [Op.in]: ["upcoming", "overdue"] },
+        },
+        transaction,
+      }
+    );
 
     await transaction.commit();
 
     logger.info(
-      `Recurring series with ID ${seriesId} deactivated by user ${userId}. Future payments deleted.`
+      `Recurring series with ID ${seriesId} deactivated by user ${userId}. Future payments archived.`
     );
     return true;
   } catch (error) {

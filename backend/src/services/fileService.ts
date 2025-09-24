@@ -123,6 +123,38 @@ const uploadUserPhoto = multer({
 
 // --- Сервисные функции для работы с файлами платежей ---
 
+// --- Настройки для вложений обратной связи ---
+const maxFileSizeFeedback = 5 * 1024 * 1024; // 5 МБ
+
+const storageFeedback = multer.diskStorage({
+  destination: async (req: Request, file, cb) => {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return cb(new Error("User ID is missing for feedback upload."), "");
+    }
+    const uploadPath = path.join(config.uploadDir, "users", userId, "feedback");
+    try {
+      await fs.mkdir(uploadPath, { recursive: true });
+      cb(null, uploadPath);
+    } catch (error: any) {
+      logger.error("Error creating upload directory for feedback:", error);
+      cb(new Error("Не удалось создать папку для загрузки файла."), "");
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const fileExtension = path.extname(file.originalname);
+    const newFileName = `feedback-${uniqueSuffix}${fileExtension}`;
+    cb(null, newFileName);
+  },
+});
+
+// Без ограничений по типу, только размер
+const uploadFeedbackAttachment = multer({
+  storage: storageFeedback,
+  limits: { fileSize: maxFileSizeFeedback },
+}).single("attachment");
+
 // Функция для привязки загруженного файла к платежу в БД
 const attachFileToPayment = async (
   paymentId: string,
@@ -187,13 +219,15 @@ const attachFileToPayment = async (
       file.filename,
     ].join("/");
 
+    const utf8Name = Buffer.from(file.originalname, "latin1").toString("utf8");
+
     await payment.update({
       filePath: relativePath, // Сохраняем относительный путь
-      fileName: file.originalname, // Сохраняем оригинальное имя файла
+      fileName: utf8Name, // Сохраняем оригинальное имя файла
     });
 
     logger.info(
-      `File '${file.originalname}' attached to payment ${paymentId}. Stored as ${file.filename}`
+      `File '${utf8Name}' attached to payment ${paymentId}. Stored as ${file.filename}`
     );
     return payment; // Возвращаем обновленный платеж
   } catch (error: any) {
@@ -381,6 +415,7 @@ const deleteFileFromFS = async (
 export {
   uploadFile, // Для файлов платежей
   uploadUserPhoto, // <-- ADD THIS
+  uploadFeedbackAttachment,
   attachFileToPayment,
   getPaymentFileInfo,
   detachFileFromPayment,

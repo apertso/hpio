@@ -5,9 +5,12 @@ import {
   CalendarDaysIcon,
   ChartPieIcon,
   TagIcon,
+  DevicePhoneMobileIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "../components/Button";
 import { useAuth } from "../context/AuthContext";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const Feature = ({
   icon: Icon,
@@ -60,6 +63,7 @@ const Feature = ({
 const LandingPage: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const metadata = getPageMetadata("landing");
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -69,15 +73,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <>
-      <title>
-        Хочу Плачу — Сервис для учёта расходов и напоминаний о платежах
-      </title>
-      <meta
-        name="description"
-        content="Следите за регулярными платежами, подписками и кредитами. Бесплатное приложение с уведомлениями и анализом расходов — начните вести финансы онлайн!"
-      />
-      <link rel="canonical" href="https://hpio.ru/" />
-      <meta name="robots" content="index, follow" />
+      <PageMeta {...metadata} />
 
       <div className="w-full max-w-6xl mx-auto text-gray-900 dark:text-gray-100">
         {/* Hero Section */}
@@ -91,14 +87,21 @@ const LandingPage: React.FC = () => {
             бюджет под контролем. Бесплатно.
           </p>
           <div className="inline-block px-4 py-2 mt-6 font-semibold text-green-800 bg-green-100 border border-green-200 rounded-full dark:bg-green-900/30 dark:text-green-300 dark:border-green-700">
-            🚀 Мы растём и развиваемся — сейчас сервис в бета-тестировании, и
+            🚀 Мы растём и развиваемся - сейчас сервис в бета-тестировании, и
             нам важна ваша обратная связь.
           </div>
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link to="/register">
               <Button
                 label="Присоединиться к тесту"
                 className="px-8 py-3 text-lg font-bold animate-subtle-pulse"
+              />
+            </Link>
+            <Link to="/download">
+              <Button
+                label="Скачать для Android"
+                icon={<DevicePhoneMobileIcon className="w-5 h-5" />}
+                className="px-8 py-3 text-lg font-bold bg-slate-600 text-white hover:bg-slate-700"
               />
             </Link>
           </div>
@@ -180,11 +183,18 @@ const LandingPage: React.FC = () => {
             Присоединяйтесь к нашему бета-тесту прямо сейчас и начните управлять
             своими финансами.
           </p>
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link to="/register">
               <Button
                 label="Присоединиться"
                 className="px-8 py-3 text-lg font-bold"
+              />
+            </Link>
+            <Link to="/download">
+              <Button
+                label="Скачать для Android"
+                icon={<DevicePhoneMobileIcon className="w-5 h-5" />}
+                className="px-8 py-3 text-lg font-bold bg-slate-600 text-white hover:bg-slate-700"
               />
             </Link>
           </div>

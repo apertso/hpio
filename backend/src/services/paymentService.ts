@@ -1136,10 +1136,10 @@ export const generateNextRecurrentPayments = async () => {
  * Сгенерировать следующий платеж для КОНКРЕТНОЙ серии.
  * Правила:
  * - Если для серии уже есть активный платеж (upcoming/overdue), ничего не делать (вернуть null).
- * - Граница берется из series.generatedUntil (если null — день до startDate).
+ * - Граница берется из series.generatedUntil (если null - день до startDate).
  * - Рассчитать следующую дату строго ПОСЛЕ границы по RRULE и с учетом recurrenceEndDate.
  * - Создать ровно один платеж и вернуть его.
- * - Если подходящей даты нет — деактивировать серию и вернуть null.
+ * - Если подходящей даты нет - деактивировать серию и вернуть null.
  */
 export const generateNextRecurrentPaymentForSeries = async (
   seriesId: string
@@ -1157,7 +1157,7 @@ export const generateNextRecurrentPaymentForSeries = async (
       return null;
     }
 
-    // Если уже есть активный экземпляр — выходим
+    // Если уже есть активный экземпляр - выходим
     const activePaymentCount = await db.Payment.count({
       where: {
         seriesId: series.id,

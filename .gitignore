@@ -1,6 +1,7 @@
 /project_code.txt
 /skleika.sh
 *.sh
+*.keystore
 
 # backend
 /backend/node_modules/

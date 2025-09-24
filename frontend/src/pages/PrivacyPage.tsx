@@ -1,15 +1,13 @@
 import React from "react";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const PrivacyPage: React.FC = () => {
+  const metadata = getPageMetadata("privacy");
+
   return (
     <>
-      <title>Политика конфиденциальности — Хочу Плачу</title>
-      <meta
-        name="description"
-        content="Политика конфиденциальности приложения Хочу Плачу. Как мы защищаем ваши данные."
-      />
-      <link rel="canonical" href="https://hpio.ru/privacy" />
-      <meta name="robots" content="index, follow" />
+      <PageMeta {...metadata} />
 
       <section className="w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg mb-10">
         <div className="prose dark:prose-invert max-w-none">
@@ -21,7 +19,7 @@ const PrivacyPage: React.FC = () => {
           </p>
           <h2 className="text-xl font-bold my-6">1. Общие положения</h2>
           <p>
-            1.1. Настоящая Политика конфиденциальности (далее — «Политика»)
+            1.1. Настоящая Политика конфиденциальности (далее - «Политика»)
             описывает, как Администрация сервиса обрабатывает персональные
             данные Пользователей. 1.2. Политика разработана в соответствии с
             Федеральным законом РФ № 152-ФЗ «О персональных данных».

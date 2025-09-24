@@ -14,9 +14,16 @@ import path from "path"; // Для работы с путями файлов
 const app = express();
 
 // Middleware
+const allowedOrigins = [
+  config.frontendUrl || "http://localhost:5173", // Используем URL фронтенда из конфигурации для поддержки разных окружений (dev, prod)
+  "tauri://localhost",
+  "https://tauri.localhost",
+  ...config.allowedOrigins, // Дополнительные источники из переменных окружения
+];
+
 app.use(
   cors({
-    origin: config.frontendUrl || "http://localhost:5173", // Используем URL фронтенда из конфигурации для поддержки разных окружений (dev, prod)
+    origin: allowedOrigins, // Поддержка множественных источников, включая Tauri приложения
   })
 );
 app.use(express.json()); // Для парсинга JSON-тела запросов

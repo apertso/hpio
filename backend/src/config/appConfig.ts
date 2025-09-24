@@ -8,6 +8,9 @@ export const config = {
   jwtPasswordResetSecret:
     process.env.JWT_RESET_SECRET || "anotherSuperSecretForPasswordReset", // Секрет для токена сброса пароля
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
+  allowedOrigins: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : [], // Дополнительные разрешенные источники
   defaultTimezone: process.env.TZ || "UTC",
   database: {
     host: process.env.DB_HOST || "localhost",

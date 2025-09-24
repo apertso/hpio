@@ -20,6 +20,8 @@ import FormBlock from "../components/FormBlock";
 import { useToast } from "../context/ToastContext";
 import { timezones } from "../utils/timezones";
 import Select from "../components/Select";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 // Схема для всех настроек профиля
 const settingsSchema = z.object({
@@ -147,6 +149,7 @@ const MobileActionPanel: React.FC<{
 const SettingsPage: React.FC = () => {
   const { user, refreshUser, logout, token } = useAuth();
   const { showToast } = useToast();
+  const metadata = getPageMetadata("settings");
   const [isUploading, setIsUploading] = useState(false);
   const [avatarKey, setAvatarKey] = useState(Date.now());
   const [expandedSection, setExpandedSection] = useState<
@@ -265,9 +268,7 @@ const SettingsPage: React.FC = () => {
 
   return (
     <>
-      <title>Настройки — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="w-full md:w-2xl lg:w-3xl mx-auto py-8 px-4 sm:px-2 lg:px-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">

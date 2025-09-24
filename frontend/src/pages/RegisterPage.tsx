@@ -8,6 +8,8 @@ import FormBlock from "../components/FormBlock";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const registerSchema = z
   .object({
@@ -35,6 +37,7 @@ type RegisterFormInputs = z.infer<typeof registerSchema>;
 const RegisterPage: React.FC = () => {
   const { register, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const metadata = getPageMetadata("register");
 
   const {
     register: formRegister,
@@ -87,9 +90,7 @@ const RegisterPage: React.FC = () => {
 
   return (
     <>
-      <title>Регистрация — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
         <FormBlock className="w-full max-w-md">

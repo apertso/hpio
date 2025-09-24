@@ -13,6 +13,8 @@ import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import { CategoriesTable } from "../components"; // Import CategoriesTable from the index
 import { BuiltinIcon } from "../utils/builtinIcons";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 // Интерфейс для данных категории
 interface Category {
@@ -115,6 +117,7 @@ const CategoryListItem: React.FC<{
 
 const CategoriesPage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
+  const metadata = getPageMetadata("categories");
 
   // Use useApi for fetching the categories list
   const {
@@ -188,9 +191,7 @@ const CategoriesPage: React.FC = () => {
 
   return (
     <>
-      <title>Категории — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">

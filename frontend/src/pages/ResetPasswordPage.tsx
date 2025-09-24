@@ -5,6 +5,8 @@ import logger from "../utils/logger";
 import Spinner from "../components/Spinner";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const ResetPasswordPage: React.FC = () => {
   const [password, setPassword] = useState("");
@@ -12,6 +14,7 @@ const ResetPasswordPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const metadata = getPageMetadata("reset-password");
 
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
@@ -86,9 +89,7 @@ const ResetPasswordPage: React.FC = () => {
 
   return (
     <>
-      <title>Сброс пароля — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
         <FormBlock className="w-full max-w-md">

@@ -85,6 +85,8 @@ const categoryColorsDark = [
 ];
 
 import CustomDailySpendingChart from "../components/CustomDailySpendingChart";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 // Интерфейс для данных статистики, получаемых с бэкенда
 interface DashboardStats {
   month: string; // Например, '2023-11'
@@ -191,6 +193,7 @@ const HomePage: React.FC = () => {
   const { resolvedTheme } = useTheme(); // Access the theme
   const { showToast } = useToast(); // Import useToast
   const { resetKey } = useReset();
+  const metadata = getPageMetadata("dashboard");
 
   const [upcomingDays, setUpcomingDays] = useState<3 | 7 | 10 | 14 | 21>(10);
 
@@ -220,7 +223,7 @@ const HomePage: React.FC = () => {
         `Successfully fetched and processed ${payments.length} upcoming payments.`
       );
     } else {
-      // Не помечаем как loaded на null (ошибка/отмена) — чтобы не показать "нет данных" ложно
+      // Не помечаем как loaded на null (ошибка/отмена) - чтобы не показать "нет данных" ложно
       setUpcomingPayments([]); // Clear payments if raw data is null (e.g., on error)
     }
   }, [rawUpcomingPayments]);
@@ -567,9 +570,7 @@ const HomePage: React.FC = () => {
 
   return (
     <>
-      <title>Главная — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">

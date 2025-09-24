@@ -1,15 +1,13 @@
 import React from "react";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const TermsPage: React.FC = () => {
+  const metadata = getPageMetadata("terms");
+
   return (
     <>
-      <title>Пользовательское соглашение — Хочу Плачу</title>
-      <meta
-        name="description"
-        content="Условия использования сервиса Хочу Плачу. Правила и положения для пользователей приложения."
-      />
-      <link rel="canonical" href="https://hpio.ru/terms" />
-      <meta name="robots" content="index, follow" />
+      <PageMeta {...metadata} />
 
       <section className="w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg mb-10">
         <div className="prose dark:prose-invert max-w-none">
@@ -21,10 +19,10 @@ const TermsPage: React.FC = () => {
           </p>
           <h2 className="text-xl font-bold my-6">1. Общие положения</h2>
           <p>
-            1.1. Настоящее Пользовательское соглашение (далее — «Соглашение»)
-            регулирует отношения между владельцем сервиса (далее —
+            1.1. Настоящее Пользовательское соглашение (далее - «Соглашение»)
+            регулирует отношения между владельцем сервиса (далее -
             «Администрация») и физическим или юридическим лицом, использующим
-            сервис (далее — «Пользователь»).
+            сервис (далее - «Пользователь»).
           </p>
           <p>
             1.2. Используя сервис, Пользователь подтверждает, что ознакомился и

@@ -5,11 +5,14 @@ import { authApi } from "../api/axiosInstance";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import getErrorMessage from "../utils/getErrorMessage";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
+  const metadata = getPageMetadata("verify-email");
 
   const [status, setStatus] = useState<"verifying" | "success" | "error">(
     "verifying"
@@ -44,9 +47,7 @@ const VerifyEmailPage: React.FC = () => {
 
   return (
     <>
-      <title>Подтверждение email — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center px-4">
         {status === "verifying" && (

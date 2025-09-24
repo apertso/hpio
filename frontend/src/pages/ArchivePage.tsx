@@ -21,6 +21,8 @@ import {
   ArrowPathIcon as ArrowPathSolidIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 // MobileActionsOverlay and ArchivedPaymentListItem components
 const MobileActionsOverlay: React.FC<{
   payment: PaymentData | null;
@@ -168,6 +170,7 @@ const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
 
 const ArchivePage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
+  const metadata = getPageMetadata("archive");
 
   // Use useApi for the raw fetch
   const {
@@ -364,9 +367,7 @@ const ArchivePage: React.FC = () => {
 
   return (
     <>
-      <title>Архив — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">

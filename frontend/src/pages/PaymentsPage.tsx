@@ -14,6 +14,8 @@ import PaymentsTable from "../components/PaymentsTable";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal"; // Import ConfirmCompletionDateModal
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 import getErrorMessage from "../utils/getErrorMessage";
@@ -116,6 +118,7 @@ const fetchAllPaymentsApi = async (): Promise<PaymentData[]> => {
 
 const PaymentsPage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
+  const metadata = getPageMetadata("payments");
 
   // Use useApi for fetching all payments
   const {
@@ -341,9 +344,7 @@ const PaymentsPage: React.FC = () => {
 
   return (
     <>
-      <title>Список платежей — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">

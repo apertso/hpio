@@ -1,15 +1,13 @@
 import React from "react";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const AboutPage: React.FC = () => {
+  const metadata = getPageMetadata("about");
+
   return (
     <>
-      <title>О нас — Хочу Плачу</title>
-      <meta
-        name="description"
-        content="Информация о сервисе Хочу Плачу и как с нами связаться"
-      />
-      <link rel="canonical" href="https://hpio.ru/about" />
-      <meta name="robots" content="index, follow" />
+      <PageMeta {...metadata} />
 
       <section className="w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg mb-10">
         <div className="prose dark:prose-invert max-w-none">
@@ -31,9 +29,9 @@ const AboutPage: React.FC = () => {
             </div>
           </div>
           <p>
-            <strong>«Хочу Плачу»</strong> — это сервис для управления платежами,
+            <strong>«Хочу Плачу»</strong> - это сервис для управления платежами,
             который я разработал в одиночку. Мне захотелось иметь удобный
-            инструмент для управления своими финансами — и так пришла идея
+            инструмент для управления своими финансами - и так пришла идея
             создать такой инструмент с использованием AI.
           </p>
           <h3>Есть идея? Связаться со мной можно через:</h3>

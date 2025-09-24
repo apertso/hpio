@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext"; // Используем хук
 import Spinner from "../components/Spinner";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -14,6 +16,7 @@ const LoginPage: React.FC = () => {
 
   const { login, isAuthenticated, loading: authLoading } = useAuth(); // Получаем функцию входа из контекста
   const navigate = useNavigate();
+  const metadata = getPageMetadata("login");
 
   useEffect(() => {
     // Если проверка аутентификации завершена и пользователь аутентифицирован, перенаправляем его
@@ -57,9 +60,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <>
-      <title>Вход в аккаунт — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
         <FormBlock className="w-full max-w-md">

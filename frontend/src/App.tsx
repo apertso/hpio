@@ -10,7 +10,9 @@ import {
 
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
+import { useOffline } from "./context/OfflineContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import OfflineIndicator from "./components/OfflineIndicator";
 
 import { useDropdown } from "./hooks/useDropdown";
 import DropdownOverlay from "./components/DropdownOverlay";
@@ -44,6 +46,7 @@ const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
 const TermsPage = React.lazy(() => import("./pages/TermsPage"));
 const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage"));
 const AboutPage = React.lazy(() => import("./pages/AboutPage"));
+const DownloadPage = React.lazy(() => import("./pages/DownloadPage"));
 
 const VerificationBanner = React.lazy(
   () => import("./components/VerificationBanner")
@@ -69,6 +72,7 @@ const ThemeSwitcher = () => {
 // Компонент навигации, который зависит от статуса аутентификации
 const Navigation: React.FC = () => {
   const { isAuthenticated, user, logout, token } = useAuth();
+  const { isOffline } = useOffline();
   const location = useLocation();
   const {
     isOpen: isUserPopoverOpen,
@@ -130,6 +134,11 @@ const Navigation: React.FC = () => {
             </Link>
           </div>
           <div className="flex items-center space-x-3 md:space-x-4">
+            {isOffline && (
+              <div className="hidden md:block">
+                <OfflineIndicator />
+              </div>
+            )}
             <div className="md:hidden relative" ref={mobileMenuRef}>
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -172,6 +181,9 @@ const Navigation: React.FC = () => {
                   >
                     Категории
                   </Link>
+                  <div className="px-4 py-2">
+                    <OfflineIndicator className="justify-center" />
+                  </div>
                 </div>
               </DropdownOverlay>
             </div>
@@ -327,6 +339,7 @@ function App() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/download" element={<DownloadPage />} />
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<HomePage />} />

@@ -9,11 +9,14 @@ import Spinner from "../components/Spinner";
 import logger from "../utils/logger";
 import getErrorMessage from "../utils/getErrorMessage";
 import RadioButton from "../components/RadioButton";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const PaymentEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditMode = !!id;
+  const metadata = getPageMetadata("payments"); // Using payments metadata for edit pages
 
   // New state
   const [initialData, setInitialData] = useState<PaymentData | null>(null);
@@ -76,76 +79,79 @@ const PaymentEditPage: React.FC = () => {
       : false;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center mb-6">
-        <button
-          onClick={handleCancel}
-          className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"
-          aria-label="Назад"
-        >
-          <ArrowLeftIcon className="h-6 w-6" />
-        </button>
-        <h2 className="text-2xl font-bold ml-4 text-gray-900 dark:text-white flex items-center gap-3">
-          {headerText}
-          {seriesInactive && (
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600">
-              Серия неактивна
-            </span>
-          )}
-        </h2>
-      </div>
-
-      <FormBlock>
-        {isLoading ? (
-          <div className="flex justify-center items-center h-40">
-            <Spinner />
-          </div>
-        ) : error ? (
-          <div
-            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative"
-            role="alert"
+    <>
+      <PageMeta {...metadata} />
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center mb-6">
+          <button
+            onClick={handleCancel}
+            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"
+            aria-label="Назад"
           >
-            {error}
-          </div>
-        ) : (
-          <>
-            {isEditMode && isSeriesPayment && (
-              <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Это повторяющийся платеж. Что вы хотите изменить?
-                </h4>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <RadioButton
-                    id="edit-single"
-                    name="edit-scope"
-                    value="single"
-                    checked={editScope === "single"}
-                    onChange={() => setEditScope("single")}
-                    label="Только этот платеж"
-                  />
-                  <RadioButton
-                    id="edit-series"
-                    name="edit-scope"
-                    value="series"
-                    checked={editScope === "series"}
-                    onChange={() => setEditScope("series")}
-                    label="Этот и все будущие платежи"
-                  />
-                </div>
-              </div>
+            <ArrowLeftIcon className="h-6 w-6" />
+          </button>
+          <h2 className="text-2xl font-bold ml-4 text-gray-900 dark:text-white flex items-center gap-3">
+            {headerText}
+            {seriesInactive && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600">
+                Серия неактивна
+              </span>
             )}
-            <PaymentForm
-              paymentId={id}
-              onSuccess={handleSuccess}
-              onCancel={handleCancel}
-              initialData={initialData}
-              editScope={isSeriesPayment ? editScope : "single"}
-              isSeriesInactive={seriesInactive}
-            />
-          </>
-        )}
-      </FormBlock>
-    </div>
+          </h2>
+        </div>
+
+        <FormBlock>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-40">
+              <Spinner />
+            </div>
+          ) : error ? (
+            <div
+              className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative"
+              role="alert"
+            >
+              {error}
+            </div>
+          ) : (
+            <>
+              {isEditMode && isSeriesPayment && (
+                <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    Это повторяющийся платеж. Что вы хотите изменить?
+                  </h4>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <RadioButton
+                      id="edit-single"
+                      name="edit-scope"
+                      value="single"
+                      checked={editScope === "single"}
+                      onChange={() => setEditScope("single")}
+                      label="Только этот платеж"
+                    />
+                    <RadioButton
+                      id="edit-series"
+                      name="edit-scope"
+                      value="series"
+                      checked={editScope === "series"}
+                      onChange={() => setEditScope("series")}
+                      label="Этот и все будущие платежи"
+                    />
+                  </div>
+                </div>
+              )}
+              <PaymentForm
+                paymentId={id}
+                onSuccess={handleSuccess}
+                onCancel={handleCancel}
+                initialData={initialData}
+                editScope={isSeriesPayment ? editScope : "single"}
+                isSeriesInactive={seriesInactive}
+              />
+            </>
+          )}
+        </FormBlock>
+      </div>
+    </>
   );
 };
 

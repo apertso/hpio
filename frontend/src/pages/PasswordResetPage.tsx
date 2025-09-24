@@ -6,12 +6,15 @@ import logger from "../utils/logger";
 import Spinner from "../components/Spinner";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
+import PageMeta from "../components/PageMeta";
+import { getPageMetadata } from "../utils/pageMetadata";
 
 const PasswordResetPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null); // Сообщение об успехе или ошибке
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const metadata = getPageMetadata("forgot-password");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,9 +52,7 @@ const PasswordResetPage: React.FC = () => {
 
   return (
     <>
-      <title>Восстановление пароля — Хочу Плачу</title>
-
-      <meta name="robots" content="noindex, nofollow" />
+      <PageMeta {...metadata} />
 
       <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
         <FormBlock className="w-full max-w-md">

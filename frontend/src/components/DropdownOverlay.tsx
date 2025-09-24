@@ -51,7 +51,7 @@ const DropdownOverlay: React.FC<DropdownOverlayProps> = ({
       let left = align === "right" ? a.right - o.width : a.left;
       let transformOrigin = align === "right" ? "top right" : "top left";
 
-      // Если не влезает вниз — показываем сверху
+      // Если не влезает вниз - показываем сверху
       if (top + o.height > window.innerHeight) {
         top = a.top - o.height - offset;
         transformOrigin = align === "right" ? "bottom right" : "bottom left";

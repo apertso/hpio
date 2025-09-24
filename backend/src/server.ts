@@ -1,5 +1,7 @@
 import { initTracing } from "./config/tracing";
-initTracing(); // 👈 MUST BE THE FIRST LINE
+if (process.env.NODE_ENV === "production") {
+  initTracing(); // 👈 MUST BE THE FIRST LINE
+}
 
 import express from "express";
 import cors from "cors";
@@ -9,21 +11,24 @@ import apiRoutes from "./routes";
 import { setupCronJobs } from "./utils/cronJobs";
 import logger from "./config/logger";
 import { errorHandler } from "./middleware/errorMiddleware"; // 👈 1. Import the new middleware
-import path from "path"; // Для работы с путями файлов
 
 const app = express();
 
 // Middleware
 const allowedOrigins = [
   config.frontendUrl || "http://localhost:5173", // Используем URL фронтенда из конфигурации для поддержки разных окружений (dev, prod)
-  "tauri://localhost",
-  "https://tauri.localhost",
+  "http://tauri.localhost",
   ...config.allowedOrigins, // Дополнительные источники из переменных окружения
 ];
 
 app.use(
   cors({
-    origin: allowedOrigins, // Поддержка множественных источников, включая Tauri приложения
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS blocked: not allowed"));
+    },
   })
 );
 app.use(express.json()); // Для парсинга JSON-тела запросов

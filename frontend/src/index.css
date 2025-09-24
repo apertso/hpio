@@ -22,6 +22,11 @@ body {
   overflow-x: hidden;
 }
 
+/* Safe area support - applied conditionally via JavaScript */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
 :root {
   font-size: 14px;
 }

@@ -27,6 +27,7 @@ import {
 import axiosInstance from "./api/axiosInstance";
 import { PHOTO_URL } from "./api/userApi";
 import { useReset } from "./context/ResetContext";
+import { isTauriMobile } from "./utils/platform";
 
 // Replace static page imports with lazy imports
 const HomePage = React.lazy(() => import("./pages/HomePage"));
@@ -296,8 +297,12 @@ function App() {
     }
   };
 
+  const headerClassName = `flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20${
+    isTauriMobile() ? " safe-area-top" : ""
+  }`;
+
   const header = (
-    <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20">
+    <header className={headerClassName}>
       <a
         href={isAuthenticated ? "/dashboard" : "/"}
         onClick={handleLogoClick}

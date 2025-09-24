@@ -11,9 +11,10 @@
     "tauri": "tauri",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "android:build:arm64": "npx tauri android build --apk --target aarch64 --split-per-abi",
+    "android:build:arm64": "tauri android build --apk --target aarch64 --split-per-abi",
     "android:build:universal": "tauri android build --apk",
-    "android:build:release": "tauri android build --split-per-abi"
+    "android:build:release": "tauri android build --split-per-abi",
+    "android:build:debug": "tauri android build --debug"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

@@ -180,7 +180,7 @@ const PaymentsPage: React.FC = () => {
   // Effect to trigger the fetch on mount
   useEffect(() => {
     executeFetchAllPayments();
-  }, [executeFetchAllPayments]); // Dependency on executeFetchAllPayments
+  }, []); // Removed executeFetchAllPayments to prevent infinite loop
 
   const navigate = useNavigate();
 

@@ -24,7 +24,7 @@ const useCategories = () => {
 
   useEffect(() => {
     fetchCategories();
-  }, [fetchCategories]);
+  }, []); // Removed fetchCategories to prevent infinite loop
 
   return { categories, isLoading, error, fetchCategories };
 };

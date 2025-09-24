@@ -140,7 +140,7 @@ const CategoriesPage: React.FC = () => {
   // Effect to trigger the fetch on mount
   useEffect(() => {
     executeFetchCategories();
-  }, [executeFetchCategories]); // Dependency on executeFetchCategories
+  }, []); // Removed executeFetchCategories to prevent infinite loop
 
   const navigate = useNavigate();
 

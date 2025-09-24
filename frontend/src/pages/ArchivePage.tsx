@@ -227,7 +227,7 @@ const ArchivePage: React.FC = () => {
   // Effect to trigger the fetch on mount
   useEffect(() => {
     executeFetchArchivedPayments();
-  }, [executeFetchArchivedPayments]); // Dependency on executeFetchArchivedPayments
+  }, []); // Removed executeFetchArchivedPayments to prevent infinite loop
 
   // TODO: Состояние для фильтров и сортировки архива (если реализовано на бэкенде)
   // const [filters, setFilters] = useState({ status: '', categoryId: '', search: '' });

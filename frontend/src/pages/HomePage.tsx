@@ -231,7 +231,7 @@ const HomePage: React.FC = () => {
   // Effect to trigger the fetch on mount and when upcomingDays changes
   useEffect(() => {
     executeFetchUpcomingPayments(upcomingDays);
-  }, [executeFetchUpcomingPayments, upcomingDays, resetKey]);
+  }, [upcomingDays, resetKey]); // Removed executeFetchUpcomingPayments to prevent infinite loop
 
   // --- Состояние для данных дашборда ---
   const [stats, setStats] = useState<DashboardStats | null>(null);

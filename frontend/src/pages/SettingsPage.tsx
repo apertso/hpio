@@ -160,12 +160,16 @@ const SettingsPage: React.FC = () => {
   const [deleteFeedbackText, setDeleteFeedbackText] = useState("");
   const [deleteFile, setDeleteFile] = useState<File | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [mobileOverride, setMobileOverride] = useState<string>(() =>
+    typeof window !== "undefined"
+      ? localStorage.getItem("dev_mobile_override") || "—"
+      : "—"
+  );
 
   const {
     register: registerSettings,
     handleSubmit: handleSettingsSubmit,
     formState: { errors: settingsErrors, isSubmitting: isSettingsSubmitting },
-    setError: setSettingsError,
     control: settingsControl,
     reset: resetSettingsForm,
   } = useForm<SettingsInputs>({
@@ -176,7 +180,6 @@ const SettingsPage: React.FC = () => {
     register: registerPassword,
     handleSubmit: handlePasswordSubmit,
     formState: { errors: passwordErrors, isSubmitting: isPasswordSubmitting },
-    setError: setPasswordError,
     reset: resetPasswordForm,
   } = useForm<PasswordInputs>({
     resolver: zodResolver(passwordSchema),
@@ -235,7 +238,7 @@ const SettingsPage: React.FC = () => {
       }
     } catch (error) {
       const message = getErrorMessage(error);
-      setSettingsError("root.serverError", { type: "manual", message });
+      showToast(message, "error");
     }
   };
 
@@ -249,7 +252,7 @@ const SettingsPage: React.FC = () => {
       showToast("Пароль успешно изменен.", "success");
     } catch (error) {
       const message = getErrorMessage(error);
-      setPasswordError("root.serverError", { type: "manual", message });
+      showToast(message, "error");
     }
   };
 
@@ -283,6 +286,18 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleMobileOverrideChange = (value: string | null) => {
+    const newValue = value || "—";
+    setMobileOverride(newValue);
+    if (newValue === "—") {
+      localStorage.removeItem("dev_mobile_override");
+    } else {
+      localStorage.setItem("dev_mobile_override", newValue);
+    }
+    // Force page reload to apply the mobile/desktop mode changes
+    window.location.reload();
+  };
+
   return (
     <>
       <PageMeta {...metadata} />
@@ -301,11 +316,6 @@ const SettingsPage: React.FC = () => {
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
                 Профиль и уведомления
               </h3>
-              {settingsErrors.root?.serverError && (
-                <p className="text-red-500 text-sm mb-4">
-                  {settingsErrors.root.serverError.message}
-                </p>
-              )}
               <div className="flex flex-col md:flex-row items-start space-y-6 md:space-y-0 md:space-x-6">
                 {/* Avatar Section */}
                 <div className="relative flex-shrink-0">
@@ -475,11 +485,6 @@ const SettingsPage: React.FC = () => {
                     {...registerPassword("confirmPassword")}
                     error={passwordErrors.confirmPassword?.message}
                   />
-                  {passwordErrors.root?.serverError && (
-                    <p className="text-red-500 text-sm">
-                      {passwordErrors.root.serverError.message}
-                    </p>
-                  )}
                   <div className="text-right">
                     <button
                       type="submit"
@@ -589,6 +594,35 @@ const SettingsPage: React.FC = () => {
               )}
             </div>
           </FormBlock>
+
+          {/* Development Section */}
+          {import.meta.env.DEV && (
+            <FormBlock className="w-full">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                Разработка
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Мобильный режим
+                  </label>
+                  <Select
+                    options={[
+                      { label: "—", value: "—" },
+                      { label: "Включен", value: "on" },
+                      { label: "Выключен", value: "off" },
+                    ]}
+                    value={mobileOverride}
+                    onChange={handleMobileOverrideChange}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Принудительно включает/выключает мобильный интерфейс для
+                    тестирования
+                  </p>
+                </div>
+              </div>
+            </FormBlock>
+          )}
         </div>
         <p className="mt-12 text-center text-xs text-gray-500 dark:text-gray-600">
           Версия приложения: 0.0.8
@@ -626,11 +660,6 @@ const SettingsPage: React.FC = () => {
             {...registerPassword("confirmPassword")}
             error={passwordErrors.confirmPassword?.message}
           />
-          {passwordErrors.root?.serverError && (
-            <p className="text-red-500 text-sm">
-              {passwordErrors.root.serverError.message}
-            </p>
-          )}
           <div className="text-right">
             <button
               type="submit"

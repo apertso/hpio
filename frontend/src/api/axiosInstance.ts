@@ -1,4 +1,5 @@
 import axios from "axios";
+import { syncService, ConnectionStatus } from "../utils/syncService";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api", // URL вашего бэкенда
@@ -22,6 +23,21 @@ axiosInstance.interceptors.request.use(
   },
   (error) => {
     // Обработка ошибок запроса
+    return Promise.reject(error);
+  }
+);
+
+// Интерцептор для проверки оффлайн режима перед запросами
+axiosInstance.interceptors.request.use(
+  (config) => {
+    // Проверяем, находится ли приложение в оффлайн режиме
+    if (syncService.getConnectionStatus() === ConnectionStatus.OFFLINE) {
+      // Создаем кастомное событие, которое будет поймано OfflineContext
+      window.dispatchEvent(new CustomEvent("offline-api-request"));
+    }
+    return config;
+  },
+  (error) => {
     return Promise.reject(error);
   }
 );

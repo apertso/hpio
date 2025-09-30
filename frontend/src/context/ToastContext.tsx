@@ -32,7 +32,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {ReactDOM.createPortal(
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-4 space-y-2">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-4 space-y-2 safe-area-bottom">
           {toasts.map((toast) => (
             <Toast key={toast.id} {...toast} onClose={handleClose} />
           ))}

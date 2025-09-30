@@ -52,7 +52,7 @@ const LoginPage: React.FC = () => {
   // Пока идет проверка токена, показываем спиннер, чтобы избежать мелькания формы
   if (authLoading) {
     return (
-      <div className="flex justify-center items-center h-full">
+      <div className="flex flex-1 justify-center items-center">
         <Spinner size="lg" />
       </div>
     );

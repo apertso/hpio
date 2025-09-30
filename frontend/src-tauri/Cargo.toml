@@ -25,3 +25,4 @@ tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-http = "2"
+tauri-plugin-os = "2"

@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import { useToast } from "../context/ToastContext";
 
 const registerSchema = z
   .object({
@@ -37,6 +38,7 @@ type RegisterFormInputs = z.infer<typeof registerSchema>;
 const RegisterPage: React.FC = () => {
   const { register, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const metadata = getPageMetadata("register");
 
   const {
@@ -75,14 +77,14 @@ const RegisterPage: React.FC = () => {
       if (message.includes("уже существует")) {
         setError("email", { type: "server", message });
       } else {
-        setError("root.serverError", { type: "server", message });
+        showToast(message, "error");
       }
     }
   };
 
   if (authLoading) {
     return (
-      <div className="flex justify-center items-center h-full">
+      <div className="flex flex-1 justify-center items-center">
         <Spinner size="lg" />
       </div>
     );
@@ -97,16 +99,6 @@ const RegisterPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
             Регистрация
           </h2>
-          {errors.root?.serverError && (
-            <div
-              className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
-              role="alert"
-            >
-              <span className="block sm:inline">
-                {errors.root.serverError.message}
-              </span>
-            </div>
-          )}
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-4"

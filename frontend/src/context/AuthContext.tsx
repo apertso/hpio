@@ -12,6 +12,7 @@ import axiosInstance from "../api/axiosInstance"; // Ваш настроенны
 import { useNavigate } from "react-router-dom";
 import logger from "../utils/logger"; // Используем простой логгер на фронтенде
 import userApi from "../api/userApi"; // <-- ADD THIS
+import { isTauriMobile } from "../utils/platform";
 
 export interface User {
   id: string;
@@ -82,7 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
     delete axiosInstance.defaults.headers.common["Authorization"]; // Удаляем заголовок Authorization
     logger.info("Logout successful");
-    navigate("/login"); // Перенаправить на страницу входа после выхода
+    // Для мобильного приложения перенаправляем на / (страница входа), для десктопа - на /login
+    navigate(isTauriMobile() ? "/" : "/login");
   }, [navigate]); // Зависимость от navigate
 
   // Эффект для проверки токена при загрузке приложения и настройки Axios

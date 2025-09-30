@@ -12,6 +12,10 @@
   --animate-subtle-pulse: subtle-pulse 4s ease-in-out infinite;
 }
 
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top);
+}
+
 html,
 body {
   height: 100%;
@@ -22,9 +26,8 @@ body {
   overflow-x: hidden;
 }
 
-/* Safe area support - applied conditionally via JavaScript */
 .safe-area-top {
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--safe-area-inset-top);
 }
 
 :root {

@@ -10,9 +10,7 @@ import {
 
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
-import { useOffline } from "./context/OfflineContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import OfflineIndicator from "./components/OfflineIndicator";
 
 import { useDropdown } from "./hooks/useDropdown";
 import DropdownOverlay from "./components/DropdownOverlay";
@@ -28,6 +26,7 @@ import axiosInstance from "./api/axiosInstance";
 import { PHOTO_URL } from "./api/userApi";
 import { useReset } from "./context/ResetContext";
 import { isTauriMobile } from "./utils/platform";
+import { getPageBackgroundClasses } from "./utils/pageBackgrounds";
 
 // Replace static page imports with lazy imports
 const HomePage = React.lazy(() => import("./pages/HomePage"));
@@ -40,6 +39,7 @@ const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
 const PasswordResetPage = React.lazy(() => import("./pages/PasswordResetPage"));
 const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage"));
 const LandingPage = React.lazy(() => import("./pages/LandingPage"));
+const MobileLandingPage = React.lazy(() => import("./pages/MobileLandingPage"));
 const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
 const PaymentEditPage = React.lazy(() => import("./pages/PaymentEditPage"));
 const CategoryEditPage = React.lazy(() => import("./pages/CategoryEditPage"));
@@ -74,7 +74,6 @@ const ThemeSwitcher = () => {
 // Компонент навигации, который зависит от статуса аутентификации
 const Navigation: React.FC = () => {
   const { isAuthenticated, user, logout, token } = useAuth();
-  const { isOffline } = useOffline();
   const location = useLocation();
   const {
     isOpen: isUserPopoverOpen,
@@ -136,11 +135,6 @@ const Navigation: React.FC = () => {
             </Link>
           </div>
           <div className="flex items-center space-x-3 md:space-x-4">
-            {isOffline && (
-              <div className="hidden md:block">
-                <OfflineIndicator />
-              </div>
-            )}
             <div className="md:hidden relative" ref={mobileMenuRef}>
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -183,9 +177,6 @@ const Navigation: React.FC = () => {
                   >
                     Категории
                   </Link>
-                  <div className="px-4 py-2">
-                    <OfflineIndicator className="justify-center" />
-                  </div>
                 </div>
               </DropdownOverlay>
             </div>
@@ -286,6 +277,19 @@ function App() {
   const { triggerReset } = useReset();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
 
+  // Set safe area inset for mobile development override
+  useEffect(() => {
+    const override = localStorage.getItem("dev_mobile_override");
+    if (override === "on") {
+      document.documentElement.style.setProperty(
+        "--safe-area-inset-top",
+        "20px"
+      );
+    } else {
+      document.documentElement.style.removeProperty("--safe-area-inset-top");
+    }
+  }, []);
+
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const targetUrl = isAuthenticated ? "/dashboard" : "/";
@@ -297,9 +301,7 @@ function App() {
     }
   };
 
-  const headerClassName = `flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20${
-    isTauriMobile() ? " safe-area-top" : ""
-  }`;
+  const headerClassName = `flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20`;
 
   const header = (
     <header className={headerClassName}>
@@ -331,12 +333,19 @@ function App() {
     </header>
   );
 
+  const mainClassName =
+    "flex flex-col flex-1 justify-center overflow-auto" +
+    (isTauriMobile() && location.pathname === "/" ? "" : " px-4 sm:px-10 py-5");
+
   const mainContent = (
-    <main className="px-4 sm:px-10 flex flex-1 justify-center py-5">
+    <main className={mainClassName}>
       <div className="flex flex-col flex-1 w-full">
         <Routes>
           {/* Public routes */}
-          <Route path="/" element={<LandingPage />} />
+          <Route
+            path="/"
+            element={isTauriMobile() ? <MobileLandingPage /> : <LandingPage />}
+          />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<PasswordResetPage />} />
@@ -485,27 +494,40 @@ function App() {
     </footer>
   );
 
+  // Hide header on mobile landing page
+  const showHeader = !(isTauriMobile() && location.pathname === "/");
+
   if (isAuthenticated) {
     // --- Лэйаут для авторизованного пользователя (фиксированный хедер) ---
+    const pageBackgroundClasses = getPageBackgroundClasses(location.pathname);
+    const containerClassName = `relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans${
+      pageBackgroundClasses ? ` ${pageBackgroundClasses}` : ""
+    }${isTauriMobile() ? " safe-area-top" : ""}`;
+
     return (
-      <div className="relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans">
-        {header}
+      <div className={containerClassName}>
+        {showHeader && header}
         <VerificationBanner />
-        <div className="flex-1 relative overflow-hidden">
-          <div className="absolute inset-0 overflow-y-auto flex flex-col">
+        <div className="flex flex-col flex-1 overflow-auto">
+          <div className="flex flex-col flex-1">
             {mainContent}
-            {footer}
+            {!isTauriMobile() && footer}
           </div>
         </div>
       </div>
     );
   } else {
     // --- Лэйаут для гостя (скролл всей страницы) ---
+    const pageBackgroundClasses = getPageBackgroundClasses(location.pathname);
+    const containerClassName = `relative flex min-h-screen flex-col bg-white dark:bg-dark-bg group/design-root font-sans${
+      pageBackgroundClasses ? ` ${pageBackgroundClasses}` : ""
+    }${isTauriMobile() ? " safe-area-top" : ""}`;
+
     return (
-      <div className="relative flex min-h-screen flex-col bg-white dark:bg-dark-bg group/design-root font-sans">
-        {header}
+      <div className={containerClassName}>
+        {showHeader && header}
         {mainContent}
-        {footer}
+        {!isTauriMobile() && footer}
       </div>
     );
   }

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { syncService, ConnectionStatus } from "../utils/syncService";
-import { offlineStorage } from "../utils/offlineStorage";
 import logger from "../utils/logger";
+import { useOffline } from "../context/OfflineContext";
 
 interface UseApiResult<T> {
   data: T | null;
@@ -27,6 +27,7 @@ function useApi<T>(
   const [cachedData, setCachedData] = useState<T | null>(null);
 
   const { onSuccess, onError, enableOffline = true, cacheKey } = options;
+  const { showOfflineToast } = useOffline();
 
   const connectionStatus = syncService.getConnectionStatus();
   const isOffline = connectionStatus === ConnectionStatus.OFFLINE;
@@ -57,21 +58,18 @@ function useApi<T>(
             // If API fails and offline is enabled, try to get cached data
             if (enableOffline && cachedData) {
               setData(cachedData);
-              const error = new Error("Using cached data - API unavailable");
-              setError(error);
-              onError?.(error);
+              setError(null); // Не показывать ошибку, использовать кэшированные данные тихо
               return cachedData;
             }
 
             throw apiError;
           }
         } else {
-          // Offline mode - try to get cached data
+          // Offline mode - show toast and try to get cached data
+          showOfflineToast();
           if (enableOffline && cachedData) {
             setData(cachedData);
-            const error = new Error("Offline mode - using cached data");
-            setError(error);
-            onError?.(error);
+            setError(null); // Не показывать ошибку, только тост
             return cachedData;
           }
 
@@ -86,6 +84,7 @@ function useApi<T>(
         // Try to get cached data if there's an error and no data is currently set
         if (!data && cachedData && enableOffline) {
           setData(cachedData);
+          setError(null); // Не показывать ошибку, использовать кэшированные данные
           logger.info("Using cached data due to error");
         } else {
           setData(null);
@@ -106,6 +105,7 @@ function useApi<T>(
       cachedData,
       data,
       cacheKey,
+      showOfflineToast,
     ]
   );
 

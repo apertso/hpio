@@ -8,6 +8,7 @@ import React, {
 import { syncService, ConnectionStatus } from "../utils/syncService";
 import { offlineStorage } from "../utils/offlineStorage";
 import logger from "../utils/logger";
+import { useToast } from "./ToastContext";
 
 interface OfflineContextType {
   connectionStatus: ConnectionStatus;
@@ -19,6 +20,7 @@ interface OfflineContextType {
   clearOfflineData: () => Promise<void>;
   exportOfflineData: () => Promise<any>;
   importOfflineData: (data: any) => Promise<void>;
+  showOfflineToast: () => void;
 }
 
 interface SyncStatus {
@@ -44,6 +46,7 @@ interface OfflineProviderProps {
 export const OfflineProvider: React.FC<OfflineProviderProps> = ({
   children,
 }) => {
+  const { showToast } = useToast();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
     syncService.getConnectionStatus()
   );
@@ -55,11 +58,35 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
   const [lastSyncTime, setLastSyncTime] = useState<number | null>(
     syncService.getLastSyncTime()
   );
+  const [lastOfflineToastTime, setLastOfflineToastTime] = useState<number>(0);
+
+  // Функция для отображения тоста об отсутствии соединения с throttling
+  const showOfflineToast = () => {
+    const now = Date.now();
+    const timeSinceLastToast = now - lastOfflineToastTime;
+
+    // Показывать тост не чаще одного раза в минуту
+    if (timeSinceLastToast < 60 * 1000) {
+      return;
+    }
+
+    setLastOfflineToastTime(now);
+    showToast(
+      "Нет подключения к интернету. Приложение работает в режиме чтения с использованием ранее загруженных данных.",
+      "info",
+      5000
+    );
+  };
 
   useEffect(() => {
     const handleConnectionChange = (status: ConnectionStatus) => {
       setConnectionStatus(status);
       logger.info(`Connection status changed to: ${status}`);
+
+      // Show toast when going offline
+      if (status === ConnectionStatus.OFFLINE) {
+        showOfflineToast();
+      }
     };
 
     const handleSyncStart = () => {
@@ -103,6 +130,13 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
       });
     }
 
+    // Listen for offline API requests
+    const handleOfflineApiRequest = () => {
+      showOfflineToast();
+    };
+
+    window.addEventListener("offline-api-request", handleOfflineApiRequest);
+
     return () => {
       // Cleanup listeners
       syncService.onConnectionChange = undefined;
@@ -110,6 +144,10 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
       syncService.onSyncProgress = undefined;
       syncService.onSyncComplete = undefined;
       syncService.onSyncError = undefined;
+      window.removeEventListener(
+        "offline-api-request",
+        handleOfflineApiRequest
+      );
     };
   }, []);
 
@@ -176,6 +214,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
     clearOfflineData,
     exportOfflineData,
     importOfflineData,
+    showOfflineToast,
   };
 
   return (
@@ -184,4 +223,3 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
     </OfflineContext.Provider>
   );
 };
-

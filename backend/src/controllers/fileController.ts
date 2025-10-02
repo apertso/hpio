@@ -112,19 +112,16 @@ export const getFile = async (
       return res.status(404).send("File not found or access denied.");
     }
 
-    // Serve the file
-    res.sendFile(path.resolve(fileInfo.fullPath), (err) => {
-      if (err) {
-        logger.error(`Error sending file ${fileInfo.fullPath}:`, err);
-        // If the error is that the file doesn't exist, send 404
-        if ((err as any).code === "ENOENT") {
-          res.status(404).send("File not found.");
-        } else {
-          // For other errors, send 500
-          res.status(500).send("Error retrieving file.");
-        }
-      }
-    });
+    // Serve the file from buffer
+    res.setHeader(
+      "Content-Type",
+      fileInfo.mimeType || "application/octet-stream"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(fileInfo.fileName)}"`
+    );
+    res.send(fileInfo.data);
   } catch (error) {
     logger.error(
       `Error retrieving file for payment ${paymentId} for user ${userId}:`,

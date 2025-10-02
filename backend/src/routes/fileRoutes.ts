@@ -8,8 +8,6 @@ import {
   detachFileFromPayment, // Функции для файлов
 } from "../services/fileService"; // Сервис файлов
 import logger from "../config/logger";
-import path from "path";
-import { config } from "../config/appConfig";
 
 const router = Router();
 router.use(protect);
@@ -75,40 +73,24 @@ router.get("/payment/:paymentId", async (req: Request, res: Response) => {
     const fileInfo = await getPaymentFileInfo(paymentId, userId);
 
     if (!fileInfo) {
-      // getPaymentFileInfo выбрасывает ошибку, если файл не найден в ФС
-      // или возвращает null, если платеж не найден / нет прав / нет файла
       return res
         .status(404)
         .json({ message: "Файл не найден или нет прав доступа." });
     }
 
-    // Отправляем файл как скачиваемый ресурс
-    res.download(
-      fileInfo.fullPath,
-      fileInfo.fileName,
-      {
-        headers: {
-          "Content-Type": fileInfo.mimeType || "application/octet-stream",
-        },
-      },
-      (err) => {
-        // Добавил headers
-        if (err) {
-          // Если произошла ошибка при отправке файла (например, файл удален из ФС после проверки access)
-          logger.error(`Error sending file ${fileInfo.fullPath}:`, err);
-          // Проверяем, не является ли ошибка связана с отсутствием файла
-          if ((err as any).code === "ENOENT") {
-            res.status(404).json({ message: "Файл не найден на сервере." });
-          } else {
-            res.status(500).json({ message: "Не удалось скачать файл." });
-          }
-        }
-      }
+    // Отправляем файл из буфера
+    res.setHeader(
+      "Content-Type",
+      fileInfo.mimeType || "application/octet-stream"
     );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(fileInfo.fileName)}"`
+    );
+    res.send(fileInfo.data);
   } catch (error: any) {
     logger.error(`Error getting payment file ${paymentId}:`, error);
-    if (error.message.includes("Файл не найден на сервере")) {
-      // Специфическая ошибка из сервиса
+    if (error.message.includes("Файл не найден")) {
       res.status(404).json({ message: error.message });
     } else {
       res.status(500).json({

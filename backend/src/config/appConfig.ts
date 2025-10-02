@@ -29,6 +29,15 @@ export const config = {
     logging: false, // Установите true для логирования SQL запросов (полезно при отладке)
   },
   uploadDir: process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads"),
+  storage: {
+    type: process.env.STORAGE_TYPE || "local", // 'local' или 'bunny'
+    bunny: {
+      apiKey: process.env.BUNNY_STORAGE_API_KEY || "",
+      storageZone: process.env.BUNNY_STORAGE_ZONE || "",
+      region: process.env.BUNNY_STORAGE_REGION || "", // de, ny, la, sg, etc.
+      cdnHostname: process.env.BUNNY_CDN_HOSTNAME || "",
+    },
+  },
   smtp: {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || "465", 10),

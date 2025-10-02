@@ -10,6 +10,7 @@ import path from "path";
 import fs from "fs/promises";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./emailService";
 import crypto from "crypto";
+import { StorageFactory } from "./storage/StorageFactory";
 
 // Вспомогательная функция для валидации пароля
 const validatePassword = (password: string): string | null => {
@@ -359,25 +360,33 @@ export const attachPhotoToUser = async (
   userId: string,
   file: Express.Multer.File
 ) => {
+  const storage = StorageFactory.getStorage();
+
   const user = (await db.User.findByPk(userId)) as UserInstance;
   if (!user) {
-    // Если пользователь не найден, удаляем загруженный файл
-    await fs.rm(path.join(config.uploadDir, "users", userId, file.filename));
     throw new Error("Пользователь не найден.");
   }
 
   // Если у пользователя уже есть фото, удаляем старое
   if (user.photoPath) {
     try {
-      const oldFileName = path.basename(user.photoPath);
-      await fs.rm(path.join(config.uploadDir, "users", userId, oldFileName));
+      await storage.delete(user.photoPath);
     } catch (e) {
       logger.error(`Could not delete old profile photo: ${user.photoPath}`, e);
     }
   }
 
+  // Генерируем уникальное имя файла
+  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+  const fileExtension = path.extname(file.originalname);
+  const newFileName = `profile-${uniqueSuffix}${fileExtension}`;
+
   // Относительный путь для сохранения в БД (используем / для совместимости)
-  const relativePath = ["users", userId, "profile", file.filename].join("/");
+  const relativePath = ["users", userId, "profile", newFileName].join("/");
+
+  // Загружаем файл через стратегию
+  await storage.upload(relativePath, file.buffer, file.mimetype);
+
   user.photoPath = relativePath;
   await user.save();
 
@@ -416,21 +425,18 @@ export const deleteUserAccount = async (userId: string) => {
     throw error;
   }
 
-  // После успешного удаления из БД удаляем файлы пользователя из файловой системы.
+  // После успешного удаления из БД удаляем файлы пользователя из хранилища.
   // Эта операция выполняется вне транзакции.
+  const storage = StorageFactory.getStorage();
   try {
-    const userUploadsDir = path.join(config.uploadDir, "users", userId);
-    await fs.rm(userUploadsDir, { recursive: true, force: true });
+    const userUploadsPath = `users/${userId}`;
+    await storage.delete(userUploadsPath);
     logger.info(`User upload directory deleted for user ${userId}`);
   } catch (error: any) {
-    // Ошибка не является критической, если директория просто не существует.
-    // Логируем только другие типы ошибок.
-    if (error.code !== "ENOENT") {
-      logger.error(
-        `Error deleting user upload directory for user ${userId}:`,
-        error
-      );
-    }
+    logger.error(
+      `Error deleting user upload directory for user ${userId}:`,
+      error
+    );
   }
 
   logger.info(`User account deleted for user ID: ${userId}`);

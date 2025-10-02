@@ -3,8 +3,11 @@ import db from "../models";
 import logger from "../config/logger";
 import path from "path";
 import { config } from "../config/appConfig";
+import { StorageFactory } from "../services/storage/StorageFactory";
 
 export const createFeedback = async (req: Request, res: Response) => {
+  const storage = StorageFactory.getStorage();
+
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -17,11 +20,17 @@ export const createFeedback = async (req: Request, res: Response) => {
     }
 
     let attachmentPath: string | null = null;
-    if (req.file && req.file.path) {
-      attachmentPath = path
-        .relative(config.uploadDir, req.file.path)
-        .split(path.sep)
-        .join("/");
+    if (req.file && req.file.buffer) {
+      // Генерируем уникальное имя файла
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const fileExtension = path.extname(req.file.originalname);
+      const newFileName = `feedback-${uniqueSuffix}${fileExtension}`;
+
+      // Относительный путь
+      attachmentPath = ["users", userId, "feedback", newFileName].join("/");
+
+      // Загружаем файл через стратегию
+      await storage.upload(attachmentPath, req.file.buffer, req.file.mimetype);
     }
 
     const feedback = await (db as any).Feedback.create({

@@ -5,6 +5,7 @@ import path from "path";
 import { config } from "../config/appConfig";
 import fs from "fs";
 import crypto from "crypto";
+import { StorageFactory } from "../services/storage/StorageFactory";
 
 // Получить профиль пользователя
 export const getProfile = async (req: Request, res: Response) => {
@@ -100,19 +101,24 @@ export const uploadProfilePhoto = async (req: Request, res: Response) => {
 
 // Получить фото профиля
 export const getProfilePhoto = async (req: Request, res: Response) => {
+  const storage = StorageFactory.getStorage();
+
   try {
     const user = await authService.getUserProfile(req.user!.id);
     if (!user || !user.photoPath) {
       return res.status(404).send("Photo not found.");
     }
-    const photoFullPath = path.resolve(config.uploadDir, user.photoPath);
 
-    if (fs.existsSync(photoFullPath)) {
-      res.sendFile(photoFullPath);
-    } else {
-      logger.warn(`User photo not found on disk: ${photoFullPath}`);
-      res.status(404).send("Photo not found.");
+    const fileExists = await storage.exists(user.photoPath);
+    if (!fileExists) {
+      logger.warn(`User photo not found in storage: ${user.photoPath}`);
+      return res.status(404).send("Photo not found.");
     }
+
+    const downloadResult = await storage.download(user.photoPath);
+
+    res.setHeader("Content-Type", downloadResult.mimeType || "image/jpeg");
+    res.send(downloadResult.data);
   } catch (error: any) {
     logger.error(
       `Error getting profile photo for user ${req.user!.id}:`,

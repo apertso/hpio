@@ -31,11 +31,11 @@ const PageMeta: React.FC<PageMetaProps> = ({
   const defaultOgImage = `${baseUrl}/og-image.png`;
   const ogSiteName = "Хочу Плачу";
 
-  // Title logic: landing page uses title as-is, others use ogTitle + " — " + siteName
+  // Title logic: landing page uses title as-is, others use ogTitle + " - " + siteName
   const finalTitle =
     title ?? isLandingPage
       ? `${ogSiteName} - ${ogTitle}`
-      : `${ogTitle} — ${ogSiteName}`;
+      : `${ogTitle} - ${ogSiteName}`;
   const finalOgTitle = ogTitle || title;
   const finalOgDescription = ogDescription || description;
   const finalOgImage = ogImage || defaultOgImage;

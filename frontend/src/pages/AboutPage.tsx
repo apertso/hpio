@@ -74,7 +74,7 @@ const AboutPage: React.FC = () => {
 
           <div className="space-y-6 text-lg leading-relaxed">
             <p className="text-gray-700 dark:text-gray-300">
-              <strong>Хочу Плачу</strong> — это сервис для управления разовыми и
+              <strong>Хочу Плачу</strong> - это сервис для управления разовыми и
               регулярными платежами. Он помогает отслеживать расходы, получать
               напоминания и анализировать финансовую активность в удобном
               формате.

@@ -53,7 +53,7 @@ The system employs a multi-faceted approach to generate recurring payments, ensu
 
 1.  **Real-time Generation**: When a user marks a recurring payment as 'completed' or 'deletes' an instance, the system immediately attempts to generate the next payment in the series. This provides instant feedback in the UI.
 
-2.  **Scheduled Job (Cron)**: A daily background job acts as a safety net. Its primary purpose is to find "stuck" series—those that are active but have no upcoming or overdue payments. This can happen if a user hasn't interacted with the app for a long time. The job will:
+2.  **Scheduled Job (Cron)**: A daily background job acts as a safety net. Its primary purpose is to find "stuck" series - those that are active but have no upcoming or overdue payments. This can happen if a user hasn't interacted with the app for a long time. The job will:
     - Identify active series without any `upcoming` or `overdue` payments.
     - Calculate the correct next payment date based on the series' `rrule` and its last known payment.
     - **Crucially, it will check if a payment for the calculated date already exists before creating a new one to prevent duplicates.**

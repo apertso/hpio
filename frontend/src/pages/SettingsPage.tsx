@@ -162,8 +162,8 @@ const SettingsPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileOverride, setMobileOverride] = useState<string>(() =>
     typeof window !== "undefined"
-      ? localStorage.getItem("dev_mobile_override") || "—"
-      : "—"
+      ? localStorage.getItem("dev_mobile_override") || "-"
+      : "-"
   );
 
   const {
@@ -287,9 +287,9 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleMobileOverrideChange = (value: string | null) => {
-    const newValue = value || "—";
+    const newValue = value || "-";
     setMobileOverride(newValue);
-    if (newValue === "—") {
+    if (newValue === "-") {
       localStorage.removeItem("dev_mobile_override");
     } else {
       localStorage.setItem("dev_mobile_override", newValue);
@@ -608,7 +608,7 @@ const SettingsPage: React.FC = () => {
                   </label>
                   <Select
                     options={[
-                      { label: "—", value: "—" },
+                      { label: "-", value: "-" },
                       { label: "Включен", value: "on" },
                       { label: "Выключен", value: "off" },
                     ]}

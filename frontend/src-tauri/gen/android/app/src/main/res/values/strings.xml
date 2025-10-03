@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Хочу Плачу</string>
+    <string name="main_activity_title">Хочу Плачу</string>
+    <string name="notification_listener_service_label">Автоматизация платежей</string>
+</resources>

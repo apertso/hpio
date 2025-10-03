@@ -12,7 +12,11 @@ import {
   CheckBadgeIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/24/solid";
-import { LockClosedIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  LockClosedIcon,
+  TrashIcon,
+  BellAlertIcon,
+} from "@heroicons/react/24/outline";
 import userApi, { PHOTO_URL } from "../api/userApi";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
@@ -23,6 +27,11 @@ import Select from "../components/Select";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { submitFeedback } from "../api/feedbackApi";
+import { isTauriMobile } from "../utils/platform";
+import {
+  checkNotificationPermission,
+  openNotificationSettings,
+} from "../api/notificationPermission";
 
 // Схема для всех настроек профиля
 const settingsSchema = z.object({
@@ -165,6 +174,15 @@ const SettingsPage: React.FC = () => {
       ? localStorage.getItem("dev_mobile_override") || "-"
       : "-"
   );
+  const [notificationOnboardingOverride, setNotificationOnboardingOverride] =
+    useState<string>(() =>
+      typeof window !== "undefined"
+        ? localStorage.getItem("dev_show_notification_onboarding") || "-"
+        : "-"
+    );
+  const [notificationPermissionGranted, setNotificationPermissionGranted] =
+    useState(false);
+  const [isCheckingPermission, setIsCheckingPermission] = useState(false);
 
   const {
     register: registerSettings,
@@ -197,6 +215,25 @@ const SettingsPage: React.FC = () => {
       });
     }
   }, [user, resetSettingsForm]);
+
+  // Проверяем статус разрешения уведомлений (только Android)
+  useEffect(() => {
+    if (!isTauriMobile()) return;
+
+    const checkPermission = async () => {
+      setIsCheckingPermission(true);
+      try {
+        const status = await checkNotificationPermission();
+        setNotificationPermissionGranted(status.granted);
+      } catch (error) {
+        console.error("Failed to check notification permission:", error);
+      } finally {
+        setIsCheckingPermission(false);
+      }
+    };
+
+    checkPermission();
+  }, []);
 
   const onDrop = async (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) return;
@@ -296,6 +333,37 @@ const SettingsPage: React.FC = () => {
     }
     // Force page reload to apply the mobile/desktop mode changes
     window.location.reload();
+  };
+
+  const handleNotificationOnboardingOverride = (value: string | null) => {
+    const newValue = value || "-";
+    setNotificationOnboardingOverride(newValue);
+    if (newValue === "-") {
+      localStorage.removeItem("dev_show_notification_onboarding");
+    } else {
+      localStorage.setItem("dev_show_notification_onboarding", newValue);
+    }
+    if (newValue === "on") {
+      // Также сбросим флаг завершения onboarding
+      localStorage.removeItem("notification_onboarding_completed");
+    }
+  };
+
+  const handleOpenNotificationSettings = async () => {
+    try {
+      await openNotificationSettings();
+      showToast("Откройте настройки и предоставьте доступ", "info");
+      // Перепроверяем разрешение через 2 секунды
+      setTimeout(async () => {
+        const status = await checkNotificationPermission();
+        setNotificationPermissionGranted(status.granted);
+        if (status.granted) {
+          showToast("Доступ к уведомлениям предоставлен!", "success");
+        }
+      }, 2000);
+    } catch (error) {
+      showToast("Не удалось открыть настройки", "error");
+    }
   };
 
   return (
@@ -595,6 +663,76 @@ const SettingsPage: React.FC = () => {
             </div>
           </FormBlock>
 
+          {/* Notification Automation Section (Android only) */}
+          {isTauriMobile() && (
+            <FormBlock className="w-full">
+              <div className="flex items-start gap-4 mb-6">
+                <div className="flex-shrink-0 w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+                  <BellAlertIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    Автоматизация уведомлений
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Автоматически создавайте записи о платежах на основе
+                    банковских уведомлений
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Permission Status */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Доступ к уведомлениям
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {isCheckingPermission
+                        ? "Проверка..."
+                        : notificationPermissionGranted
+                        ? "Предоставлен"
+                        : "Не предоставлен"}
+                    </p>
+                  </div>
+                  {!notificationPermissionGranted && !isCheckingPermission && (
+                    <button
+                      onClick={handleOpenNotificationSettings}
+                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                    >
+                      Настроить
+                    </button>
+                  )}
+                  {notificationPermissionGranted && (
+                    <div className="text-green-600 dark:text-green-400">
+                      <svg
+                        className="w-6 h-6"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info Section */}
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Конфиденциальность:</strong> Все уведомления
+                    обрабатываются только на вашем устройстве. Данные не
+                    передаются на сервер.
+                  </p>
+                </div>
+              </div>
+            </FormBlock>
+          )}
+
           {/* Development Section */}
           {import.meta.env.DEV && (
             <FormBlock className="w-full">
@@ -618,6 +756,24 @@ const SettingsPage: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Принудительно включает/выключает мобильный интерфейс для
                     тестирования
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Показать onboarding уведомлений
+                  </label>
+                  <Select
+                    options={[
+                      { label: "-", value: "-" },
+                      { label: "Показать", value: "on" },
+                      { label: "Скрыть", value: "off" },
+                    ]}
+                    value={notificationOnboardingOverride}
+                    onChange={handleNotificationOnboardingOverride}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Принудительно показывает/скрывает onboarding автоматизации
+                    уведомлений
                   </p>
                 </div>
               </div>

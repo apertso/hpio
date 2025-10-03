@@ -11,6 +11,7 @@ import {
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import NotificationOnboardingModal from "./components/NotificationOnboardingModal";
 
 import { useDropdown } from "./hooks/useDropdown";
 import DropdownOverlay from "./components/DropdownOverlay";
@@ -277,6 +278,8 @@ function App() {
   const location = useLocation();
   const { triggerReset } = useReset();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
+  const [showNotificationOnboarding, setShowNotificationOnboarding] =
+    useState(false);
 
   // Set safe area inset for mobile development override
   useEffect(() => {
@@ -290,6 +293,31 @@ function App() {
       document.documentElement.style.removeProperty("--safe-area-inset-top");
     }
   }, []);
+
+  // Показываем onboarding для уведомлений при первом входе (только Android)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const hasSeenOnboarding = localStorage.getItem(
+      "notification_onboarding_completed"
+    );
+    const devForceShow = localStorage.getItem(
+      "dev_show_notification_onboarding"
+    );
+
+    if (isTauriMobile() && (!hasSeenOnboarding || devForceShow === "on")) {
+      // Небольшая задержка, чтобы пользователь увидел главный экран
+      const timer = setTimeout(() => {
+        setShowNotificationOnboarding(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated]);
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem("notification_onboarding_completed", "true");
+    setShowNotificationOnboarding(false);
+  };
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -508,16 +536,23 @@ function App() {
     }${isTauriMobile() ? " safe-area-top" : ""}`;
 
     return (
-      <div className={containerClassName}>
-        {showHeader && header}
-        <VerificationBanner />
-        <div className="flex flex-col flex-1 overflow-auto">
-          <div className="flex flex-col flex-1">
-            {mainContent}
-            {!isTauriMobile() && footer}
+      <>
+        <div className={containerClassName}>
+          {showHeader && header}
+          <VerificationBanner />
+          <div className="flex flex-col flex-1 overflow-auto">
+            <div className="flex flex-col flex-1">
+              {mainContent}
+              {!isTauriMobile() && footer}
+            </div>
           </div>
         </div>
-      </div>
+        <NotificationOnboardingModal
+          isOpen={showNotificationOnboarding}
+          onClose={() => setShowNotificationOnboarding(false)}
+          onComplete={handleOnboardingComplete}
+        />
+      </>
     );
   } else {
     // --- Лэйаут для гостя (скролл всей страницы) ---
@@ -537,8 +572,3 @@ function App() {
 }
 
 export default App;
-
-
-
-
-

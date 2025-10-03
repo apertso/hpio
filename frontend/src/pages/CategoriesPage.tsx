@@ -124,7 +124,9 @@ const CategoriesPage: React.FC = () => {
     data: categories,
     isLoading: isLoadingCategories,
     execute: executeFetchCategories,
-  } = useApi<Category[]>(fetchCategoriesApi);
+  } = useApi<Category[]>(fetchCategoriesApi, {
+    offlineDataKey: "categories",
+  });
 
   // New state for confirm modal
   const [confirmModalState, setConfirmModalState] = useState<{

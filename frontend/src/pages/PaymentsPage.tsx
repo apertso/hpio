@@ -156,7 +156,7 @@ const PaymentsPage: React.FC = () => {
   useEffect(() => {
     if (rawAllPayments) {
       // Преобразуем amount в number
-      const payments = rawAllPayments.map((p: unknown) => {
+      let payments = rawAllPayments.map((p: unknown) => {
         const payment = p as PaymentData;
         return {
           ...payment,
@@ -166,11 +166,23 @@ const PaymentsPage: React.FC = () => {
               : payment.amount,
         };
       });
+
+      // Filter out completed and deleted payments (matching backend default behavior)
+      // This is important when loading from offline cache which contains all payments
+      payments = payments.filter(
+        (p) => p.status !== "completed" && p.status !== "deleted"
+      );
+
+      // Sort by dueDate ascending (matching backend default behavior)
+      payments = payments.sort((a, b) => {
+        const dateA = new Date(a.dueDate).getTime();
+        const dateB = new Date(b.dueDate).getTime();
+        return dateA - dateB;
+      });
+
       setAllPayments(payments);
       logger.info(
-        `Successfully fetched and processed ${
-          (payments as PaymentData[]).length
-        } all payments.`
+        `Successfully fetched and processed ${payments.length} all payments.`
       );
     } else {
       setAllPayments([]); // Clear payments if raw data is null (e.g., on error)

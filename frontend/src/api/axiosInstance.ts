@@ -1,8 +1,8 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
 import { syncService, ConnectionStatus } from "../utils/syncService";
 
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api", // URL вашего бэкенда
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api", // URL ?????? ???????
   headers: {
     "Content-Type": "application/json",
   },
@@ -29,12 +29,28 @@ axiosInstance.interceptors.request.use(
 
 // Интерцептор для проверки оффлайн режима перед запросами
 axiosInstance.interceptors.request.use(
-  (config) => {
-    // Проверяем, находится ли приложение в оффлайн режиме
-    if (syncService.getConnectionStatus() === ConnectionStatus.OFFLINE) {
-      // Создаем кастомное событие, которое будет поймано OfflineContext
-      window.dispatchEvent(new CustomEvent("offline-api-request"));
+  async (config) => {
+    const headersInstance =
+      config.headers instanceof AxiosHeaders
+        ? config.headers
+        : new AxiosHeaders(config.headers);
+
+    if (headersInstance.has("X-Offline-Replay")) {
+      config.headers = headersInstance;
+      return config;
     }
+
+    config.headers = headersInstance;
+
+    const method = (config.method || "get").toLowerCase();
+    const isMutation = ["post", "put", "patch", "delete"].includes(method);
+
+    if (!navigator.onLine && isMutation) {
+      window.dispatchEvent(new CustomEvent("offline-api-request"));
+      const response = await syncService.enqueueOfflineRequest(config);
+      config.adapter = async () => response;
+    }
+
     return config;
   },
   (error) => {

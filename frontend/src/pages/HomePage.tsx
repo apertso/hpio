@@ -189,6 +189,100 @@ const MobileActionsOverlay: React.FC<{
 
 // Deprecated: UpcomingPaymentListItem replaced by generic PaymentListCard
 
+// Helper function to calculate stats from offline payments
+const calculateStatsFromPayments = (
+  payments: PaymentData[],
+  categories: any[],
+  startDate: Date,
+  endDate: Date
+): DashboardStats => {
+  // Filter payments within the date range
+  const filteredPayments = payments.filter((p) => {
+    const paymentDate =
+      p.status === "completed" && p.completedAt
+        ? new Date(p.completedAt)
+        : new Date(p.dueDate);
+    return paymentDate >= startDate && paymentDate <= endDate;
+  });
+
+  // Calculate total amounts
+  const totalUpcomingAmount = filteredPayments
+    .filter((p) => p.status === "upcoming" || p.status === "overdue")
+    .reduce(
+      (sum, p) =>
+        sum + (typeof p.amount === "string" ? parseFloat(p.amount) : p.amount),
+      0
+    );
+
+  const totalCompletedAmount = filteredPayments
+    .filter((p) => p.status === "completed")
+    .reduce(
+      (sum, p) =>
+        sum + (typeof p.amount === "string" ? parseFloat(p.amount) : p.amount),
+      0
+    );
+
+  // Calculate categories distribution
+  const categoryMap = new Map<
+    string,
+    { id?: string; name: string; amount: number }
+  >();
+  filteredPayments.forEach((p) => {
+    const amount =
+      typeof p.amount === "string" ? parseFloat(p.amount) : p.amount;
+    if (p.category) {
+      const existing = categoryMap.get(p.category.id);
+      if (existing) {
+        existing.amount += amount;
+      } else {
+        categoryMap.set(p.category.id, {
+          id: p.category.id,
+          name: p.category.name,
+          amount: amount,
+        });
+      }
+    } else {
+      const existing = categoryMap.get("no-category");
+      if (existing) {
+        existing.amount += amount;
+      } else {
+        categoryMap.set("no-category", {
+          name: "Без категории",
+          amount: amount,
+        });
+      }
+    }
+  });
+  const categoriesDistribution = Array.from(categoryMap.values());
+
+  // Calculate daily payment load
+  const dailyMap = new Map<string, number>();
+  filteredPayments.forEach((p) => {
+    const dateKey =
+      p.status === "completed" && p.completedAt
+        ? new Date(p.completedAt).toISOString().split("T")[0]
+        : p.dueDate;
+    const amount =
+      typeof p.amount === "string" ? parseFloat(p.amount) : p.amount;
+    dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + amount);
+  });
+
+  const dailyPaymentLoad = Array.from(dailyMap.entries())
+    .map(([date, amount]) => ({ date, amount }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    month: `${startDate.getFullYear()}-${String(
+      startDate.getMonth() + 1
+    ).padStart(2, "0")}`,
+    totalUpcomingAmount: totalUpcomingAmount.toString(),
+    totalCompletedAmount: totalCompletedAmount.toString(),
+    categoriesDistribution,
+    dailyPaymentLoad,
+    allPaymentsInMonth: filteredPayments,
+  };
+};
+
 const HomePage: React.FC = () => {
   const { resolvedTheme } = useTheme(); // Access the theme
   const { showToast } = useToast(); // Import useToast
@@ -213,10 +307,25 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     if (rawUpcomingPayments) {
       // Преобразуем amount из string (DECIMAL) в number при получении
-      const payments = rawUpcomingPayments.map((p) => ({
+      let payments = rawUpcomingPayments.map((p) => ({
         ...p,
         amount: typeof p.amount === "string" ? parseFloat(p.amount) : p.amount,
       }));
+
+      // Filter for upcoming/overdue payments within the date range
+      // (in case offline data contains all payments)
+      const now = new Date();
+      const futureDate = new Date(now);
+      futureDate.setDate(futureDate.getDate() + upcomingDays);
+
+      payments = payments.filter((p) => {
+        if (p.status !== "upcoming" && p.status !== "overdue") {
+          return false;
+        }
+        const dueDate = new Date(p.dueDate);
+        return dueDate <= futureDate;
+      });
+
       setUpcomingPayments(payments);
       setHasLoadedPaymentsOnce(true);
       logger.info(
@@ -226,7 +335,7 @@ const HomePage: React.FC = () => {
       // Не помечаем как loaded на null (ошибка/отмена) - чтобы не показать "нет данных" ложно
       setUpcomingPayments([]); // Clear payments if raw data is null (e.g., on error)
     }
-  }, [rawUpcomingPayments]);
+  }, [rawUpcomingPayments, upcomingDays]);
 
   // Effect to trigger the fetch on mount and when upcomingDays changes
   useEffect(() => {
@@ -338,6 +447,32 @@ const HomePage: React.FC = () => {
         errorMessage = error;
       }
       logger.error("Failed to fetch dashboard stats:", errorMessage);
+
+      // Try to calculate stats from offline data
+      try {
+        logger.info("Attempting to calculate stats from offline data...");
+        const { syncService } = await import("../utils/syncService");
+        const offlineData = await syncService.getOfflineData();
+
+        if (offlineData.payments && offlineData.payments.length > 0) {
+          const calculatedStats = calculateStatsFromPayments(
+            offlineData.payments,
+            offlineData.categories || [],
+            startDate,
+            endDate
+          );
+          setStats(calculatedStats);
+          setErrorStats(null);
+          logger.info("Successfully calculated stats from offline data.");
+          return;
+        }
+      } catch (offlineError) {
+        logger.error(
+          "Failed to calculate stats from offline data:",
+          offlineError
+        );
+      }
+
       setErrorStats("Не удалось загрузить статистику.");
     } finally {
       setIsLoadingStats(false);

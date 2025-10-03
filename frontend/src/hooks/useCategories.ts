@@ -20,7 +20,9 @@ const useCategories = () => {
     isLoading,
     error,
     execute: fetchCategories,
-  } = useApi<Category[]>(fetchCategoriesApi);
+  } = useApi<Category[]>(fetchCategoriesApi, {
+    offlineDataKey: "categories",
+  });
 
   useEffect(() => {
     fetchCategories();

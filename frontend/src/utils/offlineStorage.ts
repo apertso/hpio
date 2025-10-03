@@ -14,15 +14,52 @@ export interface SyncResult {
   syncedItems?: number;
 }
 
+export type SerializedRequestBody =
+  | { type: "none" }
+  | { type: "json"; value: unknown }
+  | { type: "formData"; entries: SerializedFormDataEntry[] };
+
+export type SerializedFormDataEntry =
+  | { type: "text"; name: string; value: string }
+  | {
+      type: "file";
+      name: string;
+      fileName: string;
+      mimeType: string;
+      lastModified: number;
+      blob: Blob;
+    };
+
+export interface RequestReservation {
+  type: string;
+  data?: unknown;
+}
+
+export interface QueuedRequest {
+  id: string;
+  method: string;
+  url: string;
+  headers?: Record<string, string>;
+  body: SerializedRequestBody;
+  attempts: number;
+  maxAttempts: number;
+  createdAt: number;
+  updatedAt: number;
+  availableAt: number;
+  lastError?: string;
+  reservation?: RequestReservation | null;
+}
+
 class OfflineStorage {
   private dbName = "hochuplachu_offline_db";
-  private dbVersion = 1;
+  private dbVersion = 2;
   private stores = {
     payments: "payments",
     categories: "categories",
     user: "user",
     metadata: "metadata",
-  };
+    queue: "requestQueue",
+  } as const;
 
   private db: IDBDatabase | null = null;
 
@@ -42,7 +79,6 @@ class OfflineStorage {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
 
-        // Create object stores
         if (!db.objectStoreNames.contains(this.stores.payments)) {
           const paymentsStore = db.createObjectStore(this.stores.payments, {
             keyPath: "id",
@@ -62,6 +98,10 @@ class OfflineStorage {
 
         if (!db.objectStoreNames.contains(this.stores.metadata)) {
           db.createObjectStore(this.stores.metadata);
+        }
+
+        if (!db.objectStoreNames.contains(this.stores.queue)) {
+          db.createObjectStore(this.stores.queue, { keyPath: "id" });
         }
       };
     });
@@ -202,6 +242,96 @@ class OfflineStorage {
     });
   }
 
+  async enqueueRequest(request: QueuedRequest): Promise<void> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.stores.queue], "readwrite");
+      const store = transaction.objectStore(this.stores.queue);
+      const putRequest = store.put(request);
+
+      putRequest.onsuccess = () => resolve();
+      putRequest.onerror = () => reject(putRequest.error);
+    });
+  }
+
+  async getQueuedRequests(): Promise<QueuedRequest[]> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.stores.queue], "readonly");
+      const store = transaction.objectStore(this.stores.queue);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const records = (request.result as QueuedRequest[]) || [];
+        records.sort((a, b) => a.createdAt - b.createdAt);
+        resolve(records);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async updateQueuedRequest(
+    id: string,
+    update: Partial<Omit<QueuedRequest, "id" | "createdAt">>
+  ): Promise<QueuedRequest | null> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.stores.queue], "readwrite");
+      const store = transaction.objectStore(this.stores.queue);
+      const getRequest = store.get(id);
+
+      getRequest.onsuccess = () => {
+        const current = getRequest.result as QueuedRequest | undefined;
+        if (!current) {
+          resolve(null);
+          return;
+        }
+
+        const updated: QueuedRequest = {
+          ...current,
+          ...update,
+          updatedAt: Date.now(),
+        };
+
+        const putRequest = store.put(updated);
+
+        putRequest.onsuccess = () => resolve(updated);
+        putRequest.onerror = () => reject(putRequest.error);
+      };
+
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  async deleteQueuedRequest(id: string): Promise<void> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.stores.queue], "readwrite");
+      const store = transaction.objectStore(this.stores.queue);
+      const deleteRequest = store.delete(id);
+
+      deleteRequest.onsuccess = () => resolve();
+      deleteRequest.onerror = () => reject(deleteRequest.error);
+    });
+  }
+
+  async clearQueue(): Promise<void> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.stores.queue], "readwrite");
+      const store = transaction.objectStore(this.stores.queue);
+      const clearRequest = store.clear();
+
+      clearRequest.onsuccess = () => resolve();
+      clearRequest.onerror = () => reject(clearRequest.error);
+    });
+  }
+
   async clearAll(): Promise<void> {
     if (!this.db) await this.init();
 
@@ -212,6 +342,7 @@ class OfflineStorage {
           this.stores.categories,
           this.stores.user,
           this.stores.metadata,
+          this.stores.queue,
         ],
         "readwrite"
       );
@@ -259,4 +390,3 @@ class OfflineStorage {
 }
 
 export const offlineStorage = new OfflineStorage();
-

@@ -19,6 +19,7 @@ function useApi<T>(
     onError?: (error: Error) => void;
     enableOffline?: boolean;
     cacheKey?: string;
+    offlineDataKey?: "payments" | "categories" | "user";
   } = {}
 ): UseApiResult<T> {
   const [data, setData] = useState<T | null>(null);
@@ -26,7 +27,13 @@ function useApi<T>(
   const [error, setError] = useState<Error | null>(null);
   const [cachedData, setCachedData] = useState<T | null>(null);
 
-  const { onSuccess, onError, enableOffline = true, cacheKey } = options;
+  const {
+    onSuccess,
+    onError,
+    enableOffline = true,
+    cacheKey,
+    offlineDataKey,
+  } = options;
   const { showOfflineToast } = useOffline();
 
   const connectionStatus = syncService.getConnectionStatus();
@@ -62,15 +69,59 @@ function useApi<T>(
               return cachedData;
             }
 
+            // Try to get data from IndexedDB via syncService
+            if (enableOffline) {
+              try {
+                const offlineData = await syncService.getOfflineData();
+                // Determine which offline data to use based on offlineDataKey or default to payments
+                const dataKey = offlineDataKey || "payments";
+                const offlineDataSource = offlineData[dataKey];
+
+                if (offlineDataSource) {
+                  const fallbackData = offlineDataSource as unknown as T;
+                  setData(fallbackData);
+                  setCachedData(fallbackData);
+                  setError(null);
+                  logger.info(`Using offline ${dataKey} data from IndexedDB`);
+                  return fallbackData;
+                }
+              } catch (offlineError) {
+                logger.error("Failed to get offline data:", offlineError);
+              }
+            }
+
             throw apiError;
           }
         } else {
           // Offline mode - show toast and try to get cached data
           showOfflineToast();
+
+          // First try cached data from state
           if (enableOffline && cachedData) {
             setData(cachedData);
             setError(null); // Не показывать ошибку, только тост
             return cachedData;
+          }
+
+          // If no cached data, try to get from IndexedDB
+          if (enableOffline) {
+            try {
+              const offlineData = await syncService.getOfflineData();
+              // Determine which offline data to use based on offlineDataKey or default to payments
+              const dataKey = offlineDataKey || "payments";
+              const offlineDataSource = offlineData[dataKey];
+
+              if (offlineDataSource) {
+                const fallbackData = offlineDataSource as unknown as T;
+                setData(fallbackData);
+                setCachedData(fallbackData);
+                setError(null);
+                logger.info(`Using offline ${dataKey} data from IndexedDB`);
+                return fallbackData;
+              }
+            } catch (offlineError) {
+              logger.error("Failed to get offline data:", offlineError);
+            }
           }
 
           throw new Error(
@@ -105,6 +156,7 @@ function useApi<T>(
       cachedData,
       data,
       cacheKey,
+      offlineDataKey,
       showOfflineToast,
     ]
   );

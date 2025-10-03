@@ -14,6 +14,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import { useDropdown } from "./hooks/useDropdown";
 import DropdownOverlay from "./components/DropdownOverlay";
+import SyncStatusIndicator from "./components/SyncStatusIndicator";
 import {
   Cog6ToothIcon,
   SunIcon,
@@ -329,10 +330,12 @@ function App() {
           Хочу Плачу
         </div>
       </a>
-      <Navigation /> {/* Используем компонент навигации */}
+      <div className="flex items-center gap-4">
+        <SyncStatusIndicator />
+        <Navigation />
+      </div>
     </header>
   );
-
   const mainClassName =
     "flex flex-col flex-1 justify-center overflow-auto" +
     (isTauriMobile() && location.pathname === "/" ? "" : " px-4 sm:px-10 py-5");
@@ -534,3 +537,8 @@ function App() {
 }
 
 export default App;
+
+
+
+
+

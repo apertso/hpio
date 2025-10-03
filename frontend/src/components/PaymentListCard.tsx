@@ -68,10 +68,10 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
   };
 
   return (
-    <button
+    <div
       onClick={onClick}
       className={
-        "w-full text-left flex flex-col p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow space-y-3 " +
+        "w-full text-left flex flex-col p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow space-y-3 cursor-pointer " +
         (className || "")
       }
     >
@@ -176,7 +176,7 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 };
 

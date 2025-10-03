@@ -5,7 +5,11 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { syncService, ConnectionStatus } from "../utils/syncService";
+import {
+  syncService,
+  ConnectionStatus,
+  QueueStats,
+} from "../utils/syncService";
 import { offlineStorage } from "../utils/offlineStorage";
 import logger from "../utils/logger";
 import { useToast } from "./ToastContext";
@@ -15,6 +19,7 @@ interface OfflineContextType {
   isOnline: boolean;
   isOffline: boolean;
   syncStatus: SyncStatus;
+  queueStats: QueueStats;
   lastSyncTime: number | null;
   syncData: () => Promise<void>;
   clearOfflineData: () => Promise<void>;
@@ -59,6 +64,9 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
     syncService.getLastSyncTime()
   );
   const [lastOfflineToastTime, setLastOfflineToastTime] = useState<number>(0);
+  const [queueStats, setQueueStats] = useState<QueueStats>(
+    syncService.getQueueStats()
+  );
 
   // Функция для отображения тоста об отсутствии соединения с throttling
   const showOfflineToast = () => {
@@ -72,7 +80,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
 
     setLastOfflineToastTime(now);
     showToast(
-      "Нет подключения к интернету. Приложение работает в режиме чтения с использованием ранее загруженных данных.",
+      "Нет подключения к интернету. Приложение продолжит работать с ранее загруженными данными.",
       "info",
       5000
     );
@@ -114,6 +122,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
         message: `Sync failed: ${error}`,
       });
       logger.error("Data sync failed:", error);
+      showToast(`Ошибка синхронизации: ${error}`, "error");
     };
 
     // Subscribe to sync service events
@@ -122,6 +131,9 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
     syncService.onSyncProgress = handleSyncProgress;
     syncService.onSyncComplete = handleSyncComplete;
     syncService.onSyncError = handleSyncError;
+    syncService.onQueueUpdate = (stats) => {
+      setQueueStats(stats);
+    };
 
     // Initial sync if online
     if (syncService.isOnline()) {
@@ -130,7 +142,6 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
       });
     }
 
-    // Listen for offline API requests
     const handleOfflineApiRequest = () => {
       showOfflineToast();
     };
@@ -144,6 +155,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
       syncService.onSyncProgress = undefined;
       syncService.onSyncComplete = undefined;
       syncService.onSyncError = undefined;
+      syncService.onQueueUpdate = undefined;
       window.removeEventListener(
         "offline-api-request",
         handleOfflineApiRequest
@@ -168,6 +180,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
         progress: 0,
         message: `Sync failed: ${errorMessage}`,
       });
+      showToast(`Ошибка синхронизации: ${errorMessage}`, "error");
       throw error;
     }
   };
@@ -209,6 +222,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
     isOnline,
     isOffline,
     syncStatus,
+    queueStats,
     lastSyncTime,
     syncData,
     clearOfflineData,

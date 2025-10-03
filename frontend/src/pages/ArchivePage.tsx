@@ -205,7 +205,7 @@ const ArchivePage: React.FC = () => {
   // Effect to transform data when raw data changes
   useEffect(() => {
     if (rawArchivedPayments) {
-      const payments = rawArchivedPayments.map((p: unknown) => {
+      let payments = rawArchivedPayments.map((p: unknown) => {
         const payment = p as PaymentData;
         return {
           ...payment,
@@ -215,6 +215,31 @@ const ArchivePage: React.FC = () => {
               : payment.amount,
         };
       });
+
+      // Filter to show only completed and deleted payments (matching backend behavior)
+      // This is important when loading from offline cache which contains all payments
+      payments = payments.filter(
+        (p) => p.status === "completed" || p.status === "deleted"
+      );
+
+      // Sort by completedAt DESC, then createdAt DESC (matching backend behavior)
+      payments = payments.sort((a, b) => {
+        // First compare completedAt
+        const completedA = a.completedAt
+          ? new Date(a.completedAt).getTime()
+          : 0;
+        const completedB = b.completedAt
+          ? new Date(b.completedAt).getTime()
+          : 0;
+        if (completedA !== completedB) {
+          return completedB - completedA; // DESC
+        }
+        // If completedAt is the same, compare createdAt
+        const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return createdB - createdA; // DESC
+      });
+
       setArchivedPayments(payments);
       logger.info(
         `Successfully fetched and processed ${payments.length} archived payments.`

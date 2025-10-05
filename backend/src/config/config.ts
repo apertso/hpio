@@ -3,15 +3,19 @@ import { config as appConfig } from "./appConfig";
 // Helper to map appConfig.database to Sequelize config format
 const db = appConfig.database;
 
-const baseConfig = {
+const baseConfig: any = {
   username: db.username,
   password: db.password,
   database: db.database,
   host: db.host,
   port: db.port,
   dialect: db.dialect,
-  dialectOptions: db.dialectOptions,
+  schema: db.schema,
 };
+
+if (db.dialectOptions) {
+  baseConfig.dialectOptions = db.dialectOptions;
+}
 
 const config = {
   development: { ...baseConfig, logging: console.log },

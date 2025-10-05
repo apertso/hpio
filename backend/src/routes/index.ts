@@ -8,6 +8,8 @@ import statsRoutes from "./statsRoutes"; // !!! Импорт маршрутов 
 import seriesRoutes from "./seriesRoutes"; // Import recurring series routes
 import userRoutes from "./userRoutes"; // <-- ADD THIS
 import feedbackRoutes from "./feedbackRoutes";
+import suggestionRoutes from "./suggestionRoutes";
+import merchantRuleRoutes from "./merchantRuleRoutes";
 // Импортируйте другие маршруты
 
 const router = Router();
@@ -21,6 +23,8 @@ router.use("/stats", statsRoutes); // !!! Использование маршр�
 router.use("/series", seriesRoutes); // Use recurring series routes
 router.use("/user", userRoutes); // <-- ADD THIS
 router.use("/feedback", feedbackRoutes);
+router.use("/suggestions", suggestionRoutes);
+router.use("/merchant-rules", merchantRuleRoutes);
 // Используйте другие маршруты:
 // router.use('/notifications', notificationRoutes);
 // router.use('/notifications', notificationRoutes);

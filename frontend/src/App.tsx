@@ -12,6 +12,7 @@ import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotificationOnboardingModal from "./components/NotificationOnboardingModal";
+import SuggestionModal from "./components/SuggestionModal";
 
 import { useDropdown } from "./hooks/useDropdown";
 import DropdownOverlay from "./components/DropdownOverlay";
@@ -29,6 +30,16 @@ import { PHOTO_URL } from "./api/userApi";
 import { useReset } from "./context/ResetContext";
 import { isTauriMobile } from "./utils/platform";
 import { getPageBackgroundClasses } from "./utils/pageBackgrounds";
+import {
+  getPendingNotifications,
+  clearPendingNotifications,
+  checkNotificationPermission,
+} from "./api/notificationPermission";
+import { parseNotification } from "./utils/notificationParser";
+import { normalizeMerchantName } from "./utils/merchantNormalizer";
+import { suggestionApi } from "./api/suggestionApi";
+import { merchantRuleApi } from "./api/merchantRuleApi";
+import { useToast } from "./context/ToastContext";
 
 // Replace static page imports with lazy imports
 const HomePage = React.lazy(() => import("./pages/HomePage"));
@@ -277,9 +288,19 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { triggerReset } = useReset();
+  const { showToast } = useToast();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
   const [showNotificationOnboarding, setShowNotificationOnboarding] =
     useState(false);
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
+  const [suggestions, setSuggestions] = useState<
+    Array<{
+      id: string;
+      merchantName: string;
+      amount: number;
+      notificationData: string;
+    }>
+  >([]);
 
   // Set safe area inset for mobile development override
   useEffect(() => {
@@ -317,6 +338,105 @@ function App() {
   const handleOnboardingComplete = () => {
     localStorage.setItem("notification_onboarding_completed", "true");
     setShowNotificationOnboarding(false);
+  };
+
+  const processNotifications = async () => {
+    if (!isTauriMobile() || !isAuthenticated) return;
+
+    try {
+      const { granted } = await checkNotificationPermission();
+      if (!granted) return;
+
+      const notifications = await getPendingNotifications();
+      if (notifications.length === 0) return;
+
+      const parsedSuggestions = [];
+
+      for (const notification of notifications) {
+        const parsed = parseNotification(
+          notification.package_name,
+          notification.text
+        );
+
+        if (!parsed) continue;
+
+        const normalizedMerchant = normalizeMerchantName(parsed.merchantName);
+
+        const existingRule = await merchantRuleApi.findRuleByMerchant(
+          normalizedMerchant
+        );
+
+        if (existingRule) {
+          const today = new Date().toISOString().split("T")[0];
+          await axiosInstance.post("/api/payments", {
+            title: parsed.merchantName,
+            amount: parsed.amount,
+            dueDate: today,
+            categoryId: existingRule.categoryId,
+            status: "completed",
+            completedAt: new Date().toISOString(),
+            autoCreated: true,
+          });
+
+          showToast(
+            `Автоматически добавлен платёж: ${parsed.merchantName}`,
+            "success"
+          );
+        } else {
+          const suggestion = await suggestionApi.createSuggestion({
+            merchantName: parsed.merchantName,
+            amount: parsed.amount,
+            notificationData: notification.text,
+          });
+
+          parsedSuggestions.push({
+            id: suggestion.id,
+            merchantName: parsed.merchantName,
+            amount: parsed.amount,
+            notificationData: notification.text,
+          });
+        }
+      }
+
+      await clearPendingNotifications();
+
+      if (parsedSuggestions.length > 0) {
+        setSuggestions(parsedSuggestions);
+        setShowSuggestionModal(true);
+      }
+    } catch (error) {
+      console.error("Error processing notifications:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated || !isTauriMobile()) return;
+
+    processNotifications();
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        processNotifications();
+      }
+    }, 5000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        processNotifications();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isAuthenticated]);
+
+  const handleSuggestionComplete = () => {
+    setSuggestions([]);
+    setShowSuggestionModal(false);
   };
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -551,6 +671,12 @@ function App() {
           isOpen={showNotificationOnboarding}
           onClose={() => setShowNotificationOnboarding(false)}
           onComplete={handleOnboardingComplete}
+        />
+        <SuggestionModal
+          isOpen={showSuggestionModal}
+          suggestions={suggestions}
+          onClose={() => setShowSuggestionModal(false)}
+          onComplete={handleSuggestionComplete}
         />
       </>
     );

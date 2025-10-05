@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "build": "rm -rf dist && tsc",
+    "build": "if exist dist rmdir /s /q dist && tsc",
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -39,6 +39,7 @@
     "multer": "^1.4.5-lts.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.14",
+    "pg": "^8.16.3",
     "rrule": "^2.8.1",
     "sequelize": "^6.37.3",
     "tedious": "^18.1.0",

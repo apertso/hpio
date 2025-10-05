@@ -23,6 +23,7 @@ interface PaymentAttributes {
   uploadedAt?: Date | null; // Timestamp of when the file was uploaded
   builtinIconName?: string | null;
   remind: boolean;
+  autoCreated: boolean;
   createdAt: Date;
   updatedAt: Date;
   seriesId?: string | null; // Link to RecurringSeries
@@ -41,6 +42,7 @@ interface PaymentCreationAttributes
     | "uploadedAt"
     | "builtinIconName"
     | "remind"
+    | "autoCreated"
     | "createdAt"
     | "updatedAt"
     | "seriesId" // Add seriesId to optional fields
@@ -128,6 +130,11 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         allowNull: true,
       },
       remind: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      autoCreated: {
         type: dataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false,

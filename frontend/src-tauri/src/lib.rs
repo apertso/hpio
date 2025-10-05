@@ -8,7 +8,9 @@ pub fn run() {
     .plugin(tauri_plugin_os::init())
     .invoke_handler(tauri::generate_handler![
       notifications::check_notification_permission,
-      notifications::open_notification_settings
+      notifications::open_notification_settings,
+      notifications::get_pending_notifications,
+      notifications::clear_pending_notifications
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

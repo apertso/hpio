@@ -5,12 +5,14 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.text.TextUtils
+import androidx.annotation.Keep
 
 object NotificationPermissionHelper {
     /**
      * Проверяет, имеет ли приложение доступ к уведомлениям
      */
     @JvmStatic
+    @Keep
     fun isNotificationListenerEnabled(context: Context): Boolean {
         val packageName = context.packageName
         val flat = Settings.Secure.getString(
@@ -36,6 +38,7 @@ object NotificationPermissionHelper {
      * Открывает системные настройки для доступа к уведомлениям
      */
     @JvmStatic
+    @Keep
     fun openNotificationListenerSettings(context: Context) {
         val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

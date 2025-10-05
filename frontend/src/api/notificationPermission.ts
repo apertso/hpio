@@ -4,6 +4,13 @@ export interface PermissionStatus {
   granted: boolean;
 }
 
+export interface PendingNotification {
+  package_name: string;
+  title: string;
+  text: string;
+  timestamp: number;
+}
+
 /**
  * Проверяет, имеет ли приложение доступ к уведомлениям (Android only)
  */
@@ -24,6 +31,32 @@ export async function openNotificationSettings(): Promise<void> {
     await invoke("open_notification_settings");
   } catch (error) {
     console.error("Failed to open notification settings:", error);
+    throw error;
+  }
+}
+
+/**
+ * Получает список ожидающих уведомлений (Android only)
+ */
+export async function getPendingNotifications(): Promise<
+  PendingNotification[]
+> {
+  try {
+    return await invoke<PendingNotification[]>("get_pending_notifications");
+  } catch (error) {
+    console.error("Failed to get pending notifications:", error);
+    return [];
+  }
+}
+
+/**
+ * Очищает список ожидающих уведомлений (Android only)
+ */
+export async function clearPendingNotifications(): Promise<void> {
+  try {
+    await invoke("clear_pending_notifications");
+  } catch (error) {
+    console.error("Failed to clear pending notifications:", error);
     throw error;
   }
 }

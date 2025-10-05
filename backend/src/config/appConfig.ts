@@ -14,18 +14,13 @@ export const config = {
   defaultTimezone: process.env.TZ || "UTC",
   database: {
     host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || "1433", 10),
-    username: process.env.DB_USER || "SA",
-    password: process.env.DB_PASSWORD || "YourStrong!Password",
-    database: process.env.DB_NAME || "PaymentServiceDB",
-    dialect: "mssql",
-    dialectOptions: {
-      options: {
-        trustedConnection: false, // Установите true, если используете Windows Authentication
-        encrypt: false, // Установите true, если используете SSL/TLS (рекомендуется в продакшене)
-        enableArithAbort: true, // Рекомендуется для MS SQL
-      },
-    },
+    port: parseInt(process.env.DB_PORT || "5432", 10),
+    username: process.env.DB_USER || "postgres",
+    password: process.env.DB_PASSWORD || "postgres",
+    database: process.env.DB_NAME || "payment_service",
+    dialect: process.env.DB_DIALECT || "postgres",
+    schema: process.env.DB_SCHEMA || "dbo",
+    dialectOptions: undefined,
     logging: false, // Установите true для логирования SQL запросов (полезно при отладке)
   },
   uploadDir: process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads"),

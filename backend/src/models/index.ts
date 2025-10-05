@@ -7,26 +7,32 @@ import Category from "./Category"; // Import Category model
 import RecurringSeries from "./RecurringSeries"; // Import RecurringSeries model
 import SystemTaskLog from "./SystemTaskLog";
 import Feedback from "./Feedback";
+import Suggestion from "./Suggestion";
+import MerchantCategoryRule from "./MerchantCategoryRule";
+
+const sequelizeConfig: any = {
+  host: config.database.host,
+  port: config.database.port,
+  dialect: config.database.dialect as any,
+  schema: config.database.schema,
+  logging: config.database.logging,
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+};
+
+if (config.database.dialectOptions) {
+  sequelizeConfig.dialectOptions = config.database.dialectOptions;
+}
 
 const sequelize = new Sequelize(
   config.database.database,
   config.database.username,
   config.database.password,
-  {
-    host: config.database.host,
-    port: config.database.port,
-    dialect: config.database.dialect as any,
-    dialectOptions: config.database.dialectOptions,
-    logging: config.database.logging,
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
-    },
-    // Опционально: для MS SQL может потребоваться настройка даты
-    // timezone: '+00:00' // Если храните UTC
-  }
+  sequelizeConfig
 );
 
 interface Associate {
@@ -42,6 +48,8 @@ interface Db {
   RecurringSeries: Model & Associate; // Add RecurringSeries to the Db interface
   SystemTaskLog: Model;
   Feedback: Model & Associate;
+  Suggestion: Model & Associate;
+  MerchantCategoryRule: Model & Associate;
   // Add other models here with & Associate if they have an associate method
   [key: string]: any; // Allow indexing with strings for other potential properties
 }
@@ -55,6 +63,8 @@ const db = {
   RecurringSeries: RecurringSeries(sequelize, DataTypes), // Add RecurringSeries model to db object
   SystemTaskLog: SystemTaskLog(sequelize),
   Feedback: Feedback(sequelize, DataTypes),
+  Suggestion: Suggestion(sequelize, DataTypes),
+  MerchantCategoryRule: MerchantCategoryRule(sequelize, DataTypes),
   // Сюда же можно добавить Category, Notification и другие модели
 };
 

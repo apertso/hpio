@@ -25,6 +25,7 @@ interface PaymentData {
   builtinIconName?: string | null;
   // Option to create a completed payment immediately (used during creation)
   createAsCompleted?: boolean;
+  autoCreated?: boolean;
   // seriesId is not part of input data for create/update payment instance
 }
 
@@ -365,10 +366,11 @@ export const createPayment = async (
       dueDate: paymentData.dueDate,
       seriesId: seriesId, // Link to the recurring series (or null for non-recurring)
       remind: paymentData.remind || false,
+      autoCreated: paymentData.autoCreated || false,
 
       status: paymentData.createAsCompleted ? "completed" : "upcoming",
       completedAt: paymentData.createAsCompleted
-        ? Sequelize.literal("GETDATE()")
+        ? Sequelize.literal("NOW()")
         : null,
       // filePath, fileName, builtinIconName are handled by fileService/icon logic
       // Copy icon data to the first payment instance if it's a new series
@@ -991,7 +993,7 @@ export const completePayment = async (
       status: "completed",
       completedAt: completionDate
         ? new Date(completionDate)
-        : Sequelize.literal("GETDATE()"),
+        : Sequelize.literal("NOW()"),
     });
     logger.info(`Payment completed (ID: ${payment.id}, User: ${userId}).`);
 

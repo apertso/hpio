@@ -21,7 +21,7 @@ export interface CreateMerchantRuleData {
 
 export const merchantRuleApi = {
   async getMerchantRules(): Promise<MerchantCategoryRule[]> {
-    const response = await axiosInstance.get("/api/merchant-rules");
+    const response = await axiosInstance.get("/merchant-rules");
     return response.data;
   },
 
@@ -29,7 +29,7 @@ export const merchantRuleApi = {
     merchant: string
   ): Promise<MerchantCategoryRule | null> {
     try {
-      const response = await axiosInstance.get("/api/merchant-rules/find", {
+      const response = await axiosInstance.get("/merchant-rules/find", {
         params: { merchant },
       });
       return response.data;
@@ -44,11 +44,11 @@ export const merchantRuleApi = {
   async createMerchantRule(
     data: CreateMerchantRuleData
   ): Promise<MerchantCategoryRule> {
-    const response = await axiosInstance.post("/api/merchant-rules", data);
+    const response = await axiosInstance.post("/merchant-rules", data);
     return response.data;
   },
 
   async deleteMerchantRule(id: string): Promise<void> {
-    await axiosInstance.delete(`/api/merchant-rules/${id}`);
+    await axiosInstance.delete(`/merchant-rules/${id}`);
   },
 };

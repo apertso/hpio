@@ -90,7 +90,7 @@ const PaymentEditPage: React.FC = () => {
           >
             <ArrowLeftIcon className="h-6 w-6" />
           </button>
-          <h2 className="text-2xl font-bold ml-4 text-gray-900 dark:text-white flex items-center gap-3">
+          <h2 className="text-xl md:text-2xl font-bold ml-4 text-gray-900 dark:text-white flex items-center gap-3">
             {headerText}
             {seriesInactive && (
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600">

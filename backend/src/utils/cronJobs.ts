@@ -176,10 +176,26 @@ const setupCronJobs = () => {
                 payment.dueDate
               );
             } else if (user.notificationMethod === "push") {
-              // TODO: Implement push notification logic
-              logger.warn(
-                `Push notification for user ${user.id} is not implemented yet.`
+              const { sendPushNotification } = await import(
+                "../services/fcmService"
               );
+
+              if (user.fcmToken) {
+                const formattedAmount = new Intl.NumberFormat("ru-RU", {
+                  style: "currency",
+                  currency: "RUB",
+                }).format(payment.amount);
+
+                await sendPushNotification(user.fcmToken, {
+                  title: "Напоминание о платеже",
+                  body: `Сегодня нужно оплатить "${payment.title}" на сумму ${formattedAmount}`,
+                  clickAction: "main",
+                });
+              } else {
+                logger.warn(
+                  `User ${user.id} has push notifications enabled but no FCM token registered.`
+                );
+              }
             }
           }
         }

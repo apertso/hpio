@@ -1,5 +1,6 @@
 // frontend/src/components/Select.tsx
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import ReactDOM from "react-dom";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 
 export interface SelectOption {
@@ -27,10 +28,27 @@ const Select: React.FC<SelectProps> = ({
   placeholder,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const handleToggle = () => {
     if (!disabled) {
+      if (!isOpen) {
+        // Calculate position when opening
+        if (buttonRef.current) {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setDropdownPosition({
+            top: rect.bottom + window.scrollY,
+            left: rect.left + window.scrollX,
+            width: rect.width,
+          });
+        }
+      }
       setIsOpen(!isOpen);
     }
   };
@@ -41,9 +59,14 @@ const Select: React.FC<SelectProps> = ({
   };
 
   const handleClickOutside = useCallback((event: MouseEvent) => {
+    // Don't close if clicking on the dropdown (which is now a portal)
+    const target = event.target as Element;
+    const isClickOnDropdown = target.closest("[data-select-dropdown]") !== null;
+
     if (
       containerRef.current &&
-      !containerRef.current.contains(event.target as Node)
+      !containerRef.current.contains(event.target as Node) &&
+      !isClickOnDropdown
     ) {
       setIsOpen(false);
     }
@@ -73,6 +96,7 @@ const Select: React.FC<SelectProps> = ({
         </label>
       )}
       <button
+        ref={buttonRef}
         type="button"
         className={`${baseClasses} ${errorClasses} ${disabledClasses}`}
         onClick={handleToggle}
@@ -90,25 +114,36 @@ const Select: React.FC<SelectProps> = ({
         />
       </button>
 
-      {isOpen && (
-        <div className="absolute z-10 mt-1 w-full rounded-md bg-white dark:bg-gray-800 shadow-lg border border-gray-300 dark:border-gray-600 max-h-60 overflow-y-auto">
-          <ul className="py-1">
-            {options.map((option) => (
-              <li
-                key={option.value || "null-option"}
-                className={`px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
-                  value === option.value
-                    ? "bg-gray-200 dark:bg-gray-700 font-bold"
-                    : ""
-                }`}
-                onClick={() => handleSelect(option.value)}
-              >
-                {option.label}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {isOpen &&
+        dropdownPosition &&
+        ReactDOM.createPortal(
+          <div
+            data-select-dropdown
+            className="fixed z-[9999] rounded-md bg-white dark:bg-gray-800 shadow-lg border border-gray-300 dark:border-gray-600 max-h-60 overflow-y-auto"
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+            }}
+          >
+            <ul className="py-1">
+              {options.map((option) => (
+                <li
+                  key={option.value || "null-option"}
+                  className={`px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+                    value === option.value
+                      ? "bg-gray-200 dark:bg-gray-700 font-bold"
+                      : ""
+                  }`}
+                  onClick={() => handleSelect(option.value)}
+                >
+                  {option.label}
+                </li>
+              ))}
+            </ul>
+          </div>,
+          document.body
+        )}
 
       {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>

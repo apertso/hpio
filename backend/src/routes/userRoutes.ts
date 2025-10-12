@@ -8,6 +8,7 @@ import {
   getProfilePhoto,
   deleteAccount,
   getMe,
+  registerFcmToken,
 } from "../controllers/userController";
 
 const router = Router();
@@ -22,6 +23,7 @@ router.get("/profile", getProfile);
 router.put("/profile", updateProfile);
 router.get("/profile/photo", getProfilePhoto);
 router.post("/profile/photo", uploadUserPhoto, uploadProfilePhoto);
+router.post("/fcm-token", registerFcmToken);
 router.delete("/account", deleteAccount);
 
 export default router;

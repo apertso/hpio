@@ -16,6 +16,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
     companion object {
         private const val TAG = "PaymentNotificationListener"
         private const val RAIFFEISEN_PACKAGE = "ru.raiffeisennews"
+        private const val SHELL_PACKAGE = "com.android.shell"
         private const val NOTIFICATIONS_FILE = "pending_notifications.json"
     }
 
@@ -26,7 +27,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
         Log.d(TAG, "Notification posted: ${sbn.packageName}")
 
-        if (sbn.packageName == RAIFFEISEN_PACKAGE) {
+        if (sbn.packageName == RAIFFEISEN_PACKAGE || sbn.packageName == SHELL_PACKAGE) {
             handleRaiffeisenNotification(sbn)
         }
     }

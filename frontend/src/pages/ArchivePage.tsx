@@ -396,7 +396,7 @@ const ArchivePage: React.FC = () => {
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Архив платежей
           </h2>
           {/* TODO: Кнопка добавления платежа не нужна в Архиве */}

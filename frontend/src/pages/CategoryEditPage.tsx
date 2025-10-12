@@ -100,7 +100,7 @@ const CategoryEditPage: React.FC = () => {
           >
             <ArrowLeftIcon className="h-6 w-6" />
           </Link>
-          <h2 className="text-2xl font-bold ml-4 text-gray-900 dark:text-white">
+          <h2 className="text-xl md:text-2xl font-bold ml-4 text-gray-900 dark:text-white">
             {isEditMode ? "Редактировать категорию" : "Новая категория"}
           </h2>
         </div>

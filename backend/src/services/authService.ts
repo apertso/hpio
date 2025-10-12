@@ -264,6 +264,7 @@ export const getUserProfile = async (userId: string) => {
       "notificationMethod",
       "notificationTime",
       "timezone", // <-- ADD THIS LINE
+      "fcmToken",
     ],
   });
 

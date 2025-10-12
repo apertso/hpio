@@ -4,26 +4,26 @@ export default {
   up: async (queryInterface: QueryInterface): Promise<void> => {
     await queryInterface.createTable("merchantCategoryRules", {
       id: {
-        type: DataTypes.CHAR(36),
+        type: DataTypes.UUID,
         allowNull: false,
         primaryKey: true,
         defaultValue: DataTypes.UUIDV4,
       },
       userId: {
-        type: DataTypes.STRING,
+        type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: "users",
+          model: { tableName: "users", schema: "dbo" },
           key: "id",
         },
         onUpdate: "CASCADE",
         onDelete: "CASCADE",
       },
       categoryId: {
-        type: DataTypes.CHAR(36),
+        type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: "categories",
+          model: { tableName: "categories", schema: "dbo" },
           key: "id",
         },
         onUpdate: "CASCADE",

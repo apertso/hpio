@@ -39,7 +39,7 @@ const Feature = ({
       <div className="inline-flex self-center p-3 mb-4 text-white bg-indigo-500 rounded-full">
         <Icon className="w-8 h-8" />
       </div>
-      <h3 className="mb-3 text-2xl font-bold tracking-tight text-center">
+      <h3 className="mb-3 text-xl md:text-2xl font-bold tracking-tight text-center">
         {title}
       </h3>
       <p className="text-gray-700 dark:text-gray-300 leading-relaxed">

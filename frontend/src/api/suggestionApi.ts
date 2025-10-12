@@ -19,31 +19,31 @@ export interface CreateSuggestionData {
 
 export const suggestionApi = {
   async getPendingSuggestions(): Promise<Suggestion[]> {
-    const response = await axiosInstance.get("/api/suggestions");
+    const response = await axiosInstance.get("/suggestions");
     return response.data;
   },
 
   async createSuggestion(data: CreateSuggestionData): Promise<Suggestion> {
-    const response = await axiosInstance.post("/api/suggestions", data);
+    const response = await axiosInstance.post("/suggestions", data);
     return response.data;
   },
 
   async bulkCreateSuggestions(
     suggestions: CreateSuggestionData[]
   ): Promise<Suggestion[]> {
-    const response = await axiosInstance.post("/api/suggestions/bulk", {
+    const response = await axiosInstance.post("/suggestions/bulk", {
       suggestions,
     });
     return response.data;
   },
 
   async acceptSuggestion(id: string): Promise<Suggestion> {
-    const response = await axiosInstance.post(`/api/suggestions/${id}/accept`);
+    const response = await axiosInstance.post(`/suggestions/${id}/accept`);
     return response.data;
   },
 
   async dismissSuggestion(id: string): Promise<Suggestion> {
-    const response = await axiosInstance.post(`/api/suggestions/${id}/dismiss`);
+    const response = await axiosInstance.post(`/suggestions/${id}/dismiss`);
     return response.data;
   },
 };

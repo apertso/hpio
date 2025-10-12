@@ -1,4 +1,4 @@
-import { Model, Sequelize, DataTypes } from "sequelize"; // Import DataTypes
+import { Model, Sequelize, DataTypes, Options } from "sequelize"; // Import DataTypes
 import { config } from "../config/appConfig";
 import logger from "../config/logger";
 import User from "./User";
@@ -10,10 +10,10 @@ import Feedback from "./Feedback";
 import Suggestion from "./Suggestion";
 import MerchantCategoryRule from "./MerchantCategoryRule";
 
-const sequelizeConfig: any = {
+const sequelizeConfig: Options = {
   host: config.database.host,
   port: config.database.port,
-  dialect: config.database.dialect as any,
+  dialect: config.database.dialect,
   schema: config.database.schema,
   logging: config.database.logging,
   pool: {
@@ -29,8 +29,8 @@ if (config.database.dialectOptions) {
 }
 
 const sequelize = new Sequelize(
-  config.database.database,
-  config.database.username,
+  config.database.database as string,
+  config.database.username as string,
   config.database.password,
   sequelizeConfig
 );

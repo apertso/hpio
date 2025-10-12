@@ -1,7 +1,8 @@
 /project_code.txt
-/skleika.sh
+/include.txt
 *.sh
 *.keystore
+google-services.json
 
 # backend
 /backend/node_modules/

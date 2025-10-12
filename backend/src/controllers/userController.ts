@@ -6,6 +6,7 @@ import { config } from "../config/appConfig";
 import fs from "fs";
 import crypto from "crypto";
 import { StorageFactory } from "../services/storage/StorageFactory";
+import db from "../models";
 
 // Получить профиль пользователя
 export const getProfile = async (req: Request, res: Response) => {
@@ -136,5 +137,32 @@ export const deleteAccount = async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error(`Error deleting account for user ${req.user!.id}:`, error);
     res.status(500).json({ message: "Error deleting account." });
+  }
+};
+
+// Register or update FCM token
+export const registerFcmToken = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: "FCM token is required." });
+    }
+
+    const user = await db.User.findByPk(req.user!.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.fcmToken = token;
+    await user.save();
+
+    logger.info(`FCM token registered for user ${req.user!.id}`);
+    res.json({ success: true, message: "FCM token registered successfully." });
+  } catch (error: any) {
+    logger.error(
+      `Error registering FCM token for user ${req.user!.id}:`,
+      error
+    );
+    res.status(500).json({ message: "Error registering FCM token." });
   }
 };

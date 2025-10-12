@@ -83,7 +83,7 @@ const DownloadPage: React.FC = () => {
         {/* Android Section */}
         <section className="py-8">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold mb-2">Android</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-2">Android</h2>
             <p className="text-gray-600 dark:text-gray-400">
               Выберите подходящую версию для вашего устройства
             </p>
@@ -94,7 +94,7 @@ const DownloadPage: React.FC = () => {
             <DownloadCard
               title="Скачать для arm64"
               description="Быстрая и легкая версия для современных устройств"
-              downloadUrl="https://cdn.hpio.ru/releases/0.0.8/app-arm64-release.apk"
+              downloadUrl="https://cdn.hpio.ru/releases/0.0.9/app-arm64-release.apk"
               recommended={true}
             />
 
@@ -102,7 +102,7 @@ const DownloadPage: React.FC = () => {
             <DownloadCard
               title="Скачать Universal"
               description="Резервный вариант, если первая версия не установилась"
-              downloadUrl="https://cdn.hpio.ru/releases/0.0.8/app-universal-release.apk"
+              downloadUrl="https://cdn.hpio.ru/releases/0.0.9/app-universal-release.apk"
             />
           </div>
 
@@ -118,7 +118,7 @@ const DownloadPage: React.FC = () => {
         {/* Coming Soon Section */}
         <section className="py-12">
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Скоро</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-4">Скоро</h2>
             <div className="grid gap-6 md:grid-cols-2 max-w-2xl mx-auto">
               <div className="p-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                 <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-gray-200 dark:bg-gray-700">

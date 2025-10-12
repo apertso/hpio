@@ -14,6 +14,10 @@ export interface ToastProps {
   type: ToastType;
   duration?: number;
   onClose: (id: string) => void;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 const icons: Record<ToastType, React.ElementType> = {
@@ -34,6 +38,7 @@ const Toast: React.FC<ToastProps> = ({
   type,
   duration = 5000,
   onClose,
+  action,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -64,6 +69,18 @@ const Toast: React.FC<ToastProps> = ({
         <Icon />
       </div>
       <div className="flex-1 text-sm font-medium">{message}</div>
+      {action && (
+        <button
+          onClick={() => {
+            action.onClick();
+            setIsVisible(false);
+            setTimeout(() => onClose(id), 300);
+          }}
+          className="py-1 px-2.5 ml-3 text-sm font-semibold bg-white/20 rounded-md hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white"
+        >
+          {action.label}
+        </button>
+      )}
       <button
         onClick={() => {
           setIsVisible(false);

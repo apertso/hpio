@@ -24,6 +24,7 @@ import {
   CheckCircleIcon as CheckSolidIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
+import { PlusIcon } from "@heroicons/react/24/outline";
 // import { ArrowPathIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 // For MobileActionsOverlay
 type MobileActionsOverlayProps = {
@@ -360,10 +361,14 @@ const PaymentsPage: React.FC = () => {
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Все платежи
           </h2>
-          <Button onClick={handleAddPayment} label="Добавить платеж" />
+          <Button
+            onClick={handleAddPayment}
+            label="Добавить платеж"
+            className="hidden md:inline-flex"
+          />
         </div>
 
         {/* TODO: Добавить секцию для фильтров, поиска и пагинации (Часть 6+) */}
@@ -462,6 +467,16 @@ const PaymentsPage: React.FC = () => {
         onComplete={handleCompletePayment}
         onDelete={handleDeletePayment}
       />
+
+      {/* FAB для мобильной версии */}
+      <div className="md:hidden fixed bottom-6 right-6 z-50">
+        <button
+          onClick={handleAddPayment}
+          className="w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+        >
+          <PlusIcon className="w-6 h-6" />
+        </button>
+      </div>
     </>
   );
 };

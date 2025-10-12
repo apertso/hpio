@@ -16,6 +16,7 @@ import { useTheme } from "../context/ThemeContext"; // Import useTheme
 import { Button } from "../components/Button";
 import { DropdownButton } from "../components/DropdownButton";
 import { YearSelectorDropdown } from "../components/YearSelectorDropdown";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import CategoryDistributionBars from "../components/CategoryDistributionBars";
 
 import { useNavigate } from "react-router-dom";
@@ -709,10 +710,12 @@ const HomePage: React.FC = () => {
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 inline-block">
-            Платежи на ближайшие&nbsp;
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Ближайшие платежи
+            </h2>
             <DropdownButton
-              className="text-2xl font-bold text-gray-500 dark:text-gray-400"
+              className="text-lg font-semibold text-gray-500 dark:text-gray-400"
               label={dayOptions.find((o) => o.value === upcomingDays)!.label}
               options={dayOptions.map((opt) => ({
                 label: opt.label,
@@ -722,8 +725,12 @@ const HomePage: React.FC = () => {
               }))}
               selectedValue={upcomingDays}
             />
-          </h2>
-          <Button onClick={handleAddPayment} label="Добавить платеж" />
+          </div>
+          <Button
+            onClick={handleAddPayment}
+            label="Добавить платеж"
+            className="hidden md:inline-flex"
+          />
         </div>
 
         {/* Отображение состояния загрузки или ошибки */}
@@ -841,7 +848,7 @@ const HomePage: React.FC = () => {
         <div className="mt-8">
           {" "}
           {/* Добавляем отступ сверху */}
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
             Статистика
           </h2>
           {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
@@ -1148,6 +1155,16 @@ const HomePage: React.FC = () => {
         onComplete={handleCompletePayment}
         onDelete={handleDeletePayment}
       />
+
+      {/* FAB для мобильной версии */}
+      <div className="md:hidden fixed bottom-6 right-6 z-50">
+        <button
+          onClick={handleAddPayment}
+          className="w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+        >
+          <PlusIcon className="w-6 h-6" />
+        </button>
+      </div>
     </>
   );
 };

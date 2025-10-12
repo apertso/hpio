@@ -3,7 +3,12 @@ import ReactDOM from "react-dom";
 import Toast, { ToastProps, ToastType } from "../components/Toast";
 
 interface ToastContextProps {
-  showToast: (message: string, type: ToastType, duration?: number) => void;
+  showToast: (
+    message: string,
+    type: ToastType,
+    duration?: number,
+    action?: { label: string; onClick: () => void }
+  ) => void;
 }
 
 const ToastContext = createContext<ToastContextProps | undefined>(undefined);
@@ -14,11 +19,16 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [toasts, setToasts] = useState<Omit<ToastProps, "onClose">[]>([]);
 
   const showToast = useCallback(
-    (message: string, type: ToastType, duration?: number) => {
+    (
+      message: string,
+      type: ToastType,
+      duration?: number,
+      action?: { label: string; onClick: () => void }
+    ) => {
       const id = new Date().toISOString();
       setToasts((prevToasts) => [
         ...prevToasts,
-        { id, message, type, duration },
+        { id, message, type, duration, action },
       ]);
     },
     []
@@ -32,7 +42,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {ReactDOM.createPortal(
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-4 space-y-2 safe-area-bottom">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-4 space-y-2 safe-area-top safe-area-bottom">
           {toasts.map((toast) => (
             <Toast key={toast.id} {...toast} onClose={handleClose} />
           ))}

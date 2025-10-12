@@ -11,7 +11,7 @@ const PrivacyPage: React.FC = () => {
 
       <section className="w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg mb-10">
         <div className="prose dark:prose-invert max-w-none">
-          <h1 className="text-2xl font-bold mb-4">
+          <h1 className="text-xl md:text-2xl font-bold mb-4">
             Политика конфиденциальности
           </h1>
           <p className="text-sm text-gray-600 dark:text-slate-400 mb-8">

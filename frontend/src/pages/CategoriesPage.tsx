@@ -5,6 +5,7 @@ import {
   PencilIcon as PencilSolidIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { Button } from "../components/Button"; // Import the Button component
 import useApi from "../hooks/useApi"; // Import useApi
 import { useNavigate } from "react-router-dom";
@@ -197,10 +198,14 @@ const CategoriesPage: React.FC = () => {
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Управление категориями
           </h2>
-          <Button onClick={handleAddCategory} label="Добавить категорию" />
+          <Button
+            onClick={handleAddCategory}
+            label="Добавить категорию"
+            className="hidden md:inline-flex"
+          />
         </div>
 
         <p className="mb-6">
@@ -254,6 +259,16 @@ const CategoriesPage: React.FC = () => {
         onEdit={handleEditCategory}
         onDelete={handleDeleteCategory}
       />
+
+      {/* FAB для мобильной версии */}
+      <div className="md:hidden fixed bottom-6 right-6 z-50">
+        <button
+          onClick={handleAddCategory}
+          className="w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+        >
+          <PlusIcon className="w-6 h-6" />
+        </button>
+      </div>
     </>
   );
 };

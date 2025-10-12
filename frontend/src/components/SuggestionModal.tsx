@@ -39,18 +39,19 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
   if (!isOpen || suggestions.length === 0) return null;
 
   const currentSuggestion = suggestions[currentIndex];
+  const selectedCategoryName = categories?.find(
+    (c) => c.id === selectedCategoryId
+  )?.name;
 
-  const categoryOptions = categories.map((cat) => ({
-    value: cat.id,
-    label: cat.name,
-  }));
+  const categoryOptions = [
+    { value: null, label: "Без категории" },
+    ...(categories?.map((cat) => ({
+      value: cat.id,
+      label: cat.name,
+    })) || []),
+  ];
 
   const handleAccept = async () => {
-    if (!selectedCategoryId) {
-      showToast("Пожалуйста, выберите категорию", "error");
-      return;
-    }
-
     try {
       setIsProcessing(true);
 
@@ -58,17 +59,16 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
 
       const today = new Date().toISOString().split("T")[0];
 
-      await axiosInstance.post("/api/payments", {
+      await axiosInstance.post("/payments", {
         title: currentSuggestion.merchantName,
         amount: currentSuggestion.amount,
         dueDate: today,
-        categoryId: selectedCategoryId,
-        status: "completed",
-        completedAt: new Date().toISOString(),
+        categoryId: selectedCategoryId || null,
+        createAsCompleted: true,
         autoCreated: true,
       });
 
-      if (createRule) {
+      if (createRule && selectedCategoryId) {
         const normalizedMerchant = normalizeMerchantName(
           currentSuggestion.merchantName
         );
@@ -179,15 +179,15 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
               Выберите категорию
             </label>
             <Select
-              options={categoryOptions}
+              options={categoryOptions || []}
               value={selectedCategoryId}
-              onChange={(value) => setSelectedCategoryId(value)}
-              placeholder="Выберите категорию..."
+              onChange={(value) => setSelectedCategoryId(value || "")}
+              placeholder="Выберите категорию"
             />
           </div>
 
           {/* Create Rule Checkbox */}
-          {selectedCategoryId && (
+          {selectedCategoryId && selectedCategoryName && (
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
@@ -201,8 +201,8 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
                 className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
               >
                 Всегда относить платежи от "
-                <strong>{currentSuggestion.merchantName}</strong>" к этой
-                категории
+                <strong>{currentSuggestion.merchantName}</strong>" в категорию "
+                <strong>{selectedCategoryName}</strong>"
               </label>
             </div>
           )}
@@ -212,7 +212,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
         <div className="px-6 pb-6 space-y-3">
           <button
             onClick={handleAccept}
-            disabled={isProcessing || !selectedCategoryId}
+            disabled={isProcessing}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             <CheckIcon className="w-5 h-5" />

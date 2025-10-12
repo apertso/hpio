@@ -23,6 +23,7 @@ export interface User {
   notificationMethod?: "email" | "push" | "none";
   notificationTime?: string;
   timezone?: string; // <-- ADD THIS LINE
+  fcmToken?: string | null;
   // Добавьте другие поля пользователя, если они будут возвращаться с бэкенда
 }
 
@@ -206,6 +207,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Первичная пере-валидация при монтировании
   useEffect(() => {
     revalidateMe();
+
+    // Register FCM token on app startup (Android only)
+    if (isTauriMobile()) {
+      (async () => {
+        try {
+          const { getFcmToken, registerFcmToken } = await import(
+            "../api/fcmApi"
+          );
+          const fcmToken = await getFcmToken();
+          if (fcmToken) {
+            await registerFcmToken(fcmToken);
+            logger.info("FCM token registered successfully");
+          }
+        } catch (error) {
+          logger.error("Failed to register FCM token:", error);
+        }
+      })();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

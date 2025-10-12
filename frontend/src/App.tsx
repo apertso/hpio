@@ -28,7 +28,7 @@ import {
 import axiosInstance from "./api/axiosInstance";
 import { PHOTO_URL } from "./api/userApi";
 import { useReset } from "./context/ResetContext";
-import { isTauriMobile } from "./utils/platform";
+import { isTauri, isTauriMobile } from "./utils/platform";
 import { getPageBackgroundClasses } from "./utils/pageBackgrounds";
 import {
   getPendingNotifications,
@@ -40,6 +40,7 @@ import { normalizeMerchantName } from "./utils/merchantNormalizer";
 import { suggestionApi } from "./api/suggestionApi";
 import { merchantRuleApi } from "./api/merchantRuleApi";
 import { useToast } from "./context/ToastContext";
+import logger from "./utils/logger";
 
 // Replace static page imports with lazy imports
 const HomePage = React.lazy(() => import("./pages/HomePage"));
@@ -341,21 +342,83 @@ function App() {
   };
 
   const processNotifications = async () => {
-    if (!isTauriMobile() || !isAuthenticated) return;
+    const automationEnabled =
+      localStorage.getItem("automation_enabled") !== "false";
+    if (!automationEnabled) {
+      return; // Feature is disabled by the user
+    }
+
+    if (!isAuthenticated) return;
 
     try {
-      const { granted } = await checkNotificationPermission();
-      if (!granted) return;
+      // Проверяем dev_mobile_override для обхода проверки разрешений
+      const devMobileOverride = localStorage.getItem("dev_mobile_override");
+      const isActuallyTauri = isTauri();
+      const shouldBypassPermissionCheck = devMobileOverride === "on";
 
-      const notifications = await getPendingNotifications();
+      // Если мы не в Tauri и не в режиме разработки с обходом, пропускаем
+      if (!isActuallyTauri && !shouldBypassPermissionCheck) return;
+
+      let notifications: any[] = [];
+
+      if (isActuallyTauri && !shouldBypassPermissionCheck) {
+        // Получаем реальные уведомления только если мы действительно в Tauri
+        const { granted } = await checkNotificationPermission();
+        if (!granted) return;
+
+        notifications = await getPendingNotifications();
+      }
+
+      // Добавляем симулированные уведомления если есть dev_mobile_override
+      if (shouldBypassPermissionCheck) {
+        const simulatedNotifications = JSON.parse(
+          localStorage.getItem("dev_simulated_notifications") || "[]"
+        );
+        notifications = [...notifications, ...simulatedNotifications];
+
+        // Очищаем симулированные уведомления после обработки
+        if (simulatedNotifications.length > 0) {
+          localStorage.removeItem("dev_simulated_notifications");
+        }
+      }
+
       if (notifications.length === 0) return;
 
       const parsedSuggestions = [];
 
       for (const notification of notifications) {
+        if (
+          notification.package_name === "ru.raiffeisennews" ||
+          notification.package_name === "com.android.shell"
+        ) {
+          const parsed = parseNotification(
+            notification.package_name,
+            notification.text,
+            notification.title
+          );
+
+          const rawData = `Raw notification from ${
+            notification.package_name
+          }:\nTitle: ${notification.title || "N/A"}\nText: ${
+            notification.text
+          }`;
+          const parsedData = parsed
+            ? `Parsed: merchant=${parsed.merchantName}, amount=${parsed.amount}`
+            : "Parsing failed";
+
+          // Always log to file on Android
+          logger.info(`${rawData}\n${parsedData}`);
+
+          // Show debug toast if enabled in settings
+          if (localStorage.getItem("dev_show_debug_toasts") === "true") {
+            showToast(`${rawData}\n\n${parsedData}`, "info", 8000);
+          }
+        }
+
         const parsed = parseNotification(
           notification.package_name,
-          notification.text
+          notification.text,
+          notification.title
         );
 
         if (!parsed) continue;
@@ -368,20 +431,44 @@ function App() {
 
         if (existingRule) {
           const today = new Date().toISOString().split("T")[0];
-          await axiosInstance.post("/api/payments", {
-            title: parsed.merchantName,
-            amount: parsed.amount,
-            dueDate: today,
-            categoryId: existingRule.categoryId,
-            status: "completed",
-            completedAt: new Date().toISOString(),
-            autoCreated: true,
-          });
+          try {
+            const response = await axiosInstance.post("/payments", {
+              title: parsed.merchantName,
+              amount: parsed.amount,
+              dueDate: today,
+              categoryId: existingRule.categoryId,
+              createAsCompleted: true,
+              autoCreated: true,
+            });
+            const newPayment = response.data; // The newly created payment
 
-          showToast(
-            `Автоматически добавлен платёж: ${parsed.merchantName}`,
-            "success"
-          );
+            const handleUndo = async () => {
+              try {
+                await axiosInstance.delete(`/payments/${newPayment.id}`);
+                showToast("Создание платежа отменено", "info");
+              } catch (undoError) {
+                console.error("Error undoing payment creation:", undoError);
+                showToast("Не удалось отменить создание", "error");
+              }
+            };
+
+            showToast(
+              `Платёж для "${
+                parsed.merchantName
+              }" автоматически добавлен в категорию "${
+                existingRule.category?.name || "Без категории"
+              }"`,
+              "success",
+              10000, // Longer duration for undo
+              {
+                label: "Отменить",
+                onClick: handleUndo,
+              }
+            );
+          } catch (error) {
+            logger.error("Failed to auto-create payment:", error);
+            // Fail silently as per requirements
+          }
         } else {
           const suggestion = await suggestionApi.createSuggestion({
             merchantName: parsed.merchantName,
@@ -395,10 +482,19 @@ function App() {
             amount: parsed.amount,
             notificationData: notification.text,
           });
+
+          // Show push notification for detected payment
+          if (isTauriMobile()) {
+            // This will be handled by backend, but we can show a local notification
+            // for immediate feedback
+          }
         }
       }
 
-      await clearPendingNotifications();
+      // Очищаем реальные уведомления только если мы в Tauri
+      if (isActuallyTauri && !shouldBypassPermissionCheck) {
+        await clearPendingNotifications();
+      }
 
       if (parsedSuggestions.length > 0) {
         setSuggestions(parsedSuggestions);
@@ -410,7 +506,36 @@ function App() {
   };
 
   useEffect(() => {
-    if (!isAuthenticated || !isTauriMobile()) return;
+    if (!isAuthenticated) return;
+
+    // Log app initialization
+    logger.info("App initialized - notification processing started");
+
+    // Handle notification click navigation
+    if (isTauriMobile()) {
+      (async () => {
+        try {
+          const { getPendingNavigation, clearPendingNavigation } = await import(
+            "./api/fcmApi"
+          );
+          const action = await getPendingNavigation();
+          if (action) {
+            await clearPendingNavigation();
+
+            // Navigate based on action
+            if (action === "archive") {
+              navigate("/archive");
+            } else {
+              navigate("/dashboard");
+            }
+
+            logger.info(`Navigated from notification: ${action}`);
+          }
+        } catch (error) {
+          logger.error("Failed to handle notification navigation:", error);
+        }
+      })();
+    }
 
     processNotifications();
 

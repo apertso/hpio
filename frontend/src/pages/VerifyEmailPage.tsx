@@ -53,7 +53,7 @@ const VerifyEmailPage: React.FC = () => {
         {status === "verifying" && (
           <>
             <Spinner size="lg" />
-            <h1 className="text-2xl font-bold mt-4 text-gray-900 dark:text-gray-100">
+            <h1 className="text-xl md:text-2xl font-bold mt-4 text-gray-900 dark:text-gray-100">
               Подтверждаем ваш email...
             </h1>
           </>

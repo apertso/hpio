@@ -134,7 +134,7 @@ const MobileLandingPage: React.FC = () => {
             alt="Хочу Плачу Logo"
             className="w-16 h-16 mb-4"
           />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             Хочу Плачу
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-center">
@@ -147,7 +147,7 @@ const MobileLandingPage: React.FC = () => {
           <FormBlock className="w-full max-w-md">
             {activeTab === "login" ? (
               <>
-                <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
+                <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
                   Вход в аккаунт
                 </h2>
                 <form
@@ -202,7 +202,7 @@ const MobileLandingPage: React.FC = () => {
               </>
             ) : (
               <>
-                <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
+                <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
                   Создать аккаунт
                 </h2>
                 <form

@@ -56,7 +56,7 @@ const PasswordResetPage: React.FC = () => {
 
       <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
         <FormBlock className="w-full max-w-md">
-          <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
+          <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
             Сброс пароля
           </h2>
           {message && (

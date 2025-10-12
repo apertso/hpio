@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
+import { Options } from "sequelize";
 dotenv.config();
 
 export const config = {
@@ -22,7 +23,7 @@ export const config = {
     schema: process.env.DB_SCHEMA || "dbo",
     dialectOptions: undefined,
     logging: false, // Установите true для логирования SQL запросов (полезно при отладке)
-  },
+  } as Options,
   uploadDir: process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads"),
   storage: {
     type: process.env.STORAGE_TYPE || "local", // 'local' или 'bunny'

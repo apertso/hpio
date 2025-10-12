@@ -12,6 +12,7 @@ interface UserAttributes {
   notificationMethod: "email" | "push" | "none";
   notificationTime: string; // Format HH:mm
   timezone: string;
+  fcmToken?: string | null;
   createdAt: Date;
   updatedAt: Date;
   // Add other user attributes here if needed
@@ -94,6 +95,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.STRING,
         allowNull: false,
         defaultValue: "UTC",
+      },
+      fcmToken: {
+        type: dataTypes.STRING,
+        allowNull: true,
       },
       createdAt: {
         type: dataTypes.DATE,

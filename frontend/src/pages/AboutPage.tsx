@@ -92,7 +92,7 @@ const AboutPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Feedback Form */}
               <div className="lg:col-span-2">
-                <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900 dark:text-white">
                   Ваши предложения
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -197,7 +197,7 @@ const AboutPage: React.FC = () => {
 
               {/* Support Options */}
               <div className="lg:col-span-1">
-                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+                <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900 dark:text-white">
                   Поддержка
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">

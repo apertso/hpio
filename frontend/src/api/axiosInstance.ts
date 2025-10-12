@@ -1,8 +1,8 @@
 import axios, { AxiosHeaders } from "axios";
-import { syncService, ConnectionStatus } from "../utils/syncService";
+import { syncService } from "../utils/syncService";
 
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api", // URL ?????? ???????
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },

@@ -7,9 +7,18 @@ interface ModalProps {
   onClose: () => void;
   children: React.ReactNode;
   title?: string;
+  showCloseButton?: boolean;
+  className?: string;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
+const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  children,
+  title,
+  showCloseButton = true,
+  className,
+}) => {
   if (!isOpen) return null;
 
   const openedAtRef = useRef<number>(0);
@@ -31,7 +40,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
   // Используем React Portal для рендеринга модального окна вне основного DOM-дерева
   return ReactDOM.createPortal(
     <div
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50"
+      className={`fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50 ${
+        className || ""
+      }`}
       onClick={handleBackdropClick}
     >
       <div
@@ -64,11 +75,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
             </button>
           </div>
         )}
-        {!title && (
-          <div className="flex justify-end">
+        {!title && showCloseButton && (
+          <div className="flex justify-end -mb-2">
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-4 cursor-pointer"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
             >
               <svg
                 className="h-6 w-6"
@@ -81,7 +92,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M6 18L18 6M6 6l12 12"
-                ></path>
+                />
               </svg>
             </button>
           </div>

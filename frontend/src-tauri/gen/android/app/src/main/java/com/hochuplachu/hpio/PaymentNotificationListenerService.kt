@@ -15,9 +15,49 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "PaymentNotificationListener"
-        private const val RAIFFEISEN_PACKAGE = "ru.raiffeisennews"
-        private const val SHELL_PACKAGE = "com.android.shell"
         private const val NOTIFICATIONS_FILE = "pending_notifications.json"
+
+        // Track recently processed notification keys to avoid duplicates
+        private val processedNotificationKeys = mutableSetOf<String>()
+        private const val MAX_TRACKED_KEYS = 100 // Limit memory usage
+
+        // Supported package names for payment notification parsing
+        private val SUPPORTED_PACKAGES = setOf(
+            // Test and Raiffeisen
+            "com.android.shell",
+            "ru.raiffeisennews",
+            // Bank applications
+            "ru.sberbankmobile",
+            "com.idamob.tinkoff.android",
+            "ru.vtb24.mobilebanking",
+            "ru.alfabank.mobile.android",
+            "ru.sovcombank.halvacard",
+            "ru.pochtabank.pochtaapp",
+            "ru.rosbank.android",
+            // Fintech applications
+            "ru.yoo.money",
+            "com.yandex.bank",
+            "ru.nspk.sbp.pay",
+            "ru.ozon.fintech.finance",
+            // Marketplace applications
+            "ru.ozon.app.android",
+            "com.wildberries.ru",
+            "ru.market.android",
+            "com.avito.android",
+            "ru.aliexpress.buyer",
+            "ru.lamoda",
+            // Business applications
+            "ru.sberbank.bankingbusiness",
+            "com.idamob.tinkoff.business",
+            "ru.vtb.mobile.business",
+            "ru.alfabank.mobile.android.biz",
+            "ru.sovcombank.business",
+            "ru.modulebank",
+            "ru.tochka.app",
+            "ru.openbusiness.app",
+            "ru.rosbank.business",
+            "ru.uralsib.business"
+        )
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -25,14 +65,35 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
         if (sbn == null) return
 
-        Log.d(TAG, "Notification posted: ${sbn.packageName}")
+        Log.d(TAG, "Notification posted: ${sbn.packageName}, key: ${sbn.key}")
 
-        if (sbn.packageName == RAIFFEISEN_PACKAGE || sbn.packageName == SHELL_PACKAGE) {
-            handleRaiffeisenNotification(sbn)
+        // Check if we've already processed this notification using its unique key
+        if (processedNotificationKeys.contains(sbn.key)) {
+            Log.d(TAG, "Duplicate notification detected (key: ${sbn.key}), skipping")
+            return
+        }
+
+        if (SUPPORTED_PACKAGES.contains(sbn.packageName)) {
+            handlePaymentNotification(sbn)
+
+            // Mark this notification as processed
+            processedNotificationKeys.add(sbn.key)
+
+            // Prevent memory leak by limiting the set size
+            if (processedNotificationKeys.size > MAX_TRACKED_KEYS) {
+                // Remove oldest entries (in practice, this is fine since we just need recent deduplication)
+                val iterator = processedNotificationKeys.iterator()
+                repeat(20) {
+                    if (iterator.hasNext()) {
+                        iterator.next()
+                        iterator.remove()
+                    }
+                }
+            }
         }
     }
 
-    private fun handleRaiffeisenNotification(sbn: StatusBarNotification) {
+    private fun handlePaymentNotification(sbn: StatusBarNotification) {
         try {
             val notification: Notification = sbn.notification
             val extras = notification.extras
@@ -40,7 +101,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
             val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
             val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
 
-            Log.d(TAG, "Raiffeisen notification - Title: $title, Text: $text")
+            Log.d(TAG, "Payment notification from ${sbn.packageName} - Title: $title, Text: $text")
 
             if (text.isEmpty()) {
                 Log.d(TAG, "Empty notification text, skipping")
@@ -56,7 +117,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
             saveNotification(notificationData)
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling Raiffeisen notification", e)
+            Log.e(TAG, "Error handling payment notification from ${sbn.packageName}", e)
         }
     }
 
@@ -89,6 +150,10 @@ class PaymentNotificationListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.d(TAG, "Notification listener connected")
+
+        // Clear the processed keys cache when listener reconnects
+        // to avoid memory buildup and handle service restarts
+        processedNotificationKeys.clear()
     }
 
     override fun onListenerDisconnected() {

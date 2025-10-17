@@ -11,6 +11,9 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       notifications::check_notification_permission,
       notifications::open_notification_settings,
+      notifications::check_app_notification_permission,
+      notifications::request_app_notification_permission,
+      notifications::open_app_notification_settings,
       notifications::get_pending_notifications,
       notifications::clear_pending_notifications,
       fcm::get_fcm_token,

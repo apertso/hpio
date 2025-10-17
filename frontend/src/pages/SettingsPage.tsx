@@ -6,7 +6,6 @@ import { z } from "zod";
 import { useDropzone } from "react-dropzone";
 import getErrorMessage from "../utils/getErrorMessage";
 import Spinner from "../components/Spinner";
-import axiosInstance from "../api/axiosInstance";
 import {
   UserIcon,
   CheckBadgeIcon,
@@ -17,14 +16,16 @@ import {
   TrashIcon,
   BellAlertIcon,
 } from "@heroicons/react/24/outline";
-import userApi, { PHOTO_URL } from "../api/userApi";
+import userApi from "../api/userApi";
 import { Input } from "../components/Input";
 import FormBlock from "../components/FormBlock";
-// import { useTheme } from "../context/ThemeContext";
+import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
+import { useAvatarCache } from "../hooks/useAvatarCache";
 import { merchantRuleApi, MerchantCategoryRule } from "../api/merchantRuleApi";
 import ConfirmModal from "../components/ConfirmModal";
 import ToggleSwitch from "../components/ToggleSwitch";
+import DeleteAccount from "../components/DeleteAccount";
 import { timezones } from "../utils/timezones";
 import Select from "../components/Select";
 import PageMeta from "../components/PageMeta";
@@ -34,11 +35,15 @@ import { isTauri, isTauriMobile } from "../utils/platform";
 import {
   checkNotificationPermission,
   openNotificationSettings,
+  checkAppNotificationPermission,
+  openAppNotificationSettings,
 } from "../api/notificationPermission";
 import { readLogFile } from "../utils/fileLogger";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import logger from "../utils/logger";
+import MobilePanel from "../components/MobilePanel";
+import { usePageTitle } from "../context/PageTitleContext";
 
 // Схема для всех настроек профиля
 const settingsSchema = z.object({
@@ -74,107 +79,28 @@ const passwordSchema = z
 type SettingsInputs = z.infer<typeof settingsSchema>;
 type PasswordInputs = z.infer<typeof passwordSchema>;
 
-const MobileActionPanel: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}> = ({ isOpen, onClose, title, children }) => {
-  const [isVisible, setIsVisible] = React.useState(false);
-
-  React.useEffect(() => {
-    if (isOpen) {
-      // Short delay to allow the component to mount before animating in
-      const timer = setTimeout(() => setIsVisible(true), 10);
-      return () => clearTimeout(timer);
-    } else {
-      setIsVisible(false);
-    }
-  }, [isOpen]);
-
-  const handleClose = () => {
-    setIsVisible(false);
-    // Allow animation to finish before calling onClose which unmounts the component
-    setTimeout(onClose, 300);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="md:hidden" aria-modal="true" role="dialog">
-      {/* Backdrop */}
-      <div
-        className={`fixed inset-0 z-40 transition-opacity duration-300 ${
-          isVisible ? "bg-black/40" : "bg-black/0"
-        }`}
-        onClick={handleClose}
-        aria-hidden="true"
-      ></div>
-
-      {/* Panel */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out ${
-          isVisible ? "translate-y-0" : "translate-y-full"
-        }`}
-      >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {title}
-          </h3>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <div>{children}</div>
-      </div>
-    </div>
-  );
-};
-
-// const ToggleSwitch: React.FC<{
-//   checked: boolean;
-//   onChange: (checked: boolean) => void;
-//   disabled?: boolean;
-// }> = ({ checked, onChange, disabled }) => (
-//   <label className="relative inline-flex items-center cursor-pointer">
-//     <input
-//       type="checkbox"
-//       checked={checked}
-//       onChange={(e) => onChange(e.target.checked)}
-//       className="sr-only peer"
-//       disabled={disabled}
-//     />
-//     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-//   </label>
-// );
+const themeOptions = [
+  { label: "Системная", value: "system" },
+  { label: "Светлая", value: "light" },
+  { label: "Тёмная", value: "dark" },
+];
 
 const SettingsPage: React.FC = () => {
   const { user, refreshUser, logout, token } = useAuth();
+  const { theme, setTheme } = useTheme();
   const { showToast } = useToast();
+  const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("settings");
+
+  useEffect(() => {
+    setPageTitle("Настройки");
+  }, [setPageTitle]);
   const [isUploading, setIsUploading] = useState(false);
-  const [avatarKey, setAvatarKey] = useState(Date.now());
-  const [expandedSection, setExpandedSection] = useState<
-    "password" | "delete" | null
-  >(null);
-  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
-  const [deleteFeedbackText, setDeleteFeedbackText] = useState("");
-  const [deleteFile, setDeleteFile] = useState<File | null>(null);
+  const { avatarUrl, refreshAvatar } = useAvatarCache(user?.photoPath, token);
+  const [expandedSection, setExpandedSection] = useState<"password" | null>(
+    null
+  );
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileOverride, setMobileOverride] = useState<string>(() =>
     typeof window !== "undefined"
@@ -190,6 +116,16 @@ const SettingsPage: React.FC = () => {
   const [notificationPermissionGranted, setNotificationPermissionGranted] =
     useState(false);
   const [isCheckingPermission, setIsCheckingPermission] = useState(false);
+  const [
+    appNotificationPermissionGranted,
+    setAppNotificationPermissionGranted,
+  ] = useState(false);
+  const [isCheckingAppPermission, setIsCheckingAppPermission] = useState(false);
+  const handleThemeChange = (value: string | null) => {
+    if (value === "system" || value === "light" || value === "dark") {
+      setTheme(value);
+    }
+  };
   const [automationEnabled, setAutomationEnabled] = useState<boolean>(() => {
     return localStorage.getItem("automation_enabled") !== "false";
   });
@@ -257,13 +193,18 @@ const SettingsPage: React.FC = () => {
     if (isTauri()) {
       const checkPermission = async () => {
         setIsCheckingPermission(true);
+        setIsCheckingAppPermission(true);
         try {
           const status = await checkNotificationPermission();
           setNotificationPermissionGranted(status.granted);
+
+          const appStatus = await checkAppNotificationPermission();
+          setAppNotificationPermissionGranted(appStatus.granted);
         } catch (error) {
           console.error("Failed to check notification permission:", error);
         } finally {
           setIsCheckingPermission(false);
+          setIsCheckingAppPermission(false);
         }
       };
       checkPermission();
@@ -280,7 +221,7 @@ const SettingsPage: React.FC = () => {
     try {
       await userApi.uploadPhoto(formData);
       await refreshUser();
-      setAvatarKey(Date.now());
+      await refreshAvatar();
       showToast("Фото профиля обновлено.", "success");
     } catch (error) {
       showToast(`Ошибка загрузки фото: ${getErrorMessage(error)}`, "error");
@@ -289,7 +230,7 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const { getRootProps, getInputProps } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { "image/jpeg": [], "image/png": [], "image/webp": [] },
     multiple: false,
@@ -362,25 +303,32 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmationText !== "УДАЛИТЬ АККАУНТ") {
-      showToast("Введите подтверждающую фразу правильно.", "error");
-      return;
-    }
+  const handleDeleteAccount = async (
+    reason: string,
+    feedback: string,
+    file: File | null
+  ) => {
     try {
       setIsDeleting(true);
-      if (deleteFeedbackText.trim().length > 0 || deleteFile) {
+      if (feedback.trim().length > 0 || file || reason !== "no_answer") {
         try {
-          await submitFeedback(
-            deleteFeedbackText.trim(),
-            deleteFile || undefined
-          );
+          let description = feedback.trim();
+          if (reason !== "no_answer") {
+            if (description) {
+              description = `Причина удаления: ${reason}\n\n${description}`;
+            } else {
+              description = `Причина удаления: ${reason}`;
+            }
+          }
+          await submitFeedback(description, file || undefined);
         } catch (e) {
           // ошибку отправки отзыва игнорируем
         }
       }
       await userApi.deleteAccount();
-      showToast("Ваш аккаунт был успешно удален.", "success");
+      showToast("Ваш аккаунт был успешно удалён.", "success");
+      setIsDeleteModalOpen(false);
+      setExpandedSection(null);
       logout();
     } catch (error) {
       showToast(
@@ -442,6 +390,28 @@ const SettingsPage: React.FC = () => {
         setNotificationPermissionGranted(status.granted);
         if (status.granted) {
           showToast("Доступ к уведомлениям предоставлен!", "success");
+        }
+      }, 2000);
+    } catch (error) {
+      showToast("Не удалось открыть настройки", "error");
+    }
+  };
+
+  const handleOpenAppNotificationSettings = async () => {
+    if (!isTauri()) {
+      showToast("Эта функция доступна только в мобильном приложении", "error");
+      return;
+    }
+
+    try {
+      await openAppNotificationSettings();
+      showToast("Откройте настройки и разрешите уведомления", "info");
+      // Перепроверяем разрешение через 2 секунды
+      setTimeout(async () => {
+        const status = await checkAppNotificationPermission();
+        setAppNotificationPermissionGranted(status.granted);
+        if (status.granted) {
+          showToast("Уведомления приложения разрешены!", "success");
         }
       }, 2000);
     } catch (error) {
@@ -518,8 +488,8 @@ const SettingsPage: React.FC = () => {
 
       <div className="dark:text-gray-100">
         <div className="w-full md:w-2xl lg:w-3xl mx-auto">
-          <div className="flex justify-between items-center mb-6 px-4 md:px-0">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="flex justify-between items-center md:mb-6 px-4 md:px-0">
+            <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
               Настройки
             </h2>
           </div>
@@ -531,112 +501,136 @@ const SettingsPage: React.FC = () => {
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
                   Профиль и уведомления
                 </h3>
-                <div className="flex flex-col md:flex-row items-start space-y-6 md:space-y-0 md:space-x-6">
-                  {/* Avatar Section */}
-                  <div className="relative flex-shrink-0">
-                    <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-300 dark:border-gray-600">
-                      {user?.photoPath ? (
-                        <img
-                          key={avatarKey}
-                          src={`${axiosInstance.defaults.baseURL}${PHOTO_URL}?token=${token}`}
-                          alt="Avatar"
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <UserIcon className="w-12 h-12 text-gray-400 dark:text-gray-500" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex-grow w-full">
-                    <div
-                      {...getRootProps()}
-                      className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-500 h-24 flex items-center justify-center cursor-pointer transition-colors"
-                    >
-                      <input {...getInputProps()} />
-                      {isUploading ? (
-                        <Spinner size="sm" />
-                      ) : (
-                        <span>Нажмите или перетащите фото</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Profile Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                  <Input
-                    label="Имя"
-                    id="name"
-                    type="text"
-                    {...registerSettings("name")}
-                    error={settingsErrors.name?.message}
-                  />
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <label
-                        htmlFor="email"
-                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                <div className="flex flex-col gap-6">
+                  {/* Avatar and Name on same line */}
+                  <div className="flex items-center gap-6">
+                    {/* Avatar Section - Modern UX Pattern with hover/drag overlay */}
+                    <div className="flex-shrink-0">
+                      <div
+                        {...getRootProps()}
+                        className={`relative flex-shrink-0 cursor-pointer group w-28 h-28 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          isDragActive
+                            ? "bg-blue-100 dark:bg-blue-900/30 shadow-blue-500  shadow-[0px_0px_3px_3px]"
+                            : "bg-gray-200 dark:bg-gray-700"
+                        }`}
                       >
-                        Email
-                      </label>
-                      {user?.isVerified ? (
-                        <span className="text-xs flex items-center text-green-600 dark:text-green-400">
-                          <CheckBadgeIcon className="h-4 w-4 mr-1" />{" "}
-                          Подтвержден
-                        </span>
-                      ) : (
-                        <span className="text-xs flex items-center text-yellow-600 dark:text-yellow-400">
-                          <ExclamationCircleIcon className="h-4 w-4 mr-1" /> Не
-                          подтвержден
-                        </span>
-                      )}
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt="Avatar"
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserIcon className="w-14 h-14 text-gray-400 dark:text-gray-500" />
+                        )}
+
+                        {/* Edit Pencil Icon - Always visible in corner */}
+                        <div className="absolute bottom-0 right-0 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center transition-colors duration-200 shadow-md">
+                          <svg
+                            className="w-3.5 h-3.5 text-white"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                          </svg>
+                        </div>
+
+                        {isUploading && (
+                          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center z-20">
+                            <Spinner size="sm" />
+                          </div>
+                        )}
+                        <input {...getInputProps()} />
+                      </div>
                     </div>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...registerSettings("email")}
-                      error={settingsErrors.email?.message}
-                    />
+
+                    {/* Name Field */}
+                    <div className="flex-grow">
+                      <Input
+                        label="Имя"
+                        id="name"
+                        type="text"
+                        {...registerSettings("name")}
+                        error={settingsErrors.name?.message}
+                      />
+                    </div>
                   </div>
-                  <Controller
-                    name="notificationMethod"
-                    control={settingsControl}
-                    defaultValue={user?.notificationMethod || "email"}
-                    render={({ field }) => (
-                      <Select
-                        label="Напоминания о платежах"
-                        options={[
-                          { label: "Email", value: "email" },
-                          { label: "Пуш-уведомление", value: "push" },
-                          { label: "Выключены", value: "none" },
-                        ]}
-                        value={field.value}
-                        onChange={field.onChange}
-                        error={settingsErrors.notificationMethod?.message}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label
+                          htmlFor="email"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                          Email
+                        </label>
+                        {user?.isVerified ? (
+                          <span className="text-xs flex items-center text-green-600 dark:text-green-400">
+                            <CheckBadgeIcon className="h-4 w-4 mr-1" />{" "}
+                            Подтвержден
+                          </span>
+                        ) : (
+                          <span className="text-xs flex items-center text-yellow-600 dark:text-yellow-400">
+                            <ExclamationCircleIcon className="h-4 w-4 mr-1" />{" "}
+                            Не подтвержден
+                          </span>
+                        )}
+                      </div>
+                      <Input
+                        id="email"
+                        type="email"
+                        {...registerSettings("email")}
+                        error={settingsErrors.email?.message}
                       />
-                    )}
-                  />
-                  <Input
-                    label="Напоминать в"
-                    id="notificationTime"
-                    type="time"
-                    {...registerSettings("notificationTime")}
-                    error={settingsErrors.notificationTime?.message}
-                  />
-                  <Controller
-                    name="timezone"
-                    control={settingsControl}
-                    defaultValue={user?.timezone || "UTC"}
-                    render={({ field }) => (
+                    </div>
+                    <Controller
+                      name="notificationMethod"
+                      control={settingsControl}
+                      defaultValue={user?.notificationMethod || "email"}
+                      render={({ field }) => (
+                        <Select
+                          label="Напоминания о платежах"
+                          options={[
+                            { label: "Email", value: "email" },
+                            { label: "Пуш-уведомление", value: "push" },
+                            { label: "Выключены", value: "none" },
+                          ]}
+                          value={field.value}
+                          onChange={field.onChange}
+                          error={settingsErrors.notificationMethod?.message}
+                        />
+                      )}
+                    />
+                    <Input
+                      label="Напоминать в"
+                      id="notificationTime"
+                      type="time"
+                      {...registerSettings("notificationTime")}
+                      error={settingsErrors.notificationTime?.message}
+                    />
+                    <Controller
+                      name="timezone"
+                      control={settingsControl}
+                      defaultValue={user?.timezone || "UTC"}
+                      render={({ field }) => (
+                        <Select
+                          label="Часовой пояс"
+                          options={timezones}
+                          value={field.value}
+                          onChange={field.onChange}
+                          error={settingsErrors.timezone?.message}
+                        />
+                      )}
+                    />
+                    <div>
                       <Select
-                        label="Часовой пояс"
-                        options={timezones}
-                        value={field.value}
-                        onChange={field.onChange}
-                        error={settingsErrors.timezone?.message}
+                        label="Тема приложения"
+                        options={themeOptions}
+                        value={theme}
+                        onChange={handleThemeChange}
                       />
-                    )}
-                  />
+                    </div>
+                  </div>
                 </div>
                 <div className="text-right mt-6">
                   <button
@@ -793,97 +787,80 @@ const SettingsPage: React.FC = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Удалить аккаунт
+                    Опасная зона
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Это действие необратимо. Пожалуйста, будьте осторожны.
-                  </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() =>
-                    setExpandedSection(
-                      expandedSection === "delete" ? null : "delete"
-                    )
-                  }
+                  onClick={() => setIsDeleteModalOpen(true)}
                   className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-500"
                 >
                   <TrashIcon className="w-5 h-5" />
-                  <span>Удалить мой аккаунт</span>
+                  <span>Удалить аккаунт</span>
                 </button>
               </div>
-              {/* Desktop Inline Form */}
-              <div
-                className={`hidden md:block overflow-hidden transition-all duration-300 ease-in-out ${
-                  expandedSection === "delete" ? "max-h-screen mt-6" : "max-h-0"
-                }`}
-              >
-                {expandedSection === "delete" && (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleDeleteAccount();
-                    }}
-                    className="space-y-4 pt-4 border-t border-red-500/20"
-                  >
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Почему вы удаляете аккаунт? (необязательно)
-                      </label>
-                      <textarea
-                        className="block w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white dark:placeholder-gray-500"
-                        rows={3}
-                        value={deleteFeedbackText}
-                        onChange={(e) => setDeleteFeedbackText(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                        Прикрепить файл (до 5 МБ, необязательно)
-                      </label>
-                      <input
-                        type="file"
-                        accept="*/*"
-                        onChange={(e) =>
-                          setDeleteFile(e.target.files?.[0] || null)
-                        }
-                        className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-slate-700 dark:file:text-slate-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 mt-8">
-                        Для подтверждения, пожалуйста, введите{" "}
-                        <strong className="text-red-500">
-                          УДАЛИТЬ АККАУНТ
-                        </strong>{" "}
-                        в поле ниже.
-                      </label>
-                      <Input
-                        type="text"
-                        value={deleteConfirmationText}
-                        onChange={(e) =>
-                          setDeleteConfirmationText(e.target.value)
-                        }
-                        className="w-full"
-                        placeholder="УДАЛИТЬ АККАУНТ"
-                      />
-                    </div>
-                    <div className="flex items-center gap-3 justify-end">
-                      <button
-                        type="submit"
-                        disabled={
-                          deleteConfirmationText !== "УДАЛИТЬ АККАУНТ" ||
-                          isDeleting
-                        }
-                        className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed"
-                      >
-                        {isDeleting ? "Удаление..." : "Удалить мой аккаунт"}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
             </FormBlock>
+
+            {/* App Notifications Section (Android only) */}
+            {isTauriMobile() && (
+              <FormBlock className="w-full">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                    <BellAlertIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                      Уведомления приложения
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Получайте напоминания о предстоящих платежах и уведомления
+                      о новых предложениях автоплатежей
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        Отображение уведомлений
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {isCheckingAppPermission
+                          ? "Проверка..."
+                          : appNotificationPermissionGranted
+                          ? "Разрешено"
+                          : "Не разрешено"}
+                      </p>
+                    </div>
+                    {!appNotificationPermissionGranted &&
+                      !isCheckingAppPermission && (
+                        <button
+                          onClick={handleOpenAppNotificationSettings}
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                        >
+                          Настроить
+                        </button>
+                      )}
+                    {appNotificationPermissionGranted && (
+                      <div className="text-green-600 dark:text-green-400">
+                        <svg
+                          className="w-6 h-6"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </FormBlock>
+            )}
 
             {/* Notification Automation Section (Android only) */}
             {isTauriMobile() && (
@@ -1075,7 +1052,7 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Mobile Panels */}
-      <MobileActionPanel
+      <MobilePanel
         isOpen={expandedSection === "password"}
         onClose={() => setExpandedSection(null)}
         title="Сменить пароль"
@@ -1115,69 +1092,7 @@ const SettingsPage: React.FC = () => {
             </button>
           </div>
         </form>
-      </MobileActionPanel>
-
-      <MobileActionPanel
-        isOpen={expandedSection === "delete"}
-        onClose={() => setExpandedSection(null)}
-        title="Подтверждение удаления"
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleDeleteAccount();
-          }}
-          className="space-y-4"
-        >
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-              Почему вы удаляете аккаунт? (необязательно)
-            </label>
-            <textarea
-              className="block w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white dark:placeholder-gray-500"
-              rows={3}
-              value={deleteFeedbackText}
-              onChange={(e) => setDeleteFeedbackText(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-              Прикрепить файл (до 5 МБ, необязательно)
-            </label>
-            <input
-              type="file"
-              accept="*/*"
-              onChange={(e) => setDeleteFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-slate-700 dark:file:text-slate-200"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 mt-8">
-              Для подтверждения, пожалуйста, введите{" "}
-              <strong className="text-red-500">УДАЛИТЬ АККАУНТ</strong> в поле
-              ниже.
-            </label>
-            <Input
-              type="text"
-              value={deleteConfirmationText}
-              onChange={(e) => setDeleteConfirmationText(e.target.value)}
-              className="w-full"
-              placeholder="УДАЛИТЬ АККАУНТ"
-            />
-          </div>
-          <div className="flex items-center gap-3 justify-end">
-            <button
-              type="submit"
-              disabled={
-                deleteConfirmationText !== "УДАЛИТЬ АККАУНТ" || isDeleting
-              }
-              className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {isDeleting ? "Удаление..." : "Удалить мой аккаунт"}
-            </button>
-          </div>
-        </form>
-      </MobileActionPanel>
+      </MobilePanel>
 
       <ConfirmModal
         isOpen={!!ruleToDelete}
@@ -1187,6 +1102,13 @@ const SettingsPage: React.FC = () => {
         message={`Вы уверены, что хотите удалить правило для "${ruleToDelete?.merchantKeyword}"? Это действие нельзя будет отменить.`}
         confirmText="Удалить"
         isConfirming={isDeletingRule}
+      />
+
+      <DeleteAccount
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteAccount}
+        isDeleting={isDeleting}
       />
     </>
   );

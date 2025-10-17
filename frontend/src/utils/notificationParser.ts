@@ -7,11 +7,29 @@ const RAIFFEISEN_TITLE_REGEX = /^Заплатили (картой|со счет�
 const RAIFFEISEN_TEXT_REGEX =
   /[-−]\s?(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*)\.(\d{2}) ₽ в ([^.]+)\.?/i;
 
+const SBERBANK_TITLE_REGEX = /^Покупка\s+(.+)$/i;
+const SBERBANK_TEXT_REGEX =
+  /^(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:,\d{2})?)\s*₽/i;
+
+const YANDEX_BANK_TEXT_REGEX =
+  /^Покупка на\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:\.\d{2})?)\s+RUB/i;
+
+const OZON_TITLE_REGEX = /^Ozon Банк$/i;
+const OZON_TEXT_REGEX =
+  /Покупка на\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:\.\d{2})?)\s+₽/i;
+
 /**
  * Validates if the notification title matches the expected Raiffeisen pattern
  */
 export function validateRaiffeisenTitle(title: string): boolean {
   return RAIFFEISEN_TITLE_REGEX.test(title);
+}
+
+/**
+ * Validates if the notification title matches the expected Ozon pattern
+ */
+export function validateOzonTitle(title: string): boolean {
+  return OZON_TITLE_REGEX.test(title);
 }
 
 export function parseRaiffeisenNotification(
@@ -43,56 +61,140 @@ export function parseRaiffeisenNotification(
   }
 }
 
+export function parseSberbankNotification(
+  text: string,
+  title: string
+): ParsedPayment | null {
+  try {
+    const titleMatch = title.match(SBERBANK_TITLE_REGEX);
+    if (!titleMatch) {
+      return null;
+    }
+
+    const merchantName = titleMatch[1].trim();
+
+    const textMatch = text.match(SBERBANK_TEXT_REGEX);
+    if (!textMatch) {
+      return null;
+    }
+
+    const amountStr = textMatch[1];
+    const amount = parseFloat(
+      amountStr.replace(/[ \u00A0\u202F]/g, "").replace(",", ".")
+    );
+
+    if (isNaN(amount) || amount <= 0) {
+      return null;
+    }
+
+    return {
+      merchantName,
+      amount,
+    };
+  } catch (error) {
+    console.error("Error parsing Sberbank notification:", error);
+    return null;
+  }
+}
+
+export function parseYandexBankNotification(
+  text: string,
+  title: string
+): ParsedPayment | null {
+  try {
+    const merchantName = title.trim();
+    if (!merchantName) {
+      return null;
+    }
+
+    const textMatch = text.match(YANDEX_BANK_TEXT_REGEX);
+    if (!textMatch) {
+      return null;
+    }
+
+    const amountStr = textMatch[1];
+    const amount = parseFloat(amountStr.replace(/[ \u00A0\u202F]/g, ""));
+
+    if (isNaN(amount) || amount <= 0) {
+      return null;
+    }
+
+    return {
+      merchantName,
+      amount,
+    };
+  } catch (error) {
+    console.error("Error parsing Yandex Bank notification:", error);
+    return null;
+  }
+}
+
+export function parseOzonNotification(
+  text: string,
+  title: string
+): ParsedPayment | null {
+  try {
+    if (!validateOzonTitle(title)) {
+      return null;
+    }
+
+    const textMatch = text.match(OZON_TEXT_REGEX);
+    if (!textMatch) {
+      return null;
+    }
+
+    const amountStr = textMatch[1];
+    const amount = parseFloat(amountStr.replace(/[ \u00A0\u202F]/g, ""));
+
+    if (isNaN(amount) || amount <= 0) {
+      return null;
+    }
+
+    return {
+      merchantName: "Ozon",
+      amount,
+    };
+  } catch (error) {
+    console.error("Error parsing Ozon notification:", error);
+    return null;
+  }
+}
+
 export function parseNotification(
   packageName: string,
   text: string,
   title?: string
 ): ParsedPayment | null {
-  switch (packageName) {
-    case "com.android.shell":
-    case "ru.raiffeisennews":
-      if (title && !validateRaiffeisenTitle(title)) {
-        console.log("Raiffeisen notification title:", title);
-        return null;
-      }
-      return parseRaiffeisenNotification(text);
-    // Bank applications
-    case "ru.sberbankmobile":
-    case "com.idamob.tinkoff.android":
-    case "ru.vtb24.mobilebanking":
-    case "ru.alfabank.mobile.android":
-    case "ru.sovcombank.halvacard":
-    case "ru.pochtabank.pochtaapp":
-    case "ru.rosbank.android":
-    // Fintech applications
-    case "ru.yoo.money":
-    case "com.yandex.bank":
-    case "ru.nspk.sbp.pay":
-    case "ru.ozon.fintech.finance":
-    // Marketplace applications
-    case "ru.ozon.app.android":
-    case "com.wildberries.ru":
-    case "ru.market.android":
-    case "com.avito.android":
-    case "ru.aliexpress.buyer":
-    case "ru.lamoda":
-    // Business applications
-    case "ru.sberbank.bankingbusiness":
-    case "com.idamob.tinkoff.business":
-    case "ru.vtb.mobile.business":
-    case "ru.alfabank.mobile.android.biz":
-    case "ru.sovcombank.business":
-    case "ru.modulebank":
-    case "ru.tochka.app":
-    case "ru.openbusiness.app":
-    case "ru.rosbank.business":
-    case "ru.uralsib.business":
-      // Package detected but parsing not yet implemented
-      console.log(
-        `Package ${packageName} detected - parsing not yet implemented`
-      );
+  if (packageName === "ru.sberbankmobile") {
+    if (!title) {
       return null;
-    default:
-      return null;
+    }
+    return parseSberbankNotification(text, title);
   }
+
+  if (packageName === "com.yandex.bank") {
+    if (!title) {
+      return null;
+    }
+    return parseYandexBankNotification(text, title);
+  }
+
+  if (packageName === "ru.ozon.app.android") {
+    if (!title) {
+      return null;
+    }
+    return parseOzonNotification(text, title);
+  }
+
+  if (
+    packageName !== "com.android.shell" &&
+    packageName !== "ru.raiffeisennews"
+  ) {
+    return null;
+  }
+  if (title && !validateRaiffeisenTitle(title)) {
+    console.log("Raiffeisen notification title:", title);
+    return null;
+  }
+  return parseRaiffeisenNotification(text);
 }

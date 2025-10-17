@@ -14,6 +14,7 @@
 
 :root {
   --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
 }
 
 html,
@@ -28,6 +29,12 @@ body {
 
 .safe-area-top {
   padding-top: var(--safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: calc(
+    var(--safe-area-inset-bottom) + calc(var(--spacing) * 4)
+  ) !important;
 }
 
 :root {

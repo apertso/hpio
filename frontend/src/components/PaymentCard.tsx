@@ -134,16 +134,17 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
           )}
         </div>
 
-        {/* Recurring status */}
-        {isEffectivelyRecurring && (
+        {/* Recurring and virtual status */}
+        {(isEffectivelyRecurring || payment.isVirtual) && (
           <p className="text-xs text-[#3F51B5] dark:text-indigo-400 mb-1 flex items-center font-normal">
-            <ArrowPathIcon className="h-3 w-3 mr-1" />{" "}
-            {formatRecurrenceRule(payment.series?.recurrenceRule)}
-          </p>
-        )}
-        {payment.isVirtual && (
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-            Виртуальный
+            {isEffectivelyRecurring && (
+              <>
+                <ArrowPathIcon className="h-3 w-3 mr-1" />{" "}
+                {formatRecurrenceRule(payment.series?.recurrenceRule)}
+              </>
+            )}
+            {isEffectivelyRecurring && payment.isVirtual && " • "}
+            {payment.isVirtual && "Виртуальный"}
           </p>
         )}
       </div>

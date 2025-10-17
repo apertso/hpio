@@ -2,6 +2,7 @@ import React from "react";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import MobilePanel from "./MobilePanel";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -13,6 +14,10 @@ interface ConfirmModalProps {
   cancelText?: string;
   isConfirming?: boolean;
 }
+
+type ContentOptions = {
+  showTitleInBody: boolean;
+};
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isOpen,
@@ -26,8 +31,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+  const renderContent = ({ showTitleInBody }: ContentOptions) => (
+    <>
       <div className="flex items-start">
         <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 sm:mx-0 sm:h-10 sm:w-10">
           <ExclamationTriangleIcon
@@ -36,13 +41,15 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           />
         </div>
         <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-          <h3
-            className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100"
-            id="modal-title"
-          >
-            {title}
-          </h3>
-          <div className="mt-2">
+          {showTitleInBody && (
+            <h3
+              className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100"
+              id="modal-title"
+            >
+              {title}
+            </h3>
+          )}
+          <div className={`mt-2 ${showTitleInBody ? "" : "mt-0"}`}>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {message}
             </p>
@@ -66,8 +73,25 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           {cancelText}
         </button>
       </div>
-    </Modal>
+    </>
+  );
+
+  return (
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} className="hidden md:flex">
+        {renderContent({ showTitleInBody: true })}
+      </Modal>
+      <MobilePanel
+        isOpen={isOpen}
+        onClose={onClose}
+        title={title}
+        showCloseButton
+      >
+        {renderContent({ showTitleInBody: false })}
+      </MobilePanel>
+    </>
   );
 };
 
 export default ConfirmModal;
+

@@ -16,7 +16,6 @@ import { useTheme } from "../context/ThemeContext"; // Import useTheme
 import { Button } from "../components/Button";
 import { DropdownButton } from "../components/DropdownButton";
 import { YearSelectorDropdown } from "../components/YearSelectorDropdown";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import CategoryDistributionBars from "../components/CategoryDistributionBars";
 
 import { useNavigate } from "react-router-dom";
@@ -88,6 +87,7 @@ const categoryColorsDark = [
 import CustomDailySpendingChart from "../components/CustomDailySpendingChart";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import { usePageTitle } from "../context/PageTitleContext";
 // Интерфейс для данных статистики, получаемых с бэкенда
 interface DashboardStats {
   month: string; // Например, '2023-11'
@@ -115,33 +115,19 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/solid";
 import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
+import MobilePanel from "../components/MobilePanel";
 
 // Recurrence and status formatting moved to PaymentListCard
 
 // Inside HomePage component, before UpcomingPaymentListItem
 const MobileActionsOverlay: React.FC<{
   payment: PaymentData | null;
+  shouldClose: boolean;
   onClose: () => void;
   onEdit: (id: string) => void;
   onComplete: (payment: PaymentData) => void;
   onDelete: (payment: PaymentData) => void;
-}> = ({ payment, onClose, onEdit, onComplete, onDelete }) => {
-  const [isVisible, setIsVisible] = React.useState(false);
-
-  React.useEffect(() => {
-    if (payment) {
-      const timer = setTimeout(() => setIsVisible(true), 10);
-      return () => clearTimeout(timer);
-    } else {
-      setIsVisible(false);
-    }
-  }, [payment]);
-
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(onClose, 300);
-  };
-
+}> = ({ payment, shouldClose, onClose, onEdit, onComplete, onDelete }) => {
   if (!payment) return null;
 
   const actions = [
@@ -155,36 +141,29 @@ const MobileActionsOverlay: React.FC<{
   ];
 
   return (
-    <div
-      className={`fixed inset-0 z-40 transition-opacity duration-300 ${
-        isVisible ? "bg-black/40" : "bg-black/0"
-      }`}
-      onClick={handleClose}
-      aria-hidden="true"
+    <MobilePanel
+      isOpen={!!payment}
+      onClose={onClose}
+      title=""
+      showCloseButton={false}
+      shouldClose={shouldClose}
     >
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out ${
-          isVisible ? "translate-y-0" : "translate-y-full"
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex justify-around items-center">
-          {actions.map((action) => (
-            <button
-              key={action.label}
-              onClick={() => {
-                action.handler();
-                handleClose();
-              }}
-              className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
-            >
-              <action.icon className="h-6 w-6" />
-              <span className="text-sm">{action.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="flex justify-around items-center">
+        {actions.map((action) => (
+          <button
+            key={action.label}
+            onClick={() => {
+              action.handler();
+              onClose();
+            }}
+            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+          >
+            <action.icon className="h-6 w-6" />
+            <span className="text-sm">{action.label}</span>
+          </button>
+        ))}
       </div>
-    </div>
+    </MobilePanel>
   );
 };
 
@@ -288,7 +267,12 @@ const HomePage: React.FC = () => {
   const { resolvedTheme } = useTheme(); // Access the theme
   const { showToast } = useToast(); // Import useToast
   const { resetKey } = useReset();
+  const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("dashboard");
+
+  useEffect(() => {
+    setPageTitle("Главная");
+  }, [setPageTitle]);
 
   const [upcomingDays, setUpcomingDays] = useState<3 | 7 | 10 | 14 | 21>(10);
 
@@ -386,6 +370,9 @@ const HomePage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileActionsPayment, setMobileActionsPayment] =
     useState<PaymentData | null>(null);
+  const [shouldCloseMobilePanel, setShouldCloseMobilePanel] = useState(false);
+  const selectedMobilePaymentId = mobileActionsPayment?.id ?? null;
+  const mobileListRef = useRef<HTMLDivElement | null>(null);
 
   const { startDate, endDate } = useMemo(() => {
     let startDate, endDate;
@@ -532,6 +519,72 @@ const HomePage: React.FC = () => {
         errorMessage
       );
       showToast(`Не удалось скачать файл: ${errorMessage}`, "error");
+    }
+  };
+
+  const closeMobilePanel = () => {
+    setShouldCloseMobilePanel(true);
+  };
+
+  useEffect(() => {
+    if (!selectedMobilePaymentId) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      if (mobileListRef.current?.contains(target)) {
+        return;
+      }
+
+      if (target.closest("[data-mobile-panel-content]")) {
+        return;
+      }
+
+      closeMobilePanel();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [selectedMobilePaymentId, closeMobilePanel]);
+
+  const handleMobilePanelClosed = () => {
+    setMobileActionsPayment(null);
+    setShouldCloseMobilePanel(false);
+  };
+
+  const handleMobileListClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof HTMLElement)) return;
+
+    const itemElement = event.target.closest<HTMLElement>(
+      "[data-mobile-list-item-id]"
+    );
+
+    if (itemElement?.dataset.mobileListItemId) {
+      const { mobileListItemId } = itemElement.dataset;
+
+      if (selectedMobilePaymentId === mobileListItemId) {
+        closeMobilePanel();
+        return;
+      }
+
+      const nextPayment = upcomingPayments.find(
+        (paymentItem) => paymentItem.id === mobileListItemId
+      );
+
+      if (!nextPayment || nextPayment.isVirtual) {
+        return;
+      }
+
+      setShouldCloseMobilePanel(false);
+      setMobileActionsPayment(nextPayment);
+      return;
+    }
+
+    if (event.target === event.currentTarget && selectedMobilePaymentId) {
+      closeMobilePanel();
     }
   };
 
@@ -807,26 +860,38 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* Mobile vertical list */}
-                <div className="block md:hidden space-y-2">
+                <div
+                  ref={mobileListRef}
+                  onClick={handleMobileListClick}
+                  className="block md:hidden space-y-2"
+                >
                   {(showAllUpcoming
                     ? upcomingPayments
                     : upcomingPayments.slice(0, 5)
-                  ).map((payment) => (
-                    <PaymentListCard
-                      key={payment.id}
-                      payment={payment}
-                      context="home"
-                      onClick={() => {
-                        if (!payment.isVirtual)
-                          setMobileActionsPayment(payment);
-                      }}
-                      onDownloadFile={handleDownloadFile}
-                    />
-                  ))}
+                  ).map((payment) => {
+                    const isSelected = selectedMobilePaymentId === payment.id;
+                    const cardStateClasses = [
+                      "transition-all duration-200",
+                      isSelected
+                        ? "border-gray-400 shadow-md relative z-50"
+                        : "",
+                    ]
+                      .filter((cls) => cls)
+                      .join(" ");
+                    return (
+                      <PaymentListCard
+                        key={payment.id}
+                        payment={payment}
+                        context="home"
+                        onDownloadFile={handleDownloadFile}
+                        className={cardStateClasses}
+                      />
+                    );
+                  })}
                   {!showAllUpcoming && upcomingPayments.length > 5 && (
                     <button
                       onClick={() => setShowAllUpcoming(true)}
-                      className="w-full mt-2 p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
+                      className="w-full mt-1 p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
                     >
                       Показать все
                     </button>
@@ -980,29 +1045,39 @@ const HomePage: React.FC = () => {
             <div className="space-y-6">
               {/* TODO: Форматировать месяц на русский */}
               {/* Блоки с общими суммами */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-6">
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
-                    Предстоящие платежи
+                    <span className="md:hidden">Предстоящие</span>
+                    <span className="hidden md:inline">
+                      Предстоящие платежи
+                    </span>
                   </p>
-                  <p className="mt-1 text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  <p className="mt-1 text-xl md:text-3xl font-bold text-blue-600 dark:text-blue-400">
                     {new Intl.NumberFormat("ru-RU", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }).format(parseFloat(stats.totalUpcomingAmount))}
-                    <span className="ml-1 text-2xl font-normal">₽</span>
+                    <span className="ml-1 text-lg md:text-2xl font-normal">
+                      ₽
+                    </span>
                   </p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
-                    Выполненные платежи
+                    <span className="md:hidden">Выполненные</span>
+                    <span className="hidden md:inline">
+                      Выполненные платежи
+                    </span>
                   </p>
-                  <p className="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
+                  <p className="mt-1 text-xl md:text-3xl font-bold text-green-600 dark:text-green-400">
                     {new Intl.NumberFormat("ru-RU", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }).format(parseFloat(stats.totalCompletedAmount))}
-                    <span className="ml-1 text-2xl font-normal">₽</span>
+                    <span className="ml-1 text-lg md:text-2xl font-normal">
+                      ₽
+                    </span>
                   </p>
                 </div>
                 {/* TODO: Добавить другие суммарные показатели, если нужны */}
@@ -1095,50 +1170,106 @@ const HomePage: React.FC = () => {
         isConfirming={isConfirming}
       />
       {/* Modal for Daily Payments */}
-      <Modal
-        isOpen={!!dailyPaymentsModal}
-        onClose={() => setDailyPaymentsModal(null)}
-        title={`Платежи за ${
-          dailyPaymentsModal?.date
-            ? new Date(dailyPaymentsModal.date).toLocaleDateString("ru-RU", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })
-            : ""
-        }`}
-      >
-        {dailyPaymentsModal && dailyPaymentsModal.payments.length > 0 ? (
-          <ul className="space-y-3">
-            {dailyPaymentsModal.payments.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md"
-              >
-                <div className="flex items-center gap-3">
-                  <PaymentIconDisplay payment={p} sizeClass="h-6 w-6" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {p.title}
-                  </span>
-                </div>
-                <span className="font-bold text-gray-900 dark:text-gray-100">
-                  {new Intl.NumberFormat("ru-RU", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(p.amount)}
-                  <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
-                    ₽
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-600 dark:text-gray-400">
-            Нет платежей на эту дату.
-          </p>
-        )}
-      </Modal>
+      {dailyPaymentsModal && (
+        <>
+          <Modal
+            isOpen
+            onClose={() => setDailyPaymentsModal(null)}
+            title={`Платежи за ${
+              dailyPaymentsModal?.date
+                ? new Date(dailyPaymentsModal.date).toLocaleDateString(
+                    "ru-RU",
+                    {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    }
+                  )
+                : ""
+            }`}
+            className="hidden md:flex"
+          >
+            {dailyPaymentsModal.payments.length > 0 ? (
+              <ul className="space-y-3">
+                {dailyPaymentsModal.payments.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md"
+                  >
+                    <div className="flex items-center gap-3">
+                      <PaymentIconDisplay payment={p} sizeClass="h-6 w-6" />
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {p.title}
+                      </span>
+                    </div>
+                    <span className="font-bold text-gray-900 dark:text-gray-100">
+                      {new Intl.NumberFormat("ru-RU", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(p.amount)}
+                      <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
+                        ₽
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-600 dark:text-gray-400">
+                Нет платежей на эту дату.
+              </p>
+            )}
+          </Modal>
+          <MobilePanel
+            isOpen
+            onClose={() => setDailyPaymentsModal(null)}
+            title={`Платежи за ${
+              dailyPaymentsModal?.date
+                ? new Date(dailyPaymentsModal.date).toLocaleDateString(
+                    "ru-RU",
+                    {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    }
+                  )
+                : ""
+            }`}
+            showCloseButton
+          >
+            {dailyPaymentsModal.payments.length > 0 ? (
+              <ul className="space-y-3">
+                {dailyPaymentsModal.payments.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md"
+                  >
+                    <div className="flex items-center gap-3">
+                      <PaymentIconDisplay payment={p} sizeClass="h-6 w-6" />
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {p.title}
+                      </span>
+                    </div>
+                    <span className="font-bold text-gray-900 dark:text-gray-100">
+                      {new Intl.NumberFormat("ru-RU", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(p.amount)}
+                      <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
+                        ₽
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-600 dark:text-gray-400">
+                Нет платежей на эту дату.
+              </p>
+            )}
+          </MobilePanel>
+        </>
+      )}
       <DeleteRecurringPaymentModal
         isOpen={deleteRecurringModalState.isOpen}
         onClose={() =>
@@ -1150,21 +1281,12 @@ const HomePage: React.FC = () => {
       />
       <MobileActionsOverlay
         payment={mobileActionsPayment}
-        onClose={() => setMobileActionsPayment(null)}
+        shouldClose={shouldCloseMobilePanel}
+        onClose={handleMobilePanelClosed}
         onEdit={handleEditPayment}
         onComplete={handleCompletePayment}
         onDelete={handleDeletePayment}
       />
-
-      {/* FAB для мобильной версии */}
-      <div className="md:hidden fixed bottom-6 right-6 z-50">
-        <button
-          onClick={handleAddPayment}
-          className="w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
-        >
-          <PlusIcon className="w-6 h-6" />
-        </button>
-      </div>
     </>
   );
 };

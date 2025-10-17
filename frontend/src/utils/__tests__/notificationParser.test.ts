@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import {
   validateRaiffeisenTitle,
   parseRaiffeisenNotification,
+  parseSberbankNotification,
+  parseYandexBankNotification,
+  parseOzonNotification,
   parseNotification,
 } from "../notificationParser";
 
@@ -222,6 +225,189 @@ describe("parseRaiffeisenNotification", () => {
   });
 });
 
+describe("parseSberbankNotification", () => {
+  it("should parse Sberbank notification with provided example", () => {
+    const title = "Покупка Купер";
+    const text = "150 ₽ — Баланс: 196,01 ₽ MasterCard •• 7165";
+    const result = parseSberbankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Купер",
+      amount: 150,
+    });
+  });
+
+  it("should parse Sberbank notification with decimal amount", () => {
+    const title = "Покупка Магазин";
+    const text = "1 234,56 ₽ — Баланс: 5 000,00 ₽ MasterCard •• 1234";
+    const result = parseSberbankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Магазин",
+      amount: 1234.56,
+    });
+  });
+
+  it("should return null for invalid title format", () => {
+    const title = "Перевод средств";
+    const text = "150 ₽ — Баланс: 196,01 ₽ MasterCard •• 7165";
+    const result = parseSberbankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for invalid text format", () => {
+    const title = "Покупка Купер";
+    const text = "Недостаточно средств";
+    const result = parseSberbankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should handle merchant names with spaces", () => {
+    const title = "Покупка Большой магазин";
+    const text = "500 ₽ — Баланс: 1 000,00 ₽ MasterCard •• 7165";
+    const result = parseSberbankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Большой магазин",
+      amount: 500,
+    });
+  });
+});
+
+describe("parseYandexBankNotification", () => {
+  it("should parse Yandex Bank notification with provided example", () => {
+    const title = "Ситикард";
+    const text = "Покупка на 35.00 RUB, карта *7222. Доступно 115.00 RUB";
+    const result = parseYandexBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Ситикард",
+      amount: 35.0,
+    });
+  });
+
+  it("should parse Yandex Bank notification with large amount", () => {
+    const title = "Пятёрочка";
+    const text = "Покупка на 1 500.50 RUB, карта *1234. Доступно 10 000.00 RUB";
+    const result = parseYandexBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Пятёрочка",
+      amount: 1500.5,
+    });
+  });
+
+  it("should return null for invalid text format", () => {
+    const title = "Ситикард";
+    const text = "Перевод средств 100 RUB";
+    const result = parseYandexBankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for empty title", () => {
+    const title = "";
+    const text = "Покупка на 35.00 RUB, карта *7222. Доступно 115.00 RUB";
+    const result = parseYandexBankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should handle merchant names with special characters", () => {
+    const title = "McDonald's";
+    const text = "Покупка на 250.00 RUB, карта *9999. Доступно 5 000.00 RUB";
+    const result = parseYandexBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "McDonald's",
+      amount: 250,
+    });
+  });
+});
+
+describe("parseOzonNotification", () => {
+  it("should parse Ozon notification with provided example", () => {
+    const title = "Ozon Банк";
+    const text = "Покупка на 128 ₽. Ozon. Доступно 1 499 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Ozon",
+      amount: 128.0,
+    });
+  });
+
+  it("should parse Ozon notification with large amount", () => {
+    const title = "Ozon Банк";
+    const text = "Покупка на 1 500.50 ₽. Ozon. Доступно 10 000.00 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Ozon",
+      amount: 1500.5,
+    });
+  });
+
+  it("should parse Ozon notification with amount with spaces", () => {
+    const title = "Ozon Банк";
+    const text = "Покупка на 2 500 ₽. Ozon. Доступно 20 000 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Ozon",
+      amount: 2500.0,
+    });
+  });
+
+  it("should return null for invalid text format", () => {
+    const title = "Ozon Банк";
+    const text = "Перевод средств 100 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for invalid title", () => {
+    const title = "Ozon";
+    const text = "Покупка на 128 ₽. Ozon. Доступно 1 499 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for empty title", () => {
+    const title = "";
+    const text = "Покупка на 128 ₽. Ozon. Доступно 1 499 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should validate Ozon title case insensitive", () => {
+    const titleLower = "ozon банк";
+    const titleUpper = "OZON БАНК";
+    const titleMixed = "OzOn БаНк";
+    const text = "Покупка на 128 ₽. Ozon. Доступно 1 499 ₽";
+
+    expect(parseOzonNotification(text, titleLower)).toEqual({
+      merchantName: "Ozon",
+      amount: 128.0,
+    });
+
+    expect(parseOzonNotification(text, titleUpper)).toEqual({
+      merchantName: "Ozon",
+      amount: 128.0,
+    });
+
+    expect(parseOzonNotification(text, titleMixed)).toEqual({
+      merchantName: "Ozon",
+      amount: 128.0,
+    });
+  });
+});
+
 describe("parseNotification", () => {
   it("should parse Raiffeisen notifications correctly", () => {
     const result = parseNotification(
@@ -334,102 +520,69 @@ describe("parseNotification", () => {
     expect(result).toBe(null);
   });
 
-  it("should detect bank application packages and log them", () => {
-    const bankPackages = [
+  it("should parse Sberbank notifications correctly", () => {
+    const result = parseNotification(
       "ru.sberbankmobile",
-      "com.idamob.tinkoff.android",
-      "ru.vtb24.mobilebanking",
-      "ru.alfabank.mobile.android",
-      "ru.sovcombank.halvacard",
-      "ru.pochtabank.pochtaapp",
-      "ru.rosbank.android",
-    ];
+      "150 ₽ — Баланс: 196,01 ₽ MasterCard •• 7165",
+      "Покупка Купер"
+    );
 
-    bankPackages.forEach((packageName) => {
-      consoleSpy.mockClear();
-      const result = parseNotification(
-        packageName,
-        "Some notification text",
-        "Some title"
-      );
-      expect(result).toBe(null);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `Package ${packageName} detected - parsing not yet implemented`
-      );
+    expect(result).toEqual({
+      merchantName: "Купер",
+      amount: 150,
     });
   });
 
-  it("should detect fintech application packages and log them", () => {
-    const fintechPackages = [
-      "ru.yoo.money",
+  it("should return null for Sberbank without title", () => {
+    const result = parseNotification(
+      "ru.sberbankmobile",
+      "150 ₽ — Баланс: 196,01 ₽ MasterCard •• 7165"
+    );
+
+    expect(result).toBe(null);
+  });
+
+  it("should parse Yandex Bank notifications correctly", () => {
+    const result = parseNotification(
       "com.yandex.bank",
-      "ru.nspk.sbp.pay",
-      "ru.ozon.fintech.finance",
-    ];
+      "Покупка на 35.00 RUB, карта *7222. Доступно 115.00 RUB",
+      "Ситикард"
+    );
 
-    fintechPackages.forEach((packageName) => {
-      consoleSpy.mockClear();
-      const result = parseNotification(
-        packageName,
-        "Some notification text",
-        "Some title"
-      );
-      expect(result).toBe(null);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `Package ${packageName} detected - parsing not yet implemented`
-      );
+    expect(result).toEqual({
+      merchantName: "Ситикард",
+      amount: 35.0,
     });
   });
 
-  it("should detect marketplace application packages and log them", () => {
-    const marketplacePackages = [
+  it("should return null for Yandex Bank without title", () => {
+    const result = parseNotification(
+      "com.yandex.bank",
+      "Покупка на 35.00 RUB, карта *7222. Доступно 115.00 RUB"
+    );
+
+    expect(result).toBe(null);
+  });
+
+  it("should parse Ozon notifications correctly", () => {
+    const result = parseNotification(
       "ru.ozon.app.android",
-      "com.wildberries.ru",
-      "ru.market.android",
-      "com.avito.android",
-      "ru.aliexpress.buyer",
-      "ru.lamoda",
-    ];
+      "Покупка на 128 ₽. Ozon. Доступно 1 499 ₽",
+      "Ozon Банк"
+    );
 
-    marketplacePackages.forEach((packageName) => {
-      consoleSpy.mockClear();
-      const result = parseNotification(
-        packageName,
-        "Some notification text",
-        "Some title"
-      );
-      expect(result).toBe(null);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `Package ${packageName} detected - parsing not yet implemented`
-      );
+    expect(result).toEqual({
+      merchantName: "Ozon",
+      amount: 128.0,
     });
   });
 
-  it("should detect business application packages and log them", () => {
-    const businessPackages = [
-      "ru.sberbank.bankingbusiness",
-      "com.idamob.tinkoff.business",
-      "ru.vtb.mobile.business",
-      "ru.alfabank.mobile.android.biz",
-      "ru.sovcombank.business",
-      "ru.modulebank",
-      "ru.tochka.app",
-      "ru.openbusiness.app",
-      "ru.rosbank.business",
-      "ru.uralsib.business",
-    ];
+  it("should return null for Ozon without title", () => {
+    const result = parseNotification(
+      "ru.ozon.app.android",
+      "Покупка на 128 ₽. Ozon. Доступно 1 499 ₽"
+    );
 
-    businessPackages.forEach((packageName) => {
-      consoleSpy.mockClear();
-      const result = parseNotification(
-        packageName,
-        "Some notification text",
-        "Some title"
-      );
-      expect(result).toBe(null);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `Package ${packageName} detected - parsing not yet implemented`
-      );
-    });
+    expect(result).toBe(null);
   });
 });

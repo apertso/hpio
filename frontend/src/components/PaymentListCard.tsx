@@ -7,6 +7,7 @@ import {
   ExclamationCircleIcon,
   PaperClipIcon,
   ClockIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { getUpcomingBadgeClasses } from "../utils/paymentColors";
@@ -17,7 +18,6 @@ type PaymentListCardContext = "home" | "payments" | "archive";
 export interface PaymentListCardProps {
   payment: PaymentData;
   context?: PaymentListCardContext;
-  onClick?: () => void;
   onDownloadFile?: (id: string, fileName: string) => void;
   className?: string;
 }
@@ -35,7 +35,6 @@ const isToday = (dateString: string) => {
 const PaymentListCard: React.FC<PaymentListCardProps> = ({
   payment,
   context = "payments",
-  onClick,
   onDownloadFile,
   className,
 }) => {
@@ -67,48 +66,56 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
     onDownloadFile(payment.id, payment.fileName);
   };
 
+  const displayDate =
+    payment.status === "completed" || payment.status === "deleted"
+      ? completedOrDeletedDateStr
+      : dueDateStr;
+
   return (
     <div
-      onClick={onClick}
+      data-mobile-list-item-id={payment.id}
       className={
         "w-full text-left flex flex-col p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow space-y-3 cursor-pointer " +
         (className || "")
       }
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0">
-            <PaymentIconDisplay payment={payment} sizeClass="h-8 w-8" />
-          </div>
-          <div>
-            <p className="font-medium text-gray-900 dark:text-gray-100">
-              {payment.title}
+      <div className="mb-1">
+        <p className="font-medium text-gray-900 dark:text-gray-100">
+          <span className="inline-flex align-middle flex-shrink-0 mr-2">
+            <PaymentIconDisplay payment={payment} sizeClass="h-5 w-5" />
+          </span>
+          {payment.title}
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+        <div className="flex items-center gap-2 flex-wrap">
+          {payment.category?.name && (
+            <p className="text-gray-600 dark:text-gray-400">
+              {payment.category.name}
             </p>
-            {payment.category?.name && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {payment.category.name}
-              </p>
-            )}
-            {payment.isVirtual && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mt-1">
-                Виртуальный
-              </span>
-            )}
-          </div>
+          )}
         </div>
         <div className="text-right">
-          <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
+          <p
+            className="font-bold text-lg text-gray-900 dark:text-gray-100"
+            style={{
+              lineHeight: "17.5px",
+              height: "17.5px",
+              transform: "translate(0px, -3px)",
+            }}
+          >
             {amount}
-            <span className="ml-1 text-base font-normal text-gray-500 dark:text-gray-400">
+            <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
               ₽
             </span>
           </p>
         </div>
       </div>
 
-      <div className="flex justify-between items-start text-sm text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-3">
-        <div className="flex items-center self-center gap-3 flex-wrap">
-          <p>Срок: {dueDateStr}</p>
+      <div className="flex items-center justify-between gap-2 flex-wrap text-sm text-gray-600 dark:text-gray-400">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p>{displayDate}</p>
           {showRecurring && payment.series?.recurrenceRule && (
             <span className="inline-flex items-center">
               <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
@@ -116,66 +123,68 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
             </span>
           )}
         </div>
-        <div className="flex flex-col items-center gap-1">
-          <div className="flex items-center gap-2">
-            {showUpcomingBadge &&
-              (() => {
-                const { badgeClass, iconClass } = getUpcomingBadgeClasses(
-                  payment.dueDate
-                );
-                return (
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}
-                  >
-                    <ClockIcon className={`h-4 w-4 mr-1 ${iconClass}`} />
-                    Предстоящий
-                  </span>
-                );
-              })()}
-            {showTodayBadge && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                <CalendarDaysIcon className="h-4 w-4 mr-1 text-green-600" />
-                Сегодня
-              </span>
-            )}
-            {showOverdueBadge && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                <ExclamationCircleIcon className="h-4 w-4 mr-1 text-red-600" />
-                Просрочен
-              </span>
-            )}
-            {showCompletedBadge && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                <CheckCircleIcon className="h-4 w-4 mr-1 text-green-600" />
-                Выполнен
-              </span>
-            )}
-            {showDeletedBadge && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                <TrashIcon className="h-4 w-4 mr-1 text-red-600" />
-                Удален
-              </span>
-            )}
-            {payment.filePath &&
-              payment.fileName &&
-              (onDownloadFile ? (
-                <button
-                  type="button"
-                  onClick={handleFileClick}
-                  title={payment.fileName}
-                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500"
+        <div className="flex items-center gap-2 flex-wrap">
+          {showUpcomingBadge &&
+            (() => {
+              const { badgeClass, iconClass } = getUpcomingBadgeClasses(
+                payment.dueDate
+              );
+              return (
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}
                 >
-                  <PaperClipIcon className="h-5 w-5" />
-                </button>
-              ) : (
-                <PaperClipIcon className="h-5 w-5" />
-              ))}
-          </div>
-          {(showCompletedBadge || showDeletedBadge) && (
-            <p className="text-[0.7rem] text-left text-gray-500 dark:text-gray-400">
-              {completedOrDeletedDateStr}
-            </p>
+                  <ClockIcon className={`h-4 w-4 mr-1 ${iconClass}`} />
+                  Предстоящий
+                </span>
+              );
+            })()}
+          {showTodayBadge && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <CalendarDaysIcon className="h-4 w-4 mr-1 text-green-600" />
+              Сегодня
+            </span>
           )}
+          {showOverdueBadge && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <ExclamationCircleIcon className="h-4 w-4 mr-1 text-red-600" />
+              Просрочен
+            </span>
+          )}
+          {showCompletedBadge && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <CheckCircleIcon className="h-4 w-4 mr-1 text-green-600" />
+              Выполнен
+            </span>
+          )}
+          {showDeletedBadge && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <TrashIcon className="h-4 w-4 mr-1 text-red-600" />
+              Удален
+            </span>
+          )}
+          {payment.isVirtual && (
+            <button
+              type="button"
+              title="Платеж виртуальный, его нельзя редактировать или удалять, он будет создан, как только предыдущий платеж из серии не будет предстоящим"
+              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500"
+            >
+              <SparklesIcon className="h-5 w-5" />
+            </button>
+          )}
+          {payment.filePath &&
+            payment.fileName &&
+            (onDownloadFile ? (
+              <button
+                type="button"
+                onClick={handleFileClick}
+                title={payment.fileName}
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500"
+              >
+                <PaperClipIcon className="h-5 w-5" />
+              </button>
+            ) : (
+              <PaperClipIcon className="h-5 w-5" />
+            ))}
         </div>
       </div>
     </div>

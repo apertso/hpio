@@ -1,11 +1,10 @@
 // src/pages/CategoriesPage.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axiosInstance from "../api/axiosInstance";
 import {
   PencilIcon as PencilSolidIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import { Button } from "../components/Button"; // Import the Button component
 import useApi from "../hooks/useApi"; // Import useApi
 import { useNavigate } from "react-router-dom";
@@ -16,6 +15,8 @@ import { CategoriesTable } from "../components"; // Import CategoriesTable from 
 import { BuiltinIcon } from "../utils/builtinIcons";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import MobilePanel from "../components/MobilePanel";
+import { usePageTitle } from "../context/PageTitleContext";
 
 // Интерфейс для данных категории
 interface Category {
@@ -30,27 +31,16 @@ const fetchCategoriesApi = async (): Promise<Category[]> => {
   return res.data;
 };
 
-// MobileActionsOverlay and CategoryListItem components
+// MobileActionsOverlay component
 const MobileActionsOverlay: React.FC<{
   category: Category | null;
+  shouldClose: boolean;
   onClose: () => void;
   onEdit: (id: string) => void;
   onDelete: (id: string, name: string) => void;
-}> = ({ category, onClose, onEdit, onDelete }) => {
-  const [isVisible, setIsVisible] = React.useState(false);
-  React.useEffect(() => {
-    if (category) {
-      const timer = setTimeout(() => setIsVisible(true), 10);
-      return () => clearTimeout(timer);
-    } else {
-      setIsVisible(false);
-    }
-  }, [category]);
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(onClose, 300);
-  };
+}> = ({ category, shouldClose, onClose, onEdit, onDelete }) => {
   if (!category) return null;
+
   const actions = [
     {
       label: "Изменить",
@@ -63,46 +53,43 @@ const MobileActionsOverlay: React.FC<{
       handler: () => onDelete(category.id, category.name),
     },
   ];
+
   return (
-    <div
-      className={`fixed inset-0 z-40 transition-opacity duration-300 ${
-        isVisible ? "bg-black/40" : "bg-black/0"
-      }`}
-      onClick={handleClose}
-      aria-hidden="true"
+    <MobilePanel
+      isOpen={!!category}
+      onClose={onClose}
+      title=""
+      showCloseButton={false}
+      shouldClose={shouldClose}
     >
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out ${
-          isVisible ? "translate-y-0" : "translate-y-full"
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex justify-around items-center">
-          {actions.map((action) => (
-            <button
-              key={action.label}
-              onClick={() => {
-                action.handler();
-                handleClose();
-              }}
-              className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
-            >
-              <action.icon className="h-6 w-6" />
-              <span className="text-sm">{action.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="flex justify-around items-center">
+        {actions.map((action) => (
+          <button
+            key={action.label}
+            onClick={() => {
+              action.handler();
+              onClose();
+            }}
+            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+          >
+            <action.icon className="h-6 w-6" />
+            <span className="text-sm">{action.label}</span>
+          </button>
+        ))}
       </div>
-    </div>
+    </MobilePanel>
   );
 };
 const CategoryListItem: React.FC<{
   category: Category;
-  onClick: () => void;
-}> = ({ category, onClick }) => (
+  className?: string;
+}> = ({ category, className }) => (
   <button
-    onClick={onClick}
-    className="w-full text-left flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+    type="button"
+    data-mobile-list-item-id={category.id}
+    className={`w-full text-left flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow ${
+      className || ""
+    }`}
   >
     <div className="flex items-center gap-4">
       <PaymentIconDisplay
@@ -115,10 +102,14 @@ const CategoryListItem: React.FC<{
     </div>
   </button>
 );
-
 const CategoriesPage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
+  const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("categories");
+
+  useEffect(() => {
+    setPageTitle("Категории");
+  }, [setPageTitle]);
 
   // Use useApi for fetching the categories list
   const {
@@ -139,6 +130,9 @@ const CategoriesPage: React.FC = () => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [mobileActionsCategory, setMobileActionsCategory] =
     useState<Category | null>(null);
+  const [shouldCloseMobilePanel, setShouldCloseMobilePanel] = useState(false);
+  const selectedMobileCategoryId = mobileActionsCategory?.id ?? null;
+  const mobileListRef = useRef<HTMLDivElement | null>(null);
 
   // Effect to trigger the fetch on mount
   useEffect(() => {
@@ -153,6 +147,70 @@ const CategoriesPage: React.FC = () => {
 
   const handleEditCategory = (id: string) => {
     navigate(`/categories/edit/${id}`);
+  };
+
+  const closeMobilePanel = () => {
+    setShouldCloseMobilePanel(true);
+  };
+
+  useEffect(() => {
+    if (!selectedMobileCategoryId) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      if (mobileListRef.current?.contains(target)) {
+        return;
+      }
+
+      if (target.closest("[data-mobile-panel-content]")) {
+        return;
+      }
+
+      closeMobilePanel();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [selectedMobileCategoryId, closeMobilePanel]);
+
+  const handleMobilePanelClosed = () => {
+    setMobileActionsCategory(null);
+    setShouldCloseMobilePanel(false);
+  };
+
+  const handleMobileListClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof HTMLElement)) return;
+
+    const itemElement = event.target.closest<HTMLElement>(
+      "[data-mobile-list-item-id]"
+    );
+
+    if (itemElement?.dataset.mobileListItemId) {
+      const { mobileListItemId } = itemElement.dataset;
+
+      if (selectedMobileCategoryId === mobileListItemId) {
+        closeMobilePanel();
+        return;
+      }
+
+      const nextCategory = categories?.find(
+        (categoryItem) => categoryItem.id === mobileListItemId
+      );
+
+      if (nextCategory) {
+        setShouldCloseMobilePanel(false);
+        setMobileActionsCategory(nextCategory);
+      }
+      return;
+    }
+
+    if (event.target === event.currentTarget && selectedMobileCategoryId) {
+      closeMobilePanel();
+    }
   };
 
   const onConfirmAction = async () => {
@@ -197,8 +255,8 @@ const CategoriesPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <div className="flex justify-between items-center md:mb-6">
+          <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Управление категориями
           </h2>
           <Button
@@ -225,14 +283,27 @@ const CategoriesPage: React.FC = () => {
           </div>
           {/* Mobile Card View */}
           {!isLoadingCategories && (
-            <div className="block md:hidden space-y-2 p-2">
-              {categories?.map((category) => (
-                <CategoryListItem
-                  key={category.id}
-                  category={category}
-                  onClick={() => setMobileActionsCategory(category)}
-                />
-              ))}
+            <div
+              ref={mobileListRef}
+              onClick={handleMobileListClick}
+              className="block md:hidden space-y-2 p-2"
+            >
+              {categories?.map((category) => {
+                const isSelected = selectedMobileCategoryId === category.id;
+                const cardStateClasses = [
+                  "transition-all duration-200",
+                  isSelected ? "border-gray-400 shadow-md relative z-50" : "",
+                ]
+                  .filter((cls) => cls)
+                  .join(" ");
+                return (
+                  <CategoryListItem
+                    key={category.id}
+                    category={category}
+                    className={cardStateClasses}
+                  />
+                );
+              })}
             </div>
           )}
         </>
@@ -255,20 +326,11 @@ const CategoriesPage: React.FC = () => {
       />
       <MobileActionsOverlay
         category={mobileActionsCategory}
-        onClose={() => setMobileActionsCategory(null)}
+        shouldClose={shouldCloseMobilePanel}
+        onClose={handleMobilePanelClosed}
         onEdit={handleEditCategory}
         onDelete={handleDeleteCategory}
       />
-
-      {/* FAB для мобильной версии */}
-      <div className="md:hidden fixed bottom-6 right-6 z-50">
-        <button
-          onClick={handleAddCategory}
-          className="w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
-        >
-          <PlusIcon className="w-6 h-6" />
-        </button>
-      </div>
     </>
   );
 };

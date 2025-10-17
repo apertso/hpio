@@ -28,7 +28,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
 
   return (
     <div className="flex items-center justify-center h-full">
-      <div className="space-y-3 w-full">
+      <div className="space-y-s md:space-y-3 w-full">
         {data.map((category, index) => {
           const percentage =
             totalAmount > 0 ? (category.amount / totalAmount) * 100 : 0;
@@ -37,26 +37,38 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
           return (
             <div
               key={category.id || category.name}
-              className="grid grid-cols-12 items-center gap-2 text-sm"
+              className="md:space-y-1 text-sm"
             >
+              {/* Category name - shown above on mobile, inline on md+ */}
               <span
-                className="col-span-3 truncate font-medium text-gray-700 dark:text-gray-200"
+                className="block md:hidden truncate font-medium text-gray-700 dark:text-gray-200"
                 title={category.name}
               >
                 {category.name}
               </span>
-              <div className="col-span-8 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                <div
-                  className="h-2.5 rounded-full"
-                  style={{
-                    width: `${percentage}%`,
-                    background: `linear-gradient(to right, ${color}99, ${color})`,
-                  }}
-                ></div>
+              <div className="grid grid-cols-11 md:grid-cols-12 items-center gap-2">
+                {/* Category name - hidden on mobile, shown inline on md+ */}
+                <span
+                  className="hidden md:block md:col-span-3 truncate font-medium text-gray-700 dark:text-gray-200"
+                  title={category.name}
+                >
+                  {category.name}
+                </span>
+                {/* Progress bar - spans more columns on mobile when name is above */}
+                <div className="col-span-9 md:col-span-8 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                  <div
+                    className="h-2.5 rounded-full"
+                    style={{
+                      width: `${percentage}%`,
+                      background: `linear-gradient(to right, ${color}99, ${color})`,
+                    }}
+                  ></div>
+                </div>
+                {/* Percentage - spans more columns on mobile to balance layout */}
+                <span className="col-span-2 md:col-span-1 text-right font-medium text-gray-500 dark:text-gray-400">
+                  {percentage.toFixed(1)}%
+                </span>
               </div>
-              <span className="col-span-1 text-right font-medium text-gray-500 dark:text-gray-400">
-                {percentage.toFixed(1)}%
-              </span>
             </div>
           );
         })}

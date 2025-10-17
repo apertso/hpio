@@ -79,10 +79,7 @@ const VerifyEmailPage: React.FC = () => {
             <p className="text-lg text-gray-900 dark:text-gray-100">
               {message}
             </p>
-            <Link
-              to="/dashboard"
-              className="mt-4 text-blue-500 hover:underline"
-            >
+            <Link to="/dashboard" className="mt-4 text-blue-500">
               Вернуться на главную
             </Link>
           </>

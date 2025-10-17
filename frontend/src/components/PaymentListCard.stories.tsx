@@ -4,9 +4,6 @@ import PaymentListCard, { PaymentListCardProps } from "./PaymentListCard";
 const meta: Meta<typeof PaymentListCard> = {
   title: "Components/PaymentListCard",
   component: PaymentListCard,
-  args: {
-    onClick: () => {},
-  },
 };
 
 export default meta;
@@ -54,6 +51,7 @@ export const RecurringWithFile: Story = {
         amount: 0,
         recurrenceRule: "FREQ=MONTHLY",
       },
+      isVirtual: true,
       filePath: "/files/1",
       fileName: "invoice.pdf",
     },

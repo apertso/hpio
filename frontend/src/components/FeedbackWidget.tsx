@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import Modal from "./Modal";
 import { Button } from "./Button";
 import Spinner from "./Spinner";
@@ -8,8 +8,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { submitFeedback } from "../api/feedbackApi";
 import { ChatBubbleOvalLeftEllipsisIcon } from "@heroicons/react/24/outline";
+import MobilePanel from "./MobilePanel";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const schema = z.object({
   description: z.string().trim().min(1, "Описание обязательно"),
@@ -37,11 +38,6 @@ const FeedbackWidget: React.FC = () => {
 
   const descriptionRegister = register("description");
 
-  const isMobile = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(max-width: 640px)").matches;
-  }, []);
-
   const onSubmit = async (values: FormValues) => {
     try {
       setIsSubmitting(true);
@@ -53,7 +49,6 @@ const FeedbackWidget: React.FC = () => {
       reset();
       setFile(null);
       setIsOpen(false);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       showToast("Не удалось отправить.", "error");
     } finally {
@@ -61,8 +56,8 @@ const FeedbackWidget: React.FC = () => {
     }
   };
 
-  const formContent = (
-    <>
+  const renderForm = (wrapperClassName = "") => (
+    <div className={wrapperClassName}>
       <p className="text-sm text-gray-600 dark:text-gray-300 mb-4"></p>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="mb-4">
@@ -100,7 +95,6 @@ const FeedbackWidget: React.FC = () => {
             onChange={(e) => {
               const f = e.target.files?.[0] || null;
               if (f && f.size > MAX_FILE_SIZE) {
-                // ограничение размера файла
                 showToast("Размер файла превышает 5 МБ.", "error");
                 e.currentTarget.value = "";
                 setFile(null);
@@ -117,12 +111,11 @@ const FeedbackWidget: React.FC = () => {
           </Button>
         </div>
       </form>
-    </>
+    </div>
   );
 
   return (
     <>
-      {/* компактная кнопка в футере с иконкой и подписью */}
       <button
         onClick={() => setIsOpen(true)}
         className="relative inline-flex items-center gap-2 px-2 py-1 rounded-md text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white focus:outline-none"
@@ -133,42 +126,25 @@ const FeedbackWidget: React.FC = () => {
         <ChatBubbleOvalLeftEllipsisIcon className="h-5 w-5 text-gray-500/80 dark:text-gray-300/80" />
       </button>
 
-      {isMobile ? (
-        // Мобильная панель снизу
-        isOpen ? (
-          <div className="fixed inset-0 z-50">
-            <div
-              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-              onClick={() => setIsOpen(false)}
-            />
-            <div className="absolute left-0 right-0 bottom-0 bg-white dark:bg-gray-900 rounded-t-xl shadow-xl p-5 max-h-[85vh] overflow-y-auto translate-y-0 transition-transform">
-              <div className="flex justify-center mb-3">
-                <div className="h-1 w-12 rounded-full bg-gray-300 dark:bg-gray-700" />
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Оставить отзыв
-                </div>
-                <button
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  onClick={() => setIsOpen(false)}
-                  aria-label="Закрыть"
-                >
-                  ×
-                </button>
-              </div>
-              {formContent}
-            </div>
-          </div>
-        ) : null
-      ) : (
-        <Modal
-          isOpen={isOpen}
-          onClose={() => setIsOpen(false)}
-          title="Оставить отзыв"
-        >
-          {formContent}
-        </Modal>
+      {isOpen && (
+        <>
+          <Modal
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            title="Оставить отзыв"
+            className="hidden md:flex"
+          >
+            {renderForm()}
+          </Modal>
+          <MobilePanel
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            title="Оставить отзыв"
+            showCloseButton
+          >
+            {renderForm("mt-2")}
+          </MobilePanel>
+        </>
       )}
     </>
   );

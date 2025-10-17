@@ -60,3 +60,43 @@ export async function clearPendingNotifications(): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Проверяет разрешение на отображение уведомлений приложения (POST_NOTIFICATIONS)
+ * На Android 13+ требуется явное разрешение пользователя
+ */
+export async function checkAppNotificationPermission(): Promise<PermissionStatus> {
+  try {
+    return await invoke<PermissionStatus>("check_app_notification_permission");
+  } catch (error) {
+    console.error("Failed to check app notification permission:", error);
+    return { granted: false };
+  }
+}
+
+/**
+ * Запрашивает разрешение на отображение уведомлений приложения (Android 13+ only)
+ * Возвращает true если разрешение уже было предоставлено, false если был показан диалог запроса
+ */
+export async function requestAppNotificationPermission(): Promise<PermissionStatus> {
+  try {
+    return await invoke<PermissionStatus>(
+      "request_app_notification_permission"
+    );
+  } catch (error) {
+    console.error("Failed to request app notification permission:", error);
+    return { granted: false };
+  }
+}
+
+/**
+ * Открывает системные настройки уведомлений приложения (Android only)
+ */
+export async function openAppNotificationSettings(): Promise<void> {
+  try {
+    await invoke("open_app_notification_settings");
+  } catch (error) {
+    console.error("Failed to open app notification settings:", error);
+    throw error;
+  }
+}

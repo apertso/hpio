@@ -1,5 +1,5 @@
 // src/pages/ArchivePage.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 // Переиспользуем компоненты для отображения платежа и иконки
@@ -23,28 +23,27 @@ import {
 } from "@heroicons/react/24/solid";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
-// MobileActionsOverlay and ArchivedPaymentListItem components
+import MobilePanel from "../components/MobilePanel";
+import { usePageTitle } from "../context/PageTitleContext";
+
+// MobileActionsOverlay component
 const MobileActionsOverlay: React.FC<{
   payment: PaymentData | null;
+  shouldClose: boolean;
   onClose: () => void;
   onEdit: (id: string) => void;
   onRestore: (payment: PaymentData) => void;
   onPermanentDelete: (id: string) => void;
-}> = ({ payment, onClose, onEdit, onRestore, onPermanentDelete }) => {
-  const [isVisible, setIsVisible] = React.useState(false);
-  React.useEffect(() => {
-    if (payment) {
-      const timer = setTimeout(() => setIsVisible(true), 10);
-      return () => clearTimeout(timer);
-    } else {
-      setIsVisible(false);
-    }
-  }, [payment]);
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(onClose, 300);
-  };
+}> = ({
+  payment,
+  shouldClose,
+  onClose,
+  onEdit,
+  onRestore,
+  onPermanentDelete,
+}) => {
   if (!payment) return null;
+
   const actions = [
     {
       label: "Изменить",
@@ -62,37 +61,31 @@ const MobileActionsOverlay: React.FC<{
       handler: () => onPermanentDelete(payment.id),
     },
   ];
+
   return (
-    <div
-      className={`fixed inset-0 z-40 transition-opacity duration-300 ${
-        isVisible ? "bg-black/40" : "bg-black/0"
-      }`}
-      onClick={handleClose}
-      aria-hidden="true"
+    <MobilePanel
+      isOpen={!!payment}
+      onClose={onClose}
+      title=""
+      showCloseButton={false}
+      shouldClose={shouldClose}
     >
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out ${
-          isVisible ? "translate-y-0" : "translate-y-full"
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex justify-around items-center">
-          {actions.map((action) => (
-            <button
-              key={action.label}
-              onClick={() => {
-                action.handler();
-                handleClose();
-              }}
-              className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
-            >
-              <action.icon className="h-6 w-6" />
-              <span className="text-sm">{action.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="flex justify-around items-center">
+        {actions.map((action) => (
+          <button
+            key={action.label}
+            onClick={() => {
+              action.handler();
+              onClose();
+            }}
+            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+          >
+            <action.icon className="h-6 w-6" />
+            <span className="text-sm">{action.label}</span>
+          </button>
+        ))}
       </div>
-    </div>
+    </MobilePanel>
   );
 };
 // Replaced by generic PaymentListCard
@@ -113,50 +106,61 @@ const ReactivateSeriesModal: React.FC<{
 }) => {
   if (!isOpen) return null;
 
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Восстановление платежа из серии"
-    >
-      <div className="space-y-4">
-        <p className="text-gray-700 dark:text-gray-300">
-          Этот платеж является частью неактивной серии. Вы хотите восстановить
-          только этот платеж или также повторно активировать всю серию для
-          создания будущих платежей?
-        </p>
-        <div className="flex flex-wrap justify-end gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            type="button"
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
-            disabled={isProcessing}
-          >
-            Отмена
-          </button>
-          <button
-            onClick={onRestoreOnly}
-            disabled={isProcessing}
-            type="button"
-            className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-[150px]"
-          >
-            {isProcessing ? <Spinner size="sm" /> : "Только этот платеж"}
-          </button>
-          <button
-            onClick={onRestoreAndReactivate}
-            disabled={isProcessing}
-            type="button"
-            className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 min-w-[240px]"
-          >
-            {isProcessing ? (
-              <Spinner size="sm" />
-            ) : (
-              "Восстановить и активировать"
-            )}
-          </button>
-        </div>
+  const renderContent = () => (
+    <div className="space-y-4">
+      <p className="text-gray-700 dark:text-gray-300">
+        Этот платеж является частью неактивной серии. Вы хотите восстановить
+        только этот платеж или также повторно активировать всю серию для
+        создания будущих платежей?
+      </p>
+      <div className="flex flex-wrap justify-end gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          onClick={onClose}
+          type="button"
+          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
+          disabled={isProcessing}
+        >
+          Отмена
+        </button>
+        <button
+          onClick={onRestoreOnly}
+          disabled={isProcessing}
+          type="button"
+          className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-[150px]"
+        >
+          {isProcessing ? <Spinner size="sm" /> : "Только этот платеж"}
+        </button>
+        <button
+          onClick={onRestoreAndReactivate}
+          disabled={isProcessing}
+          type="button"
+          className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 min-w-[240px]"
+        >
+          {isProcessing ? <Spinner size="sm" /> : "Восстановить и активировать"}
+        </button>
       </div>
-    </Modal>
+    </div>
+  );
+
+  return (
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Восстановление платежа из серии"
+        className="hidden md:flex"
+      >
+        {renderContent()}
+      </Modal>
+      <MobilePanel
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Восстановление платежа из серии"
+        showCloseButton
+      >
+        {renderContent()}
+      </MobilePanel>
+    </>
   );
 };
 
@@ -170,7 +174,12 @@ const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
 
 const ArchivePage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
+  const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("archive");
+
+  useEffect(() => {
+    setPageTitle("Архив");
+  }, [setPageTitle]);
 
   // Use useApi for the raw fetch
   const {
@@ -199,6 +208,9 @@ const ArchivePage: React.FC = () => {
 
   const [mobileActionsPayment, setMobileActionsPayment] =
     useState<PaymentData | null>(null);
+  const [shouldCloseMobilePanel, setShouldCloseMobilePanel] = useState(false);
+  const selectedMobilePaymentId = mobileActionsPayment?.id ?? null;
+  const mobileListRef = useRef<HTMLDivElement | null>(null);
 
   const navigate = useNavigate();
 
@@ -386,6 +398,70 @@ const ArchivePage: React.FC = () => {
     }
   };
 
+  const closeMobilePanel = () => {
+    setShouldCloseMobilePanel(true);
+  };
+
+  useEffect(() => {
+    if (!selectedMobilePaymentId) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      if (mobileListRef.current?.contains(target)) {
+        return;
+      }
+
+      if (target.closest("[data-mobile-panel-content]")) {
+        return;
+      }
+
+      closeMobilePanel();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [selectedMobilePaymentId, closeMobilePanel]);
+
+  const handleMobilePanelClosed = () => {
+    setMobileActionsPayment(null);
+    setShouldCloseMobilePanel(false);
+  };
+
+  const handleMobileListClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof HTMLElement)) return;
+
+    const itemElement = event.target.closest<HTMLElement>(
+      "[data-mobile-list-item-id]"
+    );
+
+    if (itemElement?.dataset.mobileListItemId) {
+      const { mobileListItemId } = itemElement.dataset;
+
+      if (selectedMobilePaymentId === mobileListItemId) {
+        closeMobilePanel();
+        return;
+      }
+
+      const nextPayment = archivedPayments.find(
+        (paymentItem) => paymentItem.id === mobileListItemId
+      );
+
+      if (nextPayment) {
+        setShouldCloseMobilePanel(false);
+        setMobileActionsPayment(nextPayment);
+      }
+      return;
+    }
+
+    if (event.target === event.currentTarget && selectedMobilePaymentId) {
+      closeMobilePanel();
+    }
+  };
+
   const handleEditPayment = (paymentId: string) => {
     navigate(`/payments/edit/${paymentId}`);
   };
@@ -395,8 +471,8 @@ const ArchivePage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <div className="flex justify-between items-center md:mb-6">
+          <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Архив платежей
           </h2>
           {/* TODO: Кнопка добавления платежа не нужна в Архиве */}
@@ -432,16 +508,29 @@ const ArchivePage: React.FC = () => {
             </div>
             {/* Mobile Card View */}
             {!isLoadingArchive && (
-              <div className="block md:hidden space-y-3 p-2">
-                {archivedPayments.map((payment) => (
-                  <PaymentListCard
-                    key={payment.id}
-                    payment={payment}
-                    context="archive"
-                    onClick={() => setMobileActionsPayment(payment)}
-                    onDownloadFile={handleDownloadFile}
-                  />
-                ))}
+              <div
+                ref={mobileListRef}
+                onClick={handleMobileListClick}
+                className="block md:hidden space-y-3 p-2"
+              >
+                {archivedPayments.map((payment) => {
+                  const isSelected = selectedMobilePaymentId === payment.id;
+                  const cardStateClasses = [
+                    "transition-all duration-200",
+                    isSelected ? "border-gray-400 shadow-md relative z-50" : "",
+                  ]
+                    .filter((cls) => cls)
+                    .join(" ");
+                  return (
+                    <PaymentListCard
+                      key={payment.id}
+                      payment={payment}
+                      context="archive"
+                      onDownloadFile={handleDownloadFile}
+                      className={cardStateClasses}
+                    />
+                  );
+                })}
               </div>
             )}
           </>
@@ -474,7 +563,8 @@ const ArchivePage: React.FC = () => {
       />
       <MobileActionsOverlay
         payment={mobileActionsPayment}
-        onClose={() => setMobileActionsPayment(null)}
+        shouldClose={shouldCloseMobilePanel}
+        onClose={handleMobilePanelClosed}
         onEdit={handleEditPayment}
         onRestore={handleRestorePayment}
         onPermanentDelete={handlePermanentDeletePayment}

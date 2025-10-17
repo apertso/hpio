@@ -17,6 +17,7 @@ import SuggestionModal from "./components/SuggestionModal";
 import { useDropdown } from "./hooks/useDropdown";
 import DropdownOverlay from "./components/DropdownOverlay";
 import SyncStatusIndicator from "./components/SyncStatusIndicator";
+import MobileNavigationDrawer from "./components/MobileNavigationDrawer";
 import {
   Cog6ToothIcon,
   SunIcon,
@@ -24,12 +25,14 @@ import {
   ArrowRightOnRectangleIcon,
   UserIcon,
   Bars3Icon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 import axiosInstance from "./api/axiosInstance";
-import { PHOTO_URL } from "./api/userApi";
+import { useAvatarCache } from "./hooks/useAvatarCache";
 import { useReset } from "./context/ResetContext";
 import { isTauri, isTauriMobile } from "./utils/platform";
 import { getPageBackgroundClasses } from "./utils/pageBackgrounds";
+import { usePageTitle } from "./context/PageTitleContext";
 import {
   getPendingNotifications,
   clearPendingNotifications,
@@ -94,17 +97,7 @@ const Navigation: React.FC = () => {
     setIsOpen: setIsUserPopoverOpen,
     containerRef: popoverRef,
   } = useDropdown();
-  const {
-    isOpen: isMobileMenuOpen,
-    setIsOpen: setIsMobileMenuOpen,
-    containerRef: mobileMenuRef,
-  } = useDropdown();
-  const [avatarKey, setAvatarKey] = useState(Date.now());
-
-  useEffect(() => {
-    // Обновляем ключ при изменении фото, чтобы `img` перезагрузился
-    setAvatarKey(Date.now());
-  }, [user?.photoPath]);
+  const { avatarUrl } = useAvatarCache(user?.photoPath, token);
 
   // На страницах аутентификации показываем только переключатель темы
   const authPaths = [
@@ -148,52 +141,7 @@ const Navigation: React.FC = () => {
               Категории
             </Link>
           </div>
-          <div className="flex items-center space-x-3 md:space-x-4">
-            <div className="md:hidden relative" ref={mobileMenuRef}>
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg text-gray-800 dark:text-gray-200"
-              >
-                <Bars3Icon className="h-6 w-6" />
-              </button>
-              <DropdownOverlay
-                isOpen={isMobileMenuOpen}
-                align="right"
-                widthClass="w-56"
-                anchorRef={mobileMenuRef}
-              >
-                <div className="py-1">
-                  <Link
-                    to="/dashboard"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    Главная
-                  </Link>
-                  <Link
-                    to="/payments"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    Список платежей
-                  </Link>
-                  <Link
-                    to="/archive"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    Архив
-                  </Link>
-                  <Link
-                    to="/categories"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    Категории
-                  </Link>
-                </div>
-              </DropdownOverlay>
-            </div>
+          <div className="hidden md:flex items-center space-x-4">
             <div className="relative" ref={popoverRef}>
               <button
                 onClick={() => setIsUserPopoverOpen(!isUserPopoverOpen)}
@@ -201,10 +149,9 @@ const Navigation: React.FC = () => {
                 aria-label="Открыть меню пользователя"
                 aria-expanded={isUserPopoverOpen}
               >
-                {user?.photoPath ? (
+                {avatarUrl ? (
                   <img
-                    key={avatarKey}
-                    src={`${axiosInstance.defaults.baseURL}${PHOTO_URL}?token=${token}`}
+                    src={avatarUrl}
                     alt="User Avatar"
                     className="size-10 rounded-full object-cover bg-gray-300 dark:bg-card-bg"
                   />
@@ -285,12 +232,19 @@ const Navigation: React.FC = () => {
 };
 
 function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { triggerReset } = useReset();
   const { showToast } = useToast();
+  const { pageTitle } = usePageTitle();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
+  const mobileNavItems = [
+    { to: "/dashboard", label: "Главная" },
+    { to: "/payments", label: "Список платежей" },
+    { to: "/archive", label: "Архив" },
+    { to: "/categories", label: "Категории" },
+  ];
   const [showNotificationOnboarding, setShowNotificationOnboarding] =
     useState(false);
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
@@ -302,6 +256,7 @@ function App() {
       notificationData: string;
     }>
   >([]);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Set safe area inset for mobile development override
   useEffect(() => {
@@ -311,8 +266,13 @@ function App() {
         "--safe-area-inset-top",
         "20px"
       );
+      document.documentElement.style.setProperty(
+        "--safe-area-inset-bottom",
+        "20px"
+      );
     } else {
       document.documentElement.style.removeProperty("--safe-area-inset-top");
+      document.documentElement.style.removeProperty("--safe-area-inset-bottom");
     }
   }, []);
 
@@ -387,39 +347,26 @@ function App() {
       const parsedSuggestions = [];
 
       for (const notification of notifications) {
-        if (
-          notification.package_name === "ru.raiffeisennews" ||
-          notification.package_name === "com.android.shell"
-        ) {
-          const parsed = parseNotification(
-            notification.package_name,
-            notification.text,
-            notification.title
-          );
-
-          const rawData = `Raw notification from ${
-            notification.package_name
-          }:\nTitle: ${notification.title || "N/A"}\nText: ${
-            notification.text
-          }`;
-          const parsedData = parsed
-            ? `Parsed: merchant=${parsed.merchantName}, amount=${parsed.amount}`
-            : "Parsing failed";
-
-          // Always log to file on Android
-          logger.info(`${rawData}\n${parsedData}`);
-
-          // Show debug toast if enabled in settings
-          if (localStorage.getItem("dev_show_debug_toasts") === "true") {
-            showToast(`${rawData}\n\n${parsedData}`, "info", 8000);
-          }
-        }
-
         const parsed = parseNotification(
           notification.package_name,
           notification.text,
           notification.title
         );
+
+        const rawData = `Raw notification from ${
+          notification.package_name
+        }:\nTitle: ${notification.title || "N/A"}\nText: ${notification.text}`;
+        const parsedData = parsed
+          ? `Parsed: merchant=${parsed.merchantName}, amount=${parsed.amount}`
+          : "Parsing failed";
+
+        // Always log to file on Android
+        logger.info(`${rawData}\n${parsedData}`);
+
+        // Show debug toast if enabled in settings
+        if (localStorage.getItem("dev_show_debug_toasts") === "true") {
+          showToast(`${rawData}\n\n${parsedData}`, "info", 8000);
+        }
 
         if (!parsed) continue;
 
@@ -564,6 +511,18 @@ function App() {
     setShowSuggestionModal(false);
   };
 
+  useEffect(() => {
+    if (!isAuthenticated && isMobileDrawerOpen) {
+      setIsMobileDrawerOpen(false);
+    }
+  }, [isAuthenticated, isMobileDrawerOpen]);
+
+  useEffect(() => {
+    if (isMobileDrawerOpen) {
+      setIsMobileDrawerOpen(false);
+    }
+  }, [location.pathname]);
+
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const targetUrl = isAuthenticated ? "/dashboard" : "/";
@@ -575,37 +534,75 @@ function App() {
     }
   };
 
+  let mobileAddAction: (() => void) | null = null;
+
+  if (isAuthenticated) {
+    if (
+      location.pathname === "/dashboard" ||
+      location.pathname === "/payments"
+    ) {
+      mobileAddAction = () => navigate("/payments/new");
+    } else if (location.pathname === "/categories") {
+      mobileAddAction = () => navigate("/categories/new");
+    }
+  }
+
   const headerClassName = `flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20`;
 
   const header = (
     <header className={headerClassName}>
-      <a
-        href={isAuthenticated ? "/dashboard" : "/"}
-        onClick={handleLogoClick}
-        className="flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
-        style={{ textDecoration: "none" }}
-      >
-        <div className="size-4 text-black dark:text-white">
-          <svg
-            viewBox="0 0 48 48"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+      <div className="flex items-center gap-3">
+        {isAuthenticated && (
+          <button
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg text-gray-800 dark:text-gray-200"
+            aria-label="Открыть меню навигации"
           >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z"
-              fill="currentColor"
-            ></path>
-          </svg>
-        </div>
-        <div className="text-lg font-bold leading-tight tracking-[-0.015em]">
-          Хочу Плачу
-        </div>
-      </a>
-      <div className="flex items-center gap-4">
+            <Bars3Icon className="h-6 w-6" />
+          </button>
+        )}
+        {isAuthenticated && pageTitle ? (
+          <h1 className="md:hidden text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
+            {pageTitle}
+          </h1>
+        ) : null}
+        <a
+          href={isAuthenticated ? "/dashboard" : "/"}
+          onClick={handleLogoClick}
+          className="hidden md:flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
+          style={{ textDecoration: "none" }}
+        >
+          <div className="size-4 text-black dark:text-white">
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z"
+                fill="currentColor"
+              ></path>
+            </svg>
+          </div>
+          <div className="text-lg font-bold leading-tight tracking-[-0.015em]">
+            Хочу Плачу
+          </div>
+        </a>
+      </div>
+      <div className="flex items-center gap-3">
         <SyncStatusIndicator />
         <Navigation />
+        {mobileAddAction && (
+          <button
+            onClick={mobileAddAction}
+            className="md:hidden p-2 rounded-full bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
+            aria-label="Добавить"
+          >
+            <PlusIcon className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </header>
   );
@@ -658,7 +655,7 @@ function App() {
             href="https://linkedin.com/in/artur-pertsev/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors underline-offset-2 hover:underline"
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
           >
             apertso
           </a>{" "}
@@ -668,19 +665,19 @@ function App() {
           <nav className="flex items-center gap-6">
             <Link
               to="/terms"
-              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
             >
               Пользовательское соглашение
             </Link>
             <Link
               to="/privacy"
-              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
             >
               Политика конфиденциальности
             </Link>
             <Link
               to="/about"
-              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
             >
               О нас
             </Link>
@@ -701,7 +698,7 @@ function App() {
                   className="h-5 w-5"
                   aria-hidden="true"
                 >
-                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.23.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.30.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
                 </svg>
               </a>
             )}
@@ -717,7 +714,7 @@ function App() {
             href="https://linkedin.com/in/apertso"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors underline-offset-2 hover:underline"
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
           >
             apertso
           </a>{" "}
@@ -726,19 +723,19 @@ function App() {
         <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2">
           <Link
             to="/terms"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             Пользовательское соглашение
           </Link>
           <Link
             to="/privacy"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             Политика конфиденциальности
           </Link>
           <Link
             to="/about"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors underline-offset-2 hover:underline"
+            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             О нас
           </Link>
@@ -778,7 +775,7 @@ function App() {
     const pageBackgroundClasses = getPageBackgroundClasses(location.pathname);
     const containerClassName = `relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans${
       pageBackgroundClasses ? ` ${pageBackgroundClasses}` : ""
-    }${isTauriMobile() ? " safe-area-top" : ""}`;
+    }${isTauriMobile() ? " safe-area-top safe-area-bottom" : ""}`;
 
     return (
       <>
@@ -803,6 +800,15 @@ function App() {
           onClose={() => setShowSuggestionModal(false)}
           onComplete={handleSuggestionComplete}
         />
+        <MobileNavigationDrawer
+          isOpen={isMobileDrawerOpen}
+          onClose={() => setIsMobileDrawerOpen(false)}
+          user={user}
+          token={token}
+          navItems={mobileNavItems}
+          currentPath={location.pathname}
+          onLogout={logout}
+        />
       </>
     );
   } else {
@@ -810,7 +816,7 @@ function App() {
     const pageBackgroundClasses = getPageBackgroundClasses(location.pathname);
     const containerClassName = `relative flex min-h-screen flex-col bg-white dark:bg-dark-bg group/design-root font-sans${
       pageBackgroundClasses ? ` ${pageBackgroundClasses}` : ""
-    }${isTauriMobile() ? " safe-area-top" : ""}`;
+    }${isTauriMobile() ? " safe-area-top safe-area-bottom" : ""}`;
 
     return (
       <div className={containerClassName}>

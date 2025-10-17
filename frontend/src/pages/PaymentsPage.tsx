@@ -1,5 +1,5 @@
 // src/pages/PaymentsPage.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 // import { getPaymentColorClass } from "../utils/paymentColors"; // Для цветовой индикации в таблице
@@ -24,39 +24,30 @@ import {
   CheckCircleIcon as CheckSolidIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import MobilePanel from "../components/MobilePanel";
+import { usePageTitle } from "../context/PageTitleContext";
 // import { ArrowPathIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 // For MobileActionsOverlay
 type MobileActionsOverlayProps = {
   payment: PaymentData | null;
+  shouldClose: boolean;
   onClose: () => void;
   onEdit: (id: string) => void;
   onComplete: (payment: PaymentData) => void;
   onDelete: (payment: PaymentData) => void;
 };
 
-// MobileActionsOverlay and PaymentListItem components
+// MobileActionsOverlay component
 const MobileActionsOverlay = ({
   payment,
+  shouldClose,
   onClose,
   onEdit,
   onComplete,
   onDelete,
 }: MobileActionsOverlayProps) => {
-  const [isVisible, setIsVisible] = React.useState(false);
-  React.useEffect(() => {
-    if (payment) {
-      const timer = setTimeout(() => setIsVisible(true), 10);
-      return () => clearTimeout(timer);
-    } else {
-      setIsVisible(false);
-    }
-  }, [payment]);
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(onClose, 300);
-  };
   if (!payment) return null;
+
   const actions = [
     {
       label: "Изменить",
@@ -74,37 +65,31 @@ const MobileActionsOverlay = ({
       handler: () => onDelete(payment),
     },
   ];
+
   return (
-    <div
-      className={`fixed inset-0 z-40 transition-opacity duration-300 ${
-        isVisible ? "bg-black/40" : "bg-black/0"
-      }`}
-      onClick={handleClose}
-      aria-hidden="true"
+    <MobilePanel
+      isOpen={!!payment}
+      onClose={onClose}
+      title=""
+      showCloseButton={false}
+      shouldClose={shouldClose}
     >
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out ${
-          isVisible ? "translate-y-0" : "translate-y-full"
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex justify-around items-center">
-          {actions.map((action) => (
-            <button
-              key={action.label}
-              onClick={() => {
-                action.handler();
-                handleClose();
-              }}
-              className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
-            >
-              <action.icon className="h-6 w-6" />
-              <span className="text-sm">{action.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="flex justify-around items-center">
+        {actions.map((action) => (
+          <button
+            key={action.label}
+            onClick={() => {
+              action.handler();
+              onClose();
+            }}
+            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+          >
+            <action.icon className="h-6 w-6" />
+            <span className="text-sm">{action.label}</span>
+          </button>
+        ))}
       </div>
-    </div>
+    </MobilePanel>
   );
 };
 // Deprecated: PaymentListItem replaced by generic PaymentListCard
@@ -119,7 +104,12 @@ const fetchAllPaymentsApi = async (): Promise<PaymentData[]> => {
 
 const PaymentsPage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
+  const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("payments");
+
+  useEffect(() => {
+    setPageTitle("Список платежей");
+  }, [setPageTitle]);
 
   // Use useApi for fetching all payments
   const {
@@ -152,6 +142,9 @@ const PaymentsPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [mobileActionsPayment, setMobileActionsPayment] =
     useState<PaymentData | null>(null);
+  const [shouldCloseMobilePanel, setShouldCloseMobilePanel] = useState(false);
+  const selectedMobilePaymentId = mobileActionsPayment?.id ?? null;
+  const mobileListRef = useRef<HTMLDivElement | null>(null);
 
   // Effect to transform data when raw all payments data changes
   useEffect(() => {
@@ -355,13 +348,77 @@ const PaymentsPage: React.FC = () => {
     }
   };
 
+  const closeMobilePanel = () => {
+    setShouldCloseMobilePanel(true);
+  };
+
+  useEffect(() => {
+    if (!selectedMobilePaymentId) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      if (mobileListRef.current?.contains(target)) {
+        return;
+      }
+
+      if (target.closest("[data-mobile-panel-content]")) {
+        return;
+      }
+
+      closeMobilePanel();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [selectedMobilePaymentId, closeMobilePanel]);
+
+  const handleMobilePanelClosed = () => {
+    setMobileActionsPayment(null);
+    setShouldCloseMobilePanel(false);
+  };
+
+  const handleMobileListClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof HTMLElement)) return;
+
+    const itemElement = event.target.closest<HTMLElement>(
+      "[data-mobile-list-item-id]"
+    );
+
+    if (itemElement?.dataset.mobileListItemId) {
+      const { mobileListItemId } = itemElement.dataset;
+
+      if (selectedMobilePaymentId === mobileListItemId) {
+        closeMobilePanel();
+        return;
+      }
+
+      const nextPayment = allPayments.find(
+        (paymentItem) => paymentItem.id === mobileListItemId
+      );
+
+      if (nextPayment) {
+        setShouldCloseMobilePanel(false);
+        setMobileActionsPayment(nextPayment);
+      }
+      return;
+    }
+
+    if (event.target === event.currentTarget && selectedMobilePaymentId) {
+      closeMobilePanel();
+    }
+  };
+
   return (
     <>
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <div className="flex justify-between items-center md:mb-6">
+          <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Все платежи
           </h2>
           <Button
@@ -403,16 +460,29 @@ const PaymentsPage: React.FC = () => {
             </div>
             {/* Mobile Card View */}
             {!isLoadingPayments && (
-              <div className="block md:hidden space-y-3">
-                {allPayments.map((payment) => (
-                  <PaymentListCard
-                    key={payment.id}
-                    payment={payment}
-                    context="payments"
-                    onClick={() => setMobileActionsPayment(payment)}
-                    onDownloadFile={handleDownloadFile}
-                  />
-                ))}
+              <div
+                ref={mobileListRef}
+                onClick={handleMobileListClick}
+                className="block md:hidden space-y-3"
+              >
+                {allPayments.map((payment) => {
+                  const isSelected = selectedMobilePaymentId === payment.id;
+                  const cardStateClasses = [
+                    "transition-all duration-200",
+                    isSelected ? "border-gray-400 shadow-md relative z-50" : "",
+                  ]
+                    .filter((cls) => cls)
+                    .join(" ");
+                  return (
+                    <PaymentListCard
+                      key={payment.id}
+                      payment={payment}
+                      context="payments"
+                      onDownloadFile={handleDownloadFile}
+                      className={cardStateClasses}
+                    />
+                  );
+                })}
               </div>
             )}
           </>
@@ -462,21 +532,12 @@ const PaymentsPage: React.FC = () => {
       />
       <MobileActionsOverlay
         payment={mobileActionsPayment}
-        onClose={() => setMobileActionsPayment(null)}
+        shouldClose={shouldCloseMobilePanel}
+        onClose={handleMobilePanelClosed}
         onEdit={handleEditPayment}
         onComplete={handleCompletePayment}
         onDelete={handleDeletePayment}
       />
-
-      {/* FAB для мобильной версии */}
-      <div className="md:hidden fixed bottom-6 right-6 z-50">
-        <button
-          onClick={handleAddPayment}
-          className="w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
-        >
-          <PlusIcon className="w-6 h-6" />
-        </button>
-      </div>
     </>
   );
 };

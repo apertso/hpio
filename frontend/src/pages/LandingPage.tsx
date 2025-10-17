@@ -33,13 +33,13 @@ const Feature = ({
   >
     <div
       className={`flex flex-col p-4 ${
-        reverse ? "md:order-2 md:text-left" : "md:order-1 md:text-left"
+        reverse ? "md:order-2" : "md:order-1"
       } text-center md:text-left`}
     >
       <div className="inline-flex self-center p-3 mb-4 text-white bg-indigo-500 rounded-full">
         <Icon className="w-8 h-8" />
       </div>
-      <h3 className="mb-3 text-xl md:text-2xl font-bold tracking-tight text-center">
+      <h3 className="mb-3 text-xl md:text-2xl font-bold tracking-tight">
         {title}
       </h3>
       <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -47,14 +47,16 @@ const Feature = ({
       </p>
     </div>
     {image && (
-      <div className={`${reverse ? "md:order-1" : "md:order-2"} w-full`}>
-        <div className="w-full max-w-2xl mx-auto">
-          <img
-            src={image.src}
-            alt={image.alt}
-            className="w-full h-auto rounded-xl border border-gray-200 dark:border-gray-700"
-          />
-        </div>
+      <div
+        className={`${
+          reverse ? "md:order-1" : "md:order-2"
+        } w-full max-w-2xl mx-auto`}
+      >
+        <img
+          src={image.src}
+          alt={image.alt}
+          className="w-full h-auto rounded-xl border border-gray-200 dark:border-gray-700"
+        />
       </div>
     )}
   </div>
@@ -108,14 +110,12 @@ const LandingPage: React.FC = () => {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold">Возможности сервиса</h2>
-            <p className="max-w-2xl mx-auto mt-4 text-gray-600 dark:text-gray-400">
-              Всё необходимое для эффективного управления финансами в одном
-              приложении.
-            </p>
-          </div>
+        <section id="features" className="py-16 text-center">
+          <h2 className="text-3xl font-bold mb-12">Возможности сервиса</h2>
+          <p className="max-w-2xl mx-auto text-gray-600 dark:text-gray-400">
+            Всё необходимое для эффективного управления финансами в одном
+            приложении.
+          </p>
 
           <div className="space-y-16">
             {/* Feature 1 */}
@@ -176,10 +176,10 @@ const LandingPage: React.FC = () => {
 
         {/* Final CTA Section */}
         <section className="py-12 text-center">
-          <h2 className="text-3xl font-bold">
+          <h2 className="text-3xl font-bold mb-4">
             Готовы навести порядок в финансах?
           </h2>
-          <p className="max-w-xl mx-auto mt-4 text-gray-600 dark:text-gray-400">
+          <p className="max-w-xl mx-auto text-gray-600 dark:text-gray-400">
             Присоединяйтесь к нашему бета-тесту прямо сейчас и начните управлять
             своими финансами.
           </p>

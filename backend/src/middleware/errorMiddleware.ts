@@ -33,3 +33,21 @@ export const errorHandler = (
     stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
   });
 };
+
+export const handleMulterError = (multerMiddleware: any) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    multerMiddleware(req, res, (err: any) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          const error: any = new Error("File too large");
+          error.statusCode = 413;
+          return next(error);
+        }
+        const error: any = err;
+        error.statusCode = 400;
+        return next(error);
+      }
+      next();
+    });
+  };
+};

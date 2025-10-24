@@ -6,7 +6,8 @@ interface FormBlockProps {
 }
 
 const FormBlock: React.FC<FormBlockProps> = ({ children, className = "" }) => {
-  const baseClasses = "bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md";
+  const baseClasses =
+    "md:bg-white md:dark:bg-gray-900 md:p-6 md:rounded-lg md:shadow-md";
 
   return <div className={`${baseClasses} ${className}`}>{children}</div>;
 };

@@ -14,6 +14,7 @@ import IconSelector from "../components/IconSelector";
 import { BuiltinIcon } from "../utils/builtinIcons";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import { usePageTitle } from "../context/PageTitleContext";
 
 const categoryFormSchema = z.object({
   name: z
@@ -27,6 +28,7 @@ type CategoryFormInputs = z.infer<typeof categoryFormSchema>;
 const CategoryEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { setPageTitle } = usePageTitle();
   const isEditMode = !!id;
   const metadata = getPageMetadata("categories"); // Using categories metadata for edit pages
 
@@ -66,6 +68,14 @@ const CategoryEditPage: React.FC = () => {
     }
   }, [id, isEditMode, setValue, reset]);
 
+  // Set page title for mobile header
+  useEffect(() => {
+    const headerText = isEditMode
+      ? "Редактировать категорию"
+      : "Новая категория";
+    setPageTitle(headerText);
+  }, [isEditMode, setPageTitle]);
+
   const onSubmit: SubmitHandler<CategoryFormInputs> = async (data) => {
     setFormError(null);
     const payload = {
@@ -92,7 +102,8 @@ const CategoryEditPage: React.FC = () => {
     <>
       <PageMeta {...metadata} />
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center mb-6">
+        {/* Title and back button shown only on desktop - on mobile it's in the header */}
+        <div className="hidden md:flex items-center mb-6">
           <Link
             to="/categories"
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"

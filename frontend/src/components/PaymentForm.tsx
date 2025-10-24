@@ -270,10 +270,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             formData.append("paymentFile", pendingFile);
             await axiosInstance.post(
               `/files/upload/payment/${newPaymentId}`,
-              formData,
-              {
-                headers: { "Content-Type": "multipart/form-data" },
-              }
+              formData
             );
           } catch {
             // Короткое сообщение пользователю; сам платеж уже создан

@@ -1016,8 +1016,8 @@ const HomePage: React.FC = () => {
           {/* Состояния загрузки или ошибки для статистики */}
           {isLoadingStats && (
             // Стабильный скелетон для блока статистики чтобы избежать мигания
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2 md:space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6">
                 {Array.from({ length: 2 }).map((_, i) => (
                   <div
                     key={i}
@@ -1042,10 +1042,10 @@ const HomePage: React.FC = () => {
           )}
           {/* Отображение статистики, если данные загружены */}
           {!isLoadingStats && !errorStats && stats && (
-            <div className="space-y-6">
+            <div className="space-y-2 md:space-y-6">
               {/* TODO: Форматировать месяц на русский */}
               {/* Блоки с общими суммами */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-2 md:gap-6">
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
                     <span className="md:hidden">Предстоящие</span>
@@ -1083,7 +1083,7 @@ const HomePage: React.FC = () => {
                 {/* TODO: Добавить другие суммарные показатели, если нужны */}
               </div>
               {/* Блоки с графиками */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 md:gap-6">
                 {/* Распределение по категориям */}
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-6">

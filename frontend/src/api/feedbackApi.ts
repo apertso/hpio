@@ -10,10 +10,6 @@ export const submitFeedback = async (
     formData.append("attachment", file);
   }
 
-  const response = await axiosInstance.post("/feedback", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const response = await axiosInstance.post("/feedback", formData);
   return response.data as { id: string };
 };

@@ -23,17 +23,23 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
         // Supported package names for payment notification parsing
         private val SUPPORTED_PACKAGES = setOf(
-            // Test and Raiffeisen
+            // Test
             "com.android.shell",
-            "ru.raiffeisennews",
             // Bank applications
-            "ru.sberbankmobile",
-            "com.idamob.tinkoff.android",
-            "ru.vtb24.mobilebanking",
-            "ru.alfabank.mobile.android",
-            "ru.sovcombank.halvacard",
-            "ru.pochtabank.pochtaapp",
-            "ru.rosbank.android",
+            "ru.raiffeisennews",                  // Раиффайзен
+            "ru.sberbankmobile",                  // Сбербанк
+            "com.idamob.tinkoff.android",         // Тинькофф
+            "ru.vtb24.mobilebanking",             // ВТБ
+            "ru.alfabank.mobile.android",         // Альфа-Банк
+            "ru.sovcombank.halvacard",            // Совкомбанк
+            "ru.pochtabank.pochtaapp",            // Почта Банк
+            "ru.rshb.mobilebank",                 // Россельхозбанк
+            "ru.otpbank.online",                  // ОТП Банк
+            "ru.psb.mobile",                      // Промсвязьбанк
+            "ru.unicreditbank.mobile",            // Уникредит
+            "ru.mtsbank.mobile",                  // МТС Банк
+            "ru.bspb.mobile",                     // Банк Санкт-Петербург
+            "ru.akbmetallbank.mobile",            // Металлинвестбанк
             // Fintech applications
             "ru.yoo.money",
             "com.yandex.bank",
@@ -56,7 +62,11 @@ class PaymentNotificationListenerService : NotificationListenerService() {
             "ru.tochka.app",
             "ru.openbusiness.app",
             "ru.rosbank.business",
-            "ru.uralsib.business"
+            "ru.uralsib.business",
+            "ru.psb.business",
+            "ru.mtsbank.business",
+            "ru.bspb.business",
+            "ru.tcsbank.business",
         )
     }
 

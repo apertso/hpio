@@ -32,6 +32,7 @@
     "@types/react-datepicker": "^6.2.0",
     "@types/react-dropzone": "^4.2.2",
     "axios": "^1.8.4",
+    "browser-image-compression": "^2.0.2",
     "react": "^19.1.0",
     "react-datepicker": "^8.3.0",
     "react-dom": "^19.0.0",

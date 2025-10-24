@@ -11,10 +11,12 @@ import getErrorMessage from "../utils/getErrorMessage";
 import RadioButton from "../components/RadioButton";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import { usePageTitle } from "../context/PageTitleContext";
 
 const PaymentEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { setPageTitle } = usePageTitle();
   const isEditMode = !!id;
   const metadata = getPageMetadata("payments"); // Using payments metadata for edit pages
 
@@ -41,6 +43,16 @@ const PaymentEditPage: React.FC = () => {
         });
     }
   }, [id, isEditMode]);
+
+  // Set page title for mobile header
+  useEffect(() => {
+    const headerText = isEditMode
+      ? editScope === "single"
+        ? "Редактировать платеж"
+        : "Редактировать серию"
+      : "Добавить платеж";
+    setPageTitle(headerText);
+  }, [isEditMode, editScope, setPageTitle]);
 
   const handleSuccess = () => {
     navigate("/dashboard");
@@ -82,7 +94,8 @@ const PaymentEditPage: React.FC = () => {
     <>
       <PageMeta {...metadata} />
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center mb-6">
+        {/* Title and back button shown only on desktop - on mobile it's in the header */}
+        <div className="hidden md:flex items-center mb-6">
           <button
             onClick={handleCancel}
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"

@@ -1,6 +1,7 @@
 // backend/src/routes/fileRoutes.ts
 import { Router, Request, Response } from "express";
 import { protect } from "../middleware/authMiddleware"; // Защита маршрутов
+import { handleMulterError } from "../middleware/errorMiddleware";
 import {
   uploadFile,
   attachFileToPayment,
@@ -17,7 +18,7 @@ router.use(protect);
 // POST /api/files/upload/payment/:paymentId - Загрузка файла для конкретного платежа
 router.post(
   "/upload/payment/:paymentId",
-  uploadFile,
+  handleMulterError(uploadFile),
   async (req: Request, res: Response) => {
     // Переименовал путь для ясности
     if (!req.file) {

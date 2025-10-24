@@ -44,6 +44,7 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import logger from "../utils/logger";
 import MobilePanel from "../components/MobilePanel";
 import { usePageTitle } from "../context/PageTitleContext";
+import { compressProfileImage } from "../utils/imageCompression";
 
 // Схема для всех настроек профиля
 const settingsSchema = z.object({
@@ -96,6 +97,7 @@ const SettingsPage: React.FC = () => {
     setPageTitle("Настройки");
   }, [setPageTitle]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
   const { avatarUrl, refreshAvatar } = useAvatarCache(user?.photoPath, token);
   const [expandedSection, setExpandedSection] = useState<"password" | null>(
     null
@@ -214,11 +216,28 @@ const SettingsPage: React.FC = () => {
   const onDrop = async (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) return;
     const file = acceptedFiles[0];
-    const formData = new FormData();
-    formData.append("userPhoto", file);
 
-    setIsUploading(true);
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ (до сжатия)
+    if (file.size > MAX_FILE_SIZE) {
+      showToast(
+        `Размер файла превышает ${
+          MAX_FILE_SIZE / 1024 / 1024
+        } МБ. Пожалуйста, выберите файл меньшего размера.`,
+        "error"
+      );
+      return;
+    }
+
     try {
+      setIsCompressing(true);
+      const compressedFile = await compressProfileImage(file);
+
+      setIsCompressing(false);
+      setIsUploading(true);
+
+      const formData = new FormData();
+      formData.append("userPhoto", compressedFile);
+
       await userApi.uploadPhoto(formData);
       await refreshUser();
       await refreshAvatar();
@@ -226,14 +245,41 @@ const SettingsPage: React.FC = () => {
     } catch (error) {
       showToast(`Ошибка загрузки фото: ${getErrorMessage(error)}`, "error");
     } finally {
+      setIsCompressing(false);
       setIsUploading(false);
+    }
+  };
+
+  const onDropRejected = (rejections: any[]) => {
+    if (rejections.length === 0) return;
+
+    const rejection = rejections[0];
+    const errors = rejection.errors || [];
+
+    for (const error of errors) {
+      if (error.code === "file-invalid-type") {
+        showToast(
+          "Пожалуйста, выберите изображение (JPEG, PNG или WEBP).",
+          "error"
+        );
+        break;
+      } else if (error.code === "file-too-large") {
+        showToast("Размер файла превышает 10 МБ.", "error");
+        break;
+      } else {
+        showToast(`Ошибка при выборе файла: ${error.message}`, "error");
+        break;
+      }
     }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: { "image/jpeg": [], "image/png": [], "image/webp": [] },
     multiple: false,
+    maxSize: 10 * 1024 * 1024,
+    disabled: isCompressing || isUploading,
   });
 
   const onSettingsSubmit: SubmitHandler<SettingsInputs> = async (data) => {
@@ -535,7 +581,7 @@ const SettingsPage: React.FC = () => {
                           </svg>
                         </div>
 
-                        {isUploading && (
+                        {(isCompressing || isUploading) && (
                           <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center z-20">
                             <Spinner size="sm" />
                           </div>

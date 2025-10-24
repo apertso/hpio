@@ -23,6 +23,7 @@ import {
   SunIcon,
   MoonIcon,
   ArrowRightOnRectangleIcon,
+  ArrowLeftIcon,
   UserIcon,
   Bars3Icon,
   PlusIcon,
@@ -38,10 +39,14 @@ import {
   clearPendingNotifications,
   checkNotificationPermission,
 } from "./api/notificationPermission";
-import { parseNotification } from "./utils/notificationParser";
+import {
+  parseNotification,
+  isPaymentNotification,
+} from "./utils/notificationParser";
 import { normalizeMerchantName } from "./utils/merchantNormalizer";
 import { suggestionApi } from "./api/suggestionApi";
 import { merchantRuleApi } from "./api/merchantRuleApi";
+import { notificationApi } from "./api/notificationApi";
 import { useToast } from "./context/ToastContext";
 import logger from "./utils/logger";
 
@@ -347,25 +352,44 @@ function App() {
       const parsedSuggestions = [];
 
       for (const notification of notifications) {
+        const rawData = `Raw notification from ${
+          notification.package_name
+        }:\nTitle: ${notification.title || "N/A"}\nText: ${notification.text}`;
+
+        // Always log to file on Android
+        logger.info(rawData);
+
+        // Show debug toast if enabled in settings
+        if (localStorage.getItem("dev_show_debug_toasts") === "true") {
+          showToast(rawData, "info", 8000);
+        }
+
+        if (
+          !isPaymentNotification(
+            notification.package_name,
+            notification.text,
+            notification.title
+          )
+        ) {
+          continue;
+        }
+
         const parsed = parseNotification(
           notification.package_name,
           notification.text,
           notification.title
         );
 
-        const rawData = `Raw notification from ${
-          notification.package_name
-        }:\nTitle: ${notification.title || "N/A"}\nText: ${notification.text}`;
-        const parsedData = parsed
-          ? `Parsed: merchant=${parsed.merchantName}, amount=${parsed.amount}`
-          : "Parsing failed";
-
-        // Always log to file on Android
-        logger.info(`${rawData}\n${parsedData}`);
-
-        // Show debug toast if enabled in settings
-        if (localStorage.getItem("dev_show_debug_toasts") === "true") {
-          showToast(`${rawData}\n\n${parsedData}`, "info", 8000);
+        try {
+          const combinedText = notification.title
+            ? `${notification.title} ${notification.text}`
+            : notification.text;
+          await notificationApi.logTransactionNotification({
+            text: combinedText,
+            from: notification.package_name,
+          });
+        } catch (error) {
+          logger.error("Failed to send notification to backend:", error);
         }
 
         if (!parsed) continue;
@@ -472,6 +496,12 @@ function App() {
             // Navigate based on action
             if (action === "archive") {
               navigate("/archive");
+            } else if (action === "main") {
+              // For main action (suggestions), just bring app to focus
+              // Don't navigate - suggestions are already shown
+              logger.info(
+                "Notification clicked with main action - bringing app to focus"
+              );
             } else {
               navigate("/dashboard");
             }
@@ -549,22 +579,49 @@ function App() {
 
   const headerClassName = `flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20`;
 
+  // Check if current page is an edit/add page that should show back button in header
+  const isEditPage =
+    isAuthenticated &&
+    (location.pathname === "/payments/new" ||
+      location.pathname.startsWith("/payments/edit/") ||
+      location.pathname === "/categories/new" ||
+      location.pathname.startsWith("/categories/edit/"));
+
   const header = (
     <header className={headerClassName}>
       <div className="flex items-center gap-3">
-        {isAuthenticated && (
-          <button
-            onClick={() => setIsMobileDrawerOpen(true)}
-            className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg text-gray-800 dark:text-gray-200"
-            aria-label="Открыть меню навигации"
-          >
-            <Bars3Icon className="h-6 w-6" />
-          </button>
-        )}
-        {isAuthenticated && pageTitle ? (
-          <h1 className="md:hidden text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
-            {pageTitle}
-          </h1>
+        {isAuthenticated && isEditPage ? (
+          // Show back button on mobile for edit pages
+          <>
+            <button
+              onClick={() => navigate(-1)}
+              className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg text-gray-800 dark:text-gray-200"
+              aria-label="Назад"
+            >
+              <ArrowLeftIcon className="h-6 w-6" />
+            </button>
+            {pageTitle ? (
+              <h1 className="md:hidden text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
+                {pageTitle}
+              </h1>
+            ) : null}
+          </>
+        ) : isAuthenticated && !isEditPage ? (
+          // Show hamburger menu on mobile for non-edit pages
+          <>
+            <button
+              onClick={() => setIsMobileDrawerOpen(true)}
+              className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg text-gray-800 dark:text-gray-200"
+              aria-label="Открыть меню навигации"
+            >
+              <Bars3Icon className="h-6 w-6" />
+            </button>
+            {pageTitle ? (
+              <h1 className="md:hidden text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
+                {pageTitle}
+              </h1>
+            ) : null}
+          </>
         ) : null}
         <a
           href={isAuthenticated ? "/dashboard" : "/"}

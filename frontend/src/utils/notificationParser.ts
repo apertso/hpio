@@ -3,6 +3,40 @@ export interface ParsedPayment {
   amount: number;
 }
 
+export type NotificationType = "payment" | "refund" | "transfer" | "other";
+
+export function detectNotificationType(message: string): NotificationType {
+  const text = message.toLowerCase();
+
+  if (/\b(пополнен|зачислен|получен|возврат|refunded|returned)\b/.test(text))
+    return "refund";
+
+  if (/\b(перевод|transfer|отправлен|получателю)\b/.test(text))
+    return "transfer";
+
+  if (
+    /\b(покупка|оплата|списание|платеж|transaction|purchase|payment)\b/.test(
+      text
+    )
+  ) {
+    return "payment";
+  }
+
+  return "other";
+}
+
+export function isPaymentNotification(
+  packageName: string,
+  text: string,
+  title?: string
+): boolean {
+  const parsed = parseNotification(packageName, text, title);
+  if (parsed) return true;
+
+  const combinedText = `${title || ""} ${text}`;
+  return detectNotificationType(combinedText) === "payment";
+}
+
 const RAIFFEISEN_TITLE_REGEX = /^Заплатили (картой|со счета)\s+\*\d{4}$/i;
 const RAIFFEISEN_TEXT_REGEX =
   /[-−]\s?(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*)\.(\d{2}) ₽ в ([^.]+)\.?/i;
@@ -17,6 +51,9 @@ const YANDEX_BANK_TEXT_REGEX =
 const OZON_TITLE_REGEX = /^Ozon Банк$/i;
 const OZON_TEXT_REGEX =
   /Покупка на\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:\.\d{2})?)\s+₽/i;
+
+const TBANK_TEXT_REGEX =
+  /Покупка на\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:[.,]\d{2})?)\s+₽/i;
 
 /**
  * Validates if the notification title matches the expected Raiffeisen pattern
@@ -160,6 +197,40 @@ export function parseOzonNotification(
   }
 }
 
+export function parseTBankNotification(
+  text: string,
+  title: string
+): ParsedPayment | null {
+  try {
+    const merchantName = title.trim();
+    if (!merchantName) {
+      return null;
+    }
+
+    const textMatch = text.match(TBANK_TEXT_REGEX);
+    if (!textMatch) {
+      return null;
+    }
+
+    const amountStr = textMatch[1];
+    const amount = parseFloat(
+      amountStr.replace(/[ \u00A0\u202F]/g, "").replace(",", ".")
+    );
+
+    if (isNaN(amount) || amount <= 0) {
+      return null;
+    }
+
+    return {
+      merchantName,
+      amount,
+    };
+  } catch (error) {
+    console.error("Error parsing T-Bank notification:", error);
+    return null;
+  }
+}
+
 export function parseNotification(
   packageName: string,
   text: string,
@@ -184,6 +255,13 @@ export function parseNotification(
       return null;
     }
     return parseOzonNotification(text, title);
+  }
+
+  if (packageName === "com.idamob.tinkoff.android") {
+    if (!title) {
+      return null;
+    }
+    return parseTBankNotification(text, title);
   }
 
   if (

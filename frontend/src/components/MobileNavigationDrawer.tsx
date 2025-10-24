@@ -254,7 +254,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
         aria-modal="true"
       >
         {/* Header with user info */}
-        <div className="flex items-center px-4 py-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center px-7 py-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-3">
             {avatarUrl ? (
               <img
@@ -352,4 +352,3 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
 };
 
 export default MobileNavigationDrawer;
-

@@ -47,11 +47,7 @@ const userApi = {
   },
 
   uploadPhoto: async (formData: FormData): Promise<{ photoPath: string }> => {
-    const response = await axiosInstance.post("/user/profile/photo", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await axiosInstance.post("/user/profile/photo", formData);
     return response.data;
   },
 

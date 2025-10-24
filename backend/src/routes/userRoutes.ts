@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { protect } from "../middleware/authMiddleware";
+import { handleMulterError } from "../middleware/errorMiddleware";
 import { uploadUserPhoto } from "../services/fileService";
 import {
   getProfile,
@@ -22,7 +23,11 @@ router.get("/me", getMe);
 router.get("/profile", getProfile);
 router.put("/profile", updateProfile);
 router.get("/profile/photo", getProfilePhoto);
-router.post("/profile/photo", uploadUserPhoto, uploadProfilePhoto);
+router.post(
+  "/profile/photo",
+  handleMulterError(uploadUserPhoto),
+  uploadProfilePhoto
+);
 router.post("/fcm-token", registerFcmToken);
 router.delete("/account", deleteAccount);
 

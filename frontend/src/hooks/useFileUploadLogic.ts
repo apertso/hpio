@@ -44,9 +44,6 @@ const uploadFileApi = async (
     `/files/upload/payment/${paymentId}`,
     formData,
     {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
       onUploadProgress,
     }
   );

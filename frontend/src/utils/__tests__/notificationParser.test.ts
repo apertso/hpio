@@ -5,6 +5,7 @@ import {
   parseSberbankNotification,
   parseYandexBankNotification,
   parseOzonNotification,
+  parseTBankNotification,
   parseNotification,
 } from "../notificationParser";
 
@@ -408,6 +409,127 @@ describe("parseOzonNotification", () => {
   });
 });
 
+describe("parseTBankNotification", () => {
+  it("should parse T-Bank notification with provided example", () => {
+    const title = "Kofeynya na Oranzherey";
+    const text =
+      "Покупка на 741 ₽, кэшбэк ₽ Р,карта *0725\nДоступно 1 446,98 ₽";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Kofeynya na Oranzherey",
+      amount: 741.0,
+    });
+  });
+
+  it("should parse T-Bank notification with decimal amount using dot", () => {
+    const title = "Магазин электроники";
+    const text = "Покупка на 2 500.50 ₽, кэшбэк 25.00 ₽, карта *1234";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Магазин электроники",
+      amount: 2500.5,
+    });
+  });
+
+  it("should parse T-Bank notification with decimal amount using comma", () => {
+    const title = "Пищевой рынок";
+    const text = "Покупка на 1 234,56 ₽, кэшбэк 12,34 ₽, карта *5678";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Пищевой рынок",
+      amount: 1234.56,
+    });
+  });
+
+  it("should parse T-Bank notification with large amounts and spaces", () => {
+    const title = "Торговый центр";
+    const text = "Покупка на 10 000 ₽, кэшбэк 100 ₽, карта *9999";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Торговый центр",
+      amount: 10000.0,
+    });
+  });
+
+  it("should parse T-Bank notification with different space types in amount", () => {
+    const title = "Магазин";
+    // Using various Unicode spaces
+    const text = "Покупка на 1 000.99 ₽, карта *1234";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Магазин",
+      amount: 1000.99,
+    });
+  });
+
+  it("should handle merchant names with special characters", () => {
+    const title = "McDonald's & Co.";
+    const text = "Покупка на 500.00 ₽, кэшбэк 5 ₽, карта *1111";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "McDonald's & Co.",
+      amount: 500.0,
+    });
+  });
+
+  it("should return null for empty title", () => {
+    const title = "";
+    const text = "Покупка на 100 ₽, кэшбэк 1 ₽, карта *1234";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for whitespace-only title", () => {
+    const title = "   ";
+    const text = "Покупка на 100 ₽, кэшбэк 1 ₽, карта *1234";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for invalid text format", () => {
+    const title = "Магазин";
+    const text = "Перевод средств 100 ₽";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for zero amount", () => {
+    const title = "Магазин";
+    const text = "Покупка на 0 ₽, кэшбэк 0 ₽, карта *1234";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for negative amount", () => {
+    const title = "Магазин";
+    const text = "Покупка на -100 ₽, кэшбэк 0 ₽, карта *1234";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should trim whitespace from merchant title", () => {
+    const title = "  Магазин  ";
+    const text = "Покупка на 100 ₽, кэшбэк 1 ₽, карта *1234";
+    const result = parseTBankNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Магазин",
+      amount: 100.0,
+    });
+  });
+});
+
 describe("parseNotification", () => {
   it("should parse Raiffeisen notifications correctly", () => {
     const result = parseNotification(
@@ -581,6 +703,53 @@ describe("parseNotification", () => {
     const result = parseNotification(
       "ru.ozon.app.android",
       "Покупка на 128 ₽. Ozon. Доступно 1 499 ₽"
+    );
+
+    expect(result).toBe(null);
+  });
+});
+
+describe("parseNotification - T-Bank", () => {
+  it("should parse T-Bank notifications correctly", () => {
+    const result = parseNotification(
+      "com.idamob.tinkoff.android",
+      "Покупка на 741 ₽, кэшбэк ₽ Р,карта *0725\nДоступно 1 446,98 ₽",
+      "Kofeynya na Oranzherey"
+    );
+
+    expect(result).toEqual({
+      merchantName: "Kofeynya na Oranzherey",
+      amount: 741.0,
+    });
+  });
+
+  it("should parse T-Bank notifications with decimal amounts", () => {
+    const result = parseNotification(
+      "com.idamob.tinkoff.android",
+      "Покупка на 1 234.56 ₽, кэшбэк 12.34 ₽, карта *1234",
+      "Магазин техники"
+    );
+
+    expect(result).toEqual({
+      merchantName: "Магазин техники",
+      amount: 1234.56,
+    });
+  });
+
+  it("should return null for T-Bank without title", () => {
+    const result = parseNotification(
+      "com.idamob.tinkoff.android",
+      "Покупка на 741 ₽, кэшбэк ₽ Р,карта *0725"
+    );
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for T-Bank with invalid text format", () => {
+    const result = parseNotification(
+      "com.idamob.tinkoff.android",
+      "Invalid notification text",
+      "Магазин"
     );
 
     expect(result).toBe(null);

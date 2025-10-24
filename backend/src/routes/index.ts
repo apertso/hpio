@@ -10,6 +10,7 @@ import userRoutes from "./userRoutes"; // <-- ADD THIS
 import feedbackRoutes from "./feedbackRoutes";
 import suggestionRoutes from "./suggestionRoutes";
 import merchantRuleRoutes from "./merchantRuleRoutes";
+import notificationRoutes from "./notificationRoutes";
 // Импортируйте другие маршруты
 
 const router = Router();
@@ -21,13 +22,11 @@ router.use("/files", fileRoutes); // Используйте маршруты ф�
 router.use("/archive", archiveRoutes); // !!! Использование маршрутов архива
 router.use("/stats", statsRoutes); // !!! Использование маршрутов статистики
 router.use("/series", seriesRoutes); // Use recurring series routes
-router.use("/user", userRoutes); // <-- ADD THIS
+router.use("/user", userRoutes);
 router.use("/feedback", feedbackRoutes);
 router.use("/suggestions", suggestionRoutes);
 router.use("/merchant-rules", merchantRuleRoutes);
+router.use("/notifications", notificationRoutes);
 // Используйте другие маршруты:
-// router.use('/notifications', notificationRoutes);
-// router.use('/notifications', notificationRoutes);
-// router.use('/user', userRoutes);
 
 export default router;

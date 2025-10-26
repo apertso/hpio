@@ -1083,9 +1083,9 @@ const HomePage: React.FC = () => {
                 {/* TODO: Добавить другие суммарные показатели, если нужны */}
               </div>
               {/* Блоки с графиками */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 md:gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-2 md:gap-6">
                 {/* Распределение по категориям */}
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col">
+                <div className="lg:col-span-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col min-h-80">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-6">
                     Распределение по категориям
                   </p>
@@ -1100,7 +1100,7 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* График платежной нагрузки по дням */}
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col">
+                <div className="lg:col-span-3 bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col h-full min-h-80">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-1">
                     Платежная нагрузка по дням
                   </p>
@@ -1108,11 +1108,11 @@ const HomePage: React.FC = () => {
                     Кликните на точку на графике, чтобы увидеть детали за день.
                   </p>
                   {noDailyData ? (
-                    <div className="flex items-center justify-center h-64 text-center text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center justify-center flex-1 text-center text-gray-700 dark:text-gray-300">
                       Нет данных о платежной нагрузке за этот период.
                     </div>
                   ) : (
-                    <div className="relative h-64 w-full">
+                    <div className="relative flex-1 w-full">
                       <CustomDailySpendingChart
                         data={chartData}
                         labels={chartLabels}

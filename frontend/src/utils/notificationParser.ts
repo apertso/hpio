@@ -25,18 +25,6 @@ export function detectNotificationType(message: string): NotificationType {
   return "other";
 }
 
-export function isPaymentNotification(
-  packageName: string,
-  text: string,
-  title?: string
-): boolean {
-  const parsed = parseNotification(packageName, text, title);
-  if (parsed) return true;
-
-  const combinedText = `${title || ""} ${text}`;
-  return detectNotificationType(combinedText) === "payment";
-}
-
 const RAIFFEISEN_TITLE_REGEX = /^Заплатили (картой|со счета)\s+\*\d{4}$/i;
 const RAIFFEISEN_TEXT_REGEX =
   /[-−]\s?(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*)\.(\d{2}) ₽ в ([^.]+)\.?/i;

@@ -27,20 +27,55 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
   const totalAmount = data.reduce((sum, category) => sum + category.amount, 0);
 
   return (
-    <div className="flex items-center justify-center h-full">
-      <div className="space-y-s md:space-y-3 w-full">
+    <div className="flex h-full">
+      <div className="w-full">
         {data.map((category, index) => {
           const percentage =
             totalAmount > 0 ? (category.amount / totalAmount) * 100 : 0;
-          const color = colors[index % colors.length]; // Cycle through colors
+          const color = colors[index % colors.length];
 
           return (
             <div
               key={category.id || category.name}
-              className="space-y-1 text-sm"
+              className="space-y-1 text-sm mb-2 hidden md:grid md:grid-cols-12 md:gap-2 md:items-center"
             >
-              {/* Mobile: Category name and percentage on same line */}
-              <div className="md:hidden flex items-center justify-between gap-2">
+              {/* Category name - col-span-3 */}
+              <span
+                className="md:col-span-3 truncate font-medium text-gray-700 dark:text-gray-200"
+                title={category.name}
+              >
+                {category.name}
+              </span>
+              {/* Progress bar - col-span-8 */}
+              <div className="md:col-span-8 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                <div
+                  className="h-2.5 rounded-full"
+                  style={{
+                    width: `${percentage}%`,
+                    background: `linear-gradient(to right, ${color}99, ${color})`,
+                  }}
+                ></div>
+              </div>
+              {/* Progress text - col-span-1 */}
+              <span className="md:col-span-1 font-medium text-gray-500 dark:text-gray-400 text-right">
+                {percentage.toFixed(1)}%
+              </span>
+            </div>
+          );
+        })}
+        {/* Mobile layout */}
+        {data.map((category, index) => {
+          const percentage =
+            totalAmount > 0 ? (category.amount / totalAmount) * 100 : 0;
+          const color = colors[index % colors.length];
+
+          return (
+            <div
+              key={`mobile-${category.id || category.name}`}
+              className="space-y-1 text-sm mb-3 md:hidden"
+            >
+              {/* Category name and percentage on same line */}
+              <div className="flex items-center justify-between gap-2">
                 <span
                   className="flex-1 truncate font-medium text-gray-700 dark:text-gray-200"
                   title={category.name}
@@ -51,8 +86,8 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
                   {percentage.toFixed(1)}%
                 </span>
               </div>
-              {/* Mobile: Progress bar below */}
-              <div className="md:hidden bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              {/* Progress bar below */}
+              <div className="bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
                 <div
                   className="h-2.5 rounded-full"
                   style={{
@@ -60,28 +95,6 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
                     background: `linear-gradient(to right, ${color}99, ${color})`,
                   }}
                 ></div>
-              </div>
-
-              {/* Desktop: All on one line */}
-              <div className="hidden md:grid grid-cols-12 items-center gap-2">
-                <span
-                  className="col-span-4 truncate font-medium text-gray-700 dark:text-gray-200"
-                  title={category.name}
-                >
-                  {category.name}
-                </span>
-                <div className="col-span-6 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                  <div
-                    className="h-2.5 rounded-full"
-                    style={{
-                      width: `${percentage}%`,
-                      background: `linear-gradient(to right, ${color}99, ${color})`,
-                    }}
-                  ></div>
-                </div>
-                <span className="col-span-2 text-right font-medium text-gray-500 dark:text-gray-400">
-                  {percentage.toFixed(1)}%
-                </span>
               </div>
             </div>
           );

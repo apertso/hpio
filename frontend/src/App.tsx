@@ -39,10 +39,7 @@ import {
   clearPendingNotifications,
   checkNotificationPermission,
 } from "./api/notificationPermission";
-import {
-  parseNotification,
-  isPaymentNotification,
-} from "./utils/notificationParser";
+import { parseNotification } from "./utils/notificationParser";
 import { normalizeMerchantName } from "./utils/merchantNormalizer";
 import { suggestionApi } from "./api/suggestionApi";
 import { merchantRuleApi } from "./api/merchantRuleApi";
@@ -368,16 +365,6 @@ function App() {
           // Show debug toast if enabled in settings
           if (localStorage.getItem("dev_show_debug_toasts") === "true") {
             showToast(rawData, "info", 8000);
-          }
-
-          if (
-            !isPaymentNotification(
-              notification.package_name,
-              notification.text,
-              notification.title
-            )
-          ) {
-            continue;
           }
 
           const parsed = parseNotification(

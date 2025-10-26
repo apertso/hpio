@@ -68,6 +68,48 @@ class PaymentNotificationListenerService : NotificationListenerService() {
             "ru.bspb.business",
             "ru.tcsbank.business",
         )
+
+        /**
+         * Notification type enumeration
+         */
+        enum class NotificationType {
+            PAYMENT,     // Payment/Purchase transaction
+            REFUND,      // Refund/Return
+            TRANSFER,    // Money transfer
+            OTHER        // Unknown type
+        }
+
+        /**
+         * Detects the notification type based on message content
+         */
+        fun detectNotificationType(message: String): NotificationType {
+            val text = message.lowercase()
+
+            // Check for refunds
+            if (text.matches(Regex(".*\\b(пополнен|зачислен|получен|возврат|refunded|returned)\\b.*"))) {
+                return NotificationType.REFUND
+            }
+
+            // Check for transfers
+            if (text.matches(Regex(".*\\b(перевод|transfer|отправлен|получателю)\\b.*"))) {
+                return NotificationType.TRANSFER
+            }
+
+            // Check for payments/purchases
+            if (text.matches(Regex(".*\\b(покупка|оплата|заплатили|списание|платеж|transaction|purchase|payment)\\b.*"))) {
+                return NotificationType.PAYMENT
+            }
+
+            return NotificationType.OTHER
+        }
+
+        /**
+         * Determines if the notification is a payment type notification
+         */
+        fun isPaymentNotification(packageName: String, text: String, title: String = ""): Boolean {
+            val combinedText = "$title $text"
+            return detectNotificationType(combinedText) == NotificationType.PAYMENT
+        }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -115,6 +157,11 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
             if (text.isEmpty()) {
                 Log.d(TAG, "Empty notification text, skipping")
+                return
+            }
+
+            // Check if this is actually a payment notification (not transfer, refund, etc)
+            if (!isPaymentNotification(sbn.packageName, text, title)) {
                 return
             }
 

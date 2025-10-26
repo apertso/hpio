@@ -9,6 +9,40 @@ import { isTauri, isTauriMobile } from "./platform";
 
 const LOG_FILE_NAME = "logs.txt";
 
+export type LogLevel = "INFO" | "WARN" | "ERROR" | "DEBUG";
+export type ErrorType =
+  | "JS_ERROR"
+  | "JS_UNHANDLED_PROMISE"
+  | "RUST_PANIC"
+  | "KOTLIN_EXCEPTION"
+  | "ANR"
+  | "UI_FREEZE"
+  | "BREADCRUMB";
+
+interface DeviceInfo {
+  userAgent?: string;
+  platform?: string;
+  language?: string;
+  screenResolution?: string;
+  appVersion?: string;
+}
+
+let cachedDeviceInfo: DeviceInfo | null = null;
+
+function getDeviceInfo(): DeviceInfo {
+  if (cachedDeviceInfo) return cachedDeviceInfo;
+
+  cachedDeviceInfo = {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    language: navigator.language,
+    screenResolution: `${window.screen.width}x${window.screen.height}`,
+    appVersion: import.meta.env.VITE_APP_VERSION || "unknown",
+  };
+
+  return cachedDeviceInfo;
+}
+
 /**
  * Gets the current date in YYYY-MM-DD format
  */
@@ -53,7 +87,7 @@ async function isLogFileFromToday(): Promise<boolean> {
  */
 async function writeToLogFile(level: string, message: string): Promise<void> {
   if (!isTauri() || !isTauriMobile()) {
-    return; // Only log on Tauri Android
+    return;
   }
 
   try {
@@ -62,13 +96,16 @@ async function writeToLogFile(level: string, message: string): Promise<void> {
     const logEntry = `[${timestamp}] [${level}] ${message}\n`;
 
     if (!isFromToday) {
-      // Create new log file for today
-      const header = `=== Log Date: ${getCurrentDateString()} ===\n`;
+      const deviceInfo = getDeviceInfo();
+      const header = `=== Log Date: ${getCurrentDateString()} ===\n=== Device: ${
+        deviceInfo.platform
+      } | UA: ${deviceInfo.userAgent} | Version: ${
+        deviceInfo.appVersion
+      } ===\n`;
       await writeTextFile(LOG_FILE_NAME, header + logEntry, {
         baseDir: BaseDirectory.AppData,
       });
     } else {
-      // Append to existing log
       const existingContent = await readTextFile(LOG_FILE_NAME, {
         baseDir: BaseDirectory.AppData,
       });
@@ -78,6 +115,62 @@ async function writeToLogFile(level: string, message: string): Promise<void> {
     }
   } catch (error) {
     console.error("Error writing to log file:", error);
+  }
+}
+
+/**
+ * Logs structured error with additional metadata
+ */
+async function logStructuredError(
+  errorType: ErrorType,
+  error: Error | string,
+  additionalData?: Record<string, any>
+): Promise<void> {
+  if (!isTauri() || !isTauriMobile()) {
+    return;
+  }
+
+  try {
+    const timestamp = getTimestamp();
+    const deviceInfo = getDeviceInfo();
+
+    const errorMessage = error instanceof Error ? error.message : error;
+    const stackTrace = error instanceof Error ? error.stack : undefined;
+
+    const structuredLog = {
+      timestamp,
+      type: errorType,
+      message: errorMessage,
+      stack: stackTrace,
+      device: deviceInfo,
+      route: window.location.pathname,
+      ...additionalData,
+    };
+
+    const logEntry = `[${timestamp}] [ERROR] [${errorType}] ${JSON.stringify(
+      structuredLog
+    )}\n`;
+
+    const isFromToday = await isLogFileFromToday();
+    if (!isFromToday) {
+      const header = `=== Log Date: ${getCurrentDateString()} ===\n=== Device: ${
+        deviceInfo.platform
+      } | UA: ${deviceInfo.userAgent} | Version: ${
+        deviceInfo.appVersion
+      } ===\n`;
+      await writeTextFile(LOG_FILE_NAME, header + logEntry, {
+        baseDir: BaseDirectory.AppData,
+      });
+    } else {
+      const existingContent = await readTextFile(LOG_FILE_NAME, {
+        baseDir: BaseDirectory.AppData,
+      });
+      await writeTextFile(LOG_FILE_NAME, existingContent + logEntry, {
+        baseDir: BaseDirectory.AppData,
+      });
+    }
+  } catch (err) {
+    console.error("Error writing structured error to log file:", err);
   }
 }
 
@@ -159,3 +252,52 @@ export async function readLogFile(): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Logs a breadcrumb (user action)
+ */
+export async function logBreadcrumb(
+  action: string,
+  details?: Record<string, any>
+): Promise<void> {
+  if (!isTauri() || !isTauriMobile()) {
+    return;
+  }
+
+  try {
+    const timestamp = getTimestamp();
+    const breadcrumbData = {
+      action,
+      route: window.location.pathname,
+      ...details,
+    };
+
+    const logEntry = `[${timestamp}] [BREADCRUMB] ${JSON.stringify(
+      breadcrumbData
+    )}\n`;
+
+    const isFromToday = await isLogFileFromToday();
+    if (!isFromToday) {
+      const deviceInfo = getDeviceInfo();
+      const header = `=== Log Date: ${getCurrentDateString()} ===\n=== Device: ${
+        deviceInfo.platform
+      } | UA: ${deviceInfo.userAgent} | Version: ${
+        deviceInfo.appVersion
+      } ===\n`;
+      await writeTextFile(LOG_FILE_NAME, header + logEntry, {
+        baseDir: BaseDirectory.AppData,
+      });
+    } else {
+      const existingContent = await readTextFile(LOG_FILE_NAME, {
+        baseDir: BaseDirectory.AppData,
+      });
+      await writeTextFile(LOG_FILE_NAME, existingContent + logEntry, {
+        baseDir: BaseDirectory.AppData,
+      });
+    }
+  } catch (error) {
+    console.error("Error writing breadcrumb to log file:", error);
+  }
+}
+
+export { logStructuredError };

@@ -148,8 +148,35 @@ class PaymentNotificationListenerService : NotificationListenerService() {
             }
 
             Log.d(TAG, "Saved notification to file: ${file.absolutePath}")
+
+            // Показываем локальное уведомление о новом платеже
+            showPaymentNotification(notifications.length())
         } catch (e: Exception) {
             Log.e(TAG, "Error saving notification", e)
+        }
+    }
+
+    private fun showPaymentNotification(count: Int) {
+        try {
+            val title: String
+            val body: String
+
+            if (count == 1) {
+                title = "Новое предложение платежа"
+                body = "Откройте приложение для обработки"
+            } else {
+                title = "Новые предложения платежей"
+                body = "У вас $count предложений для обработки"
+            }
+
+            NotificationPermissionHelper.showLocalNotification(
+                this,
+                title,
+                body,
+                count
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing payment notification", e)
         }
     }
 

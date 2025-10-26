@@ -49,6 +49,7 @@ import { merchantRuleApi } from "./api/merchantRuleApi";
 import { notificationApi } from "./api/notificationApi";
 import { useToast } from "./context/ToastContext";
 import logger from "./utils/logger";
+import { trackNavigation } from "./utils/breadcrumbs";
 
 // Replace static page imports with lazy imports
 const HomePage = React.lazy(() => import("./pages/HomePage"));
@@ -261,6 +262,11 @@ function App() {
       notificationData: string;
     }>
   >([]);
+  const [processedSuggestionIds, setProcessedSuggestionIds] = useState<
+    Set<string>
+  >(new Set());
+  const [suggestionModalDismissed, setSuggestionModalDismissed] =
+    useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Set safe area inset for mobile development override
@@ -347,129 +353,139 @@ function App() {
         }
       }
 
-      if (notifications.length === 0) return;
+      // Обрабатываем уведомления, если они есть
+      if (notifications.length > 0) {
+        for (const notification of notifications) {
+          const rawData = `Raw notification from ${
+            notification.package_name
+          }:\nTitle: ${notification.title || "N/A"}\nText: ${
+            notification.text
+          }`;
 
-      const parsedSuggestions = [];
+          // Always log to file on Android
+          logger.info(rawData);
 
-      for (const notification of notifications) {
-        const rawData = `Raw notification from ${
-          notification.package_name
-        }:\nTitle: ${notification.title || "N/A"}\nText: ${notification.text}`;
+          // Show debug toast if enabled in settings
+          if (localStorage.getItem("dev_show_debug_toasts") === "true") {
+            showToast(rawData, "info", 8000);
+          }
 
-        // Always log to file on Android
-        logger.info(rawData);
+          if (
+            !isPaymentNotification(
+              notification.package_name,
+              notification.text,
+              notification.title
+            )
+          ) {
+            continue;
+          }
 
-        // Show debug toast if enabled in settings
-        if (localStorage.getItem("dev_show_debug_toasts") === "true") {
-          showToast(rawData, "info", 8000);
-        }
-
-        if (
-          !isPaymentNotification(
+          const parsed = parseNotification(
             notification.package_name,
             notification.text,
             notification.title
-          )
-        ) {
-          continue;
-        }
+          );
 
-        const parsed = parseNotification(
-          notification.package_name,
-          notification.text,
-          notification.title
-        );
-
-        try {
-          const combinedText = notification.title
-            ? `${notification.title} ${notification.text}`
-            : notification.text;
-          await notificationApi.logTransactionNotification({
-            text: combinedText,
-            from: notification.package_name,
-          });
-        } catch (error) {
-          logger.error("Failed to send notification to backend:", error);
-        }
-
-        if (!parsed) continue;
-
-        const normalizedMerchant = normalizeMerchantName(parsed.merchantName);
-
-        const existingRule = await merchantRuleApi.findRuleByMerchant(
-          normalizedMerchant
-        );
-
-        if (existingRule) {
-          const today = new Date().toISOString().split("T")[0];
           try {
-            const response = await axiosInstance.post("/payments", {
-              title: parsed.merchantName,
-              amount: parsed.amount,
-              dueDate: today,
-              categoryId: existingRule.categoryId,
-              createAsCompleted: true,
-              autoCreated: true,
+            const combinedText = notification.title
+              ? `${notification.title} ${notification.text}`
+              : notification.text;
+            await notificationApi.logTransactionNotification({
+              text: combinedText,
+              from: notification.package_name,
             });
-            const newPayment = response.data; // The newly created payment
-
-            const handleUndo = async () => {
-              try {
-                await axiosInstance.delete(`/payments/${newPayment.id}`);
-                showToast("Создание платежа отменено", "info");
-              } catch (undoError) {
-                console.error("Error undoing payment creation:", undoError);
-                showToast("Не удалось отменить создание", "error");
-              }
-            };
-
-            showToast(
-              `Платёж для "${
-                parsed.merchantName
-              }" автоматически добавлен в категорию "${
-                existingRule.category?.name || "Без категории"
-              }"`,
-              "success",
-              10000, // Longer duration for undo
-              {
-                label: "Отменить",
-                onClick: handleUndo,
-              }
-            );
           } catch (error) {
-            logger.error("Failed to auto-create payment:", error);
-            // Fail silently as per requirements
+            logger.error("Failed to send notification to backend:", error);
           }
-        } else {
-          const suggestion = await suggestionApi.createSuggestion({
-            merchantName: parsed.merchantName,
-            amount: parsed.amount,
-            notificationData: notification.text,
-          });
 
-          parsedSuggestions.push({
-            id: suggestion.id,
-            merchantName: parsed.merchantName,
-            amount: parsed.amount,
-            notificationData: notification.text,
-          });
+          if (!parsed) continue;
 
-          // Show push notification for detected payment
-          if (isTauriMobile()) {
-            // This will be handled by backend, but we can show a local notification
-            // for immediate feedback
+          const normalizedMerchant = normalizeMerchantName(parsed.merchantName);
+
+          const existingRule = await merchantRuleApi.findRuleByMerchant(
+            normalizedMerchant
+          );
+
+          if (existingRule) {
+            const today = new Date().toISOString().split("T")[0];
+            try {
+              const response = await axiosInstance.post("/payments", {
+                title: parsed.merchantName,
+                amount: parsed.amount,
+                dueDate: today,
+                categoryId: existingRule.categoryId,
+                createAsCompleted: true,
+                autoCreated: true,
+              });
+              const newPayment = response.data; // The newly created payment
+
+              const handleUndo = async () => {
+                try {
+                  await axiosInstance.delete(`/payments/${newPayment.id}`);
+                  showToast("Создание платежа отменено", "info");
+                } catch (undoError) {
+                  console.error("Error undoing payment creation:", undoError);
+                  showToast("Не удалось отменить создание", "error");
+                }
+              };
+
+              showToast(
+                `Платёж для "${
+                  parsed.merchantName
+                }" автоматически добавлен в категорию "${
+                  existingRule.category?.name || "Без категории"
+                }"`,
+                "success",
+                10000, // Longer duration for undo
+                {
+                  label: "Отменить",
+                  onClick: handleUndo,
+                }
+              );
+            } catch (error) {
+              logger.error("Failed to auto-create payment:", error);
+              // Fail silently as per requirements
+            }
+          } else {
+            await suggestionApi.createSuggestion({
+              merchantName: parsed.merchantName,
+              amount: parsed.amount,
+              notificationData: notification.text,
+            });
           }
+        }
+
+        // Очищаем реальные уведомления только если мы в Tauri
+        if (isActuallyTauri && !shouldBypassPermissionCheck) {
+          await clearPendingNotifications();
         }
       }
 
-      // Очищаем реальные уведомления только если мы в Tauri
-      if (isActuallyTauri && !shouldBypassPermissionCheck) {
-        await clearPendingNotifications();
-      }
+      // Всегда загружаем все pending suggestions из бэкенда для синхронизации между устройствами
+      const allPendingSuggestions = await suggestionApi.getPendingSuggestions();
 
-      if (parsedSuggestions.length > 0) {
-        setSuggestions(parsedSuggestions);
-        setShowSuggestionModal(true);
+      // Фильтруем уже обработанные предложения
+      const newSuggestions = allPendingSuggestions.filter(
+        (s) => !processedSuggestionIds.has(s.id)
+      );
+
+      if (newSuggestions.length > 0) {
+        // Проверяем, есть ли новые предложения, которых не было в текущем списке
+        const currentSuggestionIds = new Set(suggestions.map((s) => s.id));
+        const hasNewSuggestions = newSuggestions.some(
+          (s) => !currentSuggestionIds.has(s.id)
+        );
+
+        setSuggestions(newSuggestions);
+
+        // Показываем модалку только если она не была закрыта вручную или есть новые предложения
+        if (!suggestionModalDismissed || hasNewSuggestions) {
+          setShowSuggestionModal(true);
+          // Сбрасываем флаг закрытия при появлении новых предложений
+          if (hasNewSuggestions) {
+            setSuggestionModalDismissed(false);
+          }
+        }
       }
     } catch (error) {
       console.error("Error processing notifications:", error);
@@ -536,8 +552,19 @@ function App() {
     };
   }, [isAuthenticated]);
 
+  const handleSuggestionProcessed = (suggestionId: string) => {
+    setProcessedSuggestionIds((prev) => new Set(prev).add(suggestionId));
+  };
+
+  const handleSuggestionModalClose = () => {
+    setSuggestionModalDismissed(true);
+    setShowSuggestionModal(false);
+  };
+
   const handleSuggestionComplete = () => {
     setSuggestions([]);
+    setProcessedSuggestionIds(new Set());
+    setSuggestionModalDismissed(false);
     setShowSuggestionModal(false);
   };
 
@@ -551,6 +578,7 @@ function App() {
     if (isMobileDrawerOpen) {
       setIsMobileDrawerOpen(false);
     }
+    trackNavigation(location.pathname);
   }, [location.pathname]);
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -854,8 +882,9 @@ function App() {
         <SuggestionModal
           isOpen={showSuggestionModal}
           suggestions={suggestions}
-          onClose={() => setShowSuggestionModal(false)}
+          onClose={handleSuggestionModalClose}
           onComplete={handleSuggestionComplete}
+          onSuggestionProcessed={handleSuggestionProcessed}
         />
         <MobileNavigationDrawer
           isOpen={isMobileDrawerOpen}

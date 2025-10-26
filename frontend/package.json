@@ -17,7 +17,7 @@
     "android:build:arm64": "tauri android build --apk --target aarch64 --split-per-abi",
     "android:build:universal": "tauri android build --apk",
     "android:build:release": "tauri android build --split-per-abi",
-    "android:build:debug": "tauri android build --apk --target aarch64 --split-per-abi --debug",
+    "android:build:debug": "cross-env VITE_ENABLE_DEV_FEATURES=true tauri android build --apk --target aarch64 --split-per-abi --debug",
     "android:install:debug": "adb install ./src-tauri/gen/android/app/build/outputs/apk/arm64/debug/app-arm64-debug.apk"
   },
   "dependencies": {
@@ -63,6 +63,7 @@
     "@types/rrule": "^2.1.7",
     "@vitejs/plugin-react-swc": "^3.8.0",
     "@vitest/ui": "^3.2.4",
+    "cross-env": "^10.1.0",
     "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",

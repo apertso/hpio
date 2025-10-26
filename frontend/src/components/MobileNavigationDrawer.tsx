@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRightOnRectangleIcon,
   Cog6ToothIcon,
@@ -36,6 +36,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   currentPath,
   onLogout,
 }) => {
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -254,7 +255,13 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
         aria-modal="true"
       >
         {/* Header with user info */}
-        <div className="flex items-center px-7 py-4 border-b border-gray-200 dark:border-gray-800">
+        <button
+          onClick={() => {
+            navigate("/settings");
+            onClose();
+          }}
+          className="flex items-center w-full px-7 py-4 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+        >
           <div className="flex items-center gap-3">
             {avatarUrl ? (
               <img
@@ -280,7 +287,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
               )}
             </div>
           </div>
-        </div>
+        </button>
 
         {/* Navigation items */}
         <nav className="flex-1 px-4 py-4 space-y-1">

@@ -1,5 +1,6 @@
 import axios, { AxiosHeaders } from "axios";
 import { syncService } from "../utils/syncService";
+import { trackApiRequest, trackApiError } from "../utils/breadcrumbs";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
@@ -63,18 +64,23 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// TODO: Добавить интерцептор для обработки ошибок ответа (например, 401 Unauthorized)
-// axiosInstance.interceptors.response.use(
-//   (response) => response,
-//   (error) => {
-//     if (error.response && error.response.status === 401) {
-//       // Например, перенаправить на страницу входа
-//       console.log('401 Unauthorized - redirecting to login');
-//       // window.location.href = '/login';
-//     }
-//     return Promise.reject(error);
-//   }
-// );
+axiosInstance.interceptors.response.use(
+  (response) => {
+    const method = response.config.method?.toUpperCase() || "GET";
+    const url = response.config.url || "";
+    const status = response.status;
+    trackApiRequest(method, url, status);
+    return response;
+  },
+  (error) => {
+    const method = error.config?.method?.toUpperCase() || "UNKNOWN";
+    const url = error.config?.url || "unknown";
+    const errorMessage =
+      error.response?.data?.message || error.message || "Unknown error";
+    trackApiError(method, url, errorMessage);
+    return Promise.reject(error);
+  }
+);
 
 // Add functions for recurring series API
 export const seriesApi = {

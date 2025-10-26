@@ -1,6 +1,5 @@
 import db from "../models";
 import logger from "../config/logger";
-import { sendPushNotification } from "./fcmService";
 
 interface SuggestionData {
   merchantName: string;
@@ -51,47 +50,6 @@ export const createSuggestion = async (
       status: "pending" as const,
     });
     logger.info(`Created suggestion for user ${userId}: ${suggestion.id}`);
-
-    // Send push notification to Android device
-    try {
-      const user = await db.User.findByPk(userId, {
-        attributes: ["fcmToken"],
-      });
-
-      if (user?.fcmToken) {
-        const pendingCount = await getPendingSuggestionsCount(userId);
-
-        let title: string;
-        let body: string;
-
-        if (pendingCount === 1) {
-          title = "Новое предложение платежа";
-          body = `${data.merchantName}: ${Math.abs(data.amount).toFixed(2)} ₽`;
-        } else {
-          title = "Новые предложения платежей";
-          body = `У вас ${pendingCount} предложений для обработки`;
-        }
-
-        await sendPushNotification(user.fcmToken, {
-          title,
-          body,
-          clickAction: "main",
-          data: {
-            type: "suggestion",
-            suggestionId: suggestion.id,
-            pendingCount: pendingCount.toString(),
-          },
-        });
-
-        logger.info(`Sent suggestion notification to user ${userId}`);
-      }
-    } catch (notificationError) {
-      logger.error(
-        `Failed to send suggestion notification:`,
-        notificationError
-      );
-      // Don't throw - we don't want to break suggestion creation if notification fails
-    }
 
     return suggestion;
   } catch (error) {
@@ -171,50 +129,6 @@ export const bulkCreateSuggestions = async (
     logger.info(
       `Bulk created ${created.length} suggestions for user ${userId}`
     );
-
-    // Send push notification to Android device if suggestions were created
-    if (created.length > 0) {
-      try {
-        const user = await db.User.findByPk(userId, {
-          attributes: ["fcmToken"],
-        });
-
-        if (user?.fcmToken) {
-          const pendingCount = await getPendingSuggestionsCount(userId);
-
-          let title: string;
-          let body: string;
-
-          if (pendingCount === 1) {
-            title = "Новое предложение платежа";
-            body = `${created[0].merchantName}: ${Math.abs(
-              created[0].amount
-            ).toFixed(2)} ₽`;
-          } else {
-            title = "Новые предложения платежей";
-            body = `У вас ${pendingCount} предложений для обработки`;
-          }
-
-          await sendPushNotification(user.fcmToken, {
-            title,
-            body,
-            clickAction: "main",
-            data: {
-              type: "suggestion",
-              pendingCount: pendingCount.toString(),
-            },
-          });
-
-          logger.info(`Sent bulk suggestion notification to user ${userId}`);
-        }
-      } catch (notificationError) {
-        logger.error(
-          `Failed to send bulk suggestion notification:`,
-          notificationError
-        );
-        // Don't throw - we don't want to break suggestion creation if notification fails
-      }
-    }
 
     return created;
   } catch (error) {

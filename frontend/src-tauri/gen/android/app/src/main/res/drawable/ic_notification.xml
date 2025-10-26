@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- App icon based on favicon.svg -->
+    <!-- Left rectangle (document/window icon) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M148,152C148,140.954 156.954,132 168,132H236C247.046,132 256,140.954 256,152V294H168C156.954,294 148,285.046 148,274V152Z" />
+    <!-- Right rectangle (document/window icon) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M256,222H344C355.046,222 364,230.954 364,242V364C364,375.046 355.046,384 344,384H276C264.954,384 256,375.046 256,364V222Z" />
+</vector>

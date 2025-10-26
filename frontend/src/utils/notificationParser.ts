@@ -15,7 +15,7 @@ export function detectNotificationType(message: string): NotificationType {
     return "transfer";
 
   if (
-    /\b(покупка|оплата|списание|платеж|transaction|purchase|payment)\b/.test(
+    /\b(покупка|оплата|заплатили|списание|платеж|transaction|purchase|payment)\b/.test(
       text
     )
   ) {

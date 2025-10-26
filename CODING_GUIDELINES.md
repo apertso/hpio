@@ -67,3 +67,31 @@ All dates sent to and from the API should be handled consistently with respect t
 2.  **API Communication**: Dates in API requests and responses (for fields like `dueDate`) should be sent as `YYYY-MM-DD` strings. The backend must interpret these strings as representing a date in the user's timezone, not UTC or server time.
 3.  **Backend Logic**: All date-based calculations and comparisons on the backend (e.g., determining if a payment is overdue, filtering by a date range) must correctly account for the user's timezone, which is stored in their profile.
 4.  **`DATETIME` Fields**: Fields with time components (e.g., `completedAt`) are stored in UTC in the database. When querying these fields based on a user-provided date range, the backend must convert the user-timezone date range into a UTC time range before executing the database query.
+
+## Suggestion Modal
+
+The suggestion modal displays payment suggestions parsed from bank notifications. To provide a good user experience and prevent crashes, the modal implements several key behaviors:
+
+### Processed Suggestions Tracking
+
+1.  **Persistent Tracking**: When a user accepts or dismisses a suggestion, its ID is added to a `processedSuggestionIds` set. This prevents already-processed suggestions from reappearing during periodic refetches.
+2.  **Filtering on Refetch**: When suggestions are refetched from the server (e.g., during periodic sync), they are filtered to exclude any IDs in the processed set.
+3.  **Reset on Completion**: When all suggestions are processed and the modal closes naturally, the processed IDs set is cleared for the next session.
+
+### Modal Dismissal Logic
+
+The modal should not repeatedly reopen if the user has explicitly closed it:
+
+1.  **Manual Close**: When the user clicks the X button to close the modal, a `suggestionModalDismissed` flag is set to `true`.
+2.  **Stay Closed on Refetch**: If suggestions are refetched but no new suggestions appear (same IDs as before), the modal remains closed.
+3.  **Reopen on New Suggestions**: If genuinely new suggestions arrive (IDs not in the current suggestions list), the modal automatically reopens and the dismissed flag is reset.
+4.  **Reset on Completion**: When the user processes all suggestions naturally, the dismissed flag is reset to allow the modal to appear for future suggestions.
+
+### Index Safety
+
+To prevent crashes when the suggestions array changes during use (e.g., after a refetch that removes processed suggestions):
+
+1.  **Automatic Index Reset**: A `useEffect` monitors the `suggestions` array and `currentIndex`. If the index becomes out of bounds (`>= suggestions.length`), it automatically resets to 0 and clears the form state.
+2.  **Defensive Checks**: The component includes optional chaining (`?.`) when accessing suggestion properties and early returns if `currentSuggestion` is undefined, providing a safety net against edge cases.
+
+This multi-layered approach ensures the modal is helpful without being intrusive, and remains stable even when suggestions change during user interaction.

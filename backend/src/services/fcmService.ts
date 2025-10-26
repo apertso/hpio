@@ -7,20 +7,38 @@ import { trace, SpanStatusCode } from "@opentelemetry/api";
 // For now, we'll initialize without credentials for local development
 let firebaseApp: admin.app.App | null = null;
 
-try {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    logger.info("Firebase Admin SDK initialized successfully");
-  } else {
-    logger.warn(
-      "Firebase service account not configured. Push notifications will not work."
-    );
+/**
+ * Initialize Firebase Admin SDK lazily (only when needed)
+ */
+async function initializeFirebase(): Promise<void> {
+  if (firebaseApp) return; // Already initialized
+
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+      // Fix escaped newlines in private_key
+      if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(
+          /\\n/g,
+          "\n"
+        );
+      }
+
+      firebaseApp = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      logger.info("Firebase Admin SDK initialized successfully");
+    } else {
+      logger.warn(
+        "Firebase service account not configured. Push notifications will not work."
+      );
+      throw new Error("Firebase service account not configured");
+    }
+  } catch (error) {
+    logger.error("Failed to initialize Firebase Admin SDK:", error);
+    throw error;
   }
-} catch (error) {
-  logger.error("Failed to initialize Firebase Admin SDK:", error);
 }
 
 const tracer = trace.getTracer("fcm-service-tracer");
@@ -42,8 +60,10 @@ export async function sendPushNotification(
   const span = tracer.startSpan("send-push-notification");
 
   try {
+    // Initialize Firebase if not already done
+    await initializeFirebase();
+
     if (!firebaseApp) {
-      logger.warn("Firebase not initialized. Skipping push notification.");
       span.setStatus({
         code: SpanStatusCode.ERROR,
         message: "Firebase not initialized",
@@ -107,8 +127,10 @@ export async function sendPushNotificationToMultiple(
   const span = tracer.startSpan("send-push-notification-multiple");
 
   try {
+    // Initialize Firebase if not already done
+    await initializeFirebase();
+
     if (!firebaseApp) {
-      logger.warn("Firebase not initialized. Skipping push notifications.");
       span.setStatus({
         code: SpanStatusCode.ERROR,
         message: "Firebase not initialized",

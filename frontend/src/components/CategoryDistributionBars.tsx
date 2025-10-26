@@ -37,25 +37,40 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
           return (
             <div
               key={category.id || category.name}
-              className="md:space-y-1 text-sm"
+              className="space-y-1 text-sm"
             >
-              {/* Category name - shown above on mobile, inline on md+ */}
-              <span
-                className="block md:hidden truncate font-medium text-gray-700 dark:text-gray-200"
-                title={category.name}
-              >
-                {category.name}
-              </span>
-              <div className="grid grid-cols-11 md:grid-cols-12 items-center gap-2">
-                {/* Category name - hidden on mobile, shown inline on md+ */}
+              {/* Mobile: Category name and percentage on same line */}
+              <div className="md:hidden flex items-center justify-between gap-2">
                 <span
-                  className="hidden md:block md:col-span-3 truncate font-medium text-gray-700 dark:text-gray-200"
+                  className="flex-1 truncate font-medium text-gray-700 dark:text-gray-200"
                   title={category.name}
                 >
                   {category.name}
                 </span>
-                {/* Progress bar - spans more columns on mobile when name is above */}
-                <div className="col-span-9 md:col-span-8 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                <span className="font-medium text-gray-500 dark:text-gray-400">
+                  {percentage.toFixed(1)}%
+                </span>
+              </div>
+              {/* Mobile: Progress bar below */}
+              <div className="md:hidden bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                <div
+                  className="h-2.5 rounded-full"
+                  style={{
+                    width: `${percentage}%`,
+                    background: `linear-gradient(to right, ${color}99, ${color})`,
+                  }}
+                ></div>
+              </div>
+
+              {/* Desktop: All on one line */}
+              <div className="hidden md:grid grid-cols-12 items-center gap-2">
+                <span
+                  className="col-span-4 truncate font-medium text-gray-700 dark:text-gray-200"
+                  title={category.name}
+                >
+                  {category.name}
+                </span>
+                <div className="col-span-6 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
                   <div
                     className="h-2.5 rounded-full"
                     style={{
@@ -64,8 +79,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
                     }}
                   ></div>
                 </div>
-                {/* Percentage - spans more columns on mobile to balance layout */}
-                <span className="col-span-2 md:col-span-1 text-right font-medium text-gray-500 dark:text-gray-400">
+                <span className="col-span-2 text-right font-medium text-gray-500 dark:text-gray-400">
                   {percentage.toFixed(1)}%
                 </span>
               </div>

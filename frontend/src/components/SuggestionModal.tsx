@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { useToast } from "../context/ToastContext";
@@ -22,6 +22,7 @@ interface SuggestionModalProps {
   suggestions: ParsedSuggestion[];
   onClose: () => void;
   onComplete: () => void;
+  onSuggestionProcessed: (suggestionId: string) => void;
 }
 
 type ContentVariant = "desktop" | "mobile";
@@ -31,6 +32,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
   suggestions,
   onClose,
   onComplete,
+  onSuggestionProcessed,
 }) => {
   const { showToast } = useToast();
   const { categories } = useCategories();
@@ -39,9 +41,23 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
   const [createRule, setCreateRule] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Сбрасываем индекс, если он выходит за границы массива после обновления suggestions
+  useEffect(() => {
+    if (currentIndex >= suggestions.length && suggestions.length > 0) {
+      setCurrentIndex(0);
+      setSelectedCategoryId("");
+      setCreateRule(false);
+    }
+  }, [suggestions, currentIndex]);
+
   if (!isOpen || suggestions.length === 0) return null;
 
   const currentSuggestion = suggestions[currentIndex];
+
+  // Защита от undefined
+  if (!currentSuggestion) {
+    return null;
+  }
   const selectedCategoryName = categories?.find(
     (c) => c.id === selectedCategoryId
   )?.name;
@@ -86,6 +102,9 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
         "success"
       );
 
+      // Отмечаем предложение как обработанное
+      onSuggestionProcessed(currentSuggestion.id);
+
       if (currentIndex < suggestions.length - 1) {
         setCurrentIndex(currentIndex + 1);
         setSelectedCategoryId("");
@@ -107,6 +126,9 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
       setIsProcessing(true);
 
       await suggestionApi.dismissSuggestion(currentSuggestion.id);
+
+      // Отмечаем предложение как обработанное
+      onSuggestionProcessed(currentSuggestion.id);
 
       if (currentIndex < suggestions.length - 1) {
         setCurrentIndex(currentIndex + 1);
@@ -163,7 +185,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
               Продавец
             </span>
             <span className="text-lg font-semibold text-gray-900 dark:text-white">
-              {currentSuggestion.merchantName}
+              {currentSuggestion?.merchantName || "—"}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -171,7 +193,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
               Сумма
             </span>
             <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-              {Math.abs(currentSuggestion.amount).toFixed(2)} ₽
+              {Math.abs(currentSuggestion?.amount || 0).toFixed(2)} ₽
             </span>
           </div>
         </div>
@@ -200,8 +222,8 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
               className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
             >
               Всегда относить платежи от "
-              <strong>{currentSuggestion.merchantName}</strong>" в категорию "
-              <strong>{selectedCategoryName}</strong>"
+              <strong>{currentSuggestion?.merchantName || "—"}</strong>" в
+              категорию "<strong>{selectedCategoryName}</strong>"
             </label>
           </div>
         )}

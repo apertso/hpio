@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PaymentForm from "../components/PaymentForm";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import FormBlock from "../components/FormBlock";
@@ -17,14 +17,17 @@ const PaymentEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
+  const [searchParams] = useSearchParams();
   const isEditMode = !!id;
   const metadata = getPageMetadata("payments"); // Using payments metadata for edit pages
+  const markAsCompletedInitial = searchParams.get("markAsCompleted") === "true";
 
   // New state
   const [initialData, setInitialData] = useState<PaymentData | null>(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [error, setError] = useState<string | null>(null);
   const [editScope, setEditScope] = useState<"single" | "series">("single");
+  const [isRepeatEnabled, setIsRepeatEnabled] = useState<boolean>(true); // Track if repeat is currently enabled
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -33,6 +36,8 @@ const PaymentEditPage: React.FC = () => {
         .get<PaymentData>(`/payments/${id}`)
         .then((res) => {
           setInitialData(res.data);
+          // Initialize repeat enabled state based on whether payment has a series
+          setIsRepeatEnabled(!!res.data.seriesId);
         })
         .catch((err) => {
           logger.error(`Failed to fetch payment ${id}`, err);
@@ -64,10 +69,11 @@ const PaymentEditPage: React.FC = () => {
 
   const isSeriesPayment = !!initialData?.seriesId;
 
-  // const canEditSeries =
-  //   isSeriesPayment &&
-  //   initialData?.status !== "completed" &&
-  //   initialData?.status !== "deleted";
+  // Only show edit scope header when:
+  // 1. In edit mode AND
+  // 2. Payment has a series AND
+  // 3. Repeat is currently enabled (user hasn't toggled it off)
+  const showEditScopeHeader = isEditMode && isSeriesPayment && isRepeatEnabled;
 
   const headerText = isEditMode
     ? editScope === "single"
@@ -127,7 +133,7 @@ const PaymentEditPage: React.FC = () => {
             </div>
           ) : (
             <>
-              {isEditMode && isSeriesPayment && (
+              {showEditScopeHeader && (
                 <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
                   <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
                     Это повторяющийся платеж. Что вы хотите изменить?
@@ -159,6 +165,8 @@ const PaymentEditPage: React.FC = () => {
                 initialData={initialData}
                 editScope={isSeriesPayment ? editScope : "single"}
                 isSeriesInactive={seriesInactive}
+                markAsCompletedInitial={markAsCompletedInitial}
+                onRepeatChange={setIsRepeatEnabled}
               />
             </>
           )}

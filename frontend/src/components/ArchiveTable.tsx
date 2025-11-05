@@ -18,6 +18,7 @@ interface ArchiveTableProps {
   onRestore: (payment: PaymentData) => void;
   onPermanentDelete: (id: string) => void;
   onDownloadFile: (id: string, fileName: string) => void;
+  emptyMessage?: string;
 }
 
 const ArchiveTable: React.FC<ArchiveTableProps> = ({
@@ -27,6 +28,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
   onRestore,
   onPermanentDelete,
   onDownloadFile,
+  emptyMessage = "Архив пуст",
 }) => {
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
@@ -162,7 +164,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       columns={columns}
       getRowKey={(p) => p.id}
       isLoading={isLoading}
-      emptyMessage="Архив пуст"
+      emptyMessage={emptyMessage}
       rowActions={(payment) => [
         {
           label: "Редактировать",

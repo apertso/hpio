@@ -1,33 +1,31 @@
 // src/pages/PaymentsPage.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
-// import { getPaymentColorClass } from "../utils/paymentColors"; // Для цветовой индикации в таблице
-// import PaymentIconDisplay from "../components/PaymentIconDisplay"; // !!! Импорт компонента отображения иконки
 import PaymentListCard from "../components/PaymentListCard";
-import useApi from "../hooks/useApi"; // Import useApi
-// Импортируем иконки (пример с Heroicons - нужно установить иконки, если еще не сделали)
-// npm install @heroicons/react
-import { Button } from "../components/Button"; // Import the Button component
+import useApi from "../hooks/useApi";
+import { Button } from "../components/Button";
 import { PaymentData } from "../types/paymentData";
 import PaymentsTable from "../components/PaymentsTable";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "../context/ToastContext"; // Import useToast
-import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal"; // Import ConfirmCompletionDateModal
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
+import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
-import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
+import ConfirmModal from "../components/ConfirmModal";
 import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 import getErrorMessage from "../utils/getErrorMessage";
 import {
   PencilIcon as PencilSolidIcon,
   CheckCircleIcon as CheckSolidIcon,
   TrashIcon as TrashSolidIcon,
+  ArrowPathIcon as ArrowPathSolidIcon,
 } from "@heroicons/react/24/solid";
 import MobilePanel from "../components/MobilePanel";
 import { usePageTitle } from "../context/PageTitleContext";
-// import { ArrowPathIcon, PaperClipIcon } from "@heroicons/react/24/outline";
-// For MobileActionsOverlay
+import ArchiveTable from "../components/ArchiveTable";
+type TabType = "all" | "active" | "archive" | "trash";
+
 type MobileActionsOverlayProps = {
   payment: PaymentData | null;
   shouldClose: boolean;
@@ -35,9 +33,11 @@ type MobileActionsOverlayProps = {
   onEdit: (id: string) => void;
   onComplete: (payment: PaymentData) => void;
   onDelete: (payment: PaymentData) => void;
+  onRestore: (payment: PaymentData) => void;
+  onPermanentDelete: (id: string) => void;
+  activeTab: TabType;
 };
 
-// MobileActionsOverlay component
 const MobileActionsOverlay = ({
   payment,
   shouldClose,
@@ -45,26 +45,49 @@ const MobileActionsOverlay = ({
   onEdit,
   onComplete,
   onDelete,
+  onRestore,
+  onPermanentDelete,
+  activeTab,
 }: MobileActionsOverlayProps) => {
   if (!payment) return null;
 
-  const actions = [
-    {
-      label: "Изменить",
-      icon: PencilSolidIcon,
-      handler: () => onEdit(payment.id),
-    },
-    {
-      label: "Выполнить",
-      icon: CheckSolidIcon,
-      handler: () => onComplete(payment),
-    },
-    {
-      label: "Удалить",
-      icon: TrashSolidIcon,
-      handler: () => onDelete(payment),
-    },
-  ];
+  const isArchiveOrTrash = activeTab === "archive" || activeTab === "trash";
+
+  const actions = isArchiveOrTrash
+    ? [
+        {
+          label: "Изменить",
+          icon: PencilSolidIcon,
+          handler: () => onEdit(payment.id),
+        },
+        {
+          label: "Восстановить",
+          icon: ArrowPathSolidIcon,
+          handler: () => onRestore(payment),
+        },
+        {
+          label: "Удалить",
+          icon: TrashSolidIcon,
+          handler: () => onPermanentDelete(payment.id),
+        },
+      ]
+    : [
+        {
+          label: "Изменить",
+          icon: PencilSolidIcon,
+          handler: () => onEdit(payment.id),
+        },
+        {
+          label: "Выполнить",
+          icon: CheckSolidIcon,
+          handler: () => onComplete(payment),
+        },
+        {
+          label: "Удалить",
+          icon: TrashSolidIcon,
+          handler: () => onDelete(payment),
+        },
+      ];
 
   return (
     <MobilePanel
@@ -92,37 +115,44 @@ const MobileActionsOverlay = ({
     </MobilePanel>
   );
 };
-// Deprecated: PaymentListItem replaced by generic PaymentListCard
-
-// Define the raw API fetch function for all payments
 const fetchAllPaymentsApi = async (): Promise<PaymentData[]> => {
-  // TODO: Передать параметры фильтрации, сортировки и пагинации в запрос
-  // const res = await axiosInstance.get('/payments/list', { params: { ...filters, ...sort, ...pagination } });
-  const res = await axiosInstance.get("/payments/list"); // Пока без параметров
+  const res = await axiosInstance.get("/payments/list");
+  return res.data;
+};
+
+const fetchArchivedPaymentsApi = async (): Promise<PaymentData[]> => {
+  const res = await axiosInstance.get("/archive");
   return res.data;
 };
 
 const PaymentsPage: React.FC = () => {
-  const { showToast } = useToast(); // Import useToast
+  const { showToast } = useToast();
   const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("payments");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get("tab") as TabType) || "active";
 
   useEffect(() => {
-    setPageTitle("Список платежей");
+    setPageTitle("Платежи");
   }, [setPageTitle]);
 
-  // Use useApi for fetching all payments
   const {
-    data: rawAllPayments,
-    isLoading: isLoadingPayments,
-    error: errorPayments,
-    execute: executeFetchAllPayments,
+    data: rawActivePayments,
+    isLoading: isLoadingActive,
+    error: errorActive,
+    execute: executeFetchActivePayments,
   } = useApi<PaymentData[]>(fetchAllPaymentsApi);
 
-  // State for transformed all payments data
-  const [allPayments, setAllPayments] = useState<PaymentData[]>([]);
+  const {
+    data: rawArchivedPayments,
+    isLoading: isLoadingArchived,
+    error: errorArchived,
+    execute: executeFetchArchivedPayments,
+  } = useApi<PaymentData[]>(fetchArchivedPaymentsApi);
 
-  // New state for modals
+  const [activePayments, setActivePayments] = useState<PaymentData[]>([]);
+  const [archivedPayments, setArchivedPayments] = useState<PaymentData[]>([]);
+
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionDateModalState, setCompletionDateModalState] = useState<{
     isOpen: boolean;
@@ -146,11 +176,9 @@ const PaymentsPage: React.FC = () => {
   const selectedMobilePaymentId = mobileActionsPayment?.id ?? null;
   const mobileListRef = useRef<HTMLDivElement | null>(null);
 
-  // Effect to transform data when raw all payments data changes
   useEffect(() => {
-    if (rawAllPayments) {
-      // Преобразуем amount в number
-      let payments = rawAllPayments.map((p: unknown) => {
+    if (rawActivePayments) {
+      let payments = rawActivePayments.map((p: unknown) => {
         const payment = p as PaymentData;
         return {
           ...payment,
@@ -161,34 +189,115 @@ const PaymentsPage: React.FC = () => {
         };
       });
 
-      // Filter out completed and deleted payments (matching backend default behavior)
-      // This is important when loading from offline cache which contains all payments
       payments = payments.filter(
         (p) => p.status !== "completed" && p.status !== "deleted"
       );
 
-      // Sort by dueDate ascending (matching backend default behavior)
       payments = payments.sort((a, b) => {
         const dateA = new Date(a.dueDate).getTime();
         const dateB = new Date(b.dueDate).getTime();
         return dateA - dateB;
       });
 
-      setAllPayments(payments);
+      setActivePayments(payments);
       logger.info(
-        `Successfully fetched and processed ${payments.length} all payments.`
+        `Successfully fetched and processed ${payments.length} active payments.`
       );
     } else {
-      setAllPayments([]); // Clear payments if raw data is null (e.g., on error)
+      setActivePayments([]);
     }
-  }, [rawAllPayments]);
+  }, [rawActivePayments]);
 
-  // Effect to trigger the fetch on mount
   useEffect(() => {
-    executeFetchAllPayments();
-  }, []); // Removed executeFetchAllPayments to prevent infinite loop
+    if (rawArchivedPayments) {
+      let payments = rawArchivedPayments.map((p: unknown) => {
+        const payment = p as PaymentData;
+        return {
+          ...payment,
+          amount:
+            typeof payment.amount === "string"
+              ? parseFloat(payment.amount)
+              : payment.amount,
+        };
+      });
+
+      payments = payments.filter(
+        (p) => p.status === "completed" || p.status === "deleted"
+      );
+
+      payments = payments.sort((a, b) => {
+        const completedA = a.completedAt
+          ? new Date(a.completedAt).getTime()
+          : 0;
+        const completedB = b.completedAt
+          ? new Date(b.completedAt).getTime()
+          : 0;
+        if (completedA !== completedB) {
+          return completedB - completedA;
+        }
+        const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return createdB - createdA;
+      });
+
+      setArchivedPayments(payments);
+      logger.info(
+        `Successfully fetched and processed ${payments.length} archived payments.`
+      );
+    } else {
+      setArchivedPayments([]);
+    }
+  }, [rawArchivedPayments]);
+
+  useEffect(() => {
+    executeFetchActivePayments();
+    executeFetchArchivedPayments();
+  }, []);
+
+  const allPayments = useMemo(() => {
+    const combined = [...activePayments, ...archivedPayments];
+    return combined.sort((a, b) => {
+      const dateA = new Date(a.dueDate).getTime();
+      const dateB = new Date(b.dueDate).getTime();
+      return dateB - dateA;
+    });
+  }, [activePayments, archivedPayments]);
+
+  const displayedPayments = useMemo(() => {
+    switch (activeTab) {
+      case "all":
+        return allPayments;
+      case "active":
+        return activePayments;
+      case "archive":
+        return archivedPayments.filter((p) => p.status === "completed");
+      case "trash":
+        return archivedPayments.filter((p) => p.status === "deleted");
+      default:
+        return activePayments;
+    }
+  }, [activeTab, allPayments, activePayments, archivedPayments]);
+
+  const isLoading =
+    activeTab === "all"
+      ? isLoadingActive || isLoadingArchived
+      : activeTab === "active"
+      ? isLoadingActive
+      : isLoadingArchived;
+
+  const error =
+    activeTab === "all"
+      ? errorActive || errorArchived
+      : activeTab === "active"
+      ? errorActive
+      : errorArchived;
 
   const navigate = useNavigate();
+
+  const refetchData = () => {
+    executeFetchActivePayments();
+    executeFetchArchivedPayments();
+  };
 
   const callCompleteApi = async (paymentId: string, completionDate?: Date) => {
     setIsCompleting(true);
@@ -198,7 +307,7 @@ const PaymentsPage: React.FC = () => {
         : {};
       await axiosInstance.put(`/payments/${paymentId}/complete`, payload);
       showToast("Платеж выполнен.", "success");
-      executeFetchAllPayments();
+      refetchData();
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error);
       logger.error(`Failed to complete payment ${paymentId}:`, errorMessage);
@@ -223,7 +332,6 @@ const PaymentsPage: React.FC = () => {
     });
   };
 
-  // TODO: Обработчики действий над платежом (Часть 8)
   const handleCompletePayment = async (payment: PaymentData) => {
     const today = new Date();
     const dueDate = new Date(payment.dueDate);
@@ -237,7 +345,6 @@ const PaymentsPage: React.FC = () => {
     }
   };
 
-  // Логическое удаление платежа (перемещение в архив)
   const handleDeletePayment = async (payment: PaymentData) => {
     if (
       payment.seriesId &&
@@ -251,8 +358,8 @@ const PaymentsPage: React.FC = () => {
       try {
         await axiosInstance.delete(`/payments/${payment.id}`);
         logger.info(`Payment soft-deleted: ${payment.id}`);
-        showToast("Платеж перемещен в архив.", "info");
-        executeFetchAllPayments();
+        showToast("Платеж перемещен в корзину.", "info");
+        refetchData();
       } catch (error: unknown) {
         const errorMessage = getErrorMessage(error);
         logger.error(
@@ -267,7 +374,7 @@ const PaymentsPage: React.FC = () => {
       isOpen: true,
       action,
       title: "Удалить платеж",
-      message: "Вы уверены, что хотите удалить платеж (переместить в архив)?",
+      message: "Вы уверены, что хотите удалить платеж (переместить в корзину)?",
     });
   };
 
@@ -281,8 +388,8 @@ const PaymentsPage: React.FC = () => {
       logger.info(
         `Payment instance soft-deleted: ${deleteRecurringModalState.payment.id}`
       );
-      showToast("Платеж перемещен в архив.", "info");
-      executeFetchAllPayments();
+      showToast("Платеж перемещен в корзину.", "info");
+      refetchData();
     } catch (error: unknown) {
       showToast(`Ошибка удаления: ${getErrorMessage(error)}`, "error");
     } finally {
@@ -302,7 +409,7 @@ const PaymentsPage: React.FC = () => {
         `Series deactivated: ${deleteRecurringModalState.payment.seriesId}`
       );
       showToast("Серия платежей была деактивирована.", "success");
-      executeFetchAllPayments();
+      refetchData();
     } catch (error: unknown) {
       showToast(`Ошибка удаления серии: ${getErrorMessage(error)}`, "error");
     } finally {
@@ -311,41 +418,75 @@ const PaymentsPage: React.FC = () => {
     }
   };
 
+  const callRestoreApi = async (
+    paymentId: string,
+    reactivateSeries = false
+  ) => {
+    try {
+      await axiosInstance.put(`/archive/${paymentId}/restore`, {
+        reactivateSeries,
+      });
+      logger.info(`Payment restored: ${paymentId}`);
+      refetchData();
+      showToast("Платеж успешно восстановлен.", "success");
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      logger.error(`Failed to restore payment ${paymentId}:`, errorMessage);
+      showToast(`Не удалось восстановить платеж: ${errorMessage}`, "error");
+    }
+  };
+
+  const handleRestorePayment = (payment: PaymentData) => {
+    const action = () => callRestoreApi(payment.id);
+
+    setConfirmModalState({
+      isOpen: true,
+      action,
+      title: "Восстановить платеж",
+      message:
+        "Вы уверены, что хотите восстановить этот платеж? Он вернется в список активных.",
+    });
+  };
+
+  const handlePermanentDeletePayment = (paymentId: string) => {
+    const action = async () => {
+      try {
+        await axiosInstance.delete(`/archive/${paymentId}/permanent`);
+        logger.info(`Payment permanently deleted: ${paymentId}`);
+        refetchData();
+        showToast("Платеж полностью удален.", "info");
+      } catch (error: unknown) {
+        const errorMessage = getErrorMessage(error);
+        logger.error(
+          `Failed to permanently delete payment ${paymentId}:`,
+          errorMessage
+        );
+        showToast(
+          `Не удалось полностью удалить платеж: ${errorMessage}`,
+          "error"
+        );
+      }
+    };
+
+    setConfirmModalState({
+      isOpen: true,
+      action,
+      title: "Полностью удалить платеж",
+      message:
+        "Внимание! Это действие необратимо и удалит все связанные файлы.",
+    });
+  };
+
   const handleAddPayment = () => {
-    navigate("/payments/new");
+    if (activeTab === "archive") {
+      navigate("/payments/new?markAsCompleted=true");
+    } else {
+      navigate("/payments/new");
+    }
   };
 
   const handleEditPayment = (paymentId: string) => {
     navigate(`/payments/edit/${paymentId}`);
-  };
-
-  // Функция для скачивания файла (через защищенный API)
-  const handleDownloadFile = async (paymentId: string, fileName: string) => {
-    try {
-      const res = await axiosInstance.get(`/files/payment/${paymentId}`, {
-        responseType: "blob", // Получаем файл как Blob
-      });
-
-      // Создаем временную ссылку для скачивания
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", fileName); // Указываем оригинальное имя файла для скачивания
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link); // Удаляем временную ссылку
-      window.URL.revokeObjectURL(url); // Освобождаем URL объекта
-
-      logger.info(`File downloaded for payment ${paymentId}`);
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      logger.error(
-        `Failed to download file for payment ${paymentId}:`,
-        errorMessage
-      );
-      showToast(`Не удалось скачать файл: ${errorMessage}`, "error");
-    }
   };
 
   const closeMobilePanel = () => {
@@ -396,7 +537,7 @@ const PaymentsPage: React.FC = () => {
         return;
       }
 
-      const nextPayment = allPayments.find(
+      const nextPayment = displayedPayments.find(
         (paymentItem) => paymentItem.id === mobileListItemId
       );
 
@@ -412,6 +553,51 @@ const PaymentsPage: React.FC = () => {
     }
   };
 
+  const handleDownloadFile = async (paymentId: string, fileName: string) => {
+    try {
+      const res = await axiosInstance.get(`/files/payment/${paymentId}`, {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      logger.info(`File downloaded for payment ${paymentId}`);
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      logger.error(
+        `Failed to download file for payment ${paymentId}:`,
+        errorMessage
+      );
+      showToast(`Не удалось скачать файл: ${errorMessage}`, "error");
+    }
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    setSearchParams({ tab });
+  };
+
+  const isArchiveOrTrash = activeTab === "archive" || activeTab === "trash";
+
+  const getEmptyMessage = () => {
+    switch (activeTab) {
+      case "all":
+        return "Нет платежей";
+      case "active":
+        return "Нет активных платежей";
+      case "archive":
+        return "Архив пуст";
+      case "trash":
+        return "Корзина пуста";
+      default:
+        return "Нет платежей";
+    }
+  };
+
   return (
     <>
       <PageMeta {...metadata} />
@@ -419,53 +605,101 @@ const PaymentsPage: React.FC = () => {
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center md:mb-6">
           <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Все платежи
+            Платежи
           </h2>
-          <Button
-            onClick={handleAddPayment}
-            label="Добавить платеж"
-            className="hidden md:inline-flex"
-          />
+          {activeTab !== "trash" && (
+            <Button
+              onClick={handleAddPayment}
+              label="Добавить платеж"
+              className="hidden md:inline-flex"
+            />
+          )}
         </div>
 
-        {/* TODO: Добавить секцию для фильтров, поиска и пагинации (Часть 6+) */}
-        {/* <div className="mb-4 p-4 bg-gray-200 dark:bg-gray-700 rounded-md">
-           <h3 className="text-lg font-semibold mb-2">Фильтры</h3>
-            // Формы для фильтров
-       </div> */}
+        <div className="mb-4 flex gap-3 overflow-x-auto pb-2">
+          <button
+            onClick={() => handleTabChange("all")}
+            className={`h-10 px-4 rounded-lg text-sm font-medium transition duration-150 whitespace-nowrap flex items-center justify-center cursor-pointer ${
+              activeTab === "all"
+                ? "bg-indigo-500 text-white shadow-md hover:bg-[#4036e2] hover:shadow-lg"
+                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md"
+            }`}
+          >
+            Все
+          </button>
+          <button
+            onClick={() => handleTabChange("active")}
+            className={`h-10 px-4 rounded-lg text-sm font-medium transition duration-150 whitespace-nowrap flex items-center justify-center cursor-pointer ${
+              activeTab === "active"
+                ? "bg-indigo-500 text-white shadow-md hover:bg-[#4036e2] hover:shadow-lg"
+                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md"
+            }`}
+          >
+            Активные
+          </button>
+          <button
+            onClick={() => handleTabChange("archive")}
+            className={`h-10 px-4 rounded-lg text-sm font-medium transition duration-150 whitespace-nowrap flex items-center justify-center cursor-pointer ${
+              activeTab === "archive"
+                ? "bg-indigo-500 text-white shadow-md hover:bg-[#4036e2] hover:shadow-lg"
+                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md"
+            }`}
+          >
+            Архив
+          </button>
+          <button
+            onClick={() => handleTabChange("trash")}
+            className={`h-10 px-4 rounded-lg text-sm font-medium transition duration-150 whitespace-nowrap flex items-center justify-center cursor-pointer ${
+              activeTab === "trash"
+                ? "bg-indigo-500 text-white shadow-md hover:bg-[#4036e2] hover:shadow-lg"
+                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md"
+            }`}
+          >
+            Корзина
+          </button>
+        </div>
 
-        {/* Отображение ошибки */}
-        {errorPayments && (
+        {error && (
           <div
             className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
             role="alert"
           >
-            <span className="block sm:inline">{errorPayments.message}</span>
+            <span className="block sm:inline">{error.message}</span>
           </div>
         )}
 
-        {/* Таблица платежей */}
-        {!errorPayments && (
+        {!error && (
           <>
-            {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
-              <PaymentsTable
-                data={allPayments}
-                isLoading={isLoadingPayments}
-                onEdit={handleEditPayment}
-                onComplete={handleCompletePayment}
-                onDelete={handleDeletePayment}
-                onDownloadFile={handleDownloadFile}
-              />
+              {isArchiveOrTrash ? (
+                <ArchiveTable
+                  data={displayedPayments}
+                  isLoading={isLoading}
+                  onEdit={handleEditPayment}
+                  onRestore={handleRestorePayment}
+                  onPermanentDelete={handlePermanentDeletePayment}
+                  onDownloadFile={handleDownloadFile}
+                  emptyMessage={getEmptyMessage()}
+                />
+              ) : (
+                <PaymentsTable
+                  data={displayedPayments}
+                  isLoading={isLoading}
+                  onEdit={handleEditPayment}
+                  onComplete={handleCompletePayment}
+                  onDelete={handleDeletePayment}
+                  onDownloadFile={handleDownloadFile}
+                  emptyMessage={getEmptyMessage()}
+                />
+              )}
             </div>
-            {/* Mobile Card View */}
-            {!isLoadingPayments && (
+            {!isLoading && (
               <div
                 ref={mobileListRef}
                 onClick={handleMobileListClick}
-                className="block md:hidden space-y-3"
+                className="block md:hidden space-y-3 p-2"
               >
-                {allPayments.map((payment) => {
+                {displayedPayments.map((payment) => {
                   const isSelected = selectedMobilePaymentId === payment.id;
                   const cardStateClasses = [
                     "transition-all duration-200",
@@ -477,7 +711,7 @@ const PaymentsPage: React.FC = () => {
                     <PaymentListCard
                       key={payment.id}
                       payment={payment}
-                      context="payments"
+                      context={isArchiveOrTrash ? "archive" : "payments"}
                       onDownloadFile={handleDownloadFile}
                       className={cardStateClasses}
                     />
@@ -537,6 +771,9 @@ const PaymentsPage: React.FC = () => {
         onEdit={handleEditPayment}
         onComplete={handleCompletePayment}
         onDelete={handleDeletePayment}
+        onRestore={handleRestorePayment}
+        onPermanentDelete={handlePermanentDeletePayment}
+        activeTab={activeTab}
       />
     </>
   );

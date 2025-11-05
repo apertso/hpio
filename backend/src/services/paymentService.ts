@@ -603,6 +603,16 @@ export const updatePayment = async (
         `Created new recurring series (ID: ${newSeries.id}) for payment ${payment.id} during update.`
       );
 
+      // Инициализируем generatedUntil датой startDate (dueDate первого платежа) для детерминированной границы
+      try {
+        const startDate = fieldsToUpdate.dueDate || payment.dueDate;
+        await newSeries.update({ generatedUntil: startDate });
+      } catch (e) {
+        logger.warn(
+          `Could not initialize generatedUntil for series ${newSeries.id}. Field may not exist in DB yet.`
+        );
+      }
+
       // Если иконка была изменена в paymentData, она уже будет в fieldsToUpdate
       // и применится к экземпляру платежа ниже.
     } else if (

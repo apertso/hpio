@@ -62,7 +62,7 @@ interface PaymentRecurrenceSectionProps {
   isSubmitting: boolean;
   currentRule?: PaymentFormInputs["recurrenceRule"];
   dueDate?: PaymentFormInputs["dueDate"];
-  // При редактировании существующей серии поле «Повторять» должно быть скрыто и всегда включено
+  // Компонент всегда показывает настройки повторения без переключателя
   isEditingSeries?: boolean;
 }
 
@@ -130,12 +130,8 @@ const parseRrule = (
 };
 
 // 1. Добавляем функцию генерации RRULE
-const generateRuleFromState = (
-  state: RecurrenceState,
-  isRecurrenceEnabled: boolean,
-  isEditingSeries?: boolean
-): string | null => {
-  if (!isRecurrenceEnabled && !isEditingSeries) return null;
+const generateRuleFromState = (state: RecurrenceState): string | null => {
+  // Recurrence is always enabled when this component is rendered
   let rule = `FREQ=${state.freq};INTERVAL=${state.interval}`;
   if (state.freq === "WEEKLY" && state.byday.length > 0) {
     rule += `;BYDAY=${state.byday.join(",")}`;
@@ -176,10 +172,6 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
   dueDate,
   isEditingSeries,
 }) => {
-  const [isRecurrenceEnabled, setIsRecurrenceEnabled] = useState(
-    !!currentRule || !!isEditingSeries
-  );
-
   const [state, setState] = useState<RecurrenceState>(() => {
     const parsed = parseRrule(currentRule);
     const initialDayOfMonth = dueDate?.getDate() || new Date().getDate();
@@ -246,18 +238,12 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
       setState((prevState) => {
         const newState = { ...prevState, ...part };
         if (triggerRuleChange) {
-          onRuleChange(
-            generateRuleFromState(
-              newState,
-              isRecurrenceEnabled,
-              isEditingSeries
-            )
-          );
+          onRuleChange(generateRuleFromState(newState));
         }
         return newState;
       });
     },
-    [onRuleChange, isRecurrenceEnabled, isEditingSeries]
+    [onRuleChange]
   );
 
   // Sync state with dueDate changes
@@ -277,16 +263,15 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
     updateState(updates);
   }, [dueDate, isEditingSeries, currentRule, state.freq, updateState]);
 
-  // Generate RRULE string when state changes
-  // 3. Удаляем useEffect, который вызывал onRuleChange при изменении state
-  // 4. handleRecurrenceToggle теперь вызывает onRuleChange
-  const handleRecurrenceToggle = (enabled: boolean) => {
-    // В режиме редактирования серии переключатель скрыт/заблокирован, события игнорируются
-    if (isEditingSeries) return;
-    setIsRecurrenceEnabled(enabled);
-    onRuleChange(generateRuleFromState(state, enabled, isEditingSeries));
-  };
+  // Initialize the rule on mount or when currentRule is not set
+  useEffect(() => {
+    if (!currentRule) {
+      const initialRule = generateRuleFromState(state);
+      onRuleChange(initialRule);
+    }
+  }, []); // Only run once on mount
 
+  // Generate RRULE string when state changes
   const handleWeekdayToggle = useCallback(
     (day: string) => {
       // Cannot unselect the day that matches the due date
@@ -298,14 +283,12 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
             (a, b) => weekdayMap.indexOf(a) - weekdayMap.indexOf(b)
           );
 
-      updateState({ byday: newByday });
+      updateState({ byday: newByday }, true);
     },
     [state.byday, dueDateWeekday, updateState]
   );
 
   const summary = useMemo(() => {
-    if (!isRecurrenceEnabled) return "Настройки повторения не заданы.";
-
     let summaryStr = "Каждые ";
     if (state.interval > 1) {
       summaryStr += `${state.interval} `;
@@ -369,7 +352,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
     }
 
     return summaryStr + ".";
-  }, [isRecurrenceEnabled, state]);
+  }, [state]);
 
   // 5. handleFreqChange вызывает updateState с флагом
   const handleFreqChange = (v: string | null) => {
@@ -391,180 +374,162 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
 
   return (
     <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 space-y-4">
-      {/* При редактировании серии скрываем переключатель «Повторять» и принудительно считаем повторение включённым */}
-      {!isEditingSeries && (
-        <label className="flex items-center cursor-pointer">
-          <ToggleSwitch
-            checked={isRecurrenceEnabled}
-            onChange={handleRecurrenceToggle}
+      {/* Повторение всегда включено когда компонент отображается */}
+      <div className="space-y-6">
+        {/* Interval and Frequency */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="dark:text-white">Повторять каждые</span>
+          <Input
+            type="number"
+            value={state.interval}
+            onChange={(e) =>
+              updateState(
+                {
+                  interval: Math.max(1, parseInt(e.target.value, 10) || 1),
+                },
+                true
+              )
+            }
+            className="w-20"
             disabled={isSubmitting}
           />
-          <span className="ml-3 text-sm text-gray-800 dark:text-gray-200">
-            Повторять
-          </span>
-        </label>
-      )}
-      {/* В режиме редактирования серии считаем повторение всегда включённым */}
-      {(isRecurrenceEnabled || isEditingSeries) && (
-        <div className="space-y-6">
-          {/* Interval and Frequency */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="dark:text-white">Повторять каждые</span>
-            <Input
-              type="number"
-              value={state.interval}
-              onChange={(e) =>
+          <Select
+            options={periods}
+            value={state.freq}
+            onChange={handleFreqChange}
+            disabled={isSubmitting}
+          />
+        </div>
+
+        {/* Weekday selector */}
+        {state.freq === "WEEKLY" && (
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Дни недели
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {weekDays.map((day) => (
+                <button
+                  type="button"
+                  key={day.value}
+                  onClick={() => handleWeekdayToggle(day.value)}
+                  disabled={day.value === dueDateWeekday || isSubmitting}
+                  className={`px-3 py-1 text-sm rounded-full border transition-colors ${
+                    state.byday.includes(day.value)
+                      ? "bg-blue-500 text-white border-blue-500"
+                      : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-600"
+                  } ${
+                    day.value === dueDateWeekday
+                      ? "opacity-70 cursor-not-allowed"
+                      : "cursor-pointer"
+                  }`}
+                >
+                  {day.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Monthly options */}
+        {state.freq === "MONTHLY" && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <ToggleSwitch
+              checked={state.monthday_type === "BYSETPOS"}
+              onChange={(checked) =>
                 updateState(
-                  {
-                    interval: Math.max(1, parseInt(e.target.value, 10) || 1),
-                  },
+                  { monthday_type: checked ? "BYSETPOS" : "BYMONTHDAY" },
                   true
                 )
               }
-              className="w-20"
               disabled={isSubmitting}
+            />
+            <span className="text-sm text-gray-800 dark:text-gray-200">
+              Только в{" "}
+            </span>
+            <Select
+              options={nthWeekOptions}
+              value={String(state.bysetpos)}
+              onChange={(v) => updateState({ bysetpos: Number(v) }, true)}
+              disabled={isSubmitting || state.monthday_type !== "BYSETPOS"}
             />
             <Select
-              options={periods}
-              value={state.freq}
-              onChange={handleFreqChange}
-              disabled={isSubmitting}
+              options={weekDayOptions}
+              value={state.byday_pos}
+              onChange={(v) => updateState({ byday_pos: v as string }, true)}
+              disabled={isSubmitting || state.monthday_type !== "BYSETPOS"}
             />
           </div>
+        )}
 
-          {/* Weekday selector */}
-          {state.freq === "WEEKLY" && (
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                Дни недели
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {weekDays.map((day) => (
-                  <button
-                    type="button"
-                    key={day.value}
-                    onClick={() => handleWeekdayToggle(day.value)}
-                    disabled={day.value === dueDateWeekday || isSubmitting}
-                    className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                      state.byday.includes(day.value)
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-600"
-                    } ${
-                      day.value === dueDateWeekday
-                        ? "opacity-70 cursor-not-allowed"
-                        : "cursor-pointer"
-                    }`}
-                  >
-                    {day.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Monthly options */}
-          {state.freq === "MONTHLY" && (
-            <div className="flex items-center gap-3 flex-wrap">
-              <ToggleSwitch
-                checked={state.monthday_type === "BYSETPOS"}
-                onChange={(checked) =>
-                  updateState(
-                    { monthday_type: checked ? "BYSETPOS" : "BYMONTHDAY" },
-                    true
-                  )
-                }
-                disabled={isSubmitting}
-              />
-              <span className="text-sm text-gray-800 dark:text-gray-200">
-                Только в{" "}
-              </span>
-              <Select
-                options={nthWeekOptions}
-                value={String(state.bysetpos)}
-                onChange={(v) => updateState({ bysetpos: Number(v) }, true)}
-                disabled={isSubmitting || state.monthday_type !== "BYSETPOS"}
-              />
-              <Select
-                options={weekDayOptions}
-                value={state.byday_pos}
-                onChange={(v) => updateState({ byday_pos: v as string }, true)}
-                disabled={isSubmitting || state.monthday_type !== "BYSETPOS"}
-              />
-            </div>
-          )}
-
-          {/* End condition */}
-          <div>
-            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-              Завершение
-            </label>
-            <div className="space-y-3">
-              <RadioButton
-                id="end_never"
-                name="end_type"
-                value="NEVER"
-                checked={state.end_type === "NEVER"}
-                onChange={() => updateState({ end_type: "NEVER" })}
-                label="Никогда"
-              />
-              <RadioButton
-                id="end_until"
-                name="end_type"
-                value="UNTIL"
-                checked={state.end_type === "UNTIL"}
-                onChange={() => updateState({ end_type: "UNTIL" })}
-                label={
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span>До даты:</span>
-                    <DatePicker
-                      selected={state.until}
-                      onChange={(date) => updateState({ until: date }, true)}
-                      dateFormat="yyyy-MM-dd"
-                      className="w-full rounded-md border-gray-300 bg-white px-3 py-1.5 text-sm dark:bg-gray-800"
-                      wrapperClassName="w-40"
-                      disabled={state.end_type !== "UNTIL" || isSubmitting}
-                    />
-                  </div>
-                }
-              />
-              <RadioButton
-                id="end_count"
-                name="end_type"
-                value="COUNT"
-                checked={state.end_type === "COUNT"}
-                onChange={() => updateState({ end_type: "COUNT" })}
-                label={
-                  <div className="flex items-center gap-2">
-                    <span>После</span>
-                    <Input
-                      type="number"
-                      value={state.count}
-                      onChange={(e) =>
-                        updateState(
-                          {
-                            count: Math.max(
-                              1,
-                              parseInt(e.target.value, 10) || 1
-                            ),
-                          },
-                          true
-                        )
-                      }
-                      className="w-20"
-                      disabled={state.end_type !== "COUNT" || isSubmitting}
-                    />
-                    <span>повторений</span>
-                  </div>
-                }
-              />
-            </div>
-          </div>
-
-          <div className="text-sm text-gray-600 dark:text-gray-400 pt-4 mt-4 border-t border-gray-200 dark:border-gray-600">
-            <span className="font-semibold">Сводка:</span> {summary}
+        {/* End condition */}
+        <div>
+          <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+            Завершение
+          </label>
+          <div className="space-y-3">
+            <RadioButton
+              id="end_never"
+              name="end_type"
+              value="NEVER"
+              checked={state.end_type === "NEVER"}
+              onChange={() => updateState({ end_type: "NEVER" }, true)}
+              label="Никогда"
+            />
+            <RadioButton
+              id="end_until"
+              name="end_type"
+              value="UNTIL"
+              checked={state.end_type === "UNTIL"}
+              onChange={() => updateState({ end_type: "UNTIL" }, true)}
+              label={
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>До даты:</span>
+                  <DatePicker
+                    selected={state.until}
+                    onChange={(date) => updateState({ until: date }, true)}
+                    dateFormat="yyyy-MM-dd"
+                    className="w-full rounded-md border-gray-300 bg-white px-3 py-1.5 text-sm dark:bg-gray-800"
+                    wrapperClassName="w-40"
+                    disabled={state.end_type !== "UNTIL" || isSubmitting}
+                  />
+                </div>
+              }
+            />
+            <RadioButton
+              id="end_count"
+              name="end_type"
+              value="COUNT"
+              checked={state.end_type === "COUNT"}
+              onChange={() => updateState({ end_type: "COUNT" }, true)}
+              label={
+                <div className="flex items-center gap-2">
+                  <span>После</span>
+                  <Input
+                    type="number"
+                    value={state.count}
+                    onChange={(e) =>
+                      updateState(
+                        {
+                          count: Math.max(1, parseInt(e.target.value, 10) || 1),
+                        },
+                        true
+                      )
+                    }
+                    className="w-20"
+                    disabled={state.end_type !== "COUNT" || isSubmitting}
+                  />
+                  <span>повторений</span>
+                </div>
+              }
+            />
           </div>
         </div>
-      )}
+
+        <div className="text-sm text-gray-600 dark:text-gray-400 pt-4 mt-4 border-t border-gray-200 dark:border-gray-600">
+          <span className="font-semibold">Сводка:</span> {summary}
+        </div>
+      </div>
     </div>
   );
 };

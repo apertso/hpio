@@ -18,6 +18,7 @@ interface PaymentsTableProps {
   onComplete: (payment: PaymentData) => void;
   onDelete: (payment: PaymentData) => void;
   onDownloadFile: (id: string, fileName: string) => void;
+  emptyMessage?: string;
 }
 
 const PaymentsTable: React.FC<PaymentsTableProps> = ({
@@ -27,6 +28,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
   onComplete,
   onDelete,
   onDownloadFile,
+  emptyMessage = "Нет платежей",
 }) => {
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
@@ -156,7 +158,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
       columns={columns}
       getRowKey={(p) => p.id}
       isLoading={isLoading}
-      emptyMessage="Нет платежей"
+      emptyMessage={emptyMessage}
       rowActions={(payment) => {
         const options: {
           label: string;

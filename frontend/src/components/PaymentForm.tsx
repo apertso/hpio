@@ -19,6 +19,8 @@ import useCategories from "../hooks/useCategories";
 import Spinner from "./Spinner";
 import ToggleSwitch from "./ToggleSwitch";
 import { PaymentData } from "../types/paymentData";
+import ConfirmModal from "./ConfirmModal";
+import { useToast } from "../context/ToastContext";
 
 // moved ToggleSwitch to a standalone component
 
@@ -82,6 +84,8 @@ interface PaymentFormProps {
   initialData: PaymentData | null; // Receive initial data as a prop
   editScope: "single" | "series"; // Receive edit scope
   isSeriesInactive?: boolean;
+  markAsCompletedInitial?: boolean; // For archive page use case
+  onRepeatChange?: (shouldRepeat: boolean) => void; // Callback when repeat toggle changes
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
@@ -91,8 +95,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   initialData,
   editScope,
   isSeriesInactive,
+  markAsCompletedInitial = false,
+  onRepeatChange,
 }) => {
   const isEditMode = !!paymentId;
+  const { showToast } = useToast();
 
   const {
     register,
@@ -116,6 +123,19 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const { categories } = useCategories();
+
+  const [markAsCompleted, setMarkAsCompleted] = useState(
+    markAsCompletedInitial
+  );
+  const [shouldRepeat, setShouldRepeat] = useState<"yes" | "no">(
+    initialData?.seriesId ? "yes" : "no"
+  );
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    action: (() => void) | null;
+    title: string;
+    message: string;
+  }>({ isOpen: false, action: null, title: "", message: "" });
 
   const disableForInactiveSeries =
     isEditMode && editScope === "series" && !!isSeriesInactive;
@@ -170,6 +190,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           : null
       );
       setPaymentStatus(initialData.status);
+      setShouldRepeat(initialData.seriesId ? "yes" : "no");
     } else if (!isEditMode) {
       // Reset for "new payment" form
       reset({
@@ -183,6 +204,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       setSelectedIconName(null);
       setAttachedFile(null);
       setPaymentStatus(null);
+      setShouldRepeat("no");
     }
   }, [initialData, editScope, isEditMode, reset]);
 
@@ -197,25 +219,16 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     [setValue]
   );
 
-  const handleFormSubmit: SubmitHandler<PaymentFormInputs> = async (data) => {
-    setFormError(null);
-
-    // Manual validation based on scope
-    const validationSchema =
-      editScope === "series" ? seriesSchema : singlePaymentSchema;
-    const validationResult = validationSchema.safeParse(data);
-
-    if (!validationResult.success) {
-      // The resolver should catch this, but as a fallback:
-      setFormError("Пожалуйста, проверьте правильность заполнения полей.");
-      return;
-    }
+  const actualSubmit = async (data: PaymentFormInputs) => {
+    // Determine if we're dealing with series based on shouldRepeat toggle
+    const isSeriesMode = shouldRepeat === "yes";
+    const wasSeriesPayment = !!initialData?.seriesId;
 
     try {
       if (isEditMode && paymentId) {
         if (editScope === "single") {
           // Update a single payment
-          const payload = {
+          const payload: Record<string, unknown> = {
             title: data.title,
             amount: Number(data.amount),
             dueDate: data.dueDate.toISOString().split("T")[0],
@@ -226,8 +239,26 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               ? data.completedAt.toISOString()
               : null,
           };
+
+          if (isSeriesMode) {
+            payload.recurrenceRule = data.recurrenceRule;
+          } else if (!isSeriesMode && wasSeriesPayment) {
+            // Explicitly set to null to detach from series
+            payload.recurrenceRule = null;
+          }
+
           await axiosInstance.put(`/payments/${paymentId}`, payload);
           logger.info(`Payment updated (ID: ${paymentId})`);
+
+          // Show appropriate success message
+          if (isSeriesMode && !wasSeriesPayment) {
+            showToast("Серия платежей успешно создана.", "success");
+          } else if (!isSeriesMode && wasSeriesPayment) {
+            showToast("Повторение отключено.", "success");
+          } else {
+            showToast("Платеж успешно обновлен.", "success");
+          }
+
           onSuccess(paymentId);
         } else {
           // editScope === 'series'
@@ -239,10 +270,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             title: data.title,
             amount: Number(data.amount),
             categoryId: data.categoryId || null,
-            recurrenceRule: data.recurrenceRule, // This will be set from the recurrence section
+            recurrenceRule: data.recurrenceRule,
             builtinIconName: selectedIconName,
-            cutOffPaymentId: paymentId, // The current payment is the cut-off point
-            startDate: data.dueDate.toISOString().split("T")[0], // The payment's due date becomes the new series start date
+            cutOffPaymentId: paymentId,
+            startDate: data.dueDate.toISOString().split("T")[0],
           };
           await seriesApi.updateSeries(seriesId, payload);
           logger.info(`Recurring series updated (ID: ${seriesId})`);
@@ -250,20 +281,24 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         }
       } else {
         // Create new payment (can be single or first in a new series)
-        const payload = {
+        const payload: Record<string, unknown> = {
           title: data.title,
           amount: Number(data.amount),
           dueDate: data.dueDate.toISOString().split("T")[0],
           categoryId: data.categoryId || null,
-          recurrenceRule: data.recurrenceRule || null,
+          recurrenceRule: isSeriesMode ? data.recurrenceRule : null,
           builtinIconName: selectedIconName,
           remind: data.remind || false,
         };
+
+        if (markAsCompleted) {
+          payload.createAsCompleted = true;
+        }
+
         const res = await axiosInstance.post("/payments", payload);
         const newPaymentId = res.data.id;
         logger.info("Payment created", res.data);
 
-        // Если выбран файл до создания, загружаем его автоматически
         if (pendingFile) {
           try {
             const formData = new FormData();
@@ -273,7 +308,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               formData
             );
           } catch {
-            // Короткое сообщение пользователю; сам платеж уже создан
             setFormError(
               "Платеж создан, но файл не удалось загрузить. Попробуйте прикрепить файл в режиме редактирования."
             );
@@ -294,6 +328,58 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       logger.error("Failed to save payment:", errorMessage, error);
       setFormError(errorMessage);
     }
+  };
+
+  const handleFormSubmit: SubmitHandler<PaymentFormInputs> = async (data) => {
+    setFormError(null);
+
+    // Determine if we're dealing with series based on shouldRepeat toggle
+    const isSeriesMode = shouldRepeat === "yes";
+    const wasSeriesPayment = !!initialData?.seriesId;
+
+    // Manual validation based on scope
+    const validationSchema =
+      editScope === "series" || (isSeriesMode && !isEditMode)
+        ? seriesSchema
+        : singlePaymentSchema;
+    const validationResult = validationSchema.safeParse(data);
+
+    if (!validationResult.success) {
+      setFormError("Пожалуйста, проверьте правильность заполнения полей.");
+      return;
+    }
+
+    // Check if we need confirmation for series conversion
+    if (isEditMode && editScope === "single") {
+      if (isSeriesMode && !wasSeriesPayment) {
+        // Converting one-time payment to series - show confirmation
+        setConfirmModalState({
+          isOpen: true,
+          action: () => {
+            actualSubmit(data);
+          },
+          title: "Создать серию платежей",
+          message:
+            "Вы уверены, что хотите создать серию повторяющихся платежей на основе этого платежа?",
+        });
+        return;
+      } else if (!isSeriesMode && wasSeriesPayment) {
+        // Converting series payment to one-time - show confirmation
+        setConfirmModalState({
+          isOpen: true,
+          action: () => {
+            actualSubmit(data);
+          },
+          title: "Отключить повторение",
+          message:
+            "Вы уверены, что хотите отключить повторение для этого платежа? Он станет разовым платежом.",
+        });
+        return;
+      }
+    }
+
+    // No confirmation needed, proceed directly
+    await actualSubmit(data);
   };
 
   const watchDueDate = watch("dueDate");
@@ -323,9 +409,26 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     setSelectedIconName((catIconName || null) as BuiltinIcon | null);
   }, [newCategoryId, findCategoryIcon]);
 
+  const handleShouldRepeatChange = (newValue: "yes" | "no") => {
+    setShouldRepeat(newValue);
+    if (newValue === "no") {
+      setValue("recurrenceRule", null);
+    }
+    // Notify parent component of the change
+    if (onRepeatChange) {
+      onRepeatChange(newValue === "yes");
+    }
+  };
+
   // Определяем, показывать ли блок повторения
-  // Показываем при создании нового платежа ИЛИ при редактировании серии
-  const showRecurrence = (isEditMode && editScope === "series") || !isEditMode;
+  const wasSeriesPayment = !!initialData?.seriesId;
+  const showRecurrence =
+    (isEditMode && editScope === "series") || // Editing the series itself
+    (!isEditMode && shouldRepeat === "yes") || // Creating new payment with repeat on
+    (isEditMode &&
+      editScope === "single" &&
+      shouldRepeat === "yes" &&
+      !wasSeriesPayment); // Converting one-time payment to series
 
   return (
     <>
@@ -368,6 +471,21 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               }
             />
 
+            {editScope === "single" && (
+              <label className="flex items-center gap-3 cursor-pointer">
+                <ToggleSwitch
+                  checked={shouldRepeat === "yes"}
+                  onChange={(checked) =>
+                    handleShouldRepeatChange(checked ? "yes" : "no")
+                  }
+                  disabled={isSubmitting}
+                />
+                <span className="text-gray-700 dark:text-gray-200 font-medium">
+                  Повторять
+                </span>
+              </label>
+            )}
+
             {showRecurrence && (
               <PaymentRecurrenceSection
                 onRuleChange={handleRecurrenceRuleChange}
@@ -394,6 +512,19 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               onIconChange={handleIconChange}
               isFormSubmitting={isSubmitting}
             />
+
+            {!isEditMode && (
+              <label className="flex items-center gap-3 cursor-pointer">
+                <ToggleSwitch
+                  checked={markAsCompleted}
+                  onChange={setMarkAsCompleted}
+                  disabled={isSubmitting}
+                />
+                <span className="text-gray-700 dark:text-gray-200 font-medium">
+                  Отметить как выполненный
+                </span>
+              </label>
+            )}
 
             {/* File upload is only available for single payments, not for series editing */}
             {editScope === "single" && (
@@ -458,6 +589,26 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           </button>
         </div>
       </form>
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        onClose={() =>
+          setConfirmModalState({
+            isOpen: false,
+            action: null,
+            title: "",
+            message: "",
+          })
+        }
+        onConfirm={() => {
+          if (confirmModalState.action) {
+            confirmModalState.action();
+          }
+        }}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        confirmText="Да, подтвердить"
+        isConfirming={false}
+      />
     </>
   );
 };

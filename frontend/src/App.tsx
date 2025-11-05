@@ -6,6 +6,7 @@ import {
   Link,
   useLocation,
   useNavigate,
+  useSearchParams,
 } from "react-router-dom";
 
 import { useTheme } from "./context/ThemeContext";
@@ -53,7 +54,6 @@ import { trackNavigation } from "./utils/breadcrumbs";
 const HomePage = React.lazy(() => import("./pages/HomePage"));
 const PaymentsPage = React.lazy(() => import("./pages/PaymentsPage"));
 const CategoriesPage = React.lazy(() => import("./pages/CategoriesPage"));
-const ArchivePage = React.lazy(() => import("./pages/ArchivePage"));
 const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
 const LoginPage = React.lazy(() => import("./pages/LoginPage"));
 const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
@@ -130,13 +130,7 @@ const Navigation: React.FC = () => {
               to="/payments"
               className="text-black dark:text-white text-sm font-medium leading-normal"
             >
-              Список платежей
-            </Link>
-            <Link
-              to="/archive"
-              className="text-black dark:text-white text-sm font-medium leading-normal"
-            >
-              Архив
+              Платежи
             </Link>
             <Link
               to="/categories"
@@ -239,14 +233,14 @@ function App() {
   const { isAuthenticated, user, logout, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { triggerReset } = useReset();
   const { showToast } = useToast();
   const { pageTitle } = usePageTitle();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
   const mobileNavItems = [
     { to: "/dashboard", label: "Главная" },
-    { to: "/payments", label: "Список платежей" },
-    { to: "/archive", label: "Архив" },
+    { to: "/payments", label: "Платежи" },
     { to: "/categories", label: "Категории" },
   ];
   const [showNotificationOnboarding, setShowNotificationOnboarding] =
@@ -501,7 +495,7 @@ function App() {
 
             // Navigate based on action
             if (action === "archive") {
-              navigate("/archive");
+              navigate("/payments?tab=archive");
             } else if (action === "main") {
               // For main action (suggestions), just bring app to focus
               // Don't navigate - suggestions are already shown
@@ -585,11 +579,17 @@ function App() {
   let mobileAddAction: (() => void) | null = null;
 
   if (isAuthenticated) {
-    if (
-      location.pathname === "/dashboard" ||
-      location.pathname === "/payments"
-    ) {
+    if (location.pathname === "/dashboard") {
       mobileAddAction = () => navigate("/payments/new");
+    } else if (location.pathname === "/payments") {
+      const currentTab = searchParams.get("tab") || "active";
+      if (currentTab === "trash") {
+        mobileAddAction = null;
+      } else if (currentTab === "archive") {
+        mobileAddAction = () => navigate("/payments/new?markAsCompleted=true");
+      } else {
+        mobileAddAction = () => navigate("/payments/new");
+      }
     } else if (location.pathname === "/categories") {
       mobileAddAction = () => navigate("/categories/new");
     }
@@ -712,7 +712,6 @@ function App() {
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/categories/new" element={<CategoryEditPage />} />
             <Route path="/categories/edit/:id" element={<CategoryEditPage />} />
-            <Route path="/archive" element={<ArchivePage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

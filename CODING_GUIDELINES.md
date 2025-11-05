@@ -33,6 +33,7 @@ Always explicitly declare return types for functions in TypeScript.
 Use boolean return types instead: return `boolean | null` or throw error if another type is returned.
 
 Omit return types only for:
+
 - Private/internal helper functions with obvious types
 - Very short arrow functions
 - React component props
@@ -83,6 +84,42 @@ All forms in this project should adhere to a "smart" real-time validation approa
 5.  **Submission Validation**: While real-time validation is primary, a final validation pass will always occur upon form submission to ensure data integrity before sending it to the server.
 
 This approach ensures that validation is consistent, efficient, and user-friendly across the application.
+
+## UI/UX Guidelines
+
+### Interactive Elements
+
+All interactive elements (buttons, links, clickable areas) must include the `cursor-pointer` class to provide clear visual feedback to users. This ensures a consistent and intuitive user experience across the application.
+
+**Examples:**
+
+- Tab buttons
+- Action buttons
+- Clickable cards
+- Navigation links with custom styling
+
+```tsx
+// ✅ Good
+<button className="... cursor-pointer" onClick={handleClick}>
+  Click me
+</button>
+
+// ❌ Bad - missing cursor indicator
+<button className="..." onClick={handleClick}>
+  Click me
+</button>
+```
+
+### Empty States
+
+Empty state messages must be contextual and reflect the current view or filter. Each section should display an appropriate message when no data is available.
+
+**Examples:**
+
+- "Нет платежей" - General empty state
+- "Нет активных платежей" - Active payments tab
+- "Архив пуст" - Archive tab
+- "Корзина пуста" - Trash tab
 
 ## Recurring Payments
 

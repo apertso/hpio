@@ -93,7 +93,7 @@ async function writeToLogFile(level: string, message: string): Promise<void> {
   try {
     const isFromToday = await isLogFileFromToday();
     const timestamp = getTimestamp();
-    const logEntry = `[${timestamp}] [${level}] ${message}\n`;
+    const logEntry = `[${timestamp}] [T] [${level}] ${message}\n`;
 
     if (!isFromToday) {
       const deviceInfo = getDeviceInfo();
@@ -124,7 +124,7 @@ async function writeToLogFile(level: string, message: string): Promise<void> {
 async function logStructuredError(
   errorType: ErrorType,
   error: Error | string,
-  additionalData?: Record<string, any>
+  additionalData?: Record<string, unknown>
 ): Promise<void> {
   if (!isTauri() || !isTauriMobile()) {
     return;
@@ -147,7 +147,7 @@ async function logStructuredError(
       ...additionalData,
     };
 
-    const logEntry = `[${timestamp}] [ERROR] [${errorType}] ${JSON.stringify(
+    const logEntry = `[${timestamp}] [T] [ERROR] [${errorType}] ${JSON.stringify(
       structuredLog
     )}\n`;
 
@@ -178,7 +178,7 @@ async function logStructuredError(
  * File logger with the same interface as console logger
  */
 export const fileLogger = {
-  info: async (...args: any[]) => {
+  info: async (...args: unknown[]) => {
     const message = args
       .map((arg) =>
         typeof arg === "object" ? JSON.stringify(arg) : String(arg)
@@ -186,7 +186,7 @@ export const fileLogger = {
       .join(" ");
     await writeToLogFile("INFO", message);
   },
-  warn: async (...args: any[]) => {
+  warn: async (...args: unknown[]) => {
     const message = args
       .map((arg) =>
         typeof arg === "object" ? JSON.stringify(arg) : String(arg)
@@ -194,7 +194,7 @@ export const fileLogger = {
       .join(" ");
     await writeToLogFile("WARN", message);
   },
-  error: async (...args: any[]) => {
+  error: async (...args: unknown[]) => {
     const message = args
       .map((arg) =>
         typeof arg === "object" ? JSON.stringify(arg) : String(arg)
@@ -202,7 +202,7 @@ export const fileLogger = {
       .join(" ");
     await writeToLogFile("ERROR", message);
   },
-  debug: async (...args: any[]) => {
+  debug: async (...args: unknown[]) => {
     const message = args
       .map((arg) =>
         typeof arg === "object" ? JSON.stringify(arg) : String(arg)
@@ -258,7 +258,7 @@ export async function readLogFile(): Promise<string | null> {
  */
 export async function logBreadcrumb(
   action: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): Promise<void> {
   if (!isTauri() || !isTauriMobile()) {
     return;
@@ -272,7 +272,7 @@ export async function logBreadcrumb(
       ...details,
     };
 
-    const logEntry = `[${timestamp}] [BREADCRUMB] ${JSON.stringify(
+    const logEntry = `[${timestamp}] [T] [BREADCRUMB] ${JSON.stringify(
       breadcrumbData
     )}\n`;
 
@@ -297,6 +297,61 @@ export async function logBreadcrumb(
     }
   } catch (error) {
     console.error("Error writing breadcrumb to log file:", error);
+  }
+}
+
+/**
+ * Clears the log file content
+ */
+export async function clearLogFile(): Promise<boolean> {
+  if (!isTauri() || !isTauriMobile()) {
+    return false;
+  }
+
+  try {
+    // Re-create the file with just a header for today
+    const deviceInfo = getDeviceInfo();
+    const header = `=== Log Date: ${getCurrentDateString()} ===\n=== Device: ${
+      deviceInfo.platform
+    } | UA: ${deviceInfo.userAgent} | Version: ${
+      deviceInfo.appVersion
+    } ===\n\n`;
+    await writeTextFile(LOG_FILE_NAME, header, {
+      baseDir: BaseDirectory.AppData,
+    });
+    return true;
+  } catch (error) {
+    console.error("Error clearing log file:", error);
+    return false;
+  }
+}
+
+/**
+ * Writes text to clipboard
+ */
+export async function writeToClipboard(text: string): Promise<boolean> {
+  if (!isTauri() || !isTauriMobile()) {
+    // Fallback for web
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (error) {
+        console.error("Error writing to clipboard (web):", error);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  try {
+    // Use Tauri clipboard plugin
+    const { writeText } = await import("@tauri-apps/plugin-clipboard-manager");
+    await writeText(text);
+    return true;
+  } catch (error) {
+    console.error("Error writing to clipboard:", error);
+    return false;
   }
 }
 

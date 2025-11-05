@@ -33,7 +33,7 @@ export const merchantRuleApi = {
         params: { merchant },
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.response?.status === 404) {
         return null;
       }

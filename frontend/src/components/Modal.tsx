@@ -19,12 +19,12 @@ const Modal: React.FC<ModalProps> = ({
   showCloseButton = true,
   className,
 }) => {
-  if (!isOpen) return null;
-
   const openedAtRef = useRef<number>(0);
   useEffect(() => {
     openedAtRef.current = performance.now();
   }, []);
+
+  if (!isOpen) return null;
 
   // Игнорируем «призрачный» клик, который может прийти сразу после открытия модалки (тач → синтетический click)
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {

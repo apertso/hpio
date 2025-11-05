@@ -46,7 +46,7 @@ const AboutPage: React.FC = () => {
         "success"
       );
       reset();
-    } catch (error) {
+    } catch {
       showToast("Не удалось отправить сообщение. Попробуйте еще раз.", "error");
     } finally {
       setIsSubmitting(false);

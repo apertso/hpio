@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import IconSelector from "./IconSelector";
+import IconSelector, { IconSelectorProps } from "./IconSelector";
 import { useState } from "react";
 import { BuiltinIcon } from "../utils/builtinIcons";
 
@@ -30,13 +30,15 @@ export const Default: Story = {
   render: (args) => <InteractiveIconSelector {...args} />,
 };
 
+const NoIconSelectedComponent = (args: Partial<IconSelectorProps>) => {
+  const [icon, setIcon] = useState<BuiltinIcon | null>(null);
+  return (
+    <IconSelector {...args} selectedIconName={icon} onIconChange={setIcon} />
+  );
+};
+
 export const NoIconSelected: Story = {
-  render: (args) => {
-    const [icon, setIcon] = useState<BuiltinIcon | null>(null);
-    return (
-      <IconSelector {...args} selectedIconName={icon} onIconChange={setIcon} />
-    );
-  },
+  render: (args) => <NoIconSelectedComponent {...args} />,
 };
 
 export const Disabled: Story = {

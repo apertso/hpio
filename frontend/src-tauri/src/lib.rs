@@ -22,7 +22,7 @@ fn setup_panic_hook() {
     };
 
     let panic_log = format!(
-      "[{}] [ERROR] [RUST_PANIC] {{\"message\":\"{}\",\"location\":\"{}\"}}\n",
+      "[{}] [R] [ERROR] [RUST_PANIC] {{\"message\":\"{}\",\"location\":\"{}\"}}\n",
       chrono::Utc::now().to_rfc3339(),
       msg.replace("\"", "\\\""),
       location.replace("\"", "\\\"")
@@ -55,6 +55,7 @@ pub fn run() {
     .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_os::init())
     .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_clipboard_manager::init())
     .invoke_handler(tauri::generate_handler![
       notifications::check_notification_permission,
       notifications::open_notification_settings,
@@ -63,6 +64,8 @@ pub fn run() {
       notifications::open_app_notification_settings,
       notifications::get_pending_notifications,
       notifications::clear_pending_notifications,
+      notifications::check_battery_optimization_disabled,
+      notifications::open_battery_optimization_settings,
       fcm::get_fcm_token,
       fcm::get_pending_navigation,
       fcm::clear_pending_navigation

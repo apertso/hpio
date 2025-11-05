@@ -27,6 +27,12 @@ import { useReset } from "../context/ResetContext";
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import { PaymentData } from "../types/paymentData";
+
+interface Category {
+  id: string;
+  name: string;
+  builtinIconName?: string | null;
+}
 import getErrorMessage from "../utils/getErrorMessage";
 // Icons for list items are handled inside PaymentListCard
 // import { ArrowPathIcon, CalendarDaysIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
@@ -172,7 +178,7 @@ const MobileActionsOverlay: React.FC<{
 // Helper function to calculate stats from offline payments
 const calculateStatsFromPayments = (
   payments: PaymentData[],
-  categories: any[],
+  categories: Category[],
   startDate: Date,
   endDate: Date
 ): DashboardStats => {

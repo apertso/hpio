@@ -31,7 +31,7 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
     try {
       await onSubmit(data.email);
       onShowToast("Инструкции по сбросу пароля отправлены.", "success");
-    } catch (err: unknown) {
+    } catch {
       // Для безопасности показываем универсальное сообщение даже при ошибке
       onShowToast(
         "Если пользователь с таким Email существует, инструкции по сбросу пароля будут отправлены на указанный адрес.",

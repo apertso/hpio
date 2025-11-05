@@ -957,6 +957,62 @@ export const permanentDeletePayment = async (
   }
 };
 
+// Безвозвратное удаление autoCreated платежей (например, при отмене авто-создания)
+// Специально для autoCreated платежей, которые пользователь хочет безвозвратно удалить
+// (например, при нажатии "Отменить" в уведомлении после автоматического создания платежа).
+export const permanentDeletePaymentAutoCreated = async (
+  paymentId: string,
+  userId: string
+): Promise<boolean> => {
+  logger.info(
+    `Attempting to permanently delete autoCreated payment (ID: ${paymentId}, User: ${userId})`
+  );
+  try {
+    // Находим платеж, проверяем что он принадлежит пользователю и имеет флаг autoCreated
+    const payment = await db.Payment.findOne({
+      where: {
+        id: paymentId,
+        userId: userId,
+        autoCreated: true, // Разрешаем безвозвратное удаление только для autoCreated платежей
+      },
+    });
+
+    if (!payment) {
+      logger.warn(
+        `Payment not found, not autoCreated, or no access (ID: ${paymentId}, User: ${userId})`
+      );
+      return false; // Платеж не найден, не является autoCreated или не принадлежит пользователю
+    }
+
+    // Удаляем связанные файлы и иконки из файловой системы
+    try {
+      await deleteFileFromFS(userId, paymentId);
+      logger.info(
+        `Deleted files/icons directory for autoCreated payment ${paymentId} from FS.`
+      );
+    } catch (fsError: any) {
+      logger.error(
+        `Error deleting files/icons directory for payment ${paymentId} from FS:`,
+        fsError
+      );
+    }
+
+    // Удаляем запись платежа из базы данных (безвозвратное удаление)
+    await payment.destroy();
+
+    logger.info(
+      `AutoCreated payment permanently deleted (ID: ${payment.id}, User: ${userId}). Record removed from DB.`
+    );
+    return true;
+  } catch (error: any) {
+    logger.error(
+      `Error permanently deleting autoCreated payment ${paymentId} (User: ${userId}):`,
+      error
+    );
+    return false;
+  }
+};
+
 // Отметка платежа как выполненного (статус 'completed') (2.2, 2.7)
 // Для повторяющихся платежей это отмечает текущий экземпляр и готовит к генерации следующего (логика в Части 15/Крон)
 // --- Доработка функции completePayment ---

@@ -370,3 +370,82 @@ pub fn clear_pending_notifications() -> Result<(), String> {
         Ok(())
     }
 }
+
+#[tauri::command]
+pub fn check_battery_optimization_disabled() -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        use jni::{AttachGuard, JavaVM};
+        use std::os::raw::c_void;
+
+        let ctx = ndk_context::android_context();
+        let vm_ptr = ctx.vm() as *mut c_void;
+        let vm = unsafe { JavaVM::from_raw(vm_ptr as *mut jni::sys::JavaVM) }
+            .map_err(|e| format!("Failed to get JavaVM: {:?}", e))?;
+
+        let mut env: AttachGuard = vm.attach_current_thread()
+            .map_err(|e| format!("Failed to attach thread: {:?}", e))?;
+
+        let context = unsafe { jni::objects::JObject::from_raw(ctx.context() as *mut jni::sys::_jobject) };
+
+        let helper_class = env.find_class("com/hochuplachu/hpio/NotificationPermissionHelper")
+            .map_err(|e| format!("Failed to find helper class: {:?}", e))?;
+
+        let is_disabled = env.call_static_method(
+            helper_class,
+            "isBatteryOptimizationDisabled",
+            "(Landroid/content/Context;)Z",
+            &[JValue::Object(&context)],
+        )
+        .map_err(|e| format!("Failed to call method: {:?}", e))?;
+
+        let result = is_disabled.z()
+            .map_err(|e| format!("Failed to get boolean result: {:?}", e))?;
+
+        Ok(result)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+pub fn open_battery_optimization_settings() -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        use jni::{AttachGuard, JavaVM};
+        use std::os::raw::c_void;
+
+        let ctx = ndk_context::android_context();
+        let vm_ptr = ctx.vm() as *mut c_void;
+        let vm = unsafe { JavaVM::from_raw(vm_ptr as *mut jni::sys::JavaVM) }
+            .map_err(|e| format!("Failed to get JavaVM: {:?}", e))?;
+
+        let mut env: AttachGuard = vm.attach_current_thread()
+            .map_err(|e| format!("Failed to attach thread: {:?}", e))?;
+
+        let context = unsafe { jni::objects::JObject::from_raw(ctx.context() as *mut jni::sys::_jobject) };
+
+        let helper_class = env.find_class("com/hochuplachu/hpio/NotificationPermissionHelper")
+            .map_err(|e| format!("Failed to find helper class: {:?}", e))?;
+
+        env.call_static_method(
+            helper_class,
+            "openBatteryOptimizationSettings",
+            "(Landroid/content/Context;)V",
+            &[JValue::Object(&context)],
+        )
+        .map_err(|e| format!("Failed to call method: {:?}", e))?;
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Err("This feature is only available on Android".to_string())
+    }
+}

@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, FileRejection } from "react-dropzone";
 import getErrorMessage from "../utils/getErrorMessage";
 import Spinner from "../components/Spinner";
 import {
@@ -37,8 +37,14 @@ import {
   openNotificationSettings,
   checkAppNotificationPermission,
   openAppNotificationSettings,
+  checkBatteryOptimizationDisabled,
+  openBatteryOptimizationSettings,
 } from "../api/notificationPermission";
-import { readLogFile } from "../utils/fileLogger";
+import {
+  readLogFile,
+  clearLogFile,
+  writeToClipboard,
+} from "../utils/fileLogger";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import logger from "../utils/logger";
@@ -123,6 +129,10 @@ const SettingsPage: React.FC = () => {
     setAppNotificationPermissionGranted,
   ] = useState(false);
   const [isCheckingAppPermission, setIsCheckingAppPermission] = useState(false);
+  const [batteryOptimizationDisabled, setBatteryOptimizationDisabled] =
+    useState(false);
+  const [isCheckingBatteryOptimization, setIsCheckingBatteryOptimization] =
+    useState(false);
   const handleThemeChange = (value: string | null) => {
     if (value === "system" || value === "light" || value === "dark") {
       setTheme(value);
@@ -140,6 +150,9 @@ const SettingsPage: React.FC = () => {
     null
   );
   const [isDeletingRule, setIsDeletingRule] = useState(false);
+  const [isClearLogsModalOpen, setIsClearLogsModalOpen] = useState(false);
+  const [isClearingLogs, setIsClearingLogs] = useState(false);
+  const [isCopyingLogs, setIsCopyingLogs] = useState(false);
 
   const {
     register: registerSettings,
@@ -196,17 +209,22 @@ const SettingsPage: React.FC = () => {
       const checkPermission = async () => {
         setIsCheckingPermission(true);
         setIsCheckingAppPermission(true);
+        setIsCheckingBatteryOptimization(true);
         try {
           const status = await checkNotificationPermission();
           setNotificationPermissionGranted(status.granted);
 
           const appStatus = await checkAppNotificationPermission();
           setAppNotificationPermissionGranted(appStatus.granted);
+
+          const batteryStatus = await checkBatteryOptimizationDisabled();
+          setBatteryOptimizationDisabled(batteryStatus);
         } catch (error) {
           console.error("Failed to check notification permission:", error);
         } finally {
           setIsCheckingPermission(false);
           setIsCheckingAppPermission(false);
+          setIsCheckingBatteryOptimization(false);
         }
       };
       checkPermission();
@@ -250,7 +268,7 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const onDropRejected = (rejections: any[]) => {
+  const onDropRejected = (rejections: FileRejection[]) => {
     if (rejections.length === 0) return;
 
     const rejection = rejections[0];
@@ -367,7 +385,7 @@ const SettingsPage: React.FC = () => {
             }
           }
           await submitFeedback(description, file || undefined);
-        } catch (e) {
+        } catch {
           // ошибку отправки отзыва игнорируем
         }
       }
@@ -438,7 +456,7 @@ const SettingsPage: React.FC = () => {
           showToast("Доступ к уведомлениям предоставлен!", "success");
         }
       }, 2000);
-    } catch (error) {
+    } catch {
       showToast("Не удалось открыть настройки", "error");
     }
   };
@@ -460,7 +478,29 @@ const SettingsPage: React.FC = () => {
           showToast("Уведомления приложения разрешены!", "success");
         }
       }, 2000);
-    } catch (error) {
+    } catch {
+      showToast("Не удалось открыть настройки", "error");
+    }
+  };
+
+  const handleOpenBatteryOptimizationSettings = async () => {
+    if (!isTauri()) {
+      showToast("Эта функция доступна только в мобильном приложении", "error");
+      return;
+    }
+
+    try {
+      await openBatteryOptimizationSettings();
+      showToast("Отключите оптимизацию батареи для приложения", "info");
+      // Перепроверяем статус через 2 секунды
+      setTimeout(async () => {
+        const status = await checkBatteryOptimizationDisabled();
+        setBatteryOptimizationDisabled(status);
+        if (status) {
+          showToast("Оптимизация батареи отключена!", "success");
+        }
+      }, 2000);
+    } catch {
       showToast("Не удалось открыть настройки", "error");
     }
   };
@@ -525,6 +565,66 @@ const SettingsPage: React.FC = () => {
     } catch (error) {
       console.error("Error downloading logs:", error);
       showToast("Не удалось скачать логи", "error");
+    }
+  };
+
+  const handleClearLogs = async () => {
+    if (!isTauri()) {
+      showToast("Эта функция доступна только в мобильном приложении", "error");
+      return;
+    }
+
+    setIsClearingLogs(true);
+    try {
+      const success = await clearLogFile();
+      if (success) {
+        showToast("Логи успешно очищены", "success");
+        setIsClearLogsModalOpen(false);
+      } else {
+        showToast("Не удалось очистить логи", "error");
+      }
+    } catch (error) {
+      console.error("Error clearing logs:", error);
+      showToast("Не удалось очистить логи", "error");
+    } finally {
+      setIsClearingLogs(false);
+    }
+  };
+
+  const handleCopyLogs = async () => {
+    setIsCopyingLogs(true);
+    try {
+      let logContent: string | null = null;
+
+      if (isTauri()) {
+        logContent = await readLogFile();
+      } else if (navigator.clipboard && window.isSecureContext) {
+        // For web, we could collect console logs, but for now just show a message
+        showToast(
+          "Функция копирования логов доступна только в мобильном приложении",
+          "error"
+        );
+        setIsCopyingLogs(false);
+        return;
+      }
+
+      if (!logContent) {
+        showToast("Файл логов пуст или не существует", "info");
+        setIsCopyingLogs(false);
+        return;
+      }
+
+      const success = await writeToClipboard(logContent);
+      if (success) {
+        showToast("Логи скопированы в буфер обмена", "success");
+      } else {
+        showToast("Не удалось скопировать логи", "error");
+      }
+    } catch (error) {
+      console.error("Error copying logs:", error);
+      showToast("Не удалось скопировать логи", "error");
+    } finally {
+      setIsCopyingLogs(false);
     }
   };
 
@@ -967,6 +1067,46 @@ const SettingsPage: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Battery Optimization Status */}
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        Оптимизация батареи
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {isCheckingBatteryOptimization
+                          ? "Проверка..."
+                          : batteryOptimizationDisabled
+                          ? "Отключена (рекомендуется)"
+                          : "Включена"}
+                      </p>
+                    </div>
+                    {!batteryOptimizationDisabled &&
+                      !isCheckingBatteryOptimization && (
+                        <button
+                          onClick={handleOpenBatteryOptimizationSettings}
+                          className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-md transition-colors"
+                        >
+                          Настроить
+                        </button>
+                      )}
+                    {batteryOptimizationDisabled && (
+                      <div className="text-green-600 dark:text-green-400">
+                        <svg
+                          className="w-6 h-6"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Info Section */}
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
@@ -975,6 +1115,17 @@ const SettingsPage: React.FC = () => {
                       передаются на сервер.
                     </p>
                   </div>
+
+                  {/* Battery Optimization Warning */}
+                  {!batteryOptimizationDisabled && (
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
+                      <p className="text-sm text-orange-800 dark:text-orange-200">
+                        <strong>Важно:</strong> Отключите оптимизацию батареи,
+                        чтобы служба автоматически обрабатывала уведомления даже
+                        когда приложение закрыто.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </FormBlock>
             )}
@@ -1075,16 +1226,33 @@ const SettingsPage: React.FC = () => {
                       <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                         <p className="text-sm text-blue-800 dark:text-blue-200">
                           <strong>Файл логов:</strong> Все логи приложения за
-                          сегодня сохраняются в файл logs.txt. Вы можете скачать
-                          или поделиться этим файлом.
+                          сегодня сохраняются в файл logs.txt. Вы можете
+                          скачать, скопировать или очистить этот файл.
                         </p>
                       </div>
-                      <button
-                        onClick={handleDownloadLogs}
-                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
-                      >
-                        Скачать логи
-                      </button>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={handleDownloadLogs}
+                          className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+                        >
+                          Скачать логи
+                        </button>
+                        <button
+                          onClick={handleCopyLogs}
+                          disabled={isCopyingLogs}
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isCopyingLogs
+                            ? "Копирование..."
+                            : "Копировать в буфер"}
+                        </button>
+                        <button
+                          onClick={() => setIsClearLogsModalOpen(true)}
+                          className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                        >
+                          Очистить логи
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1148,6 +1316,16 @@ const SettingsPage: React.FC = () => {
         message={`Вы уверены, что хотите удалить правило для "${ruleToDelete?.merchantKeyword}"? Это действие нельзя будет отменить.`}
         confirmText="Удалить"
         isConfirming={isDeletingRule}
+      />
+
+      <ConfirmModal
+        isOpen={isClearLogsModalOpen}
+        onClose={() => setIsClearLogsModalOpen(false)}
+        onConfirm={handleClearLogs}
+        title="Очистить логи?"
+        message="Вы уверены, что хотите очистить все логи? Это действие нельзя будет отменить."
+        confirmText="Очистить"
+        isConfirming={isClearingLogs}
       />
 
       <DeleteAccount

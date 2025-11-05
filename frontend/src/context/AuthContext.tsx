@@ -208,7 +208,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     revalidateMe();
 
-    // Register FCM token on app startup (Android only)
+    let onlineListener: (() => void) | null = null;
+
     if (isTauriMobile()) {
       (async () => {
         try {
@@ -216,15 +217,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             "../api/fcmApi"
           );
           const fcmToken = await getFcmToken();
-          if (fcmToken) {
+          if (!fcmToken) {
+            return;
+          }
+
+          const attemptRegister = async () => {
+            if (!navigator.onLine) {
+              return false;
+            }
             await registerFcmToken(fcmToken);
             logger.info("FCM token registered successfully");
+            return true;
+          };
+
+          const registered = await attemptRegister();
+          if (!registered) {
+            onlineListener = async () => {
+              try {
+                const success = await attemptRegister();
+                if (success) {
+                  if (onlineListener) {
+                    window.removeEventListener("online", onlineListener);
+                    onlineListener = null;
+                  }
+                }
+              } catch (listenerError) {
+                logger.error("Failed to register FCM token after reconnect:", listenerError);
+              }
+            };
+            window.addEventListener("online", onlineListener);
           }
         } catch (error) {
           logger.error("Failed to register FCM token:", error);
         }
       })();
     }
+    return () => {
+      if (onlineListener) {
+        window.removeEventListener("online", onlineListener);
+        onlineListener = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

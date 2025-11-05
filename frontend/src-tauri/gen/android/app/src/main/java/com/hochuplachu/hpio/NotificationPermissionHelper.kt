@@ -119,6 +119,42 @@ object NotificationPermissionHelper {
     }
 
     /**
+     * Проверяет, игнорируются ли оптимизации батареи для приложения
+     */
+    @JvmStatic
+    @Keep
+    fun isBatteryOptimizationDisabled(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        } else {
+            true
+        }
+    }
+
+    /**
+     * Открывает настройки оптимизации батареи для приложения
+     */
+    @JvmStatic
+    @Keep
+    fun openBatteryOptimizationSettings(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = android.net.Uri.parse("package:${context.packageName}")
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                // Fallback to general battery optimization settings
+                val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(fallbackIntent)
+            }
+        }
+    }
+
+    /**
      * Показывает локальное уведомление о новых платежах
      */
     @JvmStatic

@@ -7,13 +7,13 @@ interface UseApiResult<T> {
   data: T | null;
   isLoading: boolean;
   error: Error | null;
-  execute: (...args: any[]) => Promise<T | void>;
+  execute: (...args: unknown[]) => Promise<T | void>;
   connectionStatus: ConnectionStatus;
   isOffline: boolean;
 }
 
 function useApi<T>(
-  apiCall: (...args: any[]) => Promise<T>,
+  apiCall: (...args: unknown[]) => Promise<T>,
   options: {
     onSuccess?: (data: T) => void;
     onError?: (error: Error) => void;
@@ -40,7 +40,7 @@ function useApi<T>(
   const isOffline = connectionStatus === ConnectionStatus.OFFLINE;
 
   const execute = useCallback(
-    async (...args: any[]): Promise<T | void> => {
+    async (...args: unknown[]): Promise<T | void> => {
       setIsLoading(true);
       setError(null);
 

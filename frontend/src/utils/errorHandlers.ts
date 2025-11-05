@@ -52,7 +52,7 @@ export function initializeErrorHandlers(): void {
  */
 export function logError(
   error: Error | string,
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 ): void {
   const err = error instanceof Error ? error : new Error(error);
   logger.error("Manual error log:", err, context);

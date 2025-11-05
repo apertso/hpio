@@ -65,7 +65,7 @@ class MainActivity : TauriActivity() {
         }.toString().replace("\"", "\\\"").replace("\n", "\\n")
 
         val errorLog = """
-          [$timestamp] [ERROR] [KOTLIN_EXCEPTION] {"message":"${throwable.message?.replace("\"", "\\\"")}","thread":"${thread.name}","stack":"$stackTrace"}
+          [$timestamp] [K] [ERROR] [KOTLIN_EXCEPTION] {"message":"${throwable.message?.replace("\"", "\\\"")}","thread":"${thread.name}","stack":"$stackTrace"}
 
         """.trimIndent()
 
@@ -80,14 +80,7 @@ class MainActivity : TauriActivity() {
 
   private fun logAppLifecycle(event: String) {
     try {
-      val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-      }.format(Date())
-
-      val logEntry = """[$timestamp] [INFO] [LIFECYCLE] {"event":"$event"}
-      """.trimMargin()
-
-      writeToLogFile(logEntry)
+      LoggerUtil.info(this, TAG, "LIFECYCLE: $event")
     } catch (e: Exception) {
       Log.e(TAG, "Error writing lifecycle log", e)
     }

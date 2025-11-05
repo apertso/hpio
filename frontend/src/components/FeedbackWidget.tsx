@@ -49,7 +49,7 @@ const FeedbackWidget: React.FC = () => {
       reset();
       setFile(null);
       setIsOpen(false);
-    } catch (e) {
+    } catch {
       showToast("Не удалось отправить.", "error");
     } finally {
       setIsSubmitting(false);

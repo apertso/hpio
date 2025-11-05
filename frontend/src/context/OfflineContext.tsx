@@ -3,6 +3,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 import {
@@ -10,7 +11,7 @@ import {
   ConnectionStatus,
   QueueStats,
 } from "../utils/syncService";
-import { offlineStorage } from "../utils/offlineStorage";
+import { offlineStorage, OfflineData } from "../utils/offlineStorage";
 import logger from "../utils/logger";
 import { useToast } from "./ToastContext";
 
@@ -23,8 +24,8 @@ interface OfflineContextType {
   lastSyncTime: number | null;
   syncData: () => Promise<void>;
   clearOfflineData: () => Promise<void>;
-  exportOfflineData: () => Promise<any>;
-  importOfflineData: (data: any) => Promise<void>;
+  exportOfflineData: () => Promise<OfflineData>;
+  importOfflineData: (data: OfflineData) => Promise<void>;
   showOfflineToast: () => void;
 }
 
@@ -63,7 +64,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
   const [lastSyncTime, setLastSyncTime] = useState<number | null>(
     syncService.getLastSyncTime()
   );
-  const [lastOfflineToastTime, setLastOfflineToastTime] = useState<number>(0);
+  const lastOfflineToastTimeRef = useRef<number>(0);
   const [queueStats, setQueueStats] = useState<QueueStats>(
     syncService.getQueueStats()
   );
@@ -71,14 +72,15 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
   // Функция для отображения тоста об отсутствии соединения с throttling
   const showOfflineToast = () => {
     const now = Date.now();
-    const timeSinceLastToast = now - lastOfflineToastTime;
+    const lastToastAt = lastOfflineToastTimeRef.current;
+    const timeSinceLastToast = now - lastToastAt;
 
     // Показывать тост не чаще одного раза в минуту
     if (timeSinceLastToast < 60 * 1000) {
       return;
     }
 
-    setLastOfflineToastTime(now);
+    lastOfflineToastTimeRef.current = now;
     showToast(
       "Нет подключения к интернету. Приложение продолжит работать с ранее загруженными данными.",
       "info",
@@ -204,7 +206,9 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
     }
   };
 
-  const importOfflineData = async (data: any) => {
+  const importOfflineData = async (
+    data: import("../utils/offlineStorage").OfflineData
+  ) => {
     try {
       await offlineStorage.importData(data);
       logger.info("Offline data imported successfully");

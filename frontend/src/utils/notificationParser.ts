@@ -39,19 +39,21 @@ const YANDEX_BANK_TEXT_REGEX =
 const OZON_TITLE_REGEX = /^Ozon Банк$/i;
 const OZON_TEXT_REGEX =
   /Покупка на\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:\.\d{2})?)\s+₽/i;
+const OZON_EXTERNAL_PURCHASE_REGEX =
+  /Покупка в\s+([^\.]+)\.\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:\.\d{2})?)\s+RUR/i;
 
 const TBANK_TEXT_REGEX =
   /Покупка на\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:[.,]\d{2})?)\s+₽/i;
 
 /**
- * Validates if the notification title matches the expected Raiffeisen pattern
+ * Проверяет, соответствует ли заголовок уведомления ожидаемому шаблону Raiffeisen
  */
 export function validateRaiffeisenTitle(title: string): boolean {
   return RAIFFEISEN_TITLE_REGEX.test(title);
 }
 
 /**
- * Validates if the notification title matches the expected Ozon pattern
+ * Проверяет, соответствует ли заголовок уведомления ожидаемому шаблону Ozon
  */
 export function validateOzonTitle(title: string): boolean {
   return OZON_TITLE_REGEX.test(title);
@@ -163,22 +165,40 @@ export function parseOzonNotification(
       return null;
     }
 
-    const textMatch = text.match(OZON_TEXT_REGEX);
-    if (!textMatch) {
-      return null;
+    // Сначала пытаемся сопоставить прямые покупки на Ozon
+    const ozonMatch = text.match(OZON_TEXT_REGEX);
+    if (ozonMatch) {
+      const amountStr = ozonMatch[1];
+      const amount = parseFloat(amountStr.replace(/[ \u00A0\u202F]/g, ""));
+
+      if (isNaN(amount) || amount <= 0) {
+        return null;
+      }
+
+      return {
+        merchantName: "Ozon",
+        amount,
+      };
     }
 
-    const amountStr = textMatch[1];
-    const amount = parseFloat(amountStr.replace(/[ \u00A0\u202F]/g, ""));
+    // Пытаемся сопоставить внешние покупки с картой Ozon
+    const externalMatch = text.match(OZON_EXTERNAL_PURCHASE_REGEX);
+    if (externalMatch) {
+      const merchantName = externalMatch[1].trim();
+      const amountStr = externalMatch[2];
+      const amount = parseFloat(amountStr.replace(/[ \u00A0\u202F]/g, ""));
 
-    if (isNaN(amount) || amount <= 0) {
-      return null;
+      if (isNaN(amount) || amount <= 0 || !merchantName) {
+        return null;
+      }
+
+      return {
+        merchantName,
+        amount,
+      };
     }
 
-    return {
-      merchantName: "Ozon",
-      amount,
-    };
+    return null;
   } catch (error) {
     console.error("Error parsing Ozon notification:", error);
     return null;

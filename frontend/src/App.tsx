@@ -38,6 +38,7 @@ import {
   getPendingNotifications,
   clearPendingNotifications,
   checkNotificationPermission,
+  PendingNotification,
 } from "./api/notificationPermission";
 import { parseNotification } from "./utils/notificationParser";
 import { normalizeMerchantName } from "./utils/merchantNormalizer";
@@ -327,7 +328,7 @@ function App() {
       // Если мы не в Tauri и не в режиме разработки с обходом, пропускаем
       if (!isActuallyTauri && !shouldBypassPermissionCheck) return;
 
-      let notifications: any[] = [];
+      let notifications: PendingNotification[] = [];
 
       if (isActuallyTauri && !shouldBypassPermissionCheck) {
         // Получаем реальные уведомления только если мы действительно в Tauri
@@ -408,7 +409,9 @@ function App() {
 
               const handleUndo = async () => {
                 try {
-                  await axiosInstance.delete(`/payments/${newPayment.id}`);
+                  await axiosInstance.delete(
+                    `/payments/${newPayment.id}/permanent`
+                  );
                   showToast("Создание платежа отменено", "info");
                 } catch (undoError) {
                   console.error("Error undoing payment creation:", undoError);

@@ -114,3 +114,14 @@ export const VirtualPayment: Story = {
     context: "payments",
   },
 };
+
+export const LongTitle: Story = {
+  args: {
+    payment: {
+      ...basePayment,
+      title:
+        "Очень длинное название платежа которое должно проверять как компонент обрабатывает очень длинный текст в заголовке",
+    },
+    context: "payments",
+  },
+};

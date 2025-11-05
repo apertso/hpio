@@ -11,6 +11,12 @@ import { PaymentData } from "../types/paymentData";
 import logger from "./logger";
 import { AxiosHeaders, AxiosRequestConfig, AxiosResponse, Method } from "axios";
 
+interface Category {
+  id: string;
+  name: string;
+  builtinIconName?: string | null;
+}
+
 export enum ConnectionStatus {
   ONLINE = "online",
   OFFLINE = "offline",
@@ -336,7 +342,7 @@ class SyncService {
 
   public async getOfflineData(): Promise<{
     payments: PaymentData[];
-    categories: any[];
+    categories: Category[];
     user: unknown;
   }> {
     const [payments, categories, user] = await Promise.all([
@@ -684,7 +690,7 @@ class SyncService {
     return { type: "json", value: data };
   }
 
-  private deserializeBody(body: SerializedRequestBody): any {
+  private deserializeBody(body: SerializedRequestBody): unknown {
     if (!body) {
       return undefined;
     }
@@ -714,7 +720,7 @@ class SyncService {
     }
   }
 
-  private extractHeaders(headers: any): Record<string, string> {
+  private extractHeaders(headers: unknown): Record<string, string> {
     if (!headers) {
       return {};
     }

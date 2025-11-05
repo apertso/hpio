@@ -2,6 +2,45 @@
 
 This document outlines the standard practices and guidelines for development in this project. Adhering to these guidelines ensures consistency, maintainability, and quality across the codebase.
 
+## Language Conventions
+
+### Code Comments and Documentation
+
+All code comments and inline documentation should be written in **Russian**. This includes:
+
+- Function and class docstring comments
+- Inline comments explaining complex logic
+- TypeScript interface and type descriptions
+- README files and documentation
+- Any developer-facing text in the code
+
+### Log Messages
+
+All log messages should be written in **English**. This includes:
+
+- `logger.info()` messages
+- `logger.warn()` messages
+- `logger.error()` messages
+- Console output messages
+- Error messages for monitoring and debugging systems
+
+**Rationale**: Russian comments make the code more accessible to Russian-speaking developers, while English logs ensure compatibility with monitoring tools and international debugging standards.
+
+## Return Types
+
+Always explicitly declare return types for functions in TypeScript.
+
+Use boolean return types instead: return `boolean | null` or throw error if another type is returned.
+
+Omit return types only for:
+- Private/internal helper functions with obvious types
+- Very short arrow functions
+- React component props
+
+## TypeScript Type Safety
+
+Never use the `any` type. Use `unknown` instead and narrow the type.
+
 ## Form Validation
 
 ### Default Behavior

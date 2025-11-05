@@ -407,6 +407,47 @@ describe("parseOzonNotification", () => {
       amount: 128.0,
     });
   });
+
+  it("should parse Ozon external purchase notification", () => {
+    const title = "Ozon Банк";
+    const text = "Покупка в FARSH. 1695 RUR. Баланс 509 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "FARSH",
+      amount: 1695.0,
+    });
+  });
+
+  it("should parse Ozon external purchase with different merchant", () => {
+    const title = "Ozon Банк";
+    const text = "Покупка в Магазин продуктов. 2500 RUR. Баланс 1500 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Магазин продуктов",
+      amount: 2500.0,
+    });
+  });
+
+  it("should parse Ozon external purchase with decimal amount", () => {
+    const title = "Ozon Банк";
+    const text = "Покупка в Кафе. 125.50 RUR. Баланс 1000 ₽";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Кафе",
+      amount: 125.5,
+    });
+  });
+
+  it("should return null for external purchase with invalid format", () => {
+    const title = "Ozon Банк";
+    const text = "Покупка в магазине без суммы";
+    const result = parseOzonNotification(text, title);
+
+    expect(result).toBe(null);
+  });
 });
 
 describe("parseTBankNotification", () => {

@@ -9,6 +9,7 @@ import {
   updatePayment,
   deletePayment, // Логическое удаление
   completePayment,
+  permanentDeletePaymentAutoCreated, // Безвозвратное удаление для autoCreated платежей
   // TODO: Импортировать getArchivedPayments, restorePayment, permanentDeletePayment (Часть 17)
 } from "../services/paymentService";
 import logger from "../config/logger";
@@ -143,6 +144,32 @@ router.delete("/:id", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error(`Error in DELETE /api/payments/${req.params.id}:`, error);
+    res.status(500).json({ message: "Ошибка сервера", error: error.message });
+  }
+});
+
+// DELETE /api/payments/:id/permanent - Безвозвратное удаление autoCreated платежа (например, когда пользователь отменяет авто-добавление)
+router.delete("/:id/permanent", async (req: Request, res: Response) => {
+  try {
+    const result = await permanentDeletePaymentAutoCreated(
+      req.params.id,
+      req.user!.id
+    );
+    if (!result) {
+      return res.status(404).json({
+        message:
+          "Платеж не найден, нет прав доступа или платеж не может быть безвозвратно удален.",
+      });
+    }
+    res.json({
+      message: "Платеж безвозвратно удален",
+      id: req.params.id,
+    });
+  } catch (error: any) {
+    logger.error(
+      `Error in DELETE /api/payments/${req.params.id}/permanent:`,
+      error
+    );
     res.status(500).json({ message: "Ошибка сервера", error: error.message });
   }
 });

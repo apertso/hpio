@@ -1,9 +1,16 @@
 import { PaymentData } from "../types/paymentData";
+import { User } from "../context/AuthContext";
+
+interface Category {
+  id: string;
+  name: string;
+  builtinIconName?: string | null;
+}
 
 export interface OfflineData {
   payments: PaymentData[];
-  categories: any[];
-  user: any;
+  categories: Category[];
+  user: User;
   lastSync: number;
   version: number;
 }
@@ -144,7 +151,7 @@ class OfflineStorage {
     });
   }
 
-  async storeCategories(categories: any[]): Promise<void> {
+  async storeCategories(categories: Category[]): Promise<void> {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
@@ -165,7 +172,7 @@ class OfflineStorage {
     });
   }
 
-  async getCategories(): Promise<any[]> {
+  async getCategories(): Promise<Category[]> {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
@@ -181,7 +188,7 @@ class OfflineStorage {
     });
   }
 
-  async storeUser(user: any): Promise<void> {
+  async storeUser(user: User): Promise<void> {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
@@ -194,7 +201,7 @@ class OfflineStorage {
     });
   }
 
-  async getUser(): Promise<any> {
+  async getUser(): Promise<User | null> {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
@@ -246,7 +253,10 @@ class OfflineStorage {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.stores.queue], "readwrite");
+      const transaction = this.db!.transaction(
+        [this.stores.queue],
+        "readwrite"
+      );
       const store = transaction.objectStore(this.stores.queue);
       const putRequest = store.put(request);
 
@@ -279,7 +289,10 @@ class OfflineStorage {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.stores.queue], "readwrite");
+      const transaction = this.db!.transaction(
+        [this.stores.queue],
+        "readwrite"
+      );
       const store = transaction.objectStore(this.stores.queue);
       const getRequest = store.get(id);
 
@@ -310,7 +323,10 @@ class OfflineStorage {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.stores.queue], "readwrite");
+      const transaction = this.db!.transaction(
+        [this.stores.queue],
+        "readwrite"
+      );
       const store = transaction.objectStore(this.stores.queue);
       const deleteRequest = store.delete(id);
 
@@ -323,7 +339,10 @@ class OfflineStorage {
     if (!this.db) await this.init();
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.stores.queue], "readwrite");
+      const transaction = this.db!.transaction(
+        [this.stores.queue],
+        "readwrite"
+      );
       const store = transaction.objectStore(this.stores.queue);
       const clearRequest = store.clear();
 

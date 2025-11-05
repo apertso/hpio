@@ -100,3 +100,28 @@ export async function openAppNotificationSettings(): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Проверяет, отключена ли оптимизация батареи для приложения (Android only)
+ * Отключение оптимизации батареи необходимо для стабильной работы службы прослушивания уведомлений
+ */
+export async function checkBatteryOptimizationDisabled(): Promise<boolean> {
+  try {
+    return await invoke<boolean>("check_battery_optimization_disabled");
+  } catch (error) {
+    console.error("Failed to check battery optimization status:", error);
+    return false;
+  }
+}
+
+/**
+ * Открывает системные настройки оптимизации батареи для приложения (Android only)
+ */
+export async function openBatteryOptimizationSettings(): Promise<void> {
+  try {
+    await invoke("open_battery_optimization_settings");
+  } catch (error) {
+    console.error("Failed to open battery optimization settings:", error);
+    throw error;
+  }
+}

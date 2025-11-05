@@ -8,7 +8,6 @@ import androidx.annotation.Keep
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.io.FileWriter
 
 @Keep
 class PaymentNotificationListenerService : NotificationListenerService() {
@@ -16,10 +15,15 @@ class PaymentNotificationListenerService : NotificationListenerService() {
     companion object {
         private const val TAG = "PaymentNotificationListener"
         private const val NOTIFICATIONS_FILE = "pending_notifications.json"
+        private const val DEDUP_FILE = "notification_dedup.json"
+        private const val DEDUP_TIME_WINDOW_MS = 60_000L // 60 seconds
 
-        // Track recently processed notification keys to avoid duplicates
-        private val processedNotificationKeys = mutableSetOf<String>()
-        private const val MAX_TRACKED_KEYS = 100 // Limit memory usage
+        private val dedupLock = Any()
+
+        // Pre-compiled regex patterns for better performance
+        private val REFUND_PATTERN = Regex("\\b(пополнен|зачислен|получен|возврат|refunded|returned)\\b")
+        private val TRANSFER_PATTERN = Regex("\\b(перевод|transfer|отправлен|получателю)\\b")
+        private val PAYMENT_PATTERN = Regex("\\b(покупка|оплата|заплатили|списание|платеж|transaction|purchase|payment)\\b")
 
         // Supported package names for payment notification parsing
         private val SUPPORTED_PACKAGES = setOf(
@@ -81,22 +85,23 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
         /**
          * Detects the notification type based on message content
+         * Uses pre-compiled regex patterns for better performance
          */
         fun detectNotificationType(message: String): NotificationType {
             val text = message.lowercase()
 
-            // Check for refunds
-            if (text.matches(Regex(".*\\b(пополнен|зачислен|получен|возврат|refunded|returned)\\b.*"))) {
+            // Check for refunds (earliest exit for most common case)
+            if (REFUND_PATTERN.containsMatchIn(text)) {
                 return NotificationType.REFUND
             }
 
             // Check for transfers
-            if (text.matches(Regex(".*\\b(перевод|transfer|отправлен|получателю)\\b.*"))) {
+            if (TRANSFER_PATTERN.containsMatchIn(text)) {
                 return NotificationType.TRANSFER
             }
 
             // Check for payments/purchases
-            if (text.matches(Regex(".*\\b(покупка|оплата|заплатили|списание|платеж|transaction|purchase|payment)\\b.*"))) {
+            if (PAYMENT_PATTERN.containsMatchIn(text)) {
                 return NotificationType.PAYMENT
             }
 
@@ -106,7 +111,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         /**
          * Determines if the notification is a payment type notification
          */
-        fun isPaymentNotification(packageName: String, text: String, title: String = ""): Boolean {
+        fun isPaymentNotification(text: String, title: String = ""): Boolean {
             val combinedText = "$title $text"
             return detectNotificationType(combinedText) == NotificationType.PAYMENT
         }
@@ -115,56 +120,93 @@ class PaymentNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
 
-        if (sbn == null) return
+        sbn ?: return
 
-        Log.d(TAG, "Notification posted: ${sbn.packageName}, key: ${sbn.key}")
-
-        // Check if we've already processed this notification using its unique key
-        if (processedNotificationKeys.contains(sbn.key)) {
-            Log.d(TAG, "Duplicate notification detected (key: ${sbn.key}), skipping")
+        // Early exit for unsupported packages to minimize processing
+        if (!SUPPORTED_PACKAGES.contains(sbn.packageName)) {
             return
         }
 
-        if (SUPPORTED_PACKAGES.contains(sbn.packageName)) {
-            handlePaymentNotification(sbn)
+        // Extract notification data once
+        val notification: Notification = sbn.notification
+        val extras = notification.extras
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
 
-            // Mark this notification as processed
-            processedNotificationKeys.add(sbn.key)
+        // Early exit for empty text
+        if (text.isEmpty()) {
+            return
+        }
 
-            // Prevent memory leak by limiting the set size
-            if (processedNotificationKeys.size > MAX_TRACKED_KEYS) {
-                // Remove oldest entries (in practice, this is fine since we just need recent deduplication)
-                val iterator = processedNotificationKeys.iterator()
-                repeat(20) {
-                    if (iterator.hasNext()) {
-                        iterator.next()
-                        iterator.remove()
+        // Log all notifications from supported packages for debugging
+        LoggerUtil.debug(this, TAG, "Received notification from ${sbn.packageName}: title='$title', text='$text'")
+
+        // Check if this is a payment notification
+        if (!isPaymentNotification(text, title)) {
+            LoggerUtil.debug(this, TAG, "Notification filtered out - not a payment type: ${sbn.packageName}")
+            return
+        }
+
+        // Check for duplicates with persistent storage
+        val notificationId = "${sbn.packageName}|$title|$text"
+        if (isDuplicate(notificationId)) {
+            LoggerUtil.debug(this, TAG, "Duplicate notification detected and skipped: $notificationId")
+            return
+        }
+
+        // Only now do the heavy work (file I/O)
+        handlePaymentNotification(sbn, title, text)
+    }
+
+    private fun isDuplicate(notificationId: String): Boolean {
+        return synchronized(dedupLock) {
+            try {
+                val dedupFile = File(filesDir, DEDUP_FILE)
+                val currentTime = System.currentTimeMillis()
+
+                val dedupData = if (dedupFile.exists() && dedupFile.length() > 0) {
+                    try {
+                        JSONObject(dedupFile.readText())
+                    } catch (e: Exception) {
+                        JSONObject()
+                    }
+                } else {
+                    JSONObject()
+                }
+
+                // Clean up old entries
+                val keysToRemove = mutableListOf<String>()
+                dedupData.keys().forEach { key ->
+                    val timestamp = dedupData.optLong(key, 0L)
+                    if (currentTime - timestamp > DEDUP_TIME_WINDOW_MS) {
+                        keysToRemove.add(key)
                     }
                 }
+                keysToRemove.forEach { dedupData.remove(it) }
+
+                // Check if this notification is a duplicate
+                if (dedupData.has(notificationId)) {
+                    return@synchronized true
+                }
+
+                // Add current notification to dedup
+                dedupData.put(notificationId, currentTime)
+
+                // Save updated dedup data atomically
+                val tempFile = File(filesDir, "$DEDUP_FILE.tmp")
+                tempFile.writeText(dedupData.toString())
+                tempFile.renameTo(dedupFile)
+
+                return@synchronized false
+            } catch (e: Exception) {
+                LoggerUtil.error(this, TAG, "Error checking for duplicates", e)
+                return@synchronized false
             }
         }
     }
 
-    private fun handlePaymentNotification(sbn: StatusBarNotification) {
+    private fun handlePaymentNotification(sbn: StatusBarNotification, title: String, text: String) {
         try {
-            val notification: Notification = sbn.notification
-            val extras = notification.extras
-
-            val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
-            val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-
-            Log.d(TAG, "Payment notification from ${sbn.packageName} - Title: $title, Text: $text")
-
-            if (text.isEmpty()) {
-                Log.d(TAG, "Empty notification text, skipping")
-                return
-            }
-
-            // Check if this is actually a payment notification (not transfer, refund, etc)
-            if (!isPaymentNotification(sbn.packageName, text, title)) {
-                return
-            }
-
             val notificationData = JSONObject().apply {
                 put("packageName", sbn.packageName)
                 put("title", title)
@@ -174,32 +216,40 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
             saveNotification(notificationData)
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling payment notification from ${sbn.packageName}", e)
+            LoggerUtil.error(this, TAG, "Error handling payment notification", e)
         }
     }
 
     private fun saveNotification(notificationData: JSONObject) {
         try {
             val file = File(filesDir, NOTIFICATIONS_FILE)
-            val notifications = if (file.exists()) {
-                val content = file.readText()
-                if (content.isNotEmpty()) JSONArray(content) else JSONArray()
+
+            // Read existing notifications only if file exists
+            val notifications = if (file.exists() && file.length() > 0) {
+                try {
+                    JSONArray(file.readText())
+                } catch (e: Exception) {
+                    // If file is corrupted, start fresh
+                    JSONArray()
+                }
             } else {
                 JSONArray()
             }
 
+            // Add new notification
             notifications.put(notificationData)
 
-            FileWriter(file, false).use { writer ->
-                writer.write(notifications.toString())
-            }
+            LoggerUtil.info(this, TAG, "Notification saved to pending_notifications.json: ${notificationData.toString()}")
 
-            Log.d(TAG, "Saved notification to file: ${file.absolutePath}")
+            // Write atomically using temp file for data safety
+            val tempFile = File(filesDir, "$NOTIFICATIONS_FILE.tmp")
+            tempFile.writeText(notifications.toString())
+            tempFile.renameTo(file)
 
-            // Показываем локальное уведомление о новом платеже
+            // Show local notification to user
             showPaymentNotification(notifications.length())
         } catch (e: Exception) {
-            Log.e(TAG, "Error saving notification", e)
+            LoggerUtil.error(this, TAG, "Error saving notification", e)
         }
     }
 
@@ -223,7 +273,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
                 count
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error showing payment notification", e)
+            LoggerUtil.error(this, TAG, "Error showing payment notification", e)
         }
     }
 
@@ -233,16 +283,23 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        Log.d(TAG, "Notification listener connected")
-
-        // Clear the processed keys cache when listener reconnects
-        // to avoid memory buildup and handle service restarts
-        processedNotificationKeys.clear()
+        LoggerUtil.info(this, TAG, "Notification listener connected and ready to receive notifications")
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
-        Log.d(TAG, "Notification listener disconnected")
+        LoggerUtil.warn(this, TAG, "Notification listener disconnected - will not receive notifications until reconnected")
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        LoggerUtil.info(this, TAG, "Notification listener service created")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        LoggerUtil.info(this, TAG, "Notification listener service destroyed")
     }
 }
+
 

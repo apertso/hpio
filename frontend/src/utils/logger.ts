@@ -2,19 +2,19 @@
 import { fileLogger } from "./fileLogger";
 
 const logger = {
-  info: (...args: any[]) => {
+  info: (...args: unknown[]) => {
     console.log("[INFO]", ...args);
     fileLogger.info(...args);
   },
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     console.warn("[WARN]", ...args);
     fileLogger.warn(...args);
   },
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     console.error("[ERROR]", ...args);
     fileLogger.error(...args);
   },
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     console.debug("[DEBUG]", ...args);
     fileLogger.debug(...args);
   },

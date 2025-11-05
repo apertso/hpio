@@ -23,7 +23,7 @@ const iconTranslations: Record<string, string> = {
   fire: "Газ",
 };
 
-interface IconSelectorProps {
+export interface IconSelectorProps {
   selectedIconName: BuiltinIcon | null;
   onIconChange: (iconName: BuiltinIcon | null) => void;
   isFormSubmitting?: boolean;

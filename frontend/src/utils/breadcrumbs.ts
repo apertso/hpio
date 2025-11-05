@@ -5,7 +5,7 @@ import { logBreadcrumb } from "./fileLogger";
  */
 export function trackBreadcrumb(
   action: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): void {
   logBreadcrumb(action, details);
 }
@@ -22,7 +22,7 @@ export function trackNavigation(path: string): void {
  */
 export function trackClick(
   elementName: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): void {
   trackBreadcrumb("click", { element: elementName, ...details });
 }
@@ -32,7 +32,7 @@ export function trackClick(
  */
 export function trackFormSubmit(
   formName: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): void {
   trackBreadcrumb("form_submit", { form: formName, ...details });
 }

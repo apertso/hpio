@@ -300,10 +300,10 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-opacity ${
                   isActive
                     ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
-                    : "text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    : "text-gray-900 dark:text-gray-100 hover:opacity-80"
                 }`}
               >
                 {icon && (
@@ -323,10 +323,10 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
           <Link
             to="/settings"
             onClick={onClose}
-            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-colors ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-opacity ${
               currentPath === "/settings"
                 ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                : "text-gray-900 dark:text-gray-100 hover:opacity-80"
             }`}
           >
             <Cog6ToothIcon

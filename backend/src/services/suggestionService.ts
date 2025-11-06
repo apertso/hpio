@@ -1,10 +1,12 @@
 import db from "../models";
 import logger from "../config/logger";
+import { Op } from "sequelize";
 
 interface SuggestionData {
   merchantName: string;
   amount: number;
   notificationData: string;
+  notificationTimestamp?: number;
 }
 
 export const getPendingSuggestions = async (userId: string) => {
@@ -42,11 +44,42 @@ export const createSuggestion = async (
   data: SuggestionData
 ) => {
   try {
+    // Проверяем дубликат по времени ПОЛУЧЕНИЯ уведомления (не создания suggestion)
+    // Это ловит кросс-девайс дубликаты даже если обработаны с задержкой
+    if (data.notificationTimestamp) {
+      const threeSecondsAgo = data.notificationTimestamp - 3000;
+
+      const recentSuggestion = await db.Suggestion.findOne({
+        where: {
+          userId,
+          merchantName: data.merchantName,
+          amount: data.amount,
+          notificationData: data.notificationData,
+          status: "pending",
+          notificationTimestamp: {
+            [Op.gte]: threeSecondsAgo,
+          },
+        },
+        order: [["createdAt", "DESC"]],
+      });
+
+      if (recentSuggestion) {
+        const timeDiff =
+          data.notificationTimestamp -
+          (recentSuggestion.notificationTimestamp || 0);
+        logger.info(
+          `Duplicate notification detected for user ${userId} (merchant: ${data.merchantName}, timestamp diff: ${timeDiff}ms), returning existing: ${recentSuggestion.id}`
+        );
+        return recentSuggestion;
+      }
+    }
+
     const suggestion = await db.Suggestion.create({
       userId,
       merchantName: data.merchantName,
       amount: data.amount,
       notificationData: data.notificationData,
+      notificationTimestamp: data.notificationTimestamp,
       status: "pending" as const,
     });
     logger.info(`Created suggestion for user ${userId}: ${suggestion.id}`);

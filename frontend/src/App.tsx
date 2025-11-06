@@ -80,8 +80,9 @@ const ThemeSwitcher = () => {
   return (
     <button
       onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-      className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+      className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
       aria-label="Переключить тему"
+      title="Переключить тему"
     >
       {resolvedTheme === "light" ? (
         <MoonIcon className="h-5 w-5" />
@@ -122,19 +123,19 @@ const Navigation: React.FC = () => {
           <div className="hidden md:flex items-center gap-9">
             <Link
               to="/dashboard"
-              className="text-black dark:text-white text-sm font-medium leading-normal"
+              className="text-black dark:text-white text-sm font-medium leading-normal hover:opacity-80 transition-opacity"
             >
               Главная
             </Link>
             <Link
               to="/payments"
-              className="text-black dark:text-white text-sm font-medium leading-normal"
+              className="text-black dark:text-white text-sm font-medium leading-normal hover:opacity-80 transition-opacity"
             >
               Платежи
             </Link>
             <Link
               to="/categories"
-              className="text-black dark:text-white text-sm font-medium leading-normal"
+              className="text-black dark:text-white text-sm font-medium leading-normal hover:opacity-80 transition-opacity"
             >
               Категории
             </Link>
@@ -143,7 +144,7 @@ const Navigation: React.FC = () => {
             <div className="relative" ref={popoverRef}>
               <button
                 onClick={() => setIsUserPopoverOpen(!isUserPopoverOpen)}
-                className="flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-card-bg focus:outline-none cursor-pointer"
+                className="flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-card-bg hover:opacity-80 transition-all focus:outline-none cursor-pointer"
                 aria-label="Открыть меню пользователя"
                 aria-expanded={isUserPopoverOpen}
               >
@@ -218,7 +219,7 @@ const Navigation: React.FC = () => {
         <div className="flex items-center gap-4">
           <Link
             to="/login"
-            className="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity"
           >
             <ArrowRightOnRectangleIcon className="h-5 w-5" />
             <span>Войти</span>
@@ -260,6 +261,18 @@ function App() {
   const [suggestionModalDismissed, setSuggestionModalDismissed] =
     useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [processedNotificationKeys, setProcessedNotificationKeys] = useState<
+    Set<string>
+  >(() => {
+    try {
+      const stored = localStorage.getItem("processed_notification_keys");
+      if (!stored) return new Set();
+      return new Set(JSON.parse(stored));
+    } catch (error) {
+      console.error("Failed to load processed notification keys:", error);
+      return new Set();
+    }
+  });
 
   // Set safe area inset for mobile development override
   useEffect(() => {
@@ -304,6 +317,24 @@ function App() {
     setShowNotificationOnboarding(false);
   };
 
+  const createNotificationKey = (notification: PendingNotification): string => {
+    return `${notification.timestamp}_${notification.package_name}_${notification.text}`;
+  };
+
+  const saveProcessedKeysToStorage = (keys: Set<string>) => {
+    try {
+      const keysArray = Array.from(keys);
+      const maxKeys = 1000;
+      const trimmedKeys = keysArray.slice(-maxKeys);
+      localStorage.setItem(
+        "processed_notification_keys",
+        JSON.stringify(trimmedKeys)
+      );
+    } catch (error) {
+      console.error("Failed to save processed notification keys:", error);
+    }
+  };
+
   const processNotifications = async () => {
     const automationEnabled =
       localStorage.getItem("automation_enabled") !== "false";
@@ -345,19 +376,33 @@ function App() {
         }
       }
 
+      const unprocessedNotifications = notifications.filter(
+        (notification) =>
+          !processedNotificationKeys.has(createNotificationKey(notification))
+      );
+
+      if (unprocessedNotifications.length < notifications.length) {
+        logger.info(
+          `Skipping ${
+            notifications.length - unprocessedNotifications.length
+          } already processed notifications`
+        );
+      }
+
       // Обрабатываем уведомления, если они есть
-      if (notifications.length > 0) {
-        for (const notification of notifications) {
+      if (unprocessedNotifications.length > 0) {
+        const newKeys = new Set(processedNotificationKeys);
+        for (const notification of unprocessedNotifications) {
           const rawData = `Raw notification from ${
             notification.package_name
           }:\nTitle: ${notification.title || "N/A"}\nText: ${
             notification.text
           }`;
 
-          // Always log to file on Android
+          // Всегда логируем в файл на Android
           logger.info(rawData);
 
-          // Show debug toast if enabled in settings
+          // Показываем debug toast если включено в настройках
           if (localStorage.getItem("dev_show_debug_toasts") === "true") {
             showToast(rawData, "info", 8000);
           }
@@ -380,7 +425,10 @@ function App() {
             logger.error("Failed to send notification to backend:", error);
           }
 
-          if (!parsed) continue;
+          if (!parsed) {
+            newKeys.add(createNotificationKey(notification));
+            continue;
+          }
 
           const normalizedMerchant = normalizeMerchantName(parsed.merchantName);
 
@@ -428,16 +476,22 @@ function App() {
               );
             } catch (error) {
               logger.error("Failed to auto-create payment:", error);
-              // Fail silently as per requirements
+              // Молча игнорируем ошибку согласно требованиям
             }
           } else {
             await suggestionApi.createSuggestion({
               merchantName: parsed.merchantName,
               amount: parsed.amount,
               notificationData: notification.text,
+              notificationTimestamp: notification.timestamp,
             });
           }
+
+          newKeys.add(createNotificationKey(notification));
         }
+
+        setProcessedNotificationKeys(newKeys);
+        saveProcessedKeysToStorage(newKeys);
 
         // Очищаем реальные уведомления только если мы в Tauri
         if (isActuallyTauri && !shouldBypassPermissionCheck) {
@@ -479,10 +533,10 @@ function App() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Log app initialization
+    // Логируем инициализацию приложения
     logger.info("App initialized - notification processing started");
 
-    // Handle notification click navigation
+    // Обрабатываем навигацию при клике на уведомление
     if (isTauriMobile()) {
       (async () => {
         try {
@@ -493,12 +547,12 @@ function App() {
           if (action) {
             await clearPendingNavigation();
 
-            // Navigate based on action
+            // Навигация в зависимости от действия
             if (action === "archive") {
               navigate("/payments?tab=archive");
             } else if (action === "main") {
-              // For main action (suggestions), just bring app to focus
-              // Don't navigate - suggestions are already shown
+              // Для основного действия (предложения) просто открываем приложение
+              // Не навигируем - предложения уже показаны
               logger.info(
                 "Notification clicked with main action - bringing app to focus"
               );
@@ -514,14 +568,29 @@ function App() {
       })();
     }
 
+    // Первоначальная проверка при монтировании
     processNotifications();
 
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        processNotifications();
-      }
-    }, 5000);
+    // Слушаем новые уведомления от Android сервиса
+    let unlistenNotification: (() => void) | undefined;
+    if (isTauri()) {
+      (async () => {
+        try {
+          const { listen } = await import("@tauri-apps/api/event");
+          unlistenNotification = await listen(
+            "payment-notification-received",
+            () => {
+              logger.info("Received payment-notification-received event");
+              processNotifications();
+            }
+          );
+        } catch (error) {
+          logger.error("Failed to setup notification event listener:", error);
+        }
+      })();
+    }
 
+    // Проверяем когда пользователь возвращается в приложение
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         processNotifications();
@@ -531,8 +600,10 @@ function App() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (unlistenNotification) {
+        unlistenNotification();
+      }
     };
   }, [isAuthenticated]);
 
@@ -629,7 +700,7 @@ function App() {
           <>
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
-              className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg text-gray-800 dark:text-gray-200"
+              className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg hover:opacity-80 transition-all text-gray-800 dark:text-gray-200"
               aria-label="Открыть меню навигации"
             >
               <Bars3Icon className="h-6 w-6" />
@@ -739,19 +810,19 @@ function App() {
           <nav className="flex items-center gap-6">
             <Link
               to="/terms"
-              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
             >
               Пользовательское соглашение
             </Link>
             <Link
               to="/privacy"
-              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
             >
               Политика конфиденциальности
             </Link>
             <Link
               to="/about"
-              className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+              className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
             >
               О нас
             </Link>
@@ -764,7 +835,7 @@ function App() {
                 rel="noopener noreferrer"
                 aria-label="GitHub"
                 title="GitHub"
-                className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -785,7 +856,7 @@ function App() {
         <p className="text-center">
           Создано{" "}
           <a
-            href="https://linkedin.com/in/apertso"
+            href="https://linkedin.com/in/artur-pertsev"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
@@ -797,19 +868,19 @@ function App() {
         <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2">
           <Link
             to="/terms"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity"
           >
             Пользовательское соглашение
           </Link>
           <Link
             to="/privacy"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity"
           >
             Политика конфиденциальности
           </Link>
           <Link
             to="/about"
-            className="text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity"
           >
             О нас
           </Link>
@@ -822,7 +893,7 @@ function App() {
               rel="noopener noreferrer"
               aria-label="GitHub"
               title="GitHub"
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all"
             >
               <svg
                 viewBox="0 0 24 24"

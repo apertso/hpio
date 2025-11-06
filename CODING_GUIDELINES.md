@@ -4,27 +4,32 @@ This document outlines the standard practices and guidelines for development in 
 
 ## Language Conventions
 
+These conventions apply to **the entire project**, including frontend (TypeScript/React), backend (TypeScript/Node.js), and mobile (Kotlin/Android).
+
 ### Code Comments and Documentation
 
 All code comments and inline documentation should be written in **Russian**. This includes:
 
 - Function and class docstring comments
 - Inline comments explaining complex logic
-- TypeScript interface and type descriptions
-- README files and documentation
+- TypeScript/Kotlin interface and type descriptions
+- Code-level documentation
 - Any developer-facing text in the code
+
+**Note**: External-facing documentation (README.md in the repository root, API documentation for third parties) may be in English for international accessibility.
 
 ### Log Messages
 
 All log messages should be written in **English**. This includes:
 
-- `logger.info()` messages
-- `logger.warn()` messages
-- `logger.error()` messages
+- `logger.info()` / `Log.d()` messages
+- `logger.warn()` / `Log.w()` messages
+- `logger.error()` / `Log.e()` messages
 - Console output messages
 - Error messages for monitoring and debugging systems
+- Exception messages and stack traces
 
-**Rationale**: Russian comments make the code more accessible to Russian-speaking developers, while English logs ensure compatibility with monitoring tools and international debugging standards.
+**Rationale**: Russian comments make the code more accessible to Russian-speaking developers working on this project, while English logs ensure compatibility with monitoring tools, international debugging standards, and make logs searchable using common technical terminology.
 
 ## Return Types
 
@@ -109,6 +114,47 @@ All interactive elements (buttons, links, clickable areas) must include the `cur
   Click me
 </button>
 ```
+
+### Hover Styles
+
+To maintain a consistent user experience, all links and icon buttons should follow these hover style guidelines:
+
+#### Text Links
+
+Text links (navigation links, footer links, etc.) should use opacity-based hover effects:
+
+```tsx
+// ✅ Good - text link with opacity hover
+<Link
+  to="/dashboard"
+  className="text-black dark:text-white hover:opacity-80 transition-opacity"
+>
+  Главная
+</Link>
+```
+
+#### Icon Button Links
+
+Icon button links (GitHub icon, theme switcher, feedback widget, etc.) should combine background hover effects with opacity for a smooth transition without layout shifts:
+
+```tsx
+// ✅ Good - icon button with background + opacity
+<button
+  onClick={handleClick}
+  className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+  aria-label="Action"
+>
+  <Icon className="h-5 w-5" />
+</button>
+```
+
+**Key Principles:**
+
+1. **No Layout Shifts**: Hover effects should never cause elements to shift position (prefer opacity/background over borders)
+2. **Consistent Opacity**: Use `hover:opacity-80` for the opacity effect
+3. **Smooth Transitions**: Use `transition-opacity` for text links or `transition-all` for combined effects
+4. **Background Circles**: Icon buttons use rounded backgrounds (`rounded-full`) with hover background colors
+5. **Logo Reference**: The KhochuPlachu logo uses `hover:opacity-80 transition-opacity` as the standard reference
 
 ### Empty States
 

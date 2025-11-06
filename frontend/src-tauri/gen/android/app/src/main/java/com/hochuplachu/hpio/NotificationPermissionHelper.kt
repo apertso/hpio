@@ -146,7 +146,7 @@ object NotificationPermissionHelper {
             try {
                 context.startActivity(intent)
             } catch (e: Exception) {
-                // Fallback to general battery optimization settings
+                // Резервный вариант: общие настройки оптимизации батареи
                 val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(fallbackIntent)

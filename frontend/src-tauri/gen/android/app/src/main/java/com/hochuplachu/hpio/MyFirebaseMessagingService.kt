@@ -16,7 +16,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         super.onNewToken(token)
         Log.d(TAG, "Refreshed token: $token")
 
-        // Store token in SharedPreferences for later retrieval
+        // Сохраняем токен в SharedPreferences для последующего использования
         getSharedPreferences("fcm_prefs", Context.MODE_PRIVATE)
             .edit()
             .putString("fcm_token", token)
@@ -27,7 +27,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(remoteMessage)
         Log.d(TAG, "From: ${remoteMessage.from}")
 
-        // Check if message contains a notification payload
+        // Проверяем, содержит ли сообщение payload уведомления
         remoteMessage.notification?.let {
             val title = it.title ?: "Хочу Плачу"
             val body = it.body ?: ""
@@ -36,7 +36,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             showNotification(title, body, clickAction)
         }
 
-        // Check if message contains a data payload
+        // Проверяем, содержит ли сообщение data payload
         if (remoteMessage.data.isNotEmpty()) {
             Log.d(TAG, "Message data payload: ${remoteMessage.data}")
         }

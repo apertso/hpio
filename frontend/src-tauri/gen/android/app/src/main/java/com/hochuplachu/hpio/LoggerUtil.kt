@@ -15,7 +15,7 @@ object LoggerUtil {
 
     private fun writeToFile(context: Context, logEntry: String) {
         try {
-            // Use dataDir instead of filesDir to match Tauri's BaseDirectory.AppData
+            // Используем dataDir вместо filesDir для соответствия Tauri's BaseDirectory.AppData
             val logFile = File(context.dataDir, LOG_FILE_NAME)
             FileWriter(logFile, true).use { writer ->
                 writer.write(logEntry)

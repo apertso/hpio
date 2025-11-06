@@ -1,10 +1,14 @@
 package com.hochuplachu.hpio
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.enableEdgeToEdge
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import app.tauri.plugin.JSObject
 import java.io.File
 import java.io.FileWriter
 import java.io.PrintWriter
@@ -17,11 +21,21 @@ class MainActivity : TauriActivity() {
     private const val TAG = "MainActivity"
   }
 
+  private val notificationReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      if (intent?.action == PaymentNotificationListenerService.ACTION_NEW_NOTIFICATION) {
+        Log.d(TAG, "Received NEW_NOTIFICATION broadcast")
+        emitNotificationEvent()
+      }
+    }
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     setupGlobalExceptionHandler()
     super.onCreate(savedInstanceState)
     logAppLifecycle("APP_START")
+    registerNotificationReceiver()
   }
 
   override fun onNewIntent(intent: Intent) {
@@ -46,7 +60,40 @@ class MainActivity : TauriActivity() {
 
   override fun onDestroy() {
     super.onDestroy()
+    unregisterNotificationReceiver()
     logAppLifecycle("APP_STOP")
+  }
+
+  private fun registerNotificationReceiver() {
+    try {
+      val filter = IntentFilter(PaymentNotificationListenerService.ACTION_NEW_NOTIFICATION)
+      LocalBroadcastManager.getInstance(this).registerReceiver(notificationReceiver, filter)
+      Log.d(TAG, "Notification receiver registered")
+    } catch (e: Exception) {
+      Log.e(TAG, "Error registering notification receiver", e)
+    }
+  }
+
+  private fun unregisterNotificationReceiver() {
+    try {
+      LocalBroadcastManager.getInstance(this).unregisterReceiver(notificationReceiver)
+      Log.d(TAG, "Notification receiver unregistered")
+    } catch (e: Exception) {
+      Log.e(TAG, "Error unregistering notification receiver", e)
+    }
+  }
+
+  private fun emitNotificationEvent() {
+    try {
+      val data = JSObject()
+      data.put("timestamp", System.currentTimeMillis())
+
+      // Отправляем событие Tauri в JavaScript
+      getAppInstance().trigger("payment-notification-received", data)
+      Log.d(TAG, "Emitted payment-notification-received event")
+    } catch (e: Exception) {
+      Log.e(TAG, "Error emitting notification event", e)
+    }
   }
 
   private fun setupGlobalExceptionHandler() {

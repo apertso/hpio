@@ -18,8 +18,8 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_MY_PACKAGE_REPLACED,
             "android.intent.action.QUICKBOOT_POWERON" -> {
                 Log.d(TAG, "Device booted or app updated, notification listener should reconnect automatically")
-                // NotificationListenerService will be rebound automatically by the system
-                // if it was enabled before boot/update
+                // NotificationListenerService будет автоматически переподключен системой
+                // если он был включен до перезагрузки/обновления
             }
         }
     }

@@ -1,10 +1,12 @@
 package com.hochuplachu.hpio
 
 import android.app.Notification
+import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.annotation.Keep
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -17,19 +19,20 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         private const val NOTIFICATIONS_FILE = "pending_notifications.json"
         private const val DEDUP_FILE = "notification_dedup.json"
         private const val DEDUP_TIME_WINDOW_MS = 60_000L // 60 seconds
+        const val ACTION_NEW_NOTIFICATION = "com.hochuplachu.hpio.NEW_NOTIFICATION"
 
         private val dedupLock = Any()
 
-        // Pre-compiled regex patterns for better performance
+        // Предкомпилированные regex паттерны для лучшей производительности
         private val REFUND_PATTERN = Regex("\\b(пополнен|зачислен|получен|возврат|refunded|returned)\\b")
         private val TRANSFER_PATTERN = Regex("\\b(перевод|transfer|отправлен|получателю)\\b")
         private val PAYMENT_PATTERN = Regex("\\b(покупка|оплата|заплатили|списание|платеж|transaction|purchase|payment)\\b")
 
-        // Supported package names for payment notification parsing
+        // Поддерживаемые имена пакетов для парсинга уведомлений о платежах
         private val SUPPORTED_PACKAGES = setOf(
-            // Test
+            // Тестовые
             "com.android.shell",
-            // Bank applications
+            // Банковские приложения
             "ru.raiffeisennews",                  // Раиффайзен
             "ru.sberbankmobile",                  // Сбербанк
             "com.idamob.tinkoff.android",         // Тинькофф
@@ -44,19 +47,19 @@ class PaymentNotificationListenerService : NotificationListenerService() {
             "ru.mtsbank.mobile",                  // МТС Банк
             "ru.bspb.mobile",                     // Банк Санкт-Петербург
             "ru.akbmetallbank.mobile",            // Металлинвестбанк
-            // Fintech applications
+            // Финтех приложения
             "ru.yoo.money",
             "com.yandex.bank",
             "ru.nspk.sbp.pay",
             "ru.ozon.fintech.finance",
-            // Marketplace applications
+            // Маркетплейсы
             "ru.ozon.app.android",
             "com.wildberries.ru",
             "ru.market.android",
             "com.avito.android",
             "ru.aliexpress.buyer",
             "ru.lamoda",
-            // Business applications
+            // Бизнес приложения
             "ru.sberbank.bankingbusiness",
             "com.idamob.tinkoff.business",
             "ru.vtb.mobile.business",
@@ -90,17 +93,17 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         fun detectNotificationType(message: String): NotificationType {
             val text = message.lowercase()
 
-            // Check for refunds (earliest exit for most common case)
+            // Проверяем возвраты (ранний выход для самого частого случая)
             if (REFUND_PATTERN.containsMatchIn(text)) {
                 return NotificationType.REFUND
             }
 
-            // Check for transfers
+            // Проверяем переводы
             if (TRANSFER_PATTERN.containsMatchIn(text)) {
                 return NotificationType.TRANSFER
             }
 
-            // Check for payments/purchases
+            // Проверяем платежи/покупки
             if (PAYMENT_PATTERN.containsMatchIn(text)) {
                 return NotificationType.PAYMENT
             }
@@ -122,39 +125,39 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
         sbn ?: return
 
-        // Early exit for unsupported packages to minimize processing
+        // Ранний выход для неподдерживаемых пакетов для минимизации обработки
         if (!SUPPORTED_PACKAGES.contains(sbn.packageName)) {
             return
         }
 
-        // Extract notification data once
+        // Извлекаем данные уведомления один раз
         val notification: Notification = sbn.notification
         val extras = notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
 
-        // Early exit for empty text
+        // Ранний выход для пустого текста
         if (text.isEmpty()) {
             return
         }
 
-        // Log all notifications from supported packages for debugging
+        // Логируем все уведомления от поддерживаемых пакетов для отладки
         LoggerUtil.debug(this, TAG, "Received notification from ${sbn.packageName}: title='$title', text='$text'")
 
-        // Check if this is a payment notification
+        // Проверяем, является ли это уведомление о платеже
         if (!isPaymentNotification(text, title)) {
             LoggerUtil.debug(this, TAG, "Notification filtered out - not a payment type: ${sbn.packageName}")
             return
         }
 
-        // Check for duplicates with persistent storage
+        // Проверяем дубликаты с постоянным хранилищем
         val notificationId = "${sbn.packageName}|$title|$text"
         if (isDuplicate(notificationId)) {
             LoggerUtil.debug(this, TAG, "Duplicate notification detected and skipped: $notificationId")
             return
         }
 
-        // Only now do the heavy work (file I/O)
+        // Только теперь выполняем тяжелую работу (файловый I/O)
         handlePaymentNotification(sbn, title, text)
     }
 
@@ -174,7 +177,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
                     JSONObject()
                 }
 
-                // Clean up old entries
+                // Очищаем старые записи
                 val keysToRemove = mutableListOf<String>()
                 dedupData.keys().forEach { key ->
                     val timestamp = dedupData.optLong(key, 0L)
@@ -184,15 +187,15 @@ class PaymentNotificationListenerService : NotificationListenerService() {
                 }
                 keysToRemove.forEach { dedupData.remove(it) }
 
-                // Check if this notification is a duplicate
+                // Проверяем, является ли это уведомление дубликатом
                 if (dedupData.has(notificationId)) {
                     return@synchronized true
                 }
 
-                // Add current notification to dedup
+                // Добавляем текущее уведомление в дедупликацию
                 dedupData.put(notificationId, currentTime)
 
-                // Save updated dedup data atomically
+                // Сохраняем обновленные данные дедупликации атомарно
                 val tempFile = File(filesDir, "$DEDUP_FILE.tmp")
                 tempFile.writeText(dedupData.toString())
                 tempFile.renameTo(dedupFile)
@@ -224,32 +227,45 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         try {
             val file = File(filesDir, NOTIFICATIONS_FILE)
 
-            // Read existing notifications only if file exists
+            // Читаем существующие уведомления только если файл существует
             val notifications = if (file.exists() && file.length() > 0) {
                 try {
                     JSONArray(file.readText())
                 } catch (e: Exception) {
-                    // If file is corrupted, start fresh
+                    // Если файл поврежден, начинаем заново
                     JSONArray()
                 }
             } else {
                 JSONArray()
             }
 
-            // Add new notification
+            // Добавляем новое уведомление
             notifications.put(notificationData)
 
             LoggerUtil.info(this, TAG, "Notification saved to pending_notifications.json: ${notificationData.toString()}")
 
-            // Write atomically using temp file for data safety
+            // Записываем атомарно используя временный файл для безопасности данных
             val tempFile = File(filesDir, "$NOTIFICATIONS_FILE.tmp")
             tempFile.writeText(notifications.toString())
             tempFile.renameTo(file)
 
-            // Show local notification to user
+            // Показываем локальное уведомление пользователю
             showPaymentNotification(notifications.length())
+
+            // Отправляем событие для уведомления приложения
+            broadcastNewNotification()
         } catch (e: Exception) {
             LoggerUtil.error(this, TAG, "Error saving notification", e)
+        }
+    }
+
+    private fun broadcastNewNotification() {
+        try {
+            val intent = Intent(ACTION_NEW_NOTIFICATION)
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+            LoggerUtil.debug(this, TAG, "Broadcast sent: NEW_NOTIFICATION")
+        } catch (e: Exception) {
+            LoggerUtil.error(this, TAG, "Error broadcasting notification event", e)
         }
     }
 

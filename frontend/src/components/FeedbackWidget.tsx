@@ -118,7 +118,7 @@ const FeedbackWidget: React.FC = () => {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="relative inline-flex items-center gap-2 px-2 py-1 rounded-md text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white focus:outline-none"
+        className="relative inline-flex items-center gap-2 p-2 rounded-full text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 transition-colors focus:outline-none cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
         aria-label="Открыть форму отзыва"
         title="Оставить отзыв"
       >

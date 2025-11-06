@@ -6,6 +6,7 @@ interface SuggestionAttributes {
   merchantName: string;
   amount: number;
   notificationData: string;
+  notificationTimestamp?: number;
   status: "pending" | "accepted" | "dismissed";
   createdAt: Date;
   updatedAt: Date;
@@ -54,6 +55,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.TEXT,
         allowNull: false,
       },
+      notificationTimestamp: {
+        type: dataTypes.BIGINT,
+        allowNull: true,
+      },
       status: {
         type: dataTypes.ENUM("pending", "accepted", "dismissed"),
         defaultValue: "pending",
@@ -74,6 +79,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         { fields: ["userId"] },
         { fields: ["status"] },
         { fields: ["createdAt"] },
+        { fields: ["notificationTimestamp"] },
       ],
     }
   );

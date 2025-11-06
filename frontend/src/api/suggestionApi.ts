@@ -15,6 +15,7 @@ export interface CreateSuggestionData {
   merchantName: string;
   amount: number;
   notificationData: string;
+  notificationTimestamp?: number;
 }
 
 export const suggestionApi = {

@@ -21,7 +21,9 @@ export const config = {
     database: process.env.DB_NAME || "payment_service",
     dialect: process.env.DB_DIALECT || "postgres",
     schema: process.env.DB_SCHEMA || "dbo",
-    dialectOptions: undefined,
+    dialectOptions: {
+      searchPath: process.env.DB_SCHEMA || "dbo",
+    },
     logging: false, // Установите true для логирования SQL запросов (полезно при отладке)
   } as Options,
   uploadDir: process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads"),

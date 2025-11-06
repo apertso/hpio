@@ -1260,7 +1260,7 @@ const SettingsPage: React.FC = () => {
             )}
           </div>
           <p className="mt-12 text-center text-xs text-gray-500 dark:text-gray-600">
-            Версия приложения: 0.1.0
+            Версия приложения: {import.meta.env.VITE_APP_VERSION}
           </p>
         </div>
       </div>

@@ -209,7 +209,7 @@ const AboutPage: React.FC = () => {
                     href="https://www.linkedin.com/in/artur-pertsev/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:opacity-80 transition-opacity"
                   >
                     <div className="flex-shrink-0">
                       <UserIcon className="w-6 h-6 text-blue-600" />
@@ -228,7 +228,7 @@ const AboutPage: React.FC = () => {
                     href="https://github.com/apertso/hpio/issues"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:opacity-80 transition-opacity"
                   >
                     <div className="flex-shrink-0">
                       <CodeBracketIcon className="w-6 h-6 text-gray-900 dark:text-white" />
@@ -249,7 +249,7 @@ const AboutPage: React.FC = () => {
                     </p>
                     <a
                       href="mailto:support@hpio.ru"
-                      className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+                      className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 transition-colors font-medium"
                     >
                       <EnvelopeIcon className="w-4 h-4" />
                       <span>support@hpio.ru</span>

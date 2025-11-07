@@ -1,4 +1,4 @@
-// src/pages/HomePage.tsx
+﻿// src/pages/HomePage.tsx
 import React, {
   useState,
   useEffect,
@@ -59,6 +59,50 @@ const monthNames = [
   "Ноябрь",
   "Декабрь",
 ];
+const monthNamesGenitive = [
+  "Января",
+  "Февраля",
+  "Марта",
+  "Апреля",
+  "Мая",
+  "Июня",
+  "Июля",
+  "Августа",
+  "Сентября",
+  "Октября",
+  "Ноября",
+  "Декабря",
+];
+const formatUpcomingDateHeading = (dateString: string): string => {
+  const targetDate = new Date(dateString);
+  if (Number.isNaN(targetDate.getTime())) {
+    return dateString;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const normalizedTarget = new Date(targetDate);
+  normalizedTarget.setHours(0, 0, 0, 0);
+
+  const diffInMs = normalizedTarget.getTime() - today.getTime();
+  const diffInDays = Math.round(diffInMs / (24 * 60 * 60 * 1000));
+
+  if (diffInDays === 0) {
+    return "Сегодня";
+  }
+  if (diffInDays === 1) {
+    return "Завтра";
+  }
+  if (diffInDays === -1) {
+    return "Вчера";
+  }
+
+  const day = normalizedTarget.getDate().toString();
+  const monthName = monthNamesGenitive[normalizedTarget.getMonth()];
+  return `${day} ${monthName}`;
+};
+
+
 
 // Define color palettes for charts
 const categoryColorsLight = [
@@ -119,6 +163,8 @@ import {
   PencilIcon,
   CheckCircleIcon,
   TrashIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "@heroicons/react/24/solid";
 import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 import MobilePanel from "../components/MobilePanel";
@@ -379,6 +425,57 @@ const HomePage: React.FC = () => {
   const [shouldCloseMobilePanel, setShouldCloseMobilePanel] = useState(false);
   const selectedMobilePaymentId = mobileActionsPayment?.id ?? null;
   const mobileListRef = useRef<HTMLDivElement | null>(null);
+
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+
+  const mobilePaymentsToRender = useMemo(() => {
+    return showAllUpcoming
+      ? upcomingPayments
+      : upcomingPayments.slice(0, 5);
+  }, [showAllUpcoming, upcomingPayments]);
+
+  const groupedMobilePayments = useMemo(() => {
+    const groups: { key: string; label: string; year: number | null; payments: PaymentData[] }[] = [];
+    const groupIndexMap = new Map<string, number>();
+
+    mobilePaymentsToRender.forEach((payment) => {
+      const dateKey = payment.dueDate;
+
+      const existingIndex = groupIndexMap.get(dateKey);
+
+      if (existingIndex !== undefined) {
+        groups[existingIndex].payments.push(payment);
+        return;
+      }
+
+      const label = formatUpcomingDateHeading(dateKey);
+      const targetDate = new Date(dateKey);
+      const year = Number.isNaN(targetDate.getTime())
+        ? null
+        : targetDate.getFullYear();
+
+      groupIndexMap.set(dateKey, groups.length);
+      groups.push({
+        key: dateKey,
+        label,
+        year,
+        payments: [payment],
+      });
+    });
+
+    return groups;
+  }, [mobilePaymentsToRender]);
+
+  const hasMultipleYears = useMemo(() => {
+    const uniqueYears = new Set<number>();
+    groupedMobilePayments.forEach(({ year }) => {
+      if (year !== null) {
+        uniqueYears.add(year);
+      }
+    });
+    return uniqueYears.size > 1;
+  }, [groupedMobilePayments]);
+
 
   const { startDate, endDate } = useMemo(() => {
     let startDate, endDate;
@@ -753,8 +850,6 @@ const HomePage: React.FC = () => {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
-
   const dayOptions = [
     { label: "3 дня", value: 3 },
     { label: "7 дней", value: 7 },
@@ -762,6 +857,8 @@ const HomePage: React.FC = () => {
     { label: "14 дней", value: 14 },
     { label: "21 день", value: 21 },
   ];
+
+  let lastRenderedMobileYear: number | null = null;
 
   return (
     <>
@@ -851,13 +948,18 @@ const HomePage: React.FC = () => {
                           />
                         </div>
                       ))}
-                      {!showAllUpcoming && upcomingPayments.length > 10 && (
+                      {upcomingPayments.length > 10 && (
                         <div className="flex-shrink-0 flex items-center justify-center w-68">
                           <button
-                            onClick={() => setShowAllUpcoming(true)}
-                            className="p-4 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors w-full h-full font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
+                            onClick={() => setShowAllUpcoming((prev) => !prev)}
+                            className="p-4 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors w-full h-full font-bold text-gray-700 dark:text-gray-200 cursor-pointer flex items-center justify-center gap-2"
                           >
-                            Показать все
+                            {showAllUpcoming ? "Свернуть" : "Показать больше"}
+                            {showAllUpcoming ? (
+                              <ChevronUpIcon className="w-5 h-5" />
+                            ) : (
+                              <ChevronDownIcon className="w-5 h-5" />
+                            )}
                           </button>
                         </div>
                       )}
@@ -871,35 +973,61 @@ const HomePage: React.FC = () => {
                   onClick={handleMobileListClick}
                   className="block md:hidden space-y-2"
                 >
-                  {(showAllUpcoming
-                    ? upcomingPayments
-                    : upcomingPayments.slice(0, 5)
-                  ).map((payment) => {
-                    const isSelected = selectedMobilePaymentId === payment.id;
-                    const cardStateClasses = [
-                      "transition-all duration-200",
-                      isSelected
-                        ? "border-gray-400 shadow-md relative z-50"
-                        : "",
-                    ]
-                      .filter((cls) => cls)
-                      .join(" ");
+                  {groupedMobilePayments.map(({ key, label, year, payments }) => {
+                    const shouldRenderYearHeader =
+                      hasMultipleYears &&
+                      year !== null &&
+                      year !== lastRenderedMobileYear;
+
+                    if (shouldRenderYearHeader) {
+                      lastRenderedMobileYear = year;
+                    }
+
                     return (
-                      <PaymentListCard
-                        key={payment.id}
-                        payment={payment}
-                        context="home"
-                        onDownloadFile={handleDownloadFile}
-                        className={cardStateClasses}
-                      />
+                      <div key={key} className="space-y-2">
+                        {shouldRenderYearHeader && (
+                          <div className="pt-4 text-xs font-semibold uppercase text-gray-400 dark:text-gray-500">
+                            {year}
+                          </div>
+                        )}
+                        <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                          {label}
+                        </div>
+                        {payments.map((payment) => {
+                          const isSelected = selectedMobilePaymentId === payment.id;
+                          const cardStateClasses = [
+                            "transition-all duration-200",
+                            isSelected
+                              ? "border-gray-400 shadow-md relative z-50"
+                              : "",
+                          ]
+                            .filter((cls) => cls)
+                            .join(" ");
+                          return (
+                            <PaymentListCard
+                              key={payment.id}
+                              payment={payment}
+                              context="home"
+                              onDownloadFile={handleDownloadFile}
+                              className={cardStateClasses}
+                              hideDate
+                            />
+                          );
+                        })}
+                      </div>
                     );
                   })}
-                  {!showAllUpcoming && upcomingPayments.length > 5 && (
+                  {upcomingPayments.length > 5 && (
                     <button
-                      onClick={() => setShowAllUpcoming(true)}
-                      className="w-full mt-1 p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-gray-700 dark:text-gray-200 cursor-pointer"
+                      onClick={() => setShowAllUpcoming((prev) => !prev)}
+                      className="w-full mt-1 p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-gray-700 dark:text-gray-200 cursor-pointer flex items-center justify-center gap-2"
                     >
-                      Показать все
+                      {showAllUpcoming ? "Свернуть" : "Показать больше"}
+                      {showAllUpcoming ? (
+                        <ChevronUpIcon className="w-5 h-5" />
+                      ) : (
+                        <ChevronDownIcon className="w-5 h-5" />
+                      )}
                     </button>
                   )}
                 </div>

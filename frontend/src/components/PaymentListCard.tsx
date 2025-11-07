@@ -20,6 +20,7 @@ export interface PaymentListCardProps {
   context?: PaymentListCardContext;
   onDownloadFile?: (id: string, fileName: string) => void;
   className?: string;
+  hideDate?: boolean;
 }
 
 const isToday = (dateString: string) => {
@@ -37,6 +38,7 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
   context = "payments",
   onDownloadFile,
   className,
+  hideDate = false,
 }) => {
   const amount = new Intl.NumberFormat("ru-RU", {
     minimumFractionDigits: 2,
@@ -111,7 +113,7 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
 
       <div className="flex items-center justify-between gap-2 flex-wrap text-sm text-gray-600 dark:text-gray-400">
         <div className="flex items-center text-xs gap-2 flex-wrap">
-          <p>{displayDate}</p>
+          {!hideDate && <p>{displayDate}</p>}
           {showRecurring && payment.series?.recurrenceRule && (
             <span className="inline-flex items-center">
               <ArrowPathIcon className="h-6 w-3.5 mr-1" />

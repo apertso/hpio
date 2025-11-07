@@ -6,9 +6,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
+import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import app.tauri.plugin.JSObject
 import java.io.File
 import java.io.FileWriter
 import java.io.PrintWriter
@@ -20,6 +20,8 @@ class MainActivity : TauriActivity() {
   companion object {
     private const val TAG = "MainActivity"
   }
+
+  private var webView: WebView? = null
 
   private val notificationReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -36,6 +38,11 @@ class MainActivity : TauriActivity() {
     super.onCreate(savedInstanceState)
     logAppLifecycle("APP_START")
     registerNotificationReceiver()
+  }
+
+  override fun onWebViewCreate(webView: WebView) {
+    super.onWebViewCreate(webView)
+    this.webView = webView
   }
 
   override fun onNewIntent(intent: Intent) {
@@ -84,15 +91,10 @@ class MainActivity : TauriActivity() {
   }
 
   private fun emitNotificationEvent() {
-    try {
-      val data = JSObject()
-      data.put("timestamp", System.currentTimeMillis())
-
-      // Отправляем событие Tauri в JavaScript
-      getAppInstance().trigger("payment-notification-received", data)
-      Log.d(TAG, "Emitted payment-notification-received event")
-    } catch (e: Exception) {
-      Log.e(TAG, "Error emitting notification event", e)
+    val timestamp = System.currentTimeMillis()
+    webView?.post {
+      val script = "window.__TAURI_INTERNALS__?.event?.emit('payment-notification-received', {timestamp: $timestamp})"
+      webView?.evaluateJavascript(script, null)
     }
   }
 

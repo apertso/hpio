@@ -743,10 +743,10 @@ function App() {
         {mobileAddAction && (
           <button
             onClick={mobileAddAction}
-            className="md:hidden p-2 rounded-full bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
+            className="md:hidden p-2 rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none"
             aria-label="Добавить"
           >
-            <PlusIcon className="h-5 w-5" />
+            <PlusIcon className="h-6 w-6" />
           </button>
         )}
       </div>

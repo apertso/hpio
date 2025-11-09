@@ -1,0 +1,13 @@
+{
+  "project": {
+    "instructions": [
+      "Always follow the rules described in CODING_GUIDELINES.md.",
+      "Do not change existing code formatting.",
+      "Only add comments when absolutely necessary.",
+      "Do not modify existing comments if already correct.",
+      "Avoid abstract instructions — prefer direct edits.",
+      "Do not create extra docs/tests/etc. unless asked; briefly recommend if needed.",
+      "Keep responses short."
+    ]
+  }
+}

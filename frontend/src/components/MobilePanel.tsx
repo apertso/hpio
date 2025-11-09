@@ -7,6 +7,7 @@ interface MobilePanelProps {
   children: React.ReactNode;
   showCloseButton?: boolean;
   shouldClose?: boolean;
+  enableBackdropClick?: boolean;
 }
 
 const MobilePanel: React.FC<MobilePanelProps> = ({
@@ -16,6 +17,7 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
   children,
   showCloseButton = true,
   shouldClose = false,
+  enableBackdropClick = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -48,7 +50,8 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
       <div
         className={`fixed inset-0 z-40 transition-opacity duration-300 ${
           isVisible ? "bg-black/40" : "bg-black/0"
-        } pointer-events-none`}
+        } ${enableBackdropClick ? "" : "pointer-events-none"}`}
+        onClick={enableBackdropClick ? handleClose : undefined}
         aria-hidden="true"
       />
 
@@ -58,6 +61,7 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
         className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out safe-area-bottom ${
           isVisible ? "translate-y-0" : "translate-y-full"
         }`}
+        onClick={(e) => e.stopPropagation()}
       >
         {title && (
           <div

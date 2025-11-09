@@ -30,7 +30,7 @@ const CategoryEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
   const isEditMode = !!id;
-  const metadata = getPageMetadata("categories"); // Using categories metadata for edit pages
+  const metadata = getPageMetadata("categories"); // Используем метаданные категорий для страниц редактирования
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
@@ -68,7 +68,7 @@ const CategoryEditPage: React.FC = () => {
     }
   }, [id, isEditMode, setValue, reset]);
 
-  // Set page title for mobile header
+  // Устанавливаем заголовок страницы для мобильного заголовка
   useEffect(() => {
     const headerText = isEditMode
       ? "Редактировать категорию"
@@ -116,7 +116,7 @@ const CategoryEditPage: React.FC = () => {
           </h2>
         </div>
 
-        <FormBlock>
+        <FormBlock className="md:bg-white md:dark:bg-gray-900 md:p-6 md:rounded-lg md:shadow-md">
           {isLoading && isEditMode ? (
             <div className="flex justify-center items-center h-40">
               <Spinner />

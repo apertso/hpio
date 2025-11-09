@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import ReactDOM from "react-dom";
 import {
-  BellAlertIcon,
   ShieldCheckIcon,
   DevicePhoneMobileIcon,
   BellIcon,
@@ -91,7 +90,7 @@ const NotificationOnboardingModal: React.FC<
     <>
       <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
-          <BellAlertIcon className="w-10 h-10 text-white" />
+          <SparklesIcon className="w-10 h-10 text-white" />
         </div>
         <h2 className="text-2xl font-bold text-white mb-2">
           Автоматизация платежей

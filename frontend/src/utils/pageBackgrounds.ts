@@ -8,8 +8,11 @@ import { isTauriMobile } from "./platform";
  * @returns строка с классами Tailwind для фона страницы
  */
 export function getPageBackgroundClasses(pathname: string): string {
-  // Для мобильной лендинг-страницы применяем dark:bg-gray-900
-  if (pathname === "/" && isTauriMobile()) {
+  // Для мобильной лендинг-страницы и страниц terms/privacy применяем dark:bg-gray-900
+  if (
+    isTauriMobile() &&
+    (pathname === "/" || pathname === "/terms" || pathname === "/privacy")
+  ) {
     return "dark:bg-gray-900";
   }
 

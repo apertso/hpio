@@ -1,6 +1,7 @@
 import React from "react";
 import { useDropdown } from "../hooks/useDropdown";
 import DropdownOverlay from "./DropdownOverlay";
+import { ChevronDownIcon } from "./ChevronDownIcon";
 
 export interface YearSelectorDropdownProps {
   years: number[];
@@ -36,15 +37,7 @@ export const YearSelectorDropdown: React.FC<YearSelectorDropdownProps> = ({
             isOpen ? "rotate-180" : ""
           }`}
         >
-          <svg width="16" height="16" fill="none" viewBox="0 0 20 20">
-            <path
-              d="M6 8l4 4 4-4"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <ChevronDownIcon />
         </span>
       </button>
 

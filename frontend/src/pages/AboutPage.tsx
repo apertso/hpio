@@ -212,7 +212,7 @@ const AboutPage: React.FC = () => {
                     className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:opacity-80 transition-opacity"
                   >
                     <div className="flex-shrink-0">
-                      <UserIcon className="w-6 h-6 text-blue-600" />
+                      <UserIcon className="w-6 h-6 text-gray-900 dark:text-white" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white">

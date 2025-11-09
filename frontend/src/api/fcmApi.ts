@@ -1,5 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
 import axiosInstance from "./axiosInstance";
+import { isTauri } from "../utils/platform";
 
 export interface FcmTokenResponse {
   success: boolean;
@@ -10,7 +10,13 @@ export interface FcmTokenResponse {
  * Gets the FCM token from the device (Android only)
  */
 export async function getFcmToken(): Promise<string | null> {
+  // Only attempt to call Tauri APIs if actually running in Tauri
+  if (!isTauri()) {
+    return null;
+  }
+
   try {
+    const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<string | null>("get_fcm_token");
   } catch (error) {
     console.error("Failed to get FCM token:", error);
@@ -37,7 +43,13 @@ export async function registerFcmToken(
  * Gets pending navigation action from notification click
  */
 export async function getPendingNavigation(): Promise<string | null> {
+  // Only attempt to call Tauri APIs if actually running in Tauri
+  if (!isTauri()) {
+    return null;
+  }
+
   try {
+    const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<string | null>("get_pending_navigation");
   } catch (error) {
     console.error("Failed to get pending navigation:", error);
@@ -49,7 +61,13 @@ export async function getPendingNavigation(): Promise<string | null> {
  * Clears pending navigation action
  */
 export async function clearPendingNavigation(): Promise<void> {
+  // Only attempt to call Tauri APIs if actually running in Tauri
+  if (!isTauri()) {
+    return;
+  }
+
   try {
+    const { invoke } = await import("@tauri-apps/api/core");
     await invoke("clear_pending_navigation");
   } catch (error) {
     console.error("Failed to clear pending navigation:", error);

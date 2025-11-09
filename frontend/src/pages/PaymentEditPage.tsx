@@ -19,15 +19,15 @@ const PaymentEditPage: React.FC = () => {
   const { setPageTitle } = usePageTitle();
   const [searchParams] = useSearchParams();
   const isEditMode = !!id;
-  const metadata = getPageMetadata("payments"); // Using payments metadata for edit pages
+  const metadata = getPageMetadata("payments"); // Используем метаданные платежей для страниц редактирования
   const markAsCompletedInitial = searchParams.get("markAsCompleted") === "true";
 
-  // New state
+  // Новое состояние
   const [initialData, setInitialData] = useState<PaymentData | null>(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [error, setError] = useState<string | null>(null);
   const [editScope, setEditScope] = useState<"single" | "series">("single");
-  const [isRepeatEnabled, setIsRepeatEnabled] = useState<boolean>(true); // Track if repeat is currently enabled
+  const [isRepeatEnabled, setIsRepeatEnabled] = useState<boolean>(true); // Отслеживаем, включен ли повтор в данный момент
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -36,7 +36,7 @@ const PaymentEditPage: React.FC = () => {
         .get<PaymentData>(`/payments/${id}`)
         .then((res) => {
           setInitialData(res.data);
-          // Initialize repeat enabled state based on whether payment has a series
+          // Инициализируем состояние повторения на основе того, имеет ли платеж серию
           setIsRepeatEnabled(!!res.data.seriesId);
         })
         .catch((err) => {
@@ -49,7 +49,7 @@ const PaymentEditPage: React.FC = () => {
     }
   }, [id, isEditMode]);
 
-  // Set page title for mobile header
+  // Устанавливаем заголовок страницы для мобильного заголовка
   useEffect(() => {
     const headerText = isEditMode
       ? editScope === "single"
@@ -69,7 +69,7 @@ const PaymentEditPage: React.FC = () => {
 
   const isSeriesPayment = !!initialData?.seriesId;
 
-  // Only show edit scope header when:
+  // Показывать заголовок области редактирования только когда:
   // 1. In edit mode AND
   // 2. Payment has a series AND
   // 3. Repeat is currently enabled (user hasn't toggled it off)
@@ -119,7 +119,7 @@ const PaymentEditPage: React.FC = () => {
           </h2>
         </div>
 
-        <FormBlock>
+        <FormBlock className="md:bg-white md:dark:bg-gray-900 md:p-6 md:rounded-lg md:shadow-md">
           {isLoading ? (
             <div className="flex justify-center items-center h-40">
               <Spinner />

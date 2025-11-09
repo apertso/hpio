@@ -1,6 +1,6 @@
 // src/pages/MobileLandingPage.tsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Spinner from "../components/Spinner";
 import FormBlock from "../components/FormBlock";
@@ -14,7 +14,9 @@ import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import axiosInstance from "../api/axiosInstance";
 type TabType = "login" | "register" | "password-reset";
 const MobileLandingPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>("login");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get("tab") as TabType) || "login";
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const { login, register, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -56,21 +58,34 @@ const MobileLandingPage: React.FC = () => {
           </div>
         </div>
       )}
-      {/* Main Form */}
-      <FormBlock className="flex flex-col flex-1 px-8 pb-24">
+      {/* Форма входа/регистрации/сброса пароля */}
+      <FormBlock className="flex flex-col flex-1 px-8 pb-24 md:bg-white md:dark:bg-gray-900 md:p-6 md:rounded-lg md:shadow-md">
         {activeTab === "login" ? (
           <LoginForm
             onLogin={login}
             onShowToast={showToast}
-            onSwitchToRegister={() => setActiveTab("register")}
-            onSwitchToPasswordReset={() => setActiveTab("password-reset")}
+            onSwitchToRegister={() => {
+              setActiveTab("register");
+              setSearchParams({ tab: "register" });
+            }}
+            onSwitchToPasswordReset={() => {
+              setActiveTab("password-reset");
+              setSearchParams({ tab: "password-reset" });
+              // Очищаем данные формы регистрации при переключении на сброс пароля
+              sessionStorage.removeItem("register_form_data");
+            }}
           />
         ) : (
           <>
             {/* Back Button */}
-            <div className="flex justify-start mb-4">
+            <div className="flex justify-start my-4">
               <button
-                onClick={() => setActiveTab("login")}
+                onClick={() => {
+                  setActiveTab("login");
+                  setSearchParams({});
+                  // Очищаем данные формы регистрации при возврате к входу
+                  sessionStorage.removeItem("register_form_data");
+                }}
                 className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium transition-colors"
               >
                 <ArrowLeftIcon className="w-5 h-5 mr-2" />

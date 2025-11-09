@@ -15,6 +15,9 @@ import { getPageMetadata } from "../utils/pageMetadata";
 import ConfirmModal from "../components/ConfirmModal";
 import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 import getErrorMessage from "../utils/getErrorMessage";
+import PaymentFilterTabs, {
+  PaymentTabType,
+} from "../components/PaymentFilterTabs";
 import {
   PencilIcon as PencilSolidIcon,
   CheckCircleIcon as CheckSolidIcon,
@@ -24,7 +27,6 @@ import {
 import MobilePanel from "../components/MobilePanel";
 import { usePageTitle } from "../context/PageTitleContext";
 import ArchiveTable from "../components/ArchiveTable";
-type TabType = "all" | "active" | "archive" | "trash";
 
 type MobileActionsOverlayProps = {
   payment: PaymentData | null;
@@ -35,7 +37,7 @@ type MobileActionsOverlayProps = {
   onDelete: (payment: PaymentData) => void;
   onRestore: (payment: PaymentData) => void;
   onPermanentDelete: (id: string) => void;
-  activeTab: TabType;
+  activeTab: PaymentTabType;
 };
 
 const MobileActionsOverlay = ({
@@ -130,7 +132,7 @@ const PaymentsPage: React.FC = () => {
   const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("payments");
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get("tab") as TabType) || "active";
+  const activeTab = (searchParams.get("tab") as PaymentTabType) || "active";
 
   useEffect(() => {
     setPageTitle("Платежи");
@@ -577,7 +579,7 @@ const PaymentsPage: React.FC = () => {
     }
   };
 
-  const handleTabChange = (tab: TabType) => {
+  const handleTabChange = (tab: PaymentTabType) => {
     setSearchParams({ tab });
   };
 
@@ -616,48 +618,10 @@ const PaymentsPage: React.FC = () => {
           )}
         </div>
 
-        <div className="mb-4 flex gap-3 overflow-x-auto pb-2">
-          <button
-            onClick={() => handleTabChange("all")}
-            className={`h-10 px-4 rounded-lg text-sm font-medium transition duration-150 whitespace-nowrap flex items-center justify-center cursor-pointer ${
-              activeTab === "all"
-                ? "bg-indigo-500 text-white shadow-md hover:bg-[#4036e2] hover:shadow-lg"
-                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md"
-            }`}
-          >
-            Все
-          </button>
-          <button
-            onClick={() => handleTabChange("active")}
-            className={`h-10 px-4 rounded-lg text-sm font-medium transition duration-150 whitespace-nowrap flex items-center justify-center cursor-pointer ${
-              activeTab === "active"
-                ? "bg-indigo-500 text-white shadow-md hover:bg-[#4036e2] hover:shadow-lg"
-                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md"
-            }`}
-          >
-            Активные
-          </button>
-          <button
-            onClick={() => handleTabChange("archive")}
-            className={`h-10 px-4 rounded-lg text-sm font-medium transition duration-150 whitespace-nowrap flex items-center justify-center cursor-pointer ${
-              activeTab === "archive"
-                ? "bg-indigo-500 text-white shadow-md hover:bg-[#4036e2] hover:shadow-lg"
-                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md"
-            }`}
-          >
-            Архив
-          </button>
-          <button
-            onClick={() => handleTabChange("trash")}
-            className={`h-10 px-4 rounded-lg text-sm font-medium transition duration-150 whitespace-nowrap flex items-center justify-center cursor-pointer ${
-              activeTab === "trash"
-                ? "bg-indigo-500 text-white shadow-md hover:bg-[#4036e2] hover:shadow-lg"
-                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:shadow-md"
-            }`}
-          >
-            Корзина
-          </button>
-        </div>
+        <PaymentFilterTabs
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
 
         {error && (
           <div
@@ -697,7 +661,7 @@ const PaymentsPage: React.FC = () => {
               <div
                 ref={mobileListRef}
                 onClick={handleMobileListClick}
-                className="block md:hidden space-y-3 p-2"
+                className="block md:hidden space-y-2"
               >
                 {displayedPayments.map((payment) => {
                   const isSelected = selectedMobilePaymentId === payment.id;

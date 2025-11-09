@@ -211,8 +211,8 @@ const Toast: React.FC<ToastProps> = ({
   const getOverlayColor = (type: ToastType): string => {
     const colors: Record<ToastType, string> = {
       success: "#7CB342", // Мятный зелёный (inspir. PANTONE 361 C)
-      error: "#B71C1C",   // Тёмно-красный для контраста (inspir. PANTONE 18-1664)
-      info: "#64B5F6",    // Небесно-голубой (inspir. PANTONE 286 C)
+      error: "#B71C1C", // Тёмно-красный для контраста (inspir. PANTONE 18-1664)
+      info: "#64B5F6", // Небесно-голубой (inspir. PANTONE 286 C)
     };
     return colors[type];
   };
@@ -226,9 +226,7 @@ const Toast: React.FC<ToastProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={`relative flex items-center w-full max-w-sm p-4 text-white rounded-lg shadow-lg touch-pan-y select-none overflow-hidden ${
-        colors[type]
-      }`}
+      className={`relative flex items-center w-full max-w-sm p-4 text-white rounded-lg shadow-lg touch-pan-y select-none overflow-hidden ${colors[type]}`}
       style={{
         transform: `translateX(${translateX}px) scale(${scale})`,
         opacity: isSwipingAway ? 0 : isVisible ? 1 : 0,

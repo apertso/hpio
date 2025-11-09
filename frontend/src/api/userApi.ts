@@ -9,7 +9,8 @@ interface UpdateProfileData {
   email?: string;
   password?: string;
   currentPassword?: string;
-  notificationMethod?: "email" | "push" | "none";
+  emailNotifications?: boolean;
+  pushNotifications?: boolean;
   notificationTime?: string;
   timezone?: string;
 }

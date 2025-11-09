@@ -186,7 +186,7 @@ const Navigation: React.FC = () => {
                       )}
                     </div>
                   )}
-                  <div className="py-2 px-4">
+                  <div className="py-2 px-4 border-t border-gray-200 dark:border-slate-700">
                     <Link
                       to="/settings"
                       onClick={() => setIsUserPopoverOpen(false)}
@@ -237,7 +237,7 @@ function App() {
   const [searchParams] = useSearchParams();
   const { triggerReset } = useReset();
   const { showToast } = useToast();
-  const { pageTitle } = usePageTitle();
+  const { pageTitle, headerAction } = usePageTitle();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
   const mobileNavItems = [
     { to: "/dashboard", label: "Главная" },
@@ -274,7 +274,7 @@ function App() {
     }
   });
 
-  // Set safe area inset for mobile development override
+  // Set safe area inset for mobile development override and initialize mobile detection
   useEffect(() => {
     const override = localStorage.getItem("dev_mobile_override");
     if (override === "on") {
@@ -666,7 +666,7 @@ function App() {
     }
   }
 
-  const headerClassName = `flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-4 sm:px-10 py-3 z-20`;
+  const headerClassName = `flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-1 py-3 sm:px-4 md:px-10 z-20`;
 
   // Check if current page is an edit/add page that should show back button in header
   const isEditPage =
@@ -690,9 +690,12 @@ function App() {
               <ArrowLeftIcon className="h-6 w-6" />
             </button>
             {pageTitle ? (
-              <h1 className="md:hidden text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
-                {pageTitle}
-              </h1>
+              <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
+                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate flex-1">
+                  {pageTitle}
+                </h1>
+                {headerAction}
+              </div>
             ) : null}
           </>
         ) : isAuthenticated && !isEditPage ? (
@@ -706,19 +709,26 @@ function App() {
               <Bars3Icon className="h-6 w-6" />
             </button>
             {pageTitle ? (
-              <h1 className="md:hidden text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
-                {pageTitle}
-              </h1>
+              <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
+                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate flex-1">
+                  {pageTitle}
+                </h1>
+                {headerAction}
+              </div>
             ) : null}
           </>
         ) : null}
         <a
           href={isAuthenticated ? "/dashboard" : "/"}
           onClick={handleLogoClick}
-          className="hidden md:flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
+          className={
+            !isAuthenticated && !isTauriMobile()
+              ? "flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
+              : "hidden md:flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
+          }
           style={{ textDecoration: "none" }}
         >
-          <div className="size-4 text-black dark:text-white">
+          <div className="size-4 ml-2 md:ml-0 text-black dark:text-white">
             <svg
               viewBox="0 0 48 48"
               fill="none"
@@ -752,9 +762,16 @@ function App() {
       </div>
     </header>
   );
+
+  // Check if current page is terms or privacy page
+  const isTermsOrPrivacyPage =
+    location.pathname === "/terms" || location.pathname === "/privacy";
+
   const mainClassName =
     "flex flex-col flex-1 justify-center overflow-auto" +
-    (isTauriMobile() && location.pathname === "/" ? "" : " px-4 sm:px-10 py-5");
+    (isTauriMobile() && (location.pathname === "/" || isTermsOrPrivacyPage)
+      ? ""
+      : " p-3 sm:px-4 sm:py-5 md:px-10");
 
   const mainContent = (
     <main className={mainClassName}>
@@ -912,8 +929,10 @@ function App() {
     </footer>
   );
 
-  // Hide header on mobile landing page
-  const showHeader = !(isTauriMobile() && location.pathname === "/");
+  // Hide header on mobile landing page and on terms/privacy pages in Tauri mobile app
+  const showHeader =
+    !(isTauriMobile() && location.pathname === "/") &&
+    !(isTauriMobile() && isTermsOrPrivacyPage);
 
   if (isAuthenticated) {
     // --- Лэйаут для авторизованного пользователя (фиксированный хедер) ---
@@ -949,6 +968,7 @@ function App() {
         <MobileNavigationDrawer
           isOpen={isMobileDrawerOpen}
           onClose={() => setIsMobileDrawerOpen(false)}
+          onOpen={() => setIsMobileDrawerOpen(true)}
           user={user}
           token={token}
           navItems={mobileNavItems}

@@ -17,9 +17,35 @@ type NavItem = {
   label: string;
 };
 
+type DragMode = "opening" | "closing";
+
+interface DragState {
+  mode: DragMode;
+  startX: number;
+  startY: number;
+  startProgress: number;
+  lastProgress: number;
+  locked: boolean;
+}
+
+const EDGE_DRAG_THRESHOLD = 24;
+const DRAG_ACTIVATION_DISTANCE = 6;
+const DEFAULT_DRAWER_WIDTH = 288;
+
+const clamp = (value: number, min: number, max: number) => {
+  if (value < min) {
+    return min;
+  }
+  if (value > max) {
+    return max;
+  }
+  return value;
+};
+
 interface MobileNavigationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpen: () => void;
   user: User | null;
   token: string | null;
   navItems: NavItem[];
@@ -30,6 +56,7 @@ interface MobileNavigationDrawerProps {
 const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   isOpen,
   onClose,
+  onOpen,
   user,
   token,
   navItems,
@@ -39,24 +66,20 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const drawerRef = useRef<HTMLElement | null>(null);
-  const pointerIdRef = useRef<number | null>(null);
-  const startXRef = useRef(0);
-  const startYRef = useRef(0);
-  const trackingRef = useRef(false);
-  const isDraggingRef = useRef(false);
-  const drawerWidthRef = useRef(0);
-  const dragOffsetRef = useRef(0);
   const { avatarUrl } = useAvatarCache(user?.photoPath, token);
 
-  const updateDragOffset = useCallback((value: number) => {
-    dragOffsetRef.current = value;
-    setDragOffset(value);
-  }, []);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+  const drawerWidthRef = useRef(0);
+  const dragStateRef = useRef<DragState | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragProgress, setDragProgress] = useState<number | null>(null);
+  const isOpenRef = useRef(isOpen);
 
-  // Icon mapping for navigation items
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  // Соответствие иконок элементам навигации
   const getNavIcon = (path: string) => {
     switch (path) {
       case "/dashboard":
@@ -72,31 +95,188 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
     }
   };
 
+  const updateDrawerWidth = useCallback(() => {
+    if (drawerRef.current) {
+      drawerWidthRef.current = drawerRef.current.getBoundingClientRect().width;
+    }
+  }, []);
+
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || isDragging) {
+      setShouldRender(true);
+      // Небольшая задержка перед запуском анимации
+      const timer = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(timer);
+    }
+
+    setIsVisible(false);
+    // Ожидаем завершения анимации перед размонтированием
+    const timer = setTimeout(() => setShouldRender(false), 300);
+    return () => clearTimeout(timer);
+  }, [isOpen, isDragging]);
+  useEffect(() => {
+    if (typeof window === "undefined") {
       return;
     }
 
-    trackingRef.current = false;
-    isDraggingRef.current = false;
-    pointerIdRef.current = null;
-    setIsDragging(false);
-    updateDragOffset(0);
-  }, [isOpen, updateDragOffset]);
+    updateDrawerWidth();
+    window.addEventListener("resize", updateDrawerWidth);
+
+    return () => {
+      window.removeEventListener("resize", updateDrawerWidth);
+    };
+  }, [updateDrawerWidth]);
 
   useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-      // Small delay to trigger animation
-      const timer = setTimeout(() => setIsVisible(true), 10);
-      return () => clearTimeout(timer);
-    } else {
-      setIsVisible(false);
-      // Wait for animation to complete before unmounting
-      const timer = setTimeout(() => setShouldRender(false), 300);
-      return () => clearTimeout(timer);
+    if (shouldRender) {
+      updateDrawerWidth();
     }
-  }, [isOpen]);
+  }, [shouldRender, updateDrawerWidth]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("ontouchstart" in window)) {
+      return;
+    }
+
+    let rafId: number | null = null;
+
+    const startDrag = (mode: DragMode, touch: Touch) => {
+      if (dragStateRef.current) {
+        return;
+      }
+
+      const startProgress = mode === "opening" ? 0 : 1;
+
+      dragStateRef.current = {
+        mode,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        startProgress,
+        lastProgress: startProgress,
+        locked: false,
+      };
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        return;
+      }
+
+      const touch = event.touches[0];
+
+      if (!isOpenRef.current && touch.clientX <= EDGE_DRAG_THRESHOLD) {
+        startDrag("opening", touch);
+        return;
+      }
+
+      if (isOpenRef.current) {
+        startDrag("closing", touch);
+      }
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const state = dragStateRef.current;
+      if (!state) {
+        return;
+      }
+
+      const touch = event.touches[0];
+      if (!touch) {
+        return;
+      }
+
+      const deltaX = touch.clientX - state.startX;
+      const deltaY = touch.clientY - state.startY;
+      const absDeltaX = Math.abs(deltaX);
+      const absDeltaY = Math.abs(deltaY);
+
+      if (!state.locked) {
+        if (absDeltaY > absDeltaX && absDeltaY > DRAG_ACTIVATION_DISTANCE) {
+          dragStateRef.current = null;
+          return;
+        }
+
+        if (absDeltaX < DRAG_ACTIVATION_DISTANCE) {
+          return;
+        }
+
+        state.locked = true;
+
+        if (state.mode === "opening") {
+          setShouldRender(true);
+          setIsVisible(true);
+        }
+
+        setIsDragging(true);
+      }
+
+      const width = drawerWidthRef.current || DEFAULT_DRAWER_WIDTH;
+      const nextProgress = clamp(state.startProgress + deltaX / width, 0, 1);
+
+      state.lastProgress = nextProgress;
+      setDragProgress(nextProgress);
+      event.preventDefault();
+    };
+
+    const handleTouchEnd = () => {
+      const state = dragStateRef.current;
+      if (!state) {
+        return;
+      }
+
+      dragStateRef.current = null;
+
+      if (!state.locked) {
+        return;
+      }
+
+      const finalProgress = state.lastProgress;
+      setIsDragging(false);
+      setDragProgress(finalProgress);
+
+      if (finalProgress >= 0.5) {
+        onOpen();
+      } else {
+        onClose();
+      }
+
+      rafId = window.requestAnimationFrame(() => {
+        setDragProgress(null);
+      });
+    };
+
+    const handleTouchCancel = () => {
+      dragStateRef.current = null;
+      setIsDragging(false);
+      setDragProgress(null);
+    };
+
+    const touchMoveOptions: AddEventListenerOptions = { passive: false };
+
+    window.addEventListener("touchstart", handleTouchStart);
+    window.addEventListener("touchmove", handleTouchMove, touchMoveOptions);
+    window.addEventListener("touchend", handleTouchEnd);
+    window.addEventListener("touchcancel", handleTouchCancel);
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener(
+        "touchmove",
+        handleTouchMove,
+        touchMoveOptions
+      );
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchCancel);
+
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+
+      dragStateRef.current = null;
+      setIsDragging(false);
+      setDragProgress(null);
+    };
+  }, [onClose, onOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -116,151 +296,51 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
     };
   }, [isOpen, onClose]);
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLElement>) => {
-    if (event.pointerType === "mouse" && event.button !== 0) {
-      return;
-    }
-
-    pointerIdRef.current = event.pointerId;
-    startXRef.current = event.clientX;
-    startYRef.current = event.clientY;
-    trackingRef.current = true;
-    isDraggingRef.current = false;
-    drawerWidthRef.current = drawerRef.current?.offsetWidth ?? 0;
-    setIsDragging(false);
-    updateDragOffset(0);
-  };
-
-  const handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
-    if (!trackingRef.current || pointerIdRef.current !== event.pointerId) {
-      return;
-    }
-
-    const deltaX = event.clientX - startXRef.current;
-    const deltaY = event.clientY - startYRef.current;
-
-    if (!isDraggingRef.current) {
-      if (Math.abs(deltaX) <= Math.abs(deltaY) || Math.abs(deltaX) < 10) {
-        return;
-      }
-
-      isDraggingRef.current = true;
-      setIsDragging(true);
-
-      const drawer = drawerRef.current;
-      if (drawer?.setPointerCapture) {
-        drawer.setPointerCapture(event.pointerId);
-      }
-    }
-
-    if (!isDraggingRef.current) {
-      return;
-    }
-
-    event.preventDefault();
-    const width = drawerWidthRef.current || drawerRef.current?.offsetWidth || 0;
-    const clamped = Math.max(Math.min(deltaX, 0), -width);
-    updateDragOffset(clamped);
-  };
-
-  const releasePointerCapture = (pointerId: number) => {
-    const drawer = drawerRef.current;
-    if (drawer?.hasPointerCapture?.(pointerId)) {
-      drawer.releasePointerCapture(pointerId);
-    }
-  };
-
-  const handlePointerEnd = (
-    event: React.PointerEvent<HTMLElement>,
-    shouldCancel = false
-  ) => {
-    if (!trackingRef.current || pointerIdRef.current !== event.pointerId) {
-      return;
-    }
-
-    const width = drawerWidthRef.current || drawerRef.current?.offsetWidth || 0;
-    const threshold = width > 0 ? width * 0.35 : 120;
-    const shouldClose =
-      !shouldCancel &&
-      isDraggingRef.current &&
-      dragOffsetRef.current <= -threshold;
-
-    if (isDraggingRef.current && !shouldCancel) {
-      event.preventDefault();
-    }
-
-    releasePointerCapture(event.pointerId);
-
-    trackingRef.current = false;
-    isDraggingRef.current = false;
-    pointerIdRef.current = null;
-    drawerWidthRef.current = 0;
-    startXRef.current = 0;
-    startYRef.current = 0;
-    setIsDragging(false);
-
-    if (shouldClose && width > 0) {
-      updateDragOffset(-width);
-      onClose();
-      return;
-    }
-
-    updateDragOffset(0);
-  };
-
-  const handlePointerUp = (event: React.PointerEvent<HTMLElement>) => {
-    handlePointerEnd(event);
-  };
-
-  const handlePointerCancel = (event: React.PointerEvent<HTMLElement>) => {
-    handlePointerEnd(event, true);
-  };
-
-  const drawerStyle: React.CSSProperties = {
-    touchAction: "pan-y",
-    transform:
-      isDragging || dragOffset !== 0
-        ? `translateX(${dragOffset}px)`
-        : undefined,
-    transition: isDragging ? "none" : undefined,
-  };
-
   if (!shouldRender) {
     return null;
   }
 
+  const drawerWidth = drawerWidthRef.current || DEFAULT_DRAWER_WIDTH;
+  const drawerStyle: React.CSSProperties | undefined =
+    dragProgress !== null
+      ? {
+          transform: `translateX(${(dragProgress - 1) * drawerWidth}px)`,
+          transitionDuration: "0ms",
+        }
+      : undefined;
+
+  const overlayStyle: React.CSSProperties | undefined =
+    dragProgress !== null ? { opacity: dragProgress } : undefined;
+
   return (
     <div className="md:hidden">
-      {/* Backdrop with fade animation */}
+      {/* Фон с анимацией затухания */}
       <div
         className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${
           isVisible ? "opacity-100" : "opacity-0"
         }`}
         onClick={onClose}
         aria-hidden="true"
+        style={overlayStyle}
       />
 
-      {/* Drawer with slide animation */}
+      {/* Панель с анимацией выдвижения */}
       <aside
-        ref={drawerRef}
-        style={drawerStyle}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
         className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col pt-[var(--safe-area-inset-top)] pb-[var(--safe-area-inset-bottom)] ${
           isVisible ? "translate-x-0" : "-translate-x-full"
         }`}
         role="dialog"
         aria-modal="true"
+        ref={drawerRef}
+        style={drawerStyle}
       >
-        {/* Header with user info */}
+        {/* Заголовок с информацией о пользователе */}
         <button
           onClick={() => {
-            navigate("/settings");
+            navigate("/settings#account");
             onClose();
           }}
-          className="flex items-center w-full px-7 py-4 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          className="flex items-center w-full px-7 py-4 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left cursor-pointer"
         >
           <div className="flex items-center gap-3">
             {avatarUrl ? (
@@ -289,7 +369,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
           </div>
         </button>
 
-        {/* Navigation items */}
+        {/* Элементы навигации */}
         <nav className="flex-1 px-4 py-4 space-y-1">
           {navItems.map((item) => {
             const isActive = currentPath === item.to;
@@ -300,7 +380,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-opacity ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-opacity cursor-pointer ${
                   isActive
                     ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
                     : "text-gray-900 dark:text-gray-100 hover:opacity-80"
@@ -323,7 +403,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
           <Link
             to="/settings"
             onClick={onClose}
-            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-opacity ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-opacity cursor-pointer ${
               currentPath === "/settings"
                 ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
                 : "text-gray-900 dark:text-gray-100 hover:opacity-80"
@@ -340,14 +420,14 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
           </Link>
         </nav>
 
-        {/* Logout button at the bottom */}
+        {/* Кнопка выхода в нижней части */}
         <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-800">
           <button
             onClick={() => {
               onClose();
               onLogout();
             }}
-            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-base font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-base font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
           >
             <ArrowRightOnRectangleIcon className="h-5 w-5" />
             Выйти

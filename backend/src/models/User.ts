@@ -9,7 +9,8 @@ interface UserAttributes {
   isVerified: boolean;
   verificationToken?: string | null;
   verificationTokenExpires?: Date | null;
-  notificationMethod: "email" | "push" | "none";
+  emailNotifications: boolean;
+  pushNotifications: boolean;
   notificationTime: string; // Format HH:mm
   timezone: string;
   fcmToken?: string | null;
@@ -28,7 +29,8 @@ interface UserCreationAttributes
     | "isVerified"
     | "verificationToken"
     | "verificationTokenExpires"
-    | "notificationMethod"
+    | "emailNotifications"
+    | "pushNotifications"
     | "notificationTime"
     | "timezone"
   > {}
@@ -81,10 +83,15 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.DATE,
         allowNull: true,
       },
-      notificationMethod: {
-        type: dataTypes.ENUM("email", "push", "none"),
+      emailNotifications: {
+        type: dataTypes.BOOLEAN,
         allowNull: false,
-        defaultValue: "email",
+        defaultValue: true,
+      },
+      pushNotifications: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
       notificationTime: {
         type: dataTypes.STRING(5), // HH:mm

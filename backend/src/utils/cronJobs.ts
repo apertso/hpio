@@ -106,7 +106,10 @@ const setupCronJobs = () => {
         // Проверка времени будет произведена в коде приложения, так как MS SQL не поддерживает IANA-таймзоны (напр., 'Europe/Moscow').
         const potentialUsers = await db.User.findAll({
           where: {
-            notificationMethod: { [Op.ne]: "none" },
+            [Op.or]: [
+              { emailNotifications: true },
+              { pushNotifications: true },
+            ],
             isVerified: true,
           },
         });
@@ -162,12 +165,18 @@ const setupCronJobs = () => {
             continue;
           }
 
+          const notificationMethods = [];
+          if (user.emailNotifications) notificationMethods.push("email");
+          if (user.pushNotifications) notificationMethods.push("push");
+
           logger.info(
-            `Sending ${paymentsToRemind.length} reminders to ${user.email} via ${user.notificationMethod}`
+            `Sending ${paymentsToRemind.length} reminders to ${
+              user.email
+            } via ${notificationMethods.join(", ")}`
           );
 
           for (const payment of paymentsToRemind) {
-            if (user.notificationMethod === "email") {
+            if (user.emailNotifications) {
               await sendPaymentReminderEmail(
                 user.email,
                 user.name,
@@ -175,7 +184,9 @@ const setupCronJobs = () => {
                 payment.amount,
                 payment.dueDate
               );
-            } else if (user.notificationMethod === "push") {
+            }
+
+            if (user.pushNotifications) {
               const { sendPushNotification } = await import(
                 "../services/fcmService"
               );

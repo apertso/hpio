@@ -1,15 +1,36 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import { isTauriMobile } from "../utils/platform";
 
 const TermsPage: React.FC = () => {
   const metadata = getPageMetadata("terms");
+  const navigate = useNavigate();
 
   return (
     <>
       <PageMeta {...metadata} />
 
-      <section className="w-full max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg mb-10">
+      <section
+        className={`w-full max-w-3xl mx-auto ${
+          isTauriMobile()
+            ? "px-8 pb-8"
+            : "py-8 px-4 sm:px-6 lg:px-8 mb-10 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg"
+        }`}
+      >
+        {isTauriMobile() && (
+          <div className="flex justify-start mt-4 mb-12">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium transition-colors"
+            >
+              <ArrowLeftIcon className="w-5 h-5 mr-2" />
+              Назад
+            </button>
+          </div>
+        )}
         <div className="prose dark:prose-invert max-w-none">
           <h1 className="text-xl md:text-2xl font-bold mb-4">
             Пользовательское соглашение

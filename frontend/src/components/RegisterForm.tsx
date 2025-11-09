@@ -1,11 +1,14 @@
 // src/components/RegisterForm.tsx
-import React from "react";
+import React, { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Input } from "./Input";
 import Checkbox from "./Checkbox";
 import Spinner from "./Spinner";
+
+const REGISTER_FORM_STORAGE_KEY = "register_form_data";
 
 const registerSchema = z
   .object({
@@ -49,11 +52,41 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     delayError: 1000,
   });
 
+  // Загружаем сохраненные данные формы при монтировании компонента
+  useEffect(() => {
+    try {
+      const savedData = sessionStorage.getItem(REGISTER_FORM_STORAGE_KEY);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        // Восстанавливаем данные только если они существуют, чтобы не перезаписывать значения по умолчанию
+        if (parsedData && Object.keys(parsedData).length > 0) {
+          registerForm.reset(parsedData);
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to load saved register form data:", error);
+    }
+  }, [registerForm]);
+
+  // Сохраняем данные формы при каждом изменении
+  useEffect(() => {
+    const subscription = registerForm.watch((data) => {
+      try {
+        sessionStorage.setItem(REGISTER_FORM_STORAGE_KEY, JSON.stringify(data));
+      } catch (error) {
+        console.warn("Failed to save register form data:", error);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [registerForm]);
+
   const handleRegisterSubmit: SubmitHandler<RegisterFormInputs> = async (
     data
   ) => {
     try {
       await onRegister(data.name, data.email, data.password);
+      // Очищаем сохраненные данные формы после успешной регистрации
+      sessionStorage.removeItem(REGISTER_FORM_STORAGE_KEY);
     } catch (err: unknown) {
       let message = "Ошибка регистрации";
       if (
@@ -134,23 +167,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             className="text-sm text-gray-700 dark:text-gray-300"
           >
             Я принимаю{" "}
-            <a
-              href="/terms"
-              className="text-blue-500 hover:text-blue-600"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <Link to="/terms" className="text-blue-500 hover:text-blue-600">
               Условия использования
-            </a>{" "}
+            </Link>{" "}
             и{" "}
-            <a
-              href="/privacy"
-              className="text-blue-500 hover:text-blue-600"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <Link to="/privacy" className="text-blue-500 hover:text-blue-600">
               Политику конфиденциальности
-            </a>
+            </Link>
           </label>
         </div>
 

@@ -5,13 +5,14 @@ import {
   PencilIcon as PencilSolidIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
+import { InformationIcon } from "../components/InformationIcon";
 import { Button } from "../components/Button"; // Import the Button component
 import useApi from "../hooks/useApi"; // Import useApi
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
-import { CategoriesTable } from "../components"; // Import CategoriesTable from the index
+import { CategoriesTable, Tooltip } from "../components"; // Import CategoriesTable and Tooltip from the index
 import { BuiltinIcon } from "../utils/builtinIcons";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -104,12 +105,29 @@ const CategoryListItem: React.FC<{
 );
 const CategoriesPage: React.FC = () => {
   const { showToast } = useToast(); // Import useToast
-  const { setPageTitle } = usePageTitle();
+  const { setPageTitle, setHeaderAction } = usePageTitle();
   const metadata = getPageMetadata("categories");
 
   useEffect(() => {
     setPageTitle("Категории");
   }, [setPageTitle]);
+
+  useEffect(() => {
+    setHeaderAction(
+      <Tooltip
+        content="Категории позволяют навести порядок в ваших расходах: они используются при просмотре платежей, в архиве и в статистике на главной странице."
+        position="bottom"
+      >
+        <button className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
+          <InformationIcon className="h-[16px] w-[16px]" />
+        </button>
+      </Tooltip>
+    );
+
+    return () => {
+      setHeaderAction(null);
+    };
+  }, [setHeaderAction]);
 
   // Use useApi for fetching the categories list
   const {
@@ -256,20 +274,25 @@ const CategoriesPage: React.FC = () => {
 
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center md:mb-6">
-          <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Управление категориями
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Управление категориями
+            </h2>
+            <Tooltip
+              content="Категории позволяют навести порядок в ваших расходах: они используются при просмотре платежей, в архиве и в статистике на главной странице."
+              position="bottom"
+            >
+              <div className="hidden md:block p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
+                <InformationIcon className="h-[16px] w-[16px]" />
+              </div>
+            </Tooltip>
+          </div>
           <Button
             onClick={handleAddCategory}
             label="Добавить категорию"
             className="hidden md:inline-flex"
           />
         </div>
-
-        <p className="mb-6">
-          Категории позволяют навести порядок в ваших расходах: они используются
-          при просмотре платежей, в архиве и в статистике на главной странице.
-        </p>
 
         <>
           {/* Desktop Table View */}
@@ -286,7 +309,7 @@ const CategoriesPage: React.FC = () => {
             <div
               ref={mobileListRef}
               onClick={handleMobileListClick}
-              className="block md:hidden space-y-2 p-2"
+              className="block md:hidden space-y-2"
             >
               {categories?.map((category) => {
                 const isSelected = selectedMobileCategoryId === category.id;

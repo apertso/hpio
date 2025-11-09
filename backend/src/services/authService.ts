@@ -169,7 +169,8 @@ export const loginUser = async (email: string, password: string) => {
       token: generateToken(user.id),
       isVerified: user.isVerified,
       photoPath: user.photoPath,
-      notificationMethod: user.notificationMethod,
+      emailNotifications: user.emailNotifications,
+      pushNotifications: user.pushNotifications,
       notificationTime: user.notificationTime,
       timezone: user.timezone, // <-- ADD THIS LINE
     };
@@ -261,7 +262,8 @@ export const getUserProfile = async (userId: string) => {
       "photoPath",
       "createdAt",
       "isVerified",
-      "notificationMethod",
+      "emailNotifications",
+      "pushNotifications",
       "notificationTime",
       "timezone", // <-- ADD THIS LINE
       "fcmToken",
@@ -282,7 +284,8 @@ export const updateUserProfile = async (
     email?: string;
     password?: string;
     currentPassword?: string;
-    notificationMethod?: "email" | "push" | "none";
+    emailNotifications?: boolean;
+    pushNotifications?: boolean;
     notificationTime?: string;
     timezone?: string; // <-- ADD THIS LINE
   }
@@ -298,8 +301,11 @@ export const updateUserProfile = async (
   }
 
   // Update notification settings
-  if (data.notificationMethod) {
-    user.notificationMethod = data.notificationMethod;
+  if (typeof data.emailNotifications === "boolean") {
+    user.emailNotifications = data.emailNotifications;
+  }
+  if (typeof data.pushNotifications === "boolean") {
+    user.pushNotifications = data.pushNotifications;
   }
   if (data.notificationTime) {
     // TODO: Validate HH:mm format

@@ -30,7 +30,8 @@ export const getMe = async (req: Request, res: Response) => {
       name: user.name,
       isVerified: user.isVerified,
       photoPath: user.photoPath ?? null,
-      notificationMethod: user.notificationMethod,
+      emailNotifications: user.emailNotifications,
+      pushNotifications: user.pushNotifications,
       notificationTime: user.notificationTime,
       timezone: (user as any).timezone,
       updatedAt:

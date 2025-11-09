@@ -124,6 +124,13 @@ export const pageMetadata: Record<string, PageConfig> = {
       "Персонализируйте свой опыт использования сервиса управления финансами.",
   },
 
+  account: {
+    ...privateConfig,
+    ogTitle: "Аккаунт",
+    ogDescription:
+      "Управляйте настройками своего профиля, паролем и аккаунтом.",
+  },
+
   "forgot-password": {
     ...privateConfig,
     ogTitle: "Восстановление пароля",

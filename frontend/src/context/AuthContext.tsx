@@ -20,7 +20,8 @@ export interface User {
   name: string;
   isVerified: boolean;
   photoPath?: string | null; // <-- ADD THIS
-  notificationMethod?: "email" | "push" | "none";
+  emailNotifications?: boolean;
+  pushNotifications?: boolean;
   notificationTime?: string;
   timezone?: string; // <-- ADD THIS LINE
   fcmToken?: string | null;

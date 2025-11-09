@@ -24,6 +24,10 @@ import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import Modal from "../components/Modal"; // Add this import
 import { useReset } from "../context/ResetContext";
+import SegmentedControl, {
+  TimeRangeOption,
+} from "../components/SegmentedControl";
+import AdvancedFiltersPanel from "../components/AdvancedFiltersPanel";
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import { PaymentData } from "../types/paymentData";
@@ -60,18 +64,18 @@ const monthNames = [
   "Декабрь",
 ];
 const monthNamesGenitive = [
-  "Января",
-  "Февраля",
-  "Марта",
-  "Апреля",
-  "Мая",
-  "Июня",
-  "Июля",
-  "Августа",
-  "Сентября",
-  "Октября",
-  "Ноября",
-  "Декабря",
+  "января",
+  "февраля",
+  "марта",
+  "апреля",
+  "мая",
+  "июня",
+  "июля",
+  "августа",
+  "сентября",
+  "октября",
+  "ноября",
+  "декабря",
 ];
 const formatUpcomingDateHeading = (dateString: string): string => {
   const targetDate = new Date(dateString);
@@ -101,8 +105,6 @@ const formatUpcomingDateHeading = (dateString: string): string => {
   const monthName = monthNamesGenitive[normalizedTarget.getMonth()];
   return `${day} ${monthName}`;
 };
-
-
 
 // Define color palettes for charts
 const categoryColorsLight = [
@@ -163,9 +165,9 @@ import {
   PencilIcon,
   CheckCircleIcon,
   TrashIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
 } from "@heroicons/react/24/solid";
+import { ChevronDownIcon } from "../components/ChevronDownIcon";
+import { ChevronUpIcon } from "../components/ChevronUpIcon";
 import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 import MobilePanel from "../components/MobilePanel";
 
@@ -387,7 +389,12 @@ const HomePage: React.FC = () => {
   // const [filterMonth, setFilterMonth] = useState(new Date()); // Текущий месяц по умолчанию
   // const { user } = useAuth(); // Получаем данные пользователя, если нужно (не напрямую для API, а для логирования/отображения)
 
-  // НОВОЕ: Состояние для выбора периода статистики
+  // НОВОЕ: Состояние для выбора периода статистики с сегментированным контролом
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>("1d");
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
+  const lastChangeFromSegmentedControl = useRef(false);
+
+  // Legacy state for advanced filters (when using произвольный/custom)
   type PeriodType = "month" | "quarter" | "year" | "custom";
   const [periodType, setPeriodType] = useState<PeriodType>("month");
   const [year, setYear] = useState(new Date().getFullYear());
@@ -429,13 +436,16 @@ const HomePage: React.FC = () => {
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
 
   const mobilePaymentsToRender = useMemo(() => {
-    return showAllUpcoming
-      ? upcomingPayments
-      : upcomingPayments.slice(0, 5);
+    return showAllUpcoming ? upcomingPayments : upcomingPayments.slice(0, 5);
   }, [showAllUpcoming, upcomingPayments]);
 
   const groupedMobilePayments = useMemo(() => {
-    const groups: { key: string; label: string; year: number | null; payments: PaymentData[] }[] = [];
+    const groups: {
+      key: string;
+      label: string;
+      year: number | null;
+      payments: PaymentData[];
+    }[] = [];
     const groupIndexMap = new Map<string, number>();
 
     mobilePaymentsToRender.forEach((payment) => {
@@ -476,30 +486,74 @@ const HomePage: React.FC = () => {
     return uniqueYears.size > 1;
   }, [groupedMobilePayments]);
 
-
   const { startDate, endDate } = useMemo(() => {
     let startDate, endDate;
-    switch (periodType) {
-      case "month":
-        startDate = new Date(year, month, 1);
-        endDate = new Date(year, month + 1, 0);
-        break;
-      case "quarter":
-        startDate = new Date(year, quarter * 3, 1);
-        endDate = new Date(year, quarter * 3 + 3, 0);
-        break;
-      case "year":
-        startDate = new Date(year, 0, 1);
-        endDate = new Date(year, 11, 31);
-        break;
-      case "custom":
-      default:
-        startDate = customDateFrom;
-        endDate = customDateTo;
-        break;
+    const now = new Date();
+
+    // Always use calendar periods for predefined ranges
+    if (timeRange !== "custom") {
+      switch (timeRange) {
+        case "1d":
+          startDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+          );
+          endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case "1w":
+          // Start from Monday of current week
+          const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+          const monday = new Date(now);
+          monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          monday.setHours(0, 0, 0, 0);
+          startDate = monday;
+          endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case "1m":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case "1y":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          break;
+        default:
+          startDate = customDateFrom;
+          endDate = customDateTo;
+      }
+    } else {
+      // Use the traditional periodType logic
+      switch (periodType) {
+        case "month":
+          startDate = new Date(year, month, 1);
+          endDate = new Date(year, month + 1, 0);
+          break;
+        case "quarter":
+          startDate = new Date(year, quarter * 3, 1);
+          endDate = new Date(year, quarter * 3 + 3, 0);
+          break;
+        case "year":
+          startDate = new Date(year, 0, 1);
+          endDate = new Date(year, 11, 31);
+          break;
+        case "custom":
+        default:
+          startDate = customDateFrom;
+          endDate = customDateTo;
+          break;
+      }
     }
     return { startDate, endDate };
-  }, [periodType, year, month, quarter, customDateFrom, customDateTo]);
+  }, [
+    timeRange,
+    periodType,
+    year,
+    month,
+    quarter,
+    customDateFrom,
+    customDateTo,
+  ]);
 
   // --- Функция для загрузки статистики (из Dashboard.tsx) ---
   const fetchDashboardStats = useCallback(async () => {
@@ -580,6 +634,8 @@ const HomePage: React.FC = () => {
   // Эффект для сброса фильтров на текущую дату при монтировании или по триггеру сброса
   useEffect(() => {
     setUpcomingDays(10);
+    setTimeRange("1d");
+    // Always use calendar periods for date calculations
     setPeriodType("month");
     setYear(new Date().getFullYear());
     setMonth(new Date().getMonth());
@@ -588,6 +644,65 @@ const HomePage: React.FC = () => {
     // setCustomDateFrom(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
     // setCustomDateTo(new Date());
   }, [resetKey]); // Зависимость только от resetKey
+
+  // Эффект для загрузки timeRange из localStorage при монтировании
+  useEffect(() => {
+    const savedTimeRange = localStorage.getItem("dashboard-time-range");
+    if (
+      savedTimeRange &&
+      ["1d", "1w", "1m", "1y", "custom"].includes(savedTimeRange)
+    ) {
+      setTimeRange(savedTimeRange as TimeRangeOption);
+    }
+  }, []);
+
+  // Эффект для синхронизации timeRange с periodType (для обратной совместимости с advanced filters)
+  useEffect(() => {
+    // Пропускаем синхронизацию если изменение пришло от segmented control
+    if (lastChangeFromSegmentedControl.current) {
+      return;
+    }
+
+    // Определяем соответствующий timeRange на основе текущего periodType
+    let derivedTimeRange: TimeRangeOption = "custom";
+
+    const now = new Date();
+    if (
+      periodType === "month" &&
+      month === now.getMonth() &&
+      year === now.getFullYear()
+    ) {
+      derivedTimeRange = "1m";
+    } else if (periodType === "year" && year === now.getFullYear()) {
+      derivedTimeRange = "1y";
+    } else if (periodType === "custom") {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      if (
+        customDateFrom.getTime() === today.getTime() &&
+        customDateTo.getTime() === today.getTime()
+      ) {
+        derivedTimeRange = "1d";
+      } else if (
+        customDateFrom.getTime() === lastWeek.getTime() &&
+        customDateTo.getTime() === today.getTime()
+      ) {
+        derivedTimeRange = "1w";
+      } else {
+        derivedTimeRange = "custom";
+      }
+    }
+
+    if (derivedTimeRange !== timeRange) {
+      setTimeRange(derivedTimeRange);
+    }
+  }, [periodType, year, month, customDateFrom, customDateTo]);
+
+  // Эффект для сохранения timeRange в localStorage при изменении
+  useEffect(() => {
+    localStorage.setItem("dashboard-time-range", timeRange);
+  }, [timeRange]);
 
   const navigate = useNavigate();
 
@@ -956,9 +1071,9 @@ const HomePage: React.FC = () => {
                           >
                             {showAllUpcoming ? "Свернуть" : "Показать больше"}
                             {showAllUpcoming ? (
-                              <ChevronUpIcon className="w-5 h-5" />
+                              <ChevronUpIcon />
                             ) : (
-                              <ChevronDownIcon className="w-5 h-5" />
+                              <ChevronDownIcon />
                             )}
                           </button>
                         </div>
@@ -971,52 +1086,55 @@ const HomePage: React.FC = () => {
                 <div
                   ref={mobileListRef}
                   onClick={handleMobileListClick}
-                  className="block md:hidden space-y-2"
+                  className="block md:hidden space-y-3"
                 >
-                  {groupedMobilePayments.map(({ key, label, year, payments }) => {
-                    const shouldRenderYearHeader =
-                      hasMultipleYears &&
-                      year !== null &&
-                      year !== lastRenderedMobileYear;
+                  {groupedMobilePayments.map(
+                    ({ key, label, year, payments }) => {
+                      const shouldRenderYearHeader =
+                        hasMultipleYears &&
+                        year !== null &&
+                        year !== lastRenderedMobileYear;
 
-                    if (shouldRenderYearHeader) {
-                      lastRenderedMobileYear = year;
-                    }
+                      if (shouldRenderYearHeader) {
+                        lastRenderedMobileYear = year;
+                      }
 
-                    return (
-                      <div key={key} className="space-y-2">
-                        {shouldRenderYearHeader && (
-                          <div className="pt-4 text-xs font-semibold uppercase text-gray-400 dark:text-gray-500">
-                            {year}
+                      return (
+                        <div key={key} className="space-y-2">
+                          {shouldRenderYearHeader && (
+                            <div className="pt-4 text-xs font-semibold uppercase text-gray-400 dark:text-gray-500">
+                              {year}
+                            </div>
+                          )}
+                          <div className="text-sm font-semibold text-gray-500 dark:text-gray-400 pl-4">
+                            {label}
                           </div>
-                        )}
-                        <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                          {label}
+                          {payments.map((payment) => {
+                            const isSelected =
+                              selectedMobilePaymentId === payment.id;
+                            const cardStateClasses = [
+                              "transition-all duration-200",
+                              isSelected
+                                ? "border-gray-400 shadow-md relative z-50"
+                                : "",
+                            ]
+                              .filter((cls) => cls)
+                              .join(" ");
+                            return (
+                              <PaymentListCard
+                                key={payment.id}
+                                payment={payment}
+                                context="home"
+                                onDownloadFile={handleDownloadFile}
+                                className={cardStateClasses}
+                                hideDate
+                              />
+                            );
+                          })}
                         </div>
-                        {payments.map((payment) => {
-                          const isSelected = selectedMobilePaymentId === payment.id;
-                          const cardStateClasses = [
-                            "transition-all duration-200",
-                            isSelected
-                              ? "border-gray-400 shadow-md relative z-50"
-                              : "",
-                          ]
-                            .filter((cls) => cls)
-                            .join(" ");
-                          return (
-                            <PaymentListCard
-                              key={payment.id}
-                              payment={payment}
-                              context="home"
-                              onDownloadFile={handleDownloadFile}
-                              className={cardStateClasses}
-                              hideDate
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
+                      );
+                    }
+                  )}
                   {upcomingPayments.length > 5 && (
                     <button
                       onClick={() => setShowAllUpcoming((prev) => !prev)}
@@ -1024,9 +1142,9 @@ const HomePage: React.FC = () => {
                     >
                       {showAllUpcoming ? "Свернуть" : "Показать больше"}
                       {showAllUpcoming ? (
-                        <ChevronUpIcon className="w-5 h-5" />
+                        <ChevronUpIcon />
                       ) : (
-                        <ChevronDownIcon className="w-5 h-5" />
+                        <ChevronDownIcon />
                       )}
                     </button>
                   )}
@@ -1051,101 +1169,62 @@ const HomePage: React.FC = () => {
             Статистика
           </h2>
           {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
-          <div className="flex flex-wrap gap-2 items-center mb-6">
-            <DropdownButton
-              label={
-                periodType === "month"
-                  ? "Месяц"
-                  : periodType === "quarter"
-                  ? "Квартал"
-                  : periodType === "year"
-                  ? "Год"
-                  : "Произвольный"
-              }
-              options={[
-                {
-                  label: "Месяц",
-                  value: "month",
-                  onClick: () => setPeriodType("month"),
-                },
-                {
-                  label: "Квартал",
-                  value: "quarter",
-                  onClick: () => setPeriodType("quarter"),
-                },
-                {
-                  label: "Год",
-                  value: "year",
-                  onClick: () => setPeriodType("year"),
-                },
-                {
-                  label: "Произвольный",
-                  value: "custom",
-                  onClick: () => setPeriodType("custom"),
-                },
-              ]}
-              selectedValue={periodType}
+          <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
+            <SegmentedControl
+              selected={timeRange}
+              onChange={(option) => {
+                const now = new Date();
+                lastChangeFromSegmentedControl.current = true;
+                setTimeRange(option);
+
+                switch (option) {
+                  case "1d":
+                    setPeriodType("custom");
+                    // Start from today
+                    setCustomDateFrom(
+                      new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                    );
+                    setCustomDateTo(
+                      new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                    );
+                    break;
+                  case "1w":
+                    setPeriodType("custom");
+                    // Start from Monday of current week
+                    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                    const monday = new Date(now);
+                    monday.setDate(
+                      now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)
+                    );
+                    monday.setHours(0, 0, 0, 0);
+                    setCustomDateFrom(monday);
+                    setCustomDateTo(
+                      new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                    );
+                    break;
+                  case "1m":
+                    setPeriodType("month");
+                    // Use current month from the 1st day
+                    setMonth(now.getMonth());
+                    setYear(now.getFullYear());
+                    break;
+                  case "1y":
+                    setPeriodType("year");
+                    // Use current year from the 1st day
+                    setYear(now.getFullYear());
+                    break;
+                  case "custom":
+                    setPeriodType("custom");
+                    setIsAdvancedFiltersOpen(true);
+                    break;
+                }
+
+                // Reset the flag after a short delay
+                setTimeout(() => {
+                  lastChangeFromSegmentedControl.current = false;
+                }, 0);
+              }}
             />
-            {/* Month dropdown */}
-            {periodType === "month" && (
-              <>
-                <DropdownButton
-                  label={monthNames[month]}
-                  options={monthNames.map((name, idx) => ({
-                    label: name,
-                    value: idx,
-                    onClick: () => setMonth(idx),
-                  }))}
-                  selectedValue={month}
-                />
-              </>
-            )}
-            {/* Quarter dropdown */}
-            {periodType === "quarter" && (
-              <>
-                <DropdownButton
-                  label={String(quarter + 1)}
-                  options={Array.from({ length: 4 }, (_, idx) => ({
-                    label: String(idx + 1),
-                    value: idx,
-                    onClick: () => setQuarter(idx),
-                  }))}
-                  selectedValue={quarter}
-                />
-              </>
-            )}
-            {/* Year input (not for custom) */}
-            {periodType !== "custom" && (
-              <>
-                <YearSelectorDropdown
-                  years={Array.from(
-                    { length: 21 },
-                    (_, i) => new Date().getFullYear() - 10 + i
-                  )}
-                  selectedYear={year}
-                  onChange={setYear}
-                />
-              </>
-            )}
-            {/* Custom date range */}
-            {periodType === "custom" && (
-              <>
-                <label className="ml-2">С:</label>
-                <input
-                  type="date"
-                  value={customDateFrom.toISOString().split("T")[0]}
-                  onChange={(e) => setCustomDateFrom(new Date(e.target.value))}
-                  className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
-                />
-                <label className="ml-2">По:</label>
-                <input
-                  type="date"
-                  value={customDateTo.toISOString().split("T")[0]}
-                  onChange={(e) => setCustomDateTo(new Date(e.target.value))}
-                  className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100"
-                />
-              </>
-            )}
           </div>
           {/* Состояния загрузки или ошибки для статистики */}
           {isLoadingStats && (
@@ -1421,6 +1500,85 @@ const HomePage: React.FC = () => {
         onComplete={handleCompletePayment}
         onDelete={handleDeletePayment}
       />
+      <AdvancedFiltersPanel
+        isOpen={isAdvancedFiltersOpen}
+        onClose={() => setIsAdvancedFiltersOpen(false)}
+      >
+        <div className="space-y-4">
+          <div className="space-y-4">
+            {/* Month dropdown */}
+            {periodType === "month" && (
+              <>
+                <DropdownButton
+                  label={monthNames[month]}
+                  options={monthNames.map((name, idx) => ({
+                    label: name,
+                    value: idx,
+                    onClick: () => setMonth(idx),
+                  }))}
+                  selectedValue={month}
+                />
+              </>
+            )}
+            {/* Quarter dropdown */}
+            {periodType === "quarter" && (
+              <>
+                <DropdownButton
+                  label={String(quarter + 1)}
+                  options={Array.from({ length: 4 }, (_, idx) => ({
+                    label: String(idx + 1),
+                    value: idx,
+                    onClick: () => setQuarter(idx),
+                  }))}
+                  selectedValue={quarter}
+                />
+              </>
+            )}
+            {/* Year input (not for custom) */}
+            {periodType !== "custom" && (
+              <>
+                <YearSelectorDropdown
+                  years={Array.from(
+                    { length: 21 },
+                    (_, i) => new Date().getFullYear() - 10 + i
+                  )}
+                  selectedYear={year}
+                  onChange={setYear}
+                />
+              </>
+            )}
+            {/* Custom date range */}
+            {periodType === "custom" && (
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    С:
+                  </label>
+                  <input
+                    type="date"
+                    value={customDateFrom.toISOString().split("T")[0]}
+                    onChange={(e) =>
+                      setCustomDateFrom(new Date(e.target.value))
+                    }
+                    className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100 w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    По:
+                  </label>
+                  <input
+                    type="date"
+                    value={customDateTo.toISOString().split("T")[0]}
+                    onChange={(e) => setCustomDateTo(new Date(e.target.value))}
+                    className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100 w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </AdvancedFiltersPanel>
     </>
   );
 };

@@ -274,7 +274,8 @@ export function parseNotification(
 
   if (
     packageName !== "com.android.shell" &&
-    packageName !== "ru.raiffeisennews"
+    packageName !== "ru.raiffeisennews" &&
+    packageName !== "com.hochuplachu.hpio"
   ) {
     return null;
   }

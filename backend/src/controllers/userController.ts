@@ -1,12 +1,10 @@
 import { Request, Response } from "express";
 import * as authService from "../services/authService";
 import logger from "../config/logger";
-import path from "path";
-import { config } from "../config/appConfig";
-import fs from "fs";
 import crypto from "crypto";
 import { StorageFactory } from "../services/storage/StorageFactory";
 import db from "../models";
+import { sendDeveloperTestEmail } from "../services/emailService";
 
 // Получить профиль пользователя
 export const getProfile = async (req: Request, res: Response) => {
@@ -138,6 +136,28 @@ export const deleteAccount = async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error(`Error deleting account for user ${req.user!.id}:`, error);
     res.status(500).json({ message: "Error deleting account." });
+  }
+};
+
+export const sendTestEmailNotification = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const user = await authService.getUserProfile(req.user!.id);
+
+    if (!user.email) {
+      return res.status(400).json({ message: "Email пользователя не найден." });
+    }
+
+    await sendDeveloperTestEmail(user.email, user.name || "");
+    res.json({ message: "Тестовое письмо отправлено." });
+  } catch (error: any) {
+    logger.error(
+      `Error sending developer test email for user ${req.user!.id}:`,
+      error
+    );
+    res.status(500).json({ message: "Не удалось отправить тестовое письмо." });
   }
 };
 

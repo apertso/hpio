@@ -1,7 +1,8 @@
 // frontend/src/components/Select.tsx
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useId } from "react";
 import ReactDOM from "react-dom";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
+import { TextField } from "./Input";
 
 export interface SelectOption {
   value: string | null;
@@ -16,6 +17,11 @@ interface SelectProps {
   error?: string;
   disabled?: boolean;
   placeholder?: string;
+  id?: string;
+  required?: boolean;
+  hint?: React.ReactNode;
+  description?: React.ReactNode;
+  wrapperClassName?: string;
 }
 
 const Select: React.FC<SelectProps> = ({
@@ -26,6 +32,11 @@ const Select: React.FC<SelectProps> = ({
   error,
   disabled,
   placeholder,
+  id,
+  required,
+  hint,
+  description,
+  wrapperClassName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<{
@@ -35,6 +46,13 @@ const Select: React.FC<SelectProps> = ({
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+  const descriptionId = description ? `${fieldId}-description` : undefined;
+  const errorId = error ? `${fieldId}-error` : undefined;
+  const describedBy =
+    [descriptionId, hintId, errorId].filter(Boolean).join(" ") || undefined;
 
   const handleToggle = () => {
     if (!disabled) {
@@ -82,44 +100,57 @@ const Select: React.FC<SelectProps> = ({
   const selectedOption = options.find((opt) => opt.value === value);
 
   const baseClasses =
-    "relative block w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white dark:placeholder-gray-500 text-left flex items-center justify-between cursor-pointer";
-  const errorClasses = error ? "border-red-500 dark:border-red-500" : "";
+    "relative block w-full min-w-[12em] max-w-[64em] rounded-lg bg-gray-50 px-4 py-3 text-base text-gray-900 placeholder:text-gray-500 shadow-sm focus:outline-none focus:ring-3 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500 text-left flex items-center justify-between cursor-pointer transition-colors";
+  const errorClasses = error ? "focus:ring-3 focus:ring-red-500" : "";
   const disabledClasses = disabled
-    ? "opacity-50 bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+    ? "cursor-not-allowed opacity-70 bg-gray-100 text-gray-500 dark:bg-gray-900 dark:text-gray-500"
     : "";
 
   return (
-    <div className="relative" ref={containerRef}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-          {label}
-        </label>
-      )}
-      <button
-        ref={buttonRef}
-        type="button"
-        className={`${baseClasses} ${errorClasses} ${disabledClasses}`}
-        onClick={handleToggle}
-        disabled={disabled}
+    <div
+      className={`relative ${wrapperClassName ?? ""}`.trim()}
+      ref={containerRef}
+    >
+      <TextField
+        label={label}
+        hint={hint}
+        description={description}
+        error={error}
+        required={required}
+        inputId={fieldId}
+        className="w-full"
       >
-        <span
-          className={selectedOption ? "" : "text-gray-400 dark:text-gray-500"}
+        <button
+          ref={buttonRef}
+          id={fieldId}
+          type="button"
+          className={`${baseClasses} ${errorClasses} ${disabledClasses}`}
+          onClick={handleToggle}
+          disabled={disabled}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-describedby={describedBy}
+          aria-invalid={Boolean(error)}
         >
-          {selectedOption?.label || placeholder}
-        </span>
-        <ChevronDownIcon
-          className={`h-5 w-5 text-gray-400 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+          <span
+            className={selectedOption ? "" : "text-gray-400 dark:text-gray-500"}
+          >
+            {selectedOption?.label || placeholder}
+          </span>
+          <ChevronDownIcon
+            className={`h-5 w-5 text-gray-400 transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+      </TextField>
 
       {isOpen &&
         dropdownPosition &&
         ReactDOM.createPortal(
           <div
             data-select-dropdown
-            className="fixed z-[9999] rounded-md bg-white dark:bg-gray-800 shadow-lg border border-gray-300 dark:border-gray-600 max-h-60 overflow-y-auto"
+            className="fixed z-[9999] rounded-md bg-gray-50 dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-600 max-h-60 overflow-y-auto"
             style={{
               top: dropdownPosition.top,
               left: dropdownPosition.left,
@@ -132,7 +163,7 @@ const Select: React.FC<SelectProps> = ({
                   key={option.value || "null-option"}
                   className={`px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
                     value === option.value
-                      ? "bg-gray-200 dark:bg-gray-700 font-bold"
+                      ? "bg-gray-200 dark:bg-gray-600 font-bold"
                       : ""
                   }`}
                   onClick={() => handleSelect(option.value)}
@@ -144,8 +175,6 @@ const Select: React.FC<SelectProps> = ({
           </div>,
           document.body
         )}
-
-      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   );
 };

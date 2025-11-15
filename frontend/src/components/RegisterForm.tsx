@@ -1,12 +1,13 @@
 // src/components/RegisterForm.tsx
-import React, { useEffect } from "react";
-import { Link } from "react-router-dom";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Input } from "./Input";
+import { TextInputField, EmailField, PasswordField } from "./Input";
 import Checkbox from "./Checkbox";
-import Spinner from "./Spinner";
+import { Button } from "./Button";
+import useFormPersistence from "../hooks/useFormPersistence";
 
 const REGISTER_FORM_STORAGE_KEY = "register_form_data";
 
@@ -46,39 +47,17 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onRegister,
   onShowToast,
 }) => {
+  const navigate = useNavigate();
   const registerForm = useForm<RegisterFormInputs>({
     resolver: zodResolver(registerSchema),
     mode: "onChange",
     delayError: 1000,
   });
 
-  // Загружаем сохраненные данные формы при монтировании компонента
-  useEffect(() => {
-    try {
-      const savedData = sessionStorage.getItem(REGISTER_FORM_STORAGE_KEY);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        // Восстанавливаем данные только если они существуют, чтобы не перезаписывать значения по умолчанию
-        if (parsedData && Object.keys(parsedData).length > 0) {
-          registerForm.reset(parsedData);
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to load saved register form data:", error);
-    }
-  }, [registerForm]);
-
-  // Сохраняем данные формы при каждом изменении
-  useEffect(() => {
-    const subscription = registerForm.watch((data) => {
-      try {
-        sessionStorage.setItem(REGISTER_FORM_STORAGE_KEY, JSON.stringify(data));
-      } catch (error) {
-        console.warn("Failed to save register form data:", error);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [registerForm]);
+  const { clearPersistedData } = useFormPersistence(
+    registerForm,
+    REGISTER_FORM_STORAGE_KEY
+  );
 
   const handleRegisterSubmit: SubmitHandler<RegisterFormInputs> = async (
     data
@@ -86,7 +65,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     try {
       await onRegister(data.name, data.email, data.password);
       // Очищаем сохраненные данные формы после успешной регистрации
-      sessionStorage.removeItem(REGISTER_FORM_STORAGE_KEY);
+      clearPersistedData();
     } catch (err: unknown) {
       let message = "Ошибка регистрации";
       if (
@@ -115,45 +94,47 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         onSubmit={registerForm.handleSubmit(handleRegisterSubmit)}
         className="space-y-6"
       >
-        <Input
+        <TextInputField
           label="Имя"
-          id="register-name"
-          type="text"
-          placeholder="Ваше имя"
-          {...registerForm.register("name")}
+          inputId="register-name"
           error={registerForm.formState.errors.name?.message}
+          required
+          placeholder="Ваше имя"
           disabled={registerForm.formState.isSubmitting}
           className="text-base py-3"
+          {...registerForm.register("name")}
         />
-        <Input
-          label="Email"
-          id="register-email"
-          type="email"
+        <EmailField
+          inputId="register-email"
           placeholder="your@email.com"
+          autoComplete="email"
           {...registerForm.register("email")}
           error={registerForm.formState.errors.email?.message}
           disabled={registerForm.formState.isSubmitting}
           className="text-base py-3"
+          required
         />
-        <Input
+        <PasswordField
           label="Пароль"
-          id="register-password"
-          type="password"
+          inputId="register-password"
           placeholder="********"
+          autoComplete="new-password"
           {...registerForm.register("password")}
           error={registerForm.formState.errors.password?.message}
           disabled={registerForm.formState.isSubmitting}
           className="text-base py-3"
+          required
         />
-        <Input
+        <PasswordField
           label="Подтвердите пароль"
-          id="register-confirm-password"
-          type="password"
+          inputId="register-confirm-password"
           placeholder="********"
+          autoComplete="new-password"
           {...registerForm.register("confirmPassword")}
           error={registerForm.formState.errors.confirmPassword?.message}
           disabled={registerForm.formState.isSubmitting}
           className="text-base py-3"
+          required
         />
 
         {/* Terms and Privacy Checkbox */}
@@ -167,30 +148,43 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             className="text-sm text-gray-700 dark:text-gray-300"
           >
             Я принимаю{" "}
-            <Link to="/terms" className="text-blue-500 hover:text-blue-600">
+            <Button
+              variant="link"
+              size="small"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/terms");
+              }}
+            >
               Условия использования
-            </Link>{" "}
+            </Button>{" "}
             и{" "}
-            <Link to="/privacy" className="text-blue-500 hover:text-blue-600">
+            <Button
+              variant="link"
+              size="small"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/privacy");
+              }}
+            >
               Политику конфиденциальности
-            </Link>
+            </Button>
           </label>
         </div>
 
-        <button
-          className="w-full bg-blue-500 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-4 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-base mt-4"
+        <Button
+          variant="primary"
+          size="large"
+          className="w-full mt-4 md:w-auto md:min-w-[24em] md:mx-auto"
           type="submit"
           disabled={
             registerForm.formState.isSubmitting ||
             !registerForm.watch("acceptTerms")
           }
+          loading={registerForm.formState.isSubmitting}
         >
-          {registerForm.formState.isSubmitting ? (
-            <Spinner size="sm" />
-          ) : (
-            "Зарегистрироваться"
-          )}
-        </button>
+          Зарегистрироваться
+        </Button>
       </form>
     </div>
   );

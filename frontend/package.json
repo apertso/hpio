@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,7 +19,9 @@
     "android:build:universal": "tauri android build --apk",
     "android:build:release": "tauri android build --split-per-abi",
     "android:build:debug": "cross-env VITE_ENABLE_DEV_FEATURES=true tauri android build --apk --target aarch64 --split-per-abi --debug",
-    "android:install:debug": "adb install ./src-tauri/gen/android/app/build/outputs/apk/arm64/debug/app-arm64-debug.apk"
+    "android:install:debug": "adb install ./src-tauri/gen/android/app/build/outputs/apk/arm64/debug/app-arm64-debug.apk",
+    "allow-notification-listener": "adb shell cmd notification allow_listener com.hochuplachu.hpio/com.hochuplachu.hpio.PaymentNotificationListenerService",
+    "clear-notification-queue": "adb shell \"run-as com.hochuplachu.hpio sh -c 'printf \"[]\" > files/pending_notifications.json'\""
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

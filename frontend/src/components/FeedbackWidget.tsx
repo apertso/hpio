@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { submitFeedback } from "../api/feedbackApi";
 import { ChatBubbleOvalLeftEllipsisIcon } from "@heroicons/react/24/outline";
 import MobilePanel from "./MobilePanel";
+import { Input } from "./Input";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -89,7 +90,7 @@ const FeedbackWidget: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Прикрепить файл (до 5 МБ)
           </label>
-          <input
+          <Input
             type="file"
             accept="*/*"
             onChange={(e) => {
@@ -103,6 +104,7 @@ const FeedbackWidget: React.FC = () => {
               setFile(f);
             }}
             className="block w-full text-sm text-gray-900 dark:text-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-slate-700 dark:file:text-slate-200 dark:hover:file:bg-slate-600 dark:hover:file:text-white"
+            unstyled
           />
         </div>
         <div className="flex justify-end">

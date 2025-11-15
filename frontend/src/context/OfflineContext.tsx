@@ -65,9 +65,20 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
     syncService.getLastSyncTime()
   );
   const lastOfflineToastTimeRef = useRef<number>(0);
+  const offlineToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const [queueStats, setQueueStats] = useState<QueueStats>(
     syncService.getQueueStats()
   );
+
+  useEffect(() => {
+    return () => {
+      if (offlineToastTimeoutRef.current) {
+        clearTimeout(offlineToastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Функция для отображения тоста об отсутствии соединения с throttling
   const showOfflineToast = () => {
@@ -80,12 +91,28 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
       return;
     }
 
-    lastOfflineToastTimeRef.current = now;
-    showToast(
-      "Нет подключения к интернету. Приложение продолжит работать с ранее загруженными данными.",
-      "info",
-      5000
-    );
+    if (offlineToastTimeoutRef.current) {
+      clearTimeout(offlineToastTimeoutRef.current);
+    }
+
+    offlineToastTimeoutRef.current = setTimeout(() => {
+      offlineToastTimeoutRef.current = null;
+
+      const isStillOffline =
+        !navigator.onLine ||
+        syncService.getConnectionStatus() === ConnectionStatus.OFFLINE;
+
+      if (!isStillOffline) {
+        return;
+      }
+
+      lastOfflineToastTimeRef.current = Date.now();
+      showToast(
+        "Нет подключения к интернету. Приложение продолжит работать с ранее загруженными данными.",
+        "info",
+        5000
+      );
+    }, 500);
   };
 
   useEffect(() => {

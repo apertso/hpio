@@ -23,6 +23,7 @@ import {
   CheckCircleIcon as CheckSolidIcon,
   TrashIcon as TrashSolidIcon,
   ArrowPathIcon as ArrowPathSolidIcon,
+  PlusIcon,
 } from "@heroicons/react/24/solid";
 import MobilePanel from "../components/MobilePanel";
 import { usePageTitle } from "../context/PageTitleContext";
@@ -156,6 +157,7 @@ const PaymentsPage: React.FC = () => {
   const [archivedPayments, setArchivedPayments] = useState<PaymentData[]>([]);
 
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isClearingTrash, setIsClearingTrash] = useState(false);
   const [completionDateModalState, setCompletionDateModalState] = useState<{
     isOpen: boolean;
     payment: PaymentData | null;
@@ -265,6 +267,34 @@ const PaymentsPage: React.FC = () => {
     });
   }, [activePayments, archivedPayments]);
 
+  const trashPayments = useMemo(
+    () => archivedPayments.filter((p) => p.status === "deleted"),
+    [archivedPayments]
+  );
+  const trashCount = trashPayments.length;
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const hasItems = activeTab === "trash" ? trashCount > 0 : false;
+    window.dispatchEvent(
+      new CustomEvent("payments:trash-state", { detail: { hasItems } })
+    );
+  }, [activeTab, trashCount]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("payments:trash-state", {
+            detail: { hasItems: false },
+          })
+        );
+      }
+    };
+  }, []);
+
   const displayedPayments = useMemo(() => {
     switch (activeTab) {
       case "all":
@@ -274,11 +304,11 @@ const PaymentsPage: React.FC = () => {
       case "archive":
         return archivedPayments.filter((p) => p.status === "completed");
       case "trash":
-        return archivedPayments.filter((p) => p.status === "deleted");
+        return trashPayments;
       default:
         return activePayments;
     }
-  }, [activeTab, allPayments, activePayments, archivedPayments]);
+  }, [activeTab, allPayments, activePayments, archivedPayments, trashPayments]);
 
   const isLoading =
     activeTab === "all"
@@ -479,6 +509,50 @@ const PaymentsPage: React.FC = () => {
     });
   };
 
+  const performClearTrash = async () => {
+    setIsClearingTrash(true);
+    try {
+      await axiosInstance.delete("/archive/trash");
+      showToast("Корзина была очищена.", "success");
+      refetchData();
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      logger.error("Failed to clear trash:", errorMessage);
+      showToast(`Не удалось очистить корзину: ${errorMessage}`, "error");
+    } finally {
+      setIsClearingTrash(false);
+    }
+  };
+
+  const handleClearTrashRequest = () => {
+    if (trashCount === 0) {
+      return;
+    }
+    setConfirmModalState({
+      isOpen: true,
+      action: performClearTrash,
+      title: "Очистить корзину",
+      message:
+        "Вы уверены, что хотите удалить все платежи из корзины? Это действие необратимо.",
+    });
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined" || activeTab !== "trash") {
+      return;
+    }
+
+    const handler = () => {
+      handleClearTrashRequest();
+    };
+
+    window.addEventListener("payments:clear-trash-request", handler);
+
+    return () => {
+      window.removeEventListener("payments:clear-trash-request", handler);
+    };
+  }, [activeTab, handleClearTrashRequest]);
+
   const handleAddPayment = () => {
     if (activeTab === "archive") {
       navigate("/payments/new?markAsCompleted=true");
@@ -609,10 +683,20 @@ const PaymentsPage: React.FC = () => {
           <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
             Платежи
           </h2>
-          {activeTab !== "trash" && (
+          {activeTab === "trash" ? (
+            <Button
+              onClick={handleClearTrashRequest}
+              label="Очистить корзину"
+              icon={<TrashSolidIcon className="w-4 h-4" />}
+              className="hidden md:inline-flex"
+              variant="primary"
+              disabled={isClearingTrash || trashCount === 0}
+            />
+          ) : (
             <Button
               onClick={handleAddPayment}
               label="Добавить платеж"
+              icon={<PlusIcon className="w-4 h-4" />}
               className="hidden md:inline-flex"
             />
           )}

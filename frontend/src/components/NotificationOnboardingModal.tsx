@@ -14,6 +14,7 @@ import {
 } from "../api/notificationPermission";
 import { useToast } from "../context/ToastContext";
 import MobilePanel from "./MobilePanel";
+import { Button } from "./Button";
 
 interface NotificationOnboardingModalProps {
   isOpen: boolean;
@@ -151,20 +152,22 @@ const NotificationOnboardingModal: React.FC<
       </div>
 
       <div className="px-6 pb-6 space-y-3">
-        <button
+        <Button
+          variant="primary"
+          size="large"
+          className="w-full"
           onClick={handleStep1Continue}
-          disabled={isLoading}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? "Открытие настроек..." : "Открыть настройки"}
-        </button>
-        <button
+          loading={isLoading}
+          label="Открыть настройки"
+        ></Button>
+        <Button
+          variant="secondary"
+          size="small"
+          className="w-full"
           onClick={handleSkip}
-          className="w-full text-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 py-2 transition-colors"
-          disabled={isLoading}
-        >
-          Пропустить
-        </button>
+          label="Пропустить"
+          loading={isLoading}
+        ></Button>
       </div>
     </>
   );
@@ -234,28 +237,31 @@ const NotificationOnboardingModal: React.FC<
       </div>
 
       <div className="px-6 pb-6 space-y-3">
-        <button
+        <Button
+          variant="primary"
+          size="large"
+          className="w-full"
           onClick={handleStep2Continue}
-          disabled={isLoading}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? "Запрос разрешения..." : "Разрешить уведомления"}
-        </button>
+          loading={isLoading}
+          label="Разрешить уведомления"
+        ></Button>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="secondary"
+            size="small"
+            className="flex-1"
             onClick={handleBack}
-            className="flex-1 text-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 py-2 transition-colors"
-            disabled={isLoading}
-          >
-            Назад
-          </button>
-          <button
+            loading={isLoading}
+            label="Назад"
+          ></Button>
+          <Button
+            variant="secondary"
+            size="small"
+            className="flex-1"
             onClick={handleSkip}
-            className="flex-1 text-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 py-2 transition-colors"
-            disabled={isLoading}
-          >
-            Пропустить
-          </button>
+            loading={isLoading}
+            label="Пропустить"
+          ></Button>
         </div>
       </div>
     </>

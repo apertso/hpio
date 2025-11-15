@@ -3,14 +3,17 @@ import React from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Input } from "./Input";
+import { EmailField } from "./Input";
+import { Button } from "./Button";
 import Spinner from "./Spinner";
+import useFormPersistence from "../hooks/useFormPersistence";
 
 const passwordResetSchema = z.object({
   email: z.string().email("Неверный формат email."),
 });
 
 type PasswordResetFormInputs = z.infer<typeof passwordResetSchema>;
+const PASSWORD_RESET_FORM_STORAGE_KEY = "password_reset_form_data";
 
 interface PasswordResetFormProps {
   onSubmit: (email: string) => Promise<void>;
@@ -27,9 +30,15 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
     delayError: 1000,
   });
 
+  const { clearPersistedData } = useFormPersistence(
+    form,
+    PASSWORD_RESET_FORM_STORAGE_KEY
+  );
+
   const handleSubmit: SubmitHandler<PasswordResetFormInputs> = async (data) => {
     try {
       await onSubmit(data.email);
+      clearPersistedData();
       onShowToast("Инструкции по сбросу пароля отправлены.", "success");
     } catch {
       // Для безопасности показываем универсальное сообщение даже при ошибке
@@ -49,27 +58,29 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
         Введите ваш Email для получения инструкций по сбросу пароля.
       </p>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <Input
-          label="Email"
-          id="reset-email"
-          type="email"
+        <EmailField
+          inputId="reset-email"
           placeholder="your@email.com"
+          autoComplete="email"
           {...form.register("email")}
           error={form.formState.errors.email?.message}
           disabled={form.formState.isSubmitting}
           className="text-base py-3"
+          required
         />
-        <button
-          className="w-full bg-blue-500 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-4 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-base"
+        <Button
+          variant="primary"
+          size="large"
           type="submit"
           disabled={form.formState.isSubmitting}
+          className="w-full md:w-auto md:min-w-[24em] md:mx-auto"
         >
           {form.formState.isSubmitting ? (
             <Spinner size="sm" />
           ) : (
             "Отправить инструкции"
           )}
-        </button>
+        </Button>
       </form>
     </div>
   );

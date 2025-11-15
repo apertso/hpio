@@ -91,10 +91,6 @@ const SettingsPage: React.FC = () => {
             {/* Содержимое активного раздела */}
             <div className="flex-1 min-w-0">{renderActiveSection()}</div>
           </div>
-
-          <p className="mt-12 text-center text-xs text-gray-500 dark:text-gray-600">
-            Версия приложения: {import.meta.env.VITE_APP_VERSION}
-          </p>
         </div>
       </div>
     </>

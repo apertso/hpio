@@ -62,6 +62,7 @@ pub fn run() {
       notifications::check_app_notification_permission,
       notifications::request_app_notification_permission,
       notifications::open_app_notification_settings,
+      notifications::simulate_app_payment_notification,
       notifications::get_pending_notifications,
       notifications::clear_pending_notifications,
       notifications::check_battery_optimization_disabled,

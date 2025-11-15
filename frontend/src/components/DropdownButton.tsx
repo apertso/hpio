@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { useDropdown } from "../hooks/useDropdown";
-import DropdownOverlay from "./DropdownOverlay";
+import Overlay from "./Overlay";
 
 export interface DropdownOption {
   label: string;
@@ -58,9 +58,8 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
         </span>
       </button>
 
-      <DropdownOverlay
+      <Overlay
         isOpen={isOpen}
-        align="left"
         widthClass="min-w-24"
         anchorRef={containerRef}
       >
@@ -88,7 +87,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
             </button>
           ))}
         </div>
-      </DropdownOverlay>
+      </Overlay>
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import Modal from "./Modal";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import DatePicker from "./DatePicker";
 import RadioButton from "./RadioButton";
 import MobilePanel from "./MobilePanel";
 
@@ -75,11 +74,11 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
         {selectedOption === "custom" && (
           <div className="pl-7">
             <DatePicker
+              mode="single"
               selected={customDate}
-              onChange={(date: Date | null) => setCustomDate(date)}
+              onSingleChange={(date: Date | null) => setCustomDate(date)}
               dateFormat="yyyy-MM-dd"
-              className="block w-full rounded-md border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-700 dark:text-white"
-              wrapperClassName="w-full"
+              placeholder="Выберите дату"
             />
           </div>
         )}

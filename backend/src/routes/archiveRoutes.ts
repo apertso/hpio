@@ -4,6 +4,7 @@ import {
   getArchivedPayments,
   restorePayment,
   permanentDeletePayment,
+  clearTrash,
 } from "../services/paymentService"; // Функции для архива из paymentService
 import logger from "../config/logger";
 
@@ -72,6 +73,17 @@ router.delete("/:id/permanent", async (req: Request, res: Response) => {
     } else {
       res.status(500).json({ message: "Ошибка сервера", error: error.message });
     }
+  }
+});
+
+// DELETE /api/archive/trash - очистка корзины
+router.delete("/trash", async (req: Request, res: Response) => {
+  try {
+    const deletedCount = await clearTrash(req.user!.id);
+    res.json({ message: "Корзина очищена.", deletedCount });
+  } catch (error: any) {
+    logger.error(`Error in DELETE /api/archive/trash:`, error);
+    res.status(500).json({ message: "Ошибка сервера", error: error.message });
   }
 });
 

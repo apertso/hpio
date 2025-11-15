@@ -58,7 +58,7 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
       {/* Panel */}
       <div
         data-mobile-panel-content
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg transform transition-transform duration-300 ease-out safe-area-bottom ${
+        className={`fixed flex flex-col bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg max-h-full transform transition-transform duration-300 ease-out safe-area-top safe-area-bottom ${
           isVisible ? "translate-y-0" : "translate-y-full"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -74,6 +74,7 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
             </h3>
             {showCloseButton && (
               <button
+                type="button"
                 onClick={handleClose}
                 className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
               >
@@ -94,7 +95,7 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
             )}
           </div>
         )}
-        <div>{children}</div>
+        <div className="flex flex-col overflow-y-auto">{children}</div>
       </div>
     </div>
   );

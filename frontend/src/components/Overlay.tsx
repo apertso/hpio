@@ -1,10 +1,9 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
-interface DropdownOverlayProps {
+interface OverlayProps {
   isOpen: boolean;
   children: React.ReactNode;
-  align?: "left" | "right";
   widthClass?: string;
   // Ссылка на элемент-триггер (containerRef из useDropdown)
   anchorRef?: React.RefObject<HTMLElement | null>;
@@ -12,10 +11,9 @@ interface DropdownOverlayProps {
   className?: string;
 }
 
-const DropdownOverlay: React.FC<DropdownOverlayProps> = ({
+const Overlay: React.FC<OverlayProps> = ({
   isOpen,
   children,
-  align = "left",
   widthClass = "w-56",
   anchorRef,
   offset = 8,
@@ -46,23 +44,38 @@ const DropdownOverlay: React.FC<DropdownOverlayProps> = ({
       const a = anchor.getBoundingClientRect();
       const o = overlay.getBoundingClientRect();
 
-      // default: показываем снизу
-      let top = a.bottom + offset;
-      let left = align === "right" ? a.right - o.width : a.left;
-      let transformOrigin = align === "right" ? "top right" : "top left";
+      const padding = 8;
+      const bottomSpace = window.innerHeight - (a.bottom + offset);
+      const topSpace = a.top - offset;
+      const fitsBelow = bottomSpace >= o.height;
+      const fitsAbove = topSpace >= o.height;
 
-      // Если не влезает вниз - показываем сверху
-      if (top + o.height > window.innerHeight) {
+      let top = 0;
+      let left = 0;
+      let transformOrigin: string;
+
+      const anchorCenter = a.left + a.width / 2;
+
+      if (fitsBelow) {
+        top = a.bottom + offset;
+        left = anchorCenter - o.width / 2;
+        transformOrigin = "top center";
+      } else if (fitsAbove) {
         top = a.top - o.height - offset;
-        transformOrigin = align === "right" ? "bottom right" : "bottom left";
+        left = anchorCenter - o.width / 2;
+        transformOrigin = "bottom center";
+      } else {
+        top = Math.max(padding, (window.innerHeight - o.height) / 2);
+        left = Math.max(padding, (window.innerWidth - o.width) / 2);
+        transformOrigin = "center";
       }
 
-      // Ограничим по горизонтали, чтобы не выйти за окно
-      const padding = 8;
-      left = Math.max(
-        padding,
-        Math.min(left, window.innerWidth - o.width - padding)
-      );
+      if (transformOrigin !== "center") {
+        left = Math.max(
+          padding,
+          Math.min(left, window.innerWidth - o.width - padding)
+        );
+      }
 
       setStyle({
         position: "fixed",
@@ -85,11 +98,11 @@ const DropdownOverlay: React.FC<DropdownOverlayProps> = ({
       window.removeEventListener("resize", compute);
       window.removeEventListener("scroll", compute, true);
     };
-  }, [isOpen, anchorRef, align, offset, children]);
+  }, [isOpen, anchorRef, offset, children]);
 
   if (!isOpen) return null;
 
-  const baseClasses = `rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none border border-gray-300 dark:border-gray-700 ${widthClass} ${className}`;
+  const baseClasses = `rounded-xl bg-white dark:bg-slate-900 shadow-[0_28px_45px_rgba(15,23,42,0.15)] dark:shadow-[0_35px_60px_rgba(0,0,0,0.55)] focus:outline-none border border-gray-300 dark:border-slate-700 overflow-hidden ${widthClass} ${className}`;
 
   // Рендерим в портал, чтобы ОВЕРЛЕЙ был вне document flow таблицы
   return ReactDOM.createPortal(
@@ -111,4 +124,4 @@ const DropdownOverlay: React.FC<DropdownOverlayProps> = ({
   );
 };
 
-export default DropdownOverlay;
+export default Overlay;

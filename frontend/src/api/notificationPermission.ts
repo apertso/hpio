@@ -9,6 +9,7 @@ export interface PendingNotification {
   title: string;
   text: string;
   timestamp: number;
+  notification_type?: string;
 }
 
 /**

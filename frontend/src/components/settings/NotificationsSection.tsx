@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { BellAlertIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { BellAlertIcon } from "@heroicons/react/24/outline";
 import SettingsSection from "../SettingsSection";
 import ToggleSwitch from "../ToggleSwitch";
-import { Input } from "../Input";
+import { TextInputField } from "../Input";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { isTauriMobile } from "../../utils/platform";
@@ -235,9 +235,9 @@ const NotificationsSection: React.FC = () => {
 
           {(emailNotifications || pushNotifications) && (
             <div>
-              <Input
+              <TextInputField
                 label="Напоминать в"
-                id="notificationTime"
+                inputId="notificationTime"
                 type="time"
                 value={notificationTime}
                 onChange={(e) => handleNotificationTimeChange(e.target.value)}

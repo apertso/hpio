@@ -1,52 +1,108 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Input } from "./Input";
+import {
+  Input,
+  TextField,
+  EmailField,
+  PasswordField,
+  NumberField,
+  TextInputField,
+} from "./Input";
 
-const meta: Meta<typeof Input> = {
+const meta: Meta<typeof TextField> = {
   title: "Components/Input",
-  component: Input,
+  component: TextField,
   tags: ["autodocs"],
   argTypes: {
     label: { control: "text" },
-    placeholder: { control: "text" },
+    hint: { control: "text" },
+    description: { control: "text" },
     error: { control: "text" },
-    disabled: { control: "boolean" },
-    type: {
-      control: "select",
-      options: ["text", "email", "password", "number"],
-    },
+    required: { control: "boolean" },
   },
 };
 
 export default meta;
-type Story = StoryObj<typeof Input>;
+type Story = StoryObj<typeof TextField>;
 
-export const Default: Story = {
-  args: {
-    label: "Email Address",
-    placeholder: "you@example.com",
-    type: "email",
-  },
+export const Primitive: Story = {
+  name: "Primitive",
+  render: () => (
+    <div className="space-y-4 max-w-xl">
+      <Input placeholder="you@example.com" />
+      <Input placeholder="Disabled input" disabled />
+    </div>
+  ),
 };
 
-export const WithError: Story = {
+export const TextFieldExample: Story = {
+  name: "TextField",
   args: {
-    label: "Password",
-    type: "password",
-    value: "123",
-    error: "Password is too short.",
+    label: "Email",
+    hint: "Мы отправим подтверждение на указанный адрес.",
+    description: "",
+    error: "",
+    required: true,
   },
+  render: (args) => (
+    <TextField
+      label={args.label}
+      hint={args.hint}
+      description={args.description}
+      error={args.error}
+      required={args.required}
+      inputId="storybook-textfield"
+    >
+      <TextField.Input placeholder="you@example.com" />
+    </TextField>
+  ),
 };
 
-export const Disabled: Story = {
-  args: {
-    label: "Disabled Input",
-    placeholder: "Cannot edit",
-    disabled: true,
-  },
+export const TextInputFieldExample: Story = {
+  name: "TextInputField",
+  render: () => (
+    <TextInputField
+      label="Имя"
+      inputId="storybook-textinput"
+      placeholder="Иван Иванов"
+      required
+      hint="Используется для отображения профиля."
+    />
+  ),
 };
 
-export const NoLabel: Story = {
-  args: {
-    placeholder: "Search...",
-  },
+export const EmailFieldExample: Story = {
+  name: "EmailField",
+  render: () => (
+    <EmailField
+      inputId="storybook-email"
+      placeholder="you@example.com"
+      required
+      hint="Используем для уведомлений."
+    />
+  ),
+};
+
+export const PasswordFieldExample: Story = {
+  name: "PasswordField",
+  render: () => (
+    <PasswordField
+      inputId="storybook-password"
+      placeholder="********"
+      description="Минимум 8 символов."
+      required
+    />
+  ),
+};
+
+export const NumberFieldExample: Story = {
+  name: "NumberField",
+  render: () => (
+    <NumberField
+      label="Сумма"
+      inputId="storybook-amount"
+      placeholder="0.00"
+      step="0.01"
+      required
+    />
+  ),
 };

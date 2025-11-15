@@ -47,6 +47,14 @@ Omit return types only for:
 
 Never use the `any` type. Use `unknown` instead and narrow the type.
 
+## Android Notification Automation
+
+This pipeline is sensitive to the runtime environment, so follow these rules:
+
+- **Notification deduplication.** `PaymentNotificationListenerService` stores a `package|title|text` key inside `notification_dedup.json` and suppresses repeats for `DEDUP_TIME_WINDOW_MS` (60 seconds by default). To test the same payload again either wait for the timeout or change the payload. Shrinking the window is acceptable only in debug builds; removing dedup is forbidden.
+- **Dual event channels.** Native code **must** emit both the Tauri event (`window.__TAURI_INTERNALS__.event.emit('payment-notification-received', …)`) and the fallback `CustomEvent('hpio-native-notification')`. `__TAURI_INTERNALS__` may be missing or not initialized inside the WebView, while the DOM event guarantees that React will call `processNotifications()`. Do not remove either channel unless you have a proven replacement.
+- **Frontend handling.** The React app has to subscribe to both events. This prevents “silent” stalls where notifications remain in `pending_notifications.json` but `SuggestionModal` never opens.
+
 ## Form Validation
 
 ### Default Behavior

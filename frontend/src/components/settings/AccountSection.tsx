@@ -17,8 +17,7 @@ import {
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import userApi from "../../api/userApi";
-import { Input } from "../Input";
-import FormBlock from "../FormBlock";
+import { Input, TextField, PasswordField, TextInputField } from "../Input";
 import SettingsSection from "../SettingsSection";
 import { useToast } from "../../context/ToastContext";
 import { useAvatarCache } from "../../hooks/useAvatarCache";
@@ -298,47 +297,55 @@ const AccountSection: React.FC = () => {
                       <Spinner size="sm" />
                     </div>
                   )}
-                  <input {...getInputProps()} />
+                  <Input
+                    {...getInputProps()}
+                    type="file"
+                    className="sr-only"
+                    unstyled
+                  />
                 </div>
               </div>
 
-              {/* Name Field */}
-              <div className="flex-grow">
-                <Input
-                  label="Имя"
-                  id="name"
-                  type="text"
-                  {...registerSettings("name")}
-                  error={settingsErrors.name?.message}
-                />
-              </div>
+              <TextInputField
+                label="Имя"
+                inputId="name"
+                error={settingsErrors.name?.message}
+                required
+                wrapperClassName="flex-grow"
+                disabled={isSettingsSubmitting}
+                {...registerSettings("name")}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
-                    Email
-                  </label>
-                  {user?.isVerified ? (
-                    <span className="text-xs flex items-center text-green-600 dark:text-green-400">
-                      <CheckBadgeIcon className="h-4 w-4 mr-1" /> Подтвержден
-                    </span>
-                  ) : (
-                    <span className="text-xs flex items-center text-yellow-600 dark:text-yellow-400">
-                      <ExclamationCircleIcon className="h-4 w-4 mr-1" /> Не
-                      подтвержден
-                    </span>
-                  )}
-                </div>
-                <Input
-                  id="email"
-                  type="email"
-                  {...registerSettings("email")}
+                <TextField
+                  inputId="email"
                   error={settingsErrors.email?.message}
-                />
+                  required
+                >
+                  <TextField.Label>
+                    <div className="flex items-center justify-between">
+                      <span>Email</span>
+                      {user?.isVerified ? (
+                        <span className="text-xs flex items-center text-green-600 dark:text-green-400">
+                          <CheckBadgeIcon className="h-4 w-4 mr-1" />
+                          Подтвержден
+                        </span>
+                      ) : (
+                        <span className="text-xs flex items-center text-yellow-600 dark:text-yellow-400">
+                          <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                          Не подтвержден
+                        </span>
+                      )}
+                    </div>
+                  </TextField.Label>
+                  <TextField.Input
+                    type="email"
+                    autoComplete="email"
+                    disabled={isSettingsSubmitting}
+                    {...registerSettings("email")}
+                  />
+                </TextField>
               </div>
               <Controller
                 name="timezone"
@@ -409,26 +416,32 @@ const AccountSection: React.FC = () => {
               onSubmit={handlePasswordSubmit(onPasswordSubmit)}
               className="space-y-4"
             >
-              <Input
-                id="currentPassword"
+              <PasswordField
                 label="Текущий пароль"
-                type="password"
+                inputId="currentPassword"
+                autoComplete="current-password"
                 {...registerPassword("currentPassword")}
                 error={passwordErrors.currentPassword?.message}
+                disabled={isPasswordSubmitting}
+                required
               />
-              <Input
-                id="newPassword"
+              <PasswordField
                 label="Новый пароль"
-                type="password"
+                inputId="newPassword"
+                autoComplete="new-password"
                 {...registerPassword("newPassword")}
                 error={passwordErrors.newPassword?.message}
+                disabled={isPasswordSubmitting}
+                required
               />
-              <Input
-                id="confirmPassword"
+              <PasswordField
                 label="Подтвердите новый пароль"
-                type="password"
+                inputId="confirmPassword"
+                autoComplete="new-password"
                 {...registerPassword("confirmPassword")}
                 error={passwordErrors.confirmPassword?.message}
+                disabled={isPasswordSubmitting}
+                required
               />
               <div className="text-right">
                 <button
@@ -482,26 +495,32 @@ const AccountSection: React.FC = () => {
           onSubmit={handlePasswordSubmit(onPasswordSubmit)}
           className="space-y-4"
         >
-          <Input
-            id="currentPasswordMobile"
+          <PasswordField
             label="Текущий пароль"
-            type="password"
+            inputId="currentPasswordMobile"
+            autoComplete="current-password"
             {...registerPassword("currentPassword")}
             error={passwordErrors.currentPassword?.message}
+            disabled={isPasswordSubmitting}
+            required
           />
-          <Input
-            id="newPasswordMobile"
+          <PasswordField
             label="Новый пароль"
-            type="password"
+            inputId="newPasswordMobile"
+            autoComplete="new-password"
             {...registerPassword("newPassword")}
             error={passwordErrors.newPassword?.message}
+            disabled={isPasswordSubmitting}
+            required
           />
-          <Input
-            id="confirmPasswordMobile"
+          <PasswordField
             label="Подтвердите новый пароль"
-            type="password"
+            inputId="confirmPasswordMobile"
+            autoComplete="new-password"
             {...registerPassword("confirmPassword")}
             error={passwordErrors.confirmPassword?.message}
+            disabled={isPasswordSubmitting}
+            required
           />
           <div className="text-right">
             <button

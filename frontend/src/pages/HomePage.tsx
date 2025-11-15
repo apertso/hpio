@@ -1,4 +1,4 @@
-﻿// src/pages/HomePage.tsx
+// src/pages/HomePage.tsx
 import React, {
   useState,
   useEffect,
@@ -15,8 +15,8 @@ import useApi from "../hooks/useApi"; // Import useApi
 import { useTheme } from "../context/ThemeContext"; // Import useTheme
 import { Button } from "../components/Button";
 import { DropdownButton } from "../components/DropdownButton";
-import { YearSelectorDropdown } from "../components/YearSelectorDropdown";
 import CategoryDistributionBars from "../components/CategoryDistributionBars";
+import DatePicker from "../components/DatePicker";
 
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
@@ -28,6 +28,7 @@ import SegmentedControl, {
   TimeRangeOption,
 } from "../components/SegmentedControl";
 import AdvancedFiltersPanel from "../components/AdvancedFiltersPanel";
+import PeriodSelector from "../components/PeriodSelector";
 
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import { PaymentData } from "../types/paymentData";
@@ -38,31 +39,14 @@ interface Category {
   builtinIconName?: string | null;
 }
 import getErrorMessage from "../utils/getErrorMessage";
+import {
+  paymentMatchesDateKey,
+  formatDateToLocal,
+  isHourlyDateString,
+} from "../utils/dateUtils";
 // Icons for list items are handled inside PaymentListCard
 // import { ArrowPathIcon, CalendarDaysIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 
-// Utility function to format date in local timezone (YYYY-MM-DD)
-const formatDateToLocal = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const monthNames = [
-  "Январь",
-  "Февраль",
-  "Март",
-  "Апрель",
-  "Май",
-  "Июнь",
-  "Июль",
-  "Август",
-  "Сентябрь",
-  "Октябрь",
-  "Ноябрь",
-  "Декабрь",
-];
 const monthNamesGenitive = [
   "января",
   "февраля",
@@ -136,6 +120,24 @@ const categoryColorsDark = [
   "#ec4899", // pink-500
 ];
 
+const getInitialTimeRange = (): TimeRangeOption => {
+  if (typeof window === "undefined") {
+    return "1d";
+  }
+
+  const savedTimeRange = localStorage.getItem("dashboard-time-range");
+  const allowedRanges: TimeRangeOption[] = ["1d", "1w", "1m", "1y", "custom"];
+
+  if (
+    savedTimeRange &&
+    allowedRanges.includes(savedTimeRange as TimeRangeOption)
+  ) {
+    return savedTimeRange as TimeRangeOption;
+  }
+
+  return "1d";
+};
+
 import CustomDailySpendingChart from "../components/CustomDailySpendingChart";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -165,6 +167,7 @@ import {
   PencilIcon,
   CheckCircleIcon,
   TrashIcon,
+  PlusIcon,
 } from "@heroicons/react/24/solid";
 import { ChevronDownIcon } from "../components/ChevronDownIcon";
 import { ChevronUpIcon } from "../components/ChevronUpIcon";
@@ -335,7 +338,9 @@ const HomePage: React.FC = () => {
     isLoading: isLoadingPayments,
     error: errorPayments,
     execute: executeFetchUpcomingPayments,
-  } = useApi<PaymentData[]>(fetchUpcomingPaymentsApi);
+  } = useApi<PaymentData[]>((...args: unknown[]) =>
+    fetchUpcomingPaymentsApi(args[0] as number)
+  );
 
   // State for transformed upcoming payments data
   const [upcomingPayments, setUpcomingPayments] = useState<PaymentData[]>([]);
@@ -390,9 +395,16 @@ const HomePage: React.FC = () => {
   // const { user } = useAuth(); // Получаем данные пользователя, если нужно (не напрямую для API, а для логирования/отображения)
 
   // НОВОЕ: Состояние для выбора периода статистики с сегментированным контролом
-  const [timeRange, setTimeRange] = useState<TimeRangeOption>("1d");
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>(() =>
+    getInitialTimeRange()
+  );
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
   const lastChangeFromSegmentedControl = useRef(false);
+  const statsAbortControllerRef = useRef<AbortController | null>(null);
+  const statsRequestKeyRef = useRef<string | null>(null);
+  const lastSuccessfulStatsKeyRef = useRef<string | null>(null);
+  const statsRequestIdRef = useRef(0);
+  const hasAppliedInitialResetRef = useRef(false);
 
   // Legacy state for advanced filters (when using произвольный/custom)
   type PeriodType = "month" | "quarter" | "year" | "custom";
@@ -555,74 +567,135 @@ const HomePage: React.FC = () => {
     customDateTo,
   ]);
 
+  const handleStatsRangeChange = useCallback(
+    ([nextStart, nextEnd]: [Date | null, Date | null]) => {
+      if (!nextStart || !nextEnd) {
+        return;
+      }
+
+      setPeriodType("custom");
+      setCustomDateFrom(nextStart);
+      setCustomDateTo(nextEnd);
+      setTimeRange("custom");
+    },
+    [setPeriodType, setCustomDateFrom, setCustomDateTo, setTimeRange]
+  );
+
   // --- Функция для загрузки статистики (из Dashboard.tsx) ---
-  const fetchDashboardStats = useCallback(async () => {
-    setIsLoadingStats(true);
-    setErrorStats(null);
 
-    const params = {
-      startDate: formatDateToLocal(startDate),
-      endDate: formatDateToLocal(endDate),
-    };
-
-    try {
-      const res = await axiosInstance.get("/stats", { params }); // Используем новый эндпоинт с параметрами
-
-      // Преобразование сумм в числа для графиков
-      const formattedStats = {
-        ...res.data,
-        totalUpcomingAmount: parseFloat(res.data.totalUpcomingAmount),
-        totalCompletedAmount: parseFloat(res.data.totalCompletedAmount),
-        // amounts в массивах categoriesDistribution и dailyPaymentLoad уже number на бэкенде
-        allPaymentsInMonth:
-          res.data.allPaymentsInMonth?.map((p: PaymentData) => ({
-            ...p,
-            amount:
-              typeof p.amount === "string" ? parseFloat(p.amount) : p.amount,
-          })) || [],
+  const fetchDashboardStats = useCallback(
+    async ({ force = false }: { force?: boolean } = {}) => {
+      const params = {
+        startDate: formatDateToLocal(startDate),
+        endDate: formatDateToLocal(endDate),
       };
 
-      setStats(formattedStats);
-      logger.info("Successfully fetched dashboard stats.");
-    } catch (error: unknown) {
-      let errorMessage = "Неизвестная ошибка";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
+      const rangeKey = `${params.startDate}_${params.endDate}`;
+      const isSameRangeInFlight =
+        statsRequestKeyRef.current === rangeKey &&
+        statsAbortControllerRef.current !== null;
+      const isSameRangeLoaded =
+        statsAbortControllerRef.current === null &&
+        lastSuccessfulStatsKeyRef.current === rangeKey;
+
+      if (!force && (isSameRangeInFlight || isSameRangeLoaded)) {
+        return;
       }
-      logger.error("Failed to fetch dashboard stats:", errorMessage);
 
-      // Try to calculate stats from offline data
+      if (statsAbortControllerRef.current) {
+        statsAbortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      statsAbortControllerRef.current = controller;
+      statsRequestKeyRef.current = rangeKey;
+      const requestId = statsRequestIdRef.current + 1;
+      statsRequestIdRef.current = requestId;
+
+      setIsLoadingStats(true);
+      setErrorStats(null);
+
       try {
-        logger.info("Attempting to calculate stats from offline data...");
-        const { syncService } = await import("../utils/syncService");
-        const offlineData = await syncService.getOfflineData();
+        const res = await axiosInstance.get("/stats", {
+          params,
+          signal: controller.signal,
+        });
 
-        if (offlineData.payments && offlineData.payments.length > 0) {
-          const calculatedStats = calculateStatsFromPayments(
-            offlineData.payments,
-            offlineData.categories || [],
-            startDate,
-            endDate
-          );
-          setStats(calculatedStats);
-          setErrorStats(null);
-          logger.info("Successfully calculated stats from offline data.");
+        const formattedStats = {
+          ...res.data,
+          totalUpcomingAmount: parseFloat(res.data.totalUpcomingAmount),
+          totalCompletedAmount: parseFloat(res.data.totalCompletedAmount),
+          allPaymentsInMonth:
+            res.data.allPaymentsInMonth?.map((p: PaymentData) => ({
+              ...p,
+              amount:
+                typeof p.amount === "string" ? parseFloat(p.amount) : p.amount,
+            })) || [],
+        };
+
+        setStats(formattedStats);
+        lastSuccessfulStatsKeyRef.current = rangeKey;
+        logger.info("Successfully fetched dashboard stats.");
+      } catch (error: unknown) {
+        const isAbortError =
+          (error instanceof DOMException && error.name === "AbortError") ||
+          (typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as { code?: string }).code === "ERR_CANCELED");
+
+        if (isAbortError) {
+          logger.info("Dashboard stats request was canceled.");
           return;
         }
-      } catch (offlineError) {
-        logger.error(
-          "Failed to calculate stats from offline data:",
-          offlineError
-        );
-      }
 
-      setErrorStats("Не удалось загрузить статистику.");
-    } finally {
-      setIsLoadingStats(false);
-    }
-  }, [startDate, endDate]); // Update dependency array
+        let errorMessage = "Неизвестная ошибка";
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === "string") {
+          errorMessage = error;
+        }
+        logger.error("Failed to fetch dashboard stats:", errorMessage);
+
+        try {
+          logger.info("Attempting to calculate stats from offline data...");
+          const { syncService } = await import("../utils/syncService");
+          const offlineData = await syncService.getOfflineData();
+
+          if (offlineData.payments && offlineData.payments.length > 0) {
+            const calculatedStats = calculateStatsFromPayments(
+              offlineData.payments,
+              offlineData.categories || [],
+              startDate,
+              endDate
+            );
+            setStats(calculatedStats);
+            setErrorStats(null);
+            logger.info("Successfully calculated stats from offline data.");
+            return;
+          }
+        } catch (offlineError) {
+          logger.error(
+            "Failed to calculate stats from offline data:",
+            offlineError
+          );
+        }
+
+        setErrorStats("Не удалось загрузить статистику.");
+      } finally {
+        if (statsAbortControllerRef.current === controller) {
+          statsAbortControllerRef.current = null;
+        }
+        if (statsRequestKeyRef.current === rangeKey) {
+          statsRequestKeyRef.current = null;
+        }
+        if (statsRequestIdRef.current === requestId) {
+          setIsLoadingStats(false);
+        }
+      }
+    },
+    [startDate, endDate]
+  );
 
   // --- Эффекты для загрузки и сброса статистики ---
 
@@ -633,6 +706,11 @@ const HomePage: React.FC = () => {
 
   // Эффект для сброса фильтров на текущую дату при монтировании или по триггеру сброса
   useEffect(() => {
+    if (!hasAppliedInitialResetRef.current) {
+      hasAppliedInitialResetRef.current = true;
+      return;
+    }
+
     setUpcomingDays(10);
     setTimeRange("1d");
     // Always use calendar periods for date calculations
@@ -646,16 +724,6 @@ const HomePage: React.FC = () => {
   }, [resetKey]); // Зависимость только от resetKey
 
   // Эффект для загрузки timeRange из localStorage при монтировании
-  useEffect(() => {
-    const savedTimeRange = localStorage.getItem("dashboard-time-range");
-    if (
-      savedTimeRange &&
-      ["1d", "1w", "1m", "1y", "custom"].includes(savedTimeRange)
-    ) {
-      setTimeRange(savedTimeRange as TimeRangeOption);
-    }
-  }, []);
-
   // Эффект для синхронизации timeRange с periodType (для обратной совместимости с advanced filters)
   useEffect(() => {
     // Пропускаем синхронизацию если изменение пришло от segmented control
@@ -816,7 +884,7 @@ const HomePage: React.FC = () => {
       await axiosInstance.put(`/payments/${paymentId}/complete`, payload);
       showToast("Платеж выполнен.", "success");
       executeFetchUpcomingPayments(upcomingDays);
-      fetchDashboardStats();
+      fetchDashboardStats({ force: true });
     } catch (error) {
       logger.error(`Failed to complete payment ${paymentId}:`, error);
       showToast(
@@ -856,7 +924,7 @@ const HomePage: React.FC = () => {
         await axiosInstance.delete(`/payments/${payment.id}`);
         showToast("Платеж перемещен в архив.", "info");
         executeFetchUpcomingPayments(upcomingDays);
-        fetchDashboardStats();
+        fetchDashboardStats({ force: true });
       } catch (error: unknown) {
         showToast(`Ошибка удаления: ${getErrorMessage(error)}`, "error");
       } finally {
@@ -882,7 +950,7 @@ const HomePage: React.FC = () => {
       );
       showToast("Платеж перемещен в архив.", "info");
       executeFetchUpcomingPayments(upcomingDays);
-      fetchDashboardStats();
+      fetchDashboardStats({ force: true });
     } catch (error: unknown) {
       showToast(`Ошибка удаления: ${getErrorMessage(error)}`, "error");
     } finally {
@@ -900,7 +968,7 @@ const HomePage: React.FC = () => {
       );
       showToast("Серия платежей была деактивирована.", "success");
       executeFetchUpcomingPayments(upcomingDays);
-      fetchDashboardStats();
+      fetchDashboardStats({ force: true });
     } catch (error: unknown) {
       showToast(`Ошибка удаления серии: ${getErrorMessage(error)}`, "error");
     } finally {
@@ -925,35 +993,54 @@ const HomePage: React.FC = () => {
 
   const handleChartPointClick = (date: string) => {
     if (!stats?.allPaymentsInMonth) return;
-    const paymentsForDay = stats.allPaymentsInMonth.filter((p) => {
-      const paymentDateKey =
-        p.status === "completed" && p.completedAt
-          ? new Date(p.completedAt).toISOString().split("T")[0]
-          : p.dueDate;
-      return paymentDateKey === date;
-    });
+
+    const paymentsForDay = stats.allPaymentsInMonth.filter((p) =>
+      paymentMatchesDateKey(p, date)
+    );
     setDailyPaymentsModal({ date, payments: paymentsForDay });
   };
 
   // --- Данные для графика (НОВАЯ, УПРОЩЕННАЯ ВЕРСИЯ) ---
-  const { chartData, chartLabels, chartRawDates } = useMemo(() => {
+  const { chartData, chartLabels, chartRawDates, isHourly } = useMemo(() => {
     if (!stats?.dailyPaymentLoad || stats.dailyPaymentLoad.length === 0) {
-      return { chartData: [], chartLabels: [], chartRawDates: [] };
+      return {
+        chartData: [],
+        chartLabels: [],
+        chartRawDates: [],
+        isHourly: false,
+      };
     }
 
     const dataPoints = stats.dailyPaymentLoad.map((d) => d.amount);
-    const labels = stats.dailyPaymentLoad.map((d) =>
-      new Date(d.date).toLocaleDateString("ru-RU", {
-        day: "numeric",
-        month: "short",
-      })
+
+    // Проверяем, если данные по часам (содержат компонент времени)
+    const isHourly = stats.dailyPaymentLoad.some((d) =>
+      isHourlyDateString(d.date)
     );
+
+    const labels = stats.dailyPaymentLoad.map((d) => {
+      const date = new Date(d.date);
+      if (isHourly) {
+        return date.toLocaleString("ru-RU", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      } else {
+        return date.toLocaleDateString("ru-RU", {
+          day: "numeric",
+          month: "short",
+        });
+      }
+    });
     const rawDates = stats.dailyPaymentLoad.map((d) => d.date);
 
     return {
       chartData: dataPoints,
       chartLabels: labels,
       chartRawDates: rawDates,
+      isHourly,
     };
   }, [stats]);
 
@@ -1000,6 +1087,7 @@ const HomePage: React.FC = () => {
           <Button
             onClick={handleAddPayment}
             label="Добавить платеж"
+            icon={<PlusIcon className="w-4 h-4" />}
             className="hidden md:inline-flex"
           />
         </div>
@@ -1067,7 +1155,7 @@ const HomePage: React.FC = () => {
                         <div className="flex-shrink-0 flex items-center justify-center w-68">
                           <button
                             onClick={() => setShowAllUpcoming((prev) => !prev)}
-                            className="p-4 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors w-full h-full font-bold text-gray-700 dark:text-gray-200 cursor-pointer flex items-center justify-center gap-2"
+                            className="p-4 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors w-full h-full font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer flex items-center justify-center gap-2"
                           >
                             {showAllUpcoming ? "Свернуть" : "Показать больше"}
                             {showAllUpcoming ? (
@@ -1138,7 +1226,7 @@ const HomePage: React.FC = () => {
                   {upcomingPayments.length > 5 && (
                     <button
                       onClick={() => setShowAllUpcoming((prev) => !prev)}
-                      className="w-full mt-1 p-3 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-bold text-gray-700 dark:text-gray-200 cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full mt-1 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer flex items-center justify-center gap-2"
                     >
                       {showAllUpcoming ? "Свернуть" : "Показать больше"}
                       {showAllUpcoming ? (
@@ -1169,8 +1257,20 @@ const HomePage: React.FC = () => {
             Статистика
           </h2>
           {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
+          <div className="flex flex-wrap items-center gap-2 md:gap-6 mb-6">
+            <DatePicker
+              mode="range"
+              startDate={startDate}
+              endDate={endDate}
+              onRangeChange={handleStatsRangeChange}
+              wrapperClassName="!w-auto !gap-0"
+              inputClassName="!w-40 !min-w-8 md:!w-46 !rounded-xl text-sm text-center font-semibold tracking-tight px-4 !py-[9.7px] md:px-5 md:!py-[8.2px] text-slate-900 dark:text-slate-100 bg-gradient-to-br from-white/95 via-white/90 to-white/80 dark:from-[#151c2d] dark:via-[#111827] dark:to-[#0b1220] border border-slate-200/70 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/30 focus:border-[#3d7cff] dark:focus:border-[#7ea8ff] focus:ring-2 focus:ring-[#3d7cff]/30 dark:focus:ring-[#4c6fff]/35 focus:ring-offset-1 focus:ring-offset-white/70 dark:focus:ring-offset-transparent focus:outline-none shadow-[0_6px_16px_rgba(15,23,42,0.09)] dark:shadow-[0_16px_30px_rgba(3,7,18,0.55)] backdrop-blur-2xl transition-all duration-200 ease-out"
+              labelClassName="hidden"
+              label="Период"
+            />
             <SegmentedControl
+              className="flex-shrink-0"
+              optionClassName="!px-2 md:!px-4"
               selected={timeRange}
               onChange={(option) => {
                 const now = new Date();
@@ -1212,10 +1312,6 @@ const HomePage: React.FC = () => {
                     setPeriodType("year");
                     // Use current year from the 1st day
                     setYear(now.getFullYear());
-                    break;
-                  case "custom":
-                    setPeriodType("custom");
-                    setIsAdvancedFiltersOpen(true);
                     break;
                 }
 
@@ -1312,13 +1408,14 @@ const HomePage: React.FC = () => {
                   />
                 </div>
 
-                {/* График платежной нагрузки по дням */}
+                {/* График платежной нагрузки по дням/часам */}
                 <div className="lg:col-span-3 bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col h-full min-h-80">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-1">
-                    Платежная нагрузка по дням
+                    Платежная нагрузка {isHourly ? "по часам" : "по дням"}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                    Кликните на точку на графике, чтобы увидеть детали за день.
+                    Кликните на точку на графике, чтобы увидеть детали за{" "}
+                    {isHourly ? "час" : "день"}.
                   </p>
                   {noDailyData ? (
                     <div className="flex items-center justify-center flex-1 text-center text-gray-700 dark:text-gray-300">
@@ -1390,13 +1487,21 @@ const HomePage: React.FC = () => {
             onClose={() => setDailyPaymentsModal(null)}
             title={`Платежи за ${
               dailyPaymentsModal?.date
-                ? new Date(dailyPaymentsModal.date).toLocaleDateString(
+                ? new Date(dailyPaymentsModal.date).toLocaleString(
                     "ru-RU",
-                    {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    }
+                    isHourly
+                      ? {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      : {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        }
                   )
                 : ""
             }`}
@@ -1438,13 +1543,21 @@ const HomePage: React.FC = () => {
             onClose={() => setDailyPaymentsModal(null)}
             title={`Платежи за ${
               dailyPaymentsModal?.date
-                ? new Date(dailyPaymentsModal.date).toLocaleDateString(
+                ? new Date(dailyPaymentsModal.date).toLocaleString(
                     "ru-RU",
-                    {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    }
+                    isHourly
+                      ? {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      : {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        }
                   )
                 : ""
             }`}
@@ -1503,81 +1616,17 @@ const HomePage: React.FC = () => {
       <AdvancedFiltersPanel
         isOpen={isAdvancedFiltersOpen}
         onClose={() => setIsAdvancedFiltersOpen(false)}
+        title="Выбрать период"
       >
-        <div className="space-y-4">
-          <div className="space-y-4">
-            {/* Month dropdown */}
-            {periodType === "month" && (
-              <>
-                <DropdownButton
-                  label={monthNames[month]}
-                  options={monthNames.map((name, idx) => ({
-                    label: name,
-                    value: idx,
-                    onClick: () => setMonth(idx),
-                  }))}
-                  selectedValue={month}
-                />
-              </>
-            )}
-            {/* Quarter dropdown */}
-            {periodType === "quarter" && (
-              <>
-                <DropdownButton
-                  label={String(quarter + 1)}
-                  options={Array.from({ length: 4 }, (_, idx) => ({
-                    label: String(idx + 1),
-                    value: idx,
-                    onClick: () => setQuarter(idx),
-                  }))}
-                  selectedValue={quarter}
-                />
-              </>
-            )}
-            {/* Year input (not for custom) */}
-            {periodType !== "custom" && (
-              <>
-                <YearSelectorDropdown
-                  years={Array.from(
-                    { length: 21 },
-                    (_, i) => new Date().getFullYear() - 10 + i
-                  )}
-                  selectedYear={year}
-                  onChange={setYear}
-                />
-              </>
-            )}
-            {/* Custom date range */}
-            {periodType === "custom" && (
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    С:
-                  </label>
-                  <input
-                    type="date"
-                    value={customDateFrom.toISOString().split("T")[0]}
-                    onChange={(e) =>
-                      setCustomDateFrom(new Date(e.target.value))
-                    }
-                    className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100 w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    По:
-                  </label>
-                  <input
-                    type="date"
-                    value={customDateTo.toISOString().split("T")[0]}
-                    onChange={(e) => setCustomDateTo(new Date(e.target.value))}
-                    className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-gray-100 w-full"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <PeriodSelector
+          initialDateRange={[customDateFrom, customDateTo]}
+          onApply={([startDate, endDate]) => {
+            setCustomDateFrom(startDate);
+            setCustomDateTo(endDate);
+            setIsAdvancedFiltersOpen(false);
+          }}
+          onCancel={() => setIsAdvancedFiltersOpen(false)}
+        />
       </AdvancedFiltersPanel>
     </>
   );

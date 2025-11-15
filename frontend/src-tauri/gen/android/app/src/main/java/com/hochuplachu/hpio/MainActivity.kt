@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
+import android.view.MotionEvent
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -43,6 +44,26 @@ class MainActivity : TauriActivity() {
   override fun onWebViewCreate(webView: WebView) {
     super.onWebViewCreate(webView)
     this.webView = webView
+
+    // Disable zoom controls and pinch-to-zoom
+    webView.settings.apply {
+      setSupportZoom(false)
+      builtInZoomControls = false
+      displayZoomControls = false
+      useWideViewPort = false
+      loadWithOverviewMode = false
+    }
+
+    // Prevent pinch-to-zoom by overriding touch events
+    webView.setOnTouchListener { _, event ->
+      if (event != null && event.pointerCount > 1) {
+        // Multi-touch detected (pinch gesture), consume the event
+        true
+      } else {
+        // Single touch, allow normal scrolling/tapping
+        false
+      }
+    }
   }
 
   override fun onNewIntent(intent: Intent) {
@@ -92,8 +113,18 @@ class MainActivity : TauriActivity() {
 
   private fun emitNotificationEvent() {
     val timestamp = System.currentTimeMillis()
+    val script = """
+      (function() {
+        const detail = { timestamp: $timestamp };
+        if (window.__TAURI_INTERNALS__?.event?.emit) {
+          window.__TAURI_INTERNALS__.event.emit('payment-notification-received', detail);
+        }
+        const nativeEvent = new CustomEvent('hpio-native-notification', { detail });
+        window.dispatchEvent(nativeEvent);
+      })();
+    """.trimIndent()
+
     webView?.post {
-      val script = "window.__TAURI_INTERNALS__?.event?.emit('payment-notification-received', {timestamp: $timestamp})"
       webView?.evaluateJavascript(script, null)
     }
   }

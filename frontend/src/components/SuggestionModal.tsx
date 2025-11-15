@@ -9,12 +9,14 @@ import axiosInstance from "../api/axiosInstance";
 import { suggestionApi } from "../api/suggestionApi";
 import { merchantRuleApi } from "../api/merchantRuleApi";
 import { normalizeMerchantName } from "../utils/merchantNormalizer";
+import { normalizeNotificationTimestamp } from "../utils/dateUtils";
 
 interface ParsedSuggestion {
   id: string;
   merchantName: string;
   amount: number;
   notificationData: string;
+  notificationTimestamp?: number | null;
 }
 
 interface SuggestionModalProps {
@@ -78,14 +80,24 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
 
       const today = new Date().toISOString().split("T")[0];
 
-      await axiosInstance.post("/payments", {
+      const completedAt = normalizeNotificationTimestamp(
+        currentSuggestion.notificationTimestamp
+      );
+
+      const payload: Record<string, unknown> = {
         title: currentSuggestion.merchantName,
         amount: currentSuggestion.amount,
         dueDate: today,
         categoryId: selectedCategoryId || null,
         createAsCompleted: true,
         autoCreated: true,
-      });
+      };
+
+      if (completedAt) {
+        payload.completedAt = completedAt;
+      }
+
+      await axiosInstance.post("/payments", payload);
 
       if (createRule && selectedCategoryId) {
         const normalizedMerchant = normalizeMerchantName(

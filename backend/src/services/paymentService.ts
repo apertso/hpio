@@ -26,6 +26,7 @@ interface PaymentData {
   // Option to create a completed payment immediately (used during creation)
   createAsCompleted?: boolean;
   autoCreated?: boolean;
+  completedAt?: string | Date | null;
   // seriesId is not part of input data for create/update payment instance
 }
 
@@ -358,6 +359,26 @@ export const createPayment = async (
     }
 
     // Create the payment instance
+    let completionDate: Date | null = null;
+    if (paymentData.createAsCompleted) {
+      if (paymentData.completedAt) {
+        if (typeof paymentData.completedAt === "string") {
+          const parsedDate = new Date(paymentData.completedAt);
+          if (isNaN(parsedDate.getTime())) {
+            throw new Error("Некорректный формат даты завершения.");
+          }
+          completionDate = parsedDate;
+        } else if (paymentData.completedAt instanceof Date) {
+          completionDate = paymentData.completedAt;
+        } else {
+          // completedAt должен быть строкой, датой или null
+          throw new Error("Некорректный тип значения completedAt");
+        }
+      } else {
+        completionDate = new Date();
+      }
+    }
+
     const payment = await db.Payment.create({
       userId: userId,
       categoryId: paymentData.categoryId || null,
@@ -369,9 +390,7 @@ export const createPayment = async (
       autoCreated: paymentData.autoCreated || false,
 
       status: paymentData.createAsCompleted ? "completed" : "upcoming",
-      completedAt: paymentData.createAsCompleted
-        ? Sequelize.literal("NOW()")
-        : null,
+      completedAt: completionDate,
       // filePath, fileName, builtinIconName are handled by fileService/icon logic
       // Copy icon data to the first payment instance if it's a new series
       builtinIconName: paymentData.builtinIconName || null,
@@ -621,12 +640,22 @@ export const updatePayment = async (
       payment.seriesId
     ) {
       // Если пользователь явно очистил recurrencePattern для существующего регулярного платежа,
-      // отсоединяем его от серии (делаем разовым).
-      // ВАЖНО: Это изменит только этот экземпляр. Сама серия останется.
-      // Если это последний активный платеж серии, серия может быть удалена (логика в deletePayment/completePayment).
+      // отсоединяем его от серии (делаем разовым) И деактивируем саму серию.
       logger.info(
-        `Detaching payment ${payment.id} from series ${payment.seriesId} to make it one-time.`
+        `Detaching payment ${payment.id} from series ${payment.seriesId} to make it one-time and deactivating the series.`
       );
+
+      // Deactivate the series
+      const series = await db.RecurringSeries.findOne({
+        where: { id: payment.seriesId },
+      });
+      if (series) {
+        await series.update({ isActive: false });
+        logger.info(
+          `Deactivated series ${payment.seriesId} upon explicit detachment.`
+        );
+      }
+
       fieldsToUpdate.seriesId = null;
       // Также удаляем recurrencePattern и recurrenceEndDate из fieldsToUpdate, т.к. они относятся к серии
       delete fieldsToUpdate.recurrenceRule;
@@ -964,6 +993,38 @@ export const permanentDeletePayment = async (
       error
     );
     throw new Error(error.message || "Failed to permanently delete payment.");
+  }
+};
+
+export const clearTrash = async (userId: string): Promise<number> => {
+  try {
+    const trashedPayments = await db.Payment.findAll({
+      where: { userId, status: "deleted" },
+    });
+
+    if (trashedPayments.length === 0) {
+      return 0;
+    }
+
+    for (const payment of trashedPayments) {
+      try {
+        await deleteFileFromFS(userId, payment.id);
+      } catch (fsError: any) {
+        logger.error(
+          `Error deleting files/icons directory for payment ${payment.id} from FS:`,
+          fsError
+        );
+      }
+      await payment.destroy();
+    }
+
+    logger.info(
+      `Cleared trash for user ${userId}. Deleted ${trashedPayments.length} payments.`
+    );
+    return trashedPayments.length;
+  } catch (error: any) {
+    logger.error(`Error clearing trash for user ${userId}:`, error);
+    throw new Error("Не удалось очистить корзину.");
   }
 };
 
@@ -1527,6 +1588,11 @@ export const getDashboardStats = async (
     } = {};
     const dailyStats: { [key: string]: { date: string; amount: number } } = {};
 
+    // Проверяем, если диапазон дат меньше 2 дней
+    const dateRangeInMs = periodEndDate.getTime() - periodStartDate.getTime();
+    const isLessThan2Days = dateRangeInMs < 2 * 24 * 60 * 60 * 1000;
+    const hourlyStats: { [key: string]: { date: string; amount: number } } = {};
+
     // Считаем выполненные только по реальным платежам
     for (const payment of relevantPayments) {
       const amount = parseFloat(payment.amount.toString());
@@ -1555,8 +1621,9 @@ export const getDashboardStats = async (
         categoriesStats[categoryId].amount += amount;
       }
 
-      // Статистика по дням с учетом таймзоны
+      // Статистика по дням/часам с учетом таймзоны
       let dateKey: string;
+      let hourKey: string;
       if (payment.status === "completed" && payment.completedAt) {
         // Конвертируем UTC дату выполнения в дату в таймзоне пользователя
         const completedDateInUserTZ = toZonedTime(
@@ -1564,8 +1631,10 @@ export const getDashboardStats = async (
           userTimezone
         );
         dateKey = format(completedDateInUserTZ, "yyyy-MM-dd");
+        hourKey = format(completedDateInUserTZ, "yyyy-MM-dd HH:00");
       } else {
         dateKey = payment.dueDate;
+        hourKey = `${payment.dueDate} 12:00`; // По умолчанию на полдень для дат срока оплаты
       }
 
       if (!dailyStats[dateKey]) {
@@ -1573,6 +1642,16 @@ export const getDashboardStats = async (
       }
       if (payment.status !== "deleted") {
         dailyStats[dateKey].amount += amount;
+      }
+
+      // Для статистики по часам, если диапазон дат меньше 2 дней
+      if (isLessThan2Days) {
+        if (!hourlyStats[hourKey]) {
+          hourlyStats[hourKey] = { date: hourKey, amount: 0 };
+        }
+        if (payment.status !== "deleted") {
+          hourlyStats[hourKey].amount += amount;
+        }
       }
     }
 
@@ -1596,10 +1675,19 @@ export const getDashboardStats = async (
       categoriesStats[categoryId].amount += amount;
 
       const dateKey: string = payment.dueDate;
+      const hourKey: string = `${payment.dueDate} 12:00`; // По умолчанию на полдень для виртуальных платежей
       if (!dailyStats[dateKey]) {
         dailyStats[dateKey] = { date: dateKey, amount: 0 };
       }
       dailyStats[dateKey].amount += amount;
+
+      // Для статистики по часам, если диапазон дат меньше 2 дней
+      if (isLessThan2Days) {
+        if (!hourlyStats[hourKey]) {
+          hourlyStats[hourKey] = { date: hourKey, amount: 0 };
+        }
+        hourlyStats[hourKey].amount += amount;
+      }
     }
 
     const categoriesDistribution = Object.values(categoriesStats).filter(
@@ -1608,6 +1696,13 @@ export const getDashboardStats = async (
     const dailyPaymentLoad = Object.values(dailyStats).sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
+
+    // Используем данные по часам, если диапазон дат меньше 2 дней
+    const paymentLoad = isLessThan2Days
+      ? Object.values(hourlyStats).sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        )
+      : dailyPaymentLoad;
 
     return {
       month: `${periodStartDate.getFullYear()}-${(
@@ -1618,7 +1713,7 @@ export const getDashboardStats = async (
       totalUpcomingAmount: totalUpcomingAmount.toFixed(2),
       totalCompletedAmount: totalCompletedAmount.toFixed(2),
       categoriesDistribution,
-      dailyPaymentLoad,
+      dailyPaymentLoad: paymentLoad,
       allPaymentsInMonth: combinedPayments,
     };
   } catch (error) {

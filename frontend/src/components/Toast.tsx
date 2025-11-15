@@ -220,6 +220,7 @@ const Toast: React.FC<ToastProps> = ({
   return (
     <div
       role="alert"
+      data-prevent-drawer-gesture="true"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}

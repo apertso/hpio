@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 import axiosInstance from "../api/axiosInstance";
 import {
   PencilIcon as PencilSolidIcon,
+  PlusIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
 import { InformationIcon } from "../components/InformationIcon";
@@ -290,6 +291,7 @@ const CategoriesPage: React.FC = () => {
           <Button
             onClick={handleAddCategory}
             label="Добавить категорию"
+            icon={<PlusIcon className="w-4 h-4" />}
             className="hidden md:inline-flex"
           />
         </div>

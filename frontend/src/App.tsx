@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Link,
+  Navigate,
   useLocation,
   useNavigate,
   useSearchParams,
@@ -16,7 +17,7 @@ import NotificationOnboardingModal from "./components/NotificationOnboardingModa
 import SuggestionModal from "./components/SuggestionModal";
 
 import { useDropdown } from "./hooks/useDropdown";
-import DropdownOverlay from "./components/DropdownOverlay";
+import Overlay from "./components/Overlay";
 import SyncStatusIndicator from "./components/SyncStatusIndicator";
 import MobileNavigationDrawer from "./components/MobileNavigationDrawer";
 import {
@@ -28,12 +29,12 @@ import {
   UserIcon,
   Bars3Icon,
   PlusIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import axiosInstance from "./api/axiosInstance";
 import { useAvatarCache } from "./hooks/useAvatarCache";
 import { useReset } from "./context/ResetContext";
 import { isTauri, isTauriMobile } from "./utils/platform";
-import { getPageBackgroundClasses } from "./utils/pageBackgrounds";
 import { usePageTitle } from "./context/PageTitleContext";
 import {
   getPendingNotifications,
@@ -43,6 +44,7 @@ import {
 } from "./api/notificationPermission";
 import { parseNotification } from "./utils/notificationParser";
 import { normalizeMerchantName } from "./utils/merchantNormalizer";
+import { normalizeNotificationTimestamp } from "./utils/dateUtils";
 import { suggestionApi } from "./api/suggestionApi";
 import { merchantRuleApi } from "./api/merchantRuleApi";
 import { notificationApi } from "./api/notificationApi";
@@ -60,7 +62,6 @@ const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
 const PasswordResetPage = React.lazy(() => import("./pages/PasswordResetPage"));
 const ResetPasswordPage = React.lazy(() => import("./pages/ResetPasswordPage"));
 const LandingPage = React.lazy(() => import("./pages/LandingPage"));
-const MobileLandingPage = React.lazy(() => import("./pages/MobileLandingPage"));
 const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
 const PaymentEditPage = React.lazy(() => import("./pages/PaymentEditPage"));
 const CategoryEditPage = React.lazy(() => import("./pages/CategoryEditPage"));
@@ -74,6 +75,8 @@ const VerificationBanner = React.lazy(
   () => import("./components/VerificationBanner")
 );
 const FeedbackWidget = React.lazy(() => import("./components/FeedbackWidget"));
+
+const NATIVE_NOTIFICATION_EVENT = "hpio-native-notification";
 
 const ThemeSwitcher = () => {
   const { setTheme, resolvedTheme } = useTheme();
@@ -91,6 +94,14 @@ const ThemeSwitcher = () => {
       )}
     </button>
   );
+};
+
+type PendingSuggestionState = {
+  id: string;
+  merchantName: string;
+  amount: number;
+  notificationData: string;
+  notificationTimestamp?: number | null;
 };
 
 // Компонент навигации, который зависит от статуса аутентификации
@@ -161,9 +172,8 @@ const Navigation: React.FC = () => {
                 )}
               </button>
 
-              <DropdownOverlay
+              <Overlay
                 isOpen={isUserPopoverOpen}
-                align="right"
                 widthClass="w-72"
                 anchorRef={popoverRef}
               >
@@ -211,7 +221,7 @@ const Navigation: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              </DropdownOverlay>
+              </Overlay>
             </div>
           </div>
         </>
@@ -247,14 +257,7 @@ function App() {
   const [showNotificationOnboarding, setShowNotificationOnboarding] =
     useState(false);
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
-  const [suggestions, setSuggestions] = useState<
-    Array<{
-      id: string;
-      merchantName: string;
-      amount: number;
-      notificationData: string;
-    }>
-  >([]);
+  const [suggestions, setSuggestions] = useState<PendingSuggestionState[]>([]);
   const [processedSuggestionIds, setProcessedSuggestionIds] = useState<
     Set<string>
   >(new Set());
@@ -339,6 +342,7 @@ function App() {
     const automationEnabled =
       localStorage.getItem("automation_enabled") !== "false";
     if (!automationEnabled) {
+      logger.info("Notification automation disabled, skipping processing");
       return; // Feature is disabled by the user
     }
 
@@ -351,29 +355,45 @@ function App() {
       const shouldBypassPermissionCheck = devMobileOverride === "on";
 
       // Если мы не в Tauri и не в режиме разработки с обходом, пропускаем
-      if (!isActuallyTauri && !shouldBypassPermissionCheck) return;
+      if (!isActuallyTauri && !shouldBypassPermissionCheck) {
+        logger.info(
+          "Skipping notification processing - not running in Tauri environment"
+        );
+        return;
+      }
 
       let notifications: PendingNotification[] = [];
 
       if (isActuallyTauri && !shouldBypassPermissionCheck) {
         // Получаем реальные уведомления только если мы действительно в Tauri
         const { granted } = await checkNotificationPermission();
-        if (!granted) return;
+        if (!granted) {
+          logger.warn(
+            "Notification listener permission is not granted, skipping processing"
+          );
+          return;
+        }
 
         notifications = await getPendingNotifications();
-      }
-
-      // Добавляем симулированные уведомления если есть dev_mobile_override
-      if (shouldBypassPermissionCheck) {
-        const simulatedNotifications = JSON.parse(
-          localStorage.getItem("dev_simulated_notifications") || "[]"
+        logger.info(
+          `Fetched ${notifications.length} pending notifications from native storage`
         );
-        notifications = [...notifications, ...simulatedNotifications];
 
-        // Очищаем симулированные уведомления после обработки
-        if (simulatedNotifications.length > 0) {
-          localStorage.removeItem("dev_simulated_notifications");
+        const filteredNotifications = notifications.filter(
+          (notification) =>
+            !notification.notification_type ||
+            notification.notification_type === "PAYMENT"
+        );
+
+        if (filteredNotifications.length !== notifications.length) {
+          logger.info(
+            `Filtered out ${
+              notifications.length - filteredNotifications.length
+            } non-payment notifications from pending queue`
+          );
         }
+
+        notifications = filteredNotifications;
       }
 
       const unprocessedNotifications = notifications.filter(
@@ -387,6 +407,8 @@ function App() {
             notifications.length - unprocessedNotifications.length
           } already processed notifications`
         );
+      } else if (unprocessedNotifications.length === 0) {
+        logger.info("No new notifications to process");
       }
 
       // Обрабатываем уведомления, если они есть
@@ -438,15 +460,22 @@ function App() {
 
           if (existingRule) {
             const today = new Date().toISOString().split("T")[0];
+            const notificationCompletedAt = normalizeNotificationTimestamp(
+              notification.timestamp
+            );
             try {
-              const response = await axiosInstance.post("/payments", {
+              const payload: Record<string, unknown> = {
                 title: parsed.merchantName,
                 amount: parsed.amount,
                 dueDate: today,
                 categoryId: existingRule.categoryId,
                 createAsCompleted: true,
                 autoCreated: true,
-              });
+              };
+              if (notificationCompletedAt) {
+                payload.completedAt = notificationCompletedAt;
+              }
+              const response = await axiosInstance.post("/payments", payload);
               const newPayment = response.data; // The newly created payment
 
               const handleUndo = async () => {
@@ -514,7 +543,17 @@ function App() {
           (s) => !currentSuggestionIds.has(s.id)
         );
 
-        setSuggestions(newSuggestions);
+        const mappedSuggestions: PendingSuggestionState[] = newSuggestions.map(
+          (suggestion) => ({
+            id: suggestion.id,
+            merchantName: suggestion.merchantName,
+            amount: suggestion.amount,
+            notificationData: suggestion.notificationData,
+            notificationTimestamp: suggestion.notificationTimestamp ?? null,
+          })
+        );
+
+        setSuggestions(mappedSuggestions);
 
         // Показываем модалку только если она не была закрыта вручную или есть новые предложения
         if (!suggestionModalDismissed || hasNewSuggestions) {
@@ -571,6 +610,16 @@ function App() {
     // Первоначальная проверка при монтировании
     processNotifications();
 
+    const handleNativeNotification = () => {
+      logger.info("Received native notification event");
+      processNotifications();
+    };
+
+    window.addEventListener(
+      NATIVE_NOTIFICATION_EVENT,
+      handleNativeNotification as EventListener
+    );
+
     // Слушаем новые уведомления от Android сервиса
     let unlistenNotification: (() => void) | undefined;
     if (isTauri()) {
@@ -601,6 +650,10 @@ function App() {
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener(
+        NATIVE_NOTIFICATION_EVENT,
+        handleNativeNotification as EventListener
+      );
       if (unlistenNotification) {
         unlistenNotification();
       }
@@ -647,22 +700,62 @@ function App() {
     }
   };
 
+  const [canClearTrash, setCanClearTrash] = useState(false);
+
+  useEffect(() => {
+    const handleTrashState = (
+      event: Event & { detail?: { hasItems?: boolean } }
+    ) => {
+      setCanClearTrash(Boolean(event.detail?.hasItems));
+    };
+
+    window.addEventListener(
+      "payments:trash-state",
+      handleTrashState as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "payments:trash-state",
+        handleTrashState as EventListener
+      );
+    };
+  }, []);
+
   let mobileAddAction: (() => void) | null = null;
+  let mobileActionIcon: React.ReactNode | null = null;
+  let mobileActionAriaLabel: string | null = null;
+  let mobileActionDisabled = false;
 
   if (isAuthenticated) {
     if (location.pathname === "/dashboard") {
       mobileAddAction = () => navigate("/payments/new");
+      mobileActionIcon = <PlusIcon className="h-6 w-6" />;
+      mobileActionAriaLabel = "Добавить";
     } else if (location.pathname === "/payments") {
       const currentTab = searchParams.get("tab") || "active";
       if (currentTab === "trash") {
-        mobileAddAction = null;
+        mobileAddAction = () => {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("payments:clear-trash-request"));
+          }
+        };
+        mobileActionIcon = <TrashIcon className="h-6 w-6" />;
+        mobileActionAriaLabel = "Очистить корзину";
+        mobileActionDisabled = !canClearTrash;
       } else if (currentTab === "archive") {
         mobileAddAction = () => navigate("/payments/new?markAsCompleted=true");
+        mobileActionIcon = <PlusIcon className="h-6 w-6" />;
+        mobileActionAriaLabel = "Добавить";
       } else {
         mobileAddAction = () => navigate("/payments/new");
+        mobileActionIcon = <PlusIcon className="h-6 w-6" />;
+        mobileActionAriaLabel = "Добавить";
       }
     } else if (location.pathname === "/categories") {
       mobileAddAction = () => navigate("/categories/new");
+      mobileActionIcon = <PlusIcon className="h-6 w-6" />;
+      mobileActionAriaLabel = "Добавить";
     }
   }
 
@@ -750,13 +843,14 @@ function App() {
       <div className="flex items-center gap-3">
         <SyncStatusIndicator />
         <Navigation />
-        {mobileAddAction && (
+        {mobileAddAction && mobileActionIcon && (
           <button
             onClick={mobileAddAction}
+            disabled={mobileActionDisabled}
             className="md:hidden p-2 rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none"
-            aria-label="Добавить"
+            aria-label={mobileActionAriaLabel || "Действие"}
           >
-            <PlusIcon className="h-6 w-6" />
+            {mobileActionIcon}
           </button>
         )}
       </div>
@@ -766,9 +860,13 @@ function App() {
   // Check if current page is terms or privacy page
   const isTermsOrPrivacyPage =
     location.pathname === "/terms" || location.pathname === "/privacy";
+  const isPublicAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/forgot-password";
 
   const mainClassName =
-    "flex flex-col flex-1 justify-center overflow-auto" +
+    "flex flex-col flex-1 overflow-auto" +
     (isTauriMobile() && (location.pathname === "/" || isTermsOrPrivacyPage)
       ? ""
       : " p-3 sm:px-4 sm:py-5 md:px-10");
@@ -780,9 +878,26 @@ function App() {
           {/* Public routes */}
           <Route
             path="/"
-            element={isTauriMobile() ? <MobileLandingPage /> : <LandingPage />}
+            element={
+              isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : isTauriMobile() ? (
+                <Navigate to="/login" replace />
+              ) : (
+                <LandingPage />
+              )
+            }
           />
-          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/login"
+            element={
+              isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <LoginPage />
+              )
+            }
+          />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<PasswordResetPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -931,26 +1046,24 @@ function App() {
 
   // Hide header on mobile landing page and on terms/privacy pages in Tauri mobile app
   const showHeader =
+    !isPublicAuthPage &&
     !(isTauriMobile() && location.pathname === "/") &&
     !(isTauriMobile() && isTermsOrPrivacyPage);
 
   if (isAuthenticated) {
     // --- Лэйаут для авторизованного пользователя (фиксированный хедер) ---
-    const pageBackgroundClasses = getPageBackgroundClasses(location.pathname);
-    const containerClassName = `relative flex h-screen flex-col bg-white dark:bg-dark-bg group/design-root overflow-hidden font-sans${
-      pageBackgroundClasses ? ` ${pageBackgroundClasses}` : ""
-    }${isTauriMobile() ? " safe-area-top safe-area-bottom" : ""}`;
+    const containerClassName = `relative flex h-screen flex-col bg-white dark:bg-dark-bg font-sans${
+      isTauriMobile() ? " safe-area-top safe-area-bottom" : ""
+    }`;
 
     return (
       <>
         <div className={containerClassName}>
           {showHeader && header}
           <VerificationBanner />
-          <div className="flex flex-col flex-1 overflow-auto">
-            <div className="flex flex-col flex-1">
-              {mainContent}
-              {!isTauriMobile() && footer}
-            </div>
+          <div className="flex flex-col min-h-0 flex-1">
+            {mainContent}
+            {!isTauriMobile() && footer}
           </div>
         </div>
         <NotificationOnboardingModal
@@ -974,15 +1087,15 @@ function App() {
           navItems={mobileNavItems}
           currentPath={location.pathname}
           onLogout={logout}
+          gesturesEnabled={showHeader}
         />
       </>
     );
   } else {
     // --- Лэйаут для гостя (скролл всей страницы) ---
-    const pageBackgroundClasses = getPageBackgroundClasses(location.pathname);
-    const containerClassName = `relative flex min-h-screen flex-col bg-white dark:bg-dark-bg group/design-root font-sans${
-      pageBackgroundClasses ? ` ${pageBackgroundClasses}` : ""
-    }${isTauriMobile() ? " safe-area-top safe-area-bottom" : ""}`;
+    const containerClassName = `relative flex min-h-screen flex-col bg-white dark:bg-dark-bg font-sans${
+      isTauriMobile() ? " safe-area-top safe-area-bottom" : ""
+    }`;
 
     return (
       <div className={containerClassName}>

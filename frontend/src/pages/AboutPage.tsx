@@ -12,6 +12,7 @@ import {
   CodeBracketIcon,
   EnvelopeIcon,
 } from "@heroicons/react/24/outline";
+import { TextInputField, EmailField } from "../components/Input";
 
 const feedbackSchema = z.object({
   name: z.string().min(1, "Имя обязательно"),
@@ -100,55 +101,25 @@ const AboutPage: React.FC = () => {
                 </p>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="name"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >
-                      Имя
-                    </label>
-                    <input
-                      {...register("name")}
-                      type="text"
-                      id="name"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.name
-                          ? "border-red-500"
-                          : "border-gray-300 dark:border-gray-600"
-                      }`}
-                      placeholder=""
-                    />
-                    {errors.name && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.name.message}
-                      </p>
-                    )}
-                  </div>
+                  <TextInputField
+                    label="Имя"
+                    inputId="name"
+                    error={errors.name?.message}
+                    required
+                    type="text"
+                    disabled={isSubmitting}
+                    {...register("name")}
+                  />
 
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >
-                      Email
-                    </label>
-                    <input
-                      {...register("email")}
-                      type="email"
-                      id="email"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.email
-                          ? "border-red-500"
-                          : "border-gray-300 dark:border-gray-600"
-                      }`}
-                      placeholder=""
-                    />
-                    {errors.email && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.email.message}
-                      </p>
-                    )}
-                  </div>
+                  <EmailField
+                    inputId="email"
+                    label="Email"
+                    {...register("email")}
+                    autoComplete="email"
+                    disabled={isSubmitting}
+                    error={errors.email?.message}
+                    required
+                  />
 
                   <div>
                     <label

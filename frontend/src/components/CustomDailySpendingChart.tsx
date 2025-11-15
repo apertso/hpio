@@ -100,14 +100,43 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
     const effectiveWidth =
       width - yAxisAreaWidth - padding.left - padding.right;
     const effectiveHeight = height - padding.top - padding.bottom;
-    const timeDomain = endDate.getTime() - startDate.getTime();
+
+    // Проверяем, если у нас есть данные по часам (содержат компонент времени)
+    const hasHourlyData = rawDates.some((d) => d.includes(" "));
+
+    // Для данных по часам, гарантируем, что мы охватываем весь день
+    const chartStartDate = hasHourlyData
+      ? new Date(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate(),
+          0,
+          0,
+          0,
+          0
+        )
+      : startDate;
+    const chartEndDate = hasHourlyData
+      ? new Date(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate(),
+          23,
+          59,
+          59,
+          999
+        )
+      : endDate;
+
+    const timeDomain = chartEndDate.getTime() - chartStartDate.getTime();
 
     const getX = (date: Date) => {
       const plotStart = yAxisAreaWidth + padding.left;
       if (timeDomain <= 0) return plotStart + effectiveWidth / 2;
       return (
         plotStart +
-        ((date.getTime() - startDate.getTime()) / timeDomain) * effectiveWidth
+        ((date.getTime() - chartStartDate.getTime()) / timeDomain) *
+          effectiveWidth
       );
     };
 
@@ -133,14 +162,19 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
       // Создаем тики для оси X, включая начальную и конечную дату
       for (let i = 0; i <= numXTicks; i++) {
         const tickDate = new Date(
-          startDate.getTime() + (timeDomain / numXTicks) * i
+          chartStartDate.getTime() + (timeDomain / numXTicks) * i
         );
         calculatedXAxisTicks.push({
           x: getX(tickDate),
-          label: tickDate.toLocaleDateString("ru-RU", {
-            day: "numeric",
-            month: "short",
-          }),
+          label: hasHourlyData
+            ? tickDate.toLocaleString("ru-RU", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : tickDate.toLocaleDateString("ru-RU", {
+                day: "numeric",
+                month: "short",
+              }),
         });
       }
     }
@@ -381,7 +415,9 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         onTouchCancel={handleTouchCancel}
         style={{ cursor: cursorStyle, touchAction: "none" }}
         role="img"
-        aria-label="График платежной нагрузки по дням"
+        aria-label={`График платежной нагрузки ${
+          rawDates.some((d) => d.includes(" ")) ? "по часам" : "по дням"
+        }`}
       >
         <defs>
           <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">

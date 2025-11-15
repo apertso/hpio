@@ -10,6 +10,7 @@ import {
   deleteAccount,
   getMe,
   registerFcmToken,
+  sendTestEmailNotification,
 } from "../controllers/userController";
 
 const router = Router();
@@ -29,6 +30,7 @@ router.post(
   uploadProfilePhoto
 );
 router.post("/fcm-token", registerFcmToken);
+router.post("/test-email", sendTestEmailNotification);
 router.delete("/account", deleteAccount);
 
 export default router;

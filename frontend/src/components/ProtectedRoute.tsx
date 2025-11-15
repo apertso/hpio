@@ -3,7 +3,6 @@ import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Spinner from "./Spinner";
-import { isTauriMobile } from "../utils/platform";
 
 // Компонент для защиты маршрутов
 // Требует, чтобы пользователь был аутентифицирован для доступа к вложенным маршрутам (Outlet)
@@ -21,7 +20,7 @@ const ProtectedRoute: React.FC = () => {
 
   // Если пользователь не аутентифицирован, перенаправляем его на страницу входа
   if (!isAuthenticated) {
-    return <Navigate to={isTauriMobile() ? "/" : "/login"} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // Если пользователь аутентифицирован, рендерим вложенные маршруты

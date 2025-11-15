@@ -56,6 +56,11 @@ const userApi = {
     const response = await axiosInstance.delete("/user/account");
     return response.data;
   },
+
+  sendTestEmailNotification: async (): Promise<{ message: string }> => {
+    const response = await axiosInstance.post("/user/test-email");
+    return response.data;
+  },
 };
 
 export default userApi;

@@ -5,11 +5,16 @@ import SettingsSection from "../SettingsSection";
 import { CodeBracketIcon } from "@heroicons/react/24/outline";
 import { useToast } from "../../context/ToastContext";
 import { isTauriMobile } from "../../utils/platform";
-import { readLogFile, clearLogFile, writeToClipboard } from "../../utils/fileLogger";
+import {
+  readLogFile,
+  clearLogFile,
+  writeToClipboard,
+} from "../../utils/fileLogger";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import logger from "../../utils/logger";
 import ConfirmModal from "../ConfirmModal";
+import userApi from "../../api/userApi";
 
 const DeveloperSection: React.FC = () => {
   const { showToast } = useToast();
@@ -30,6 +35,7 @@ const DeveloperSection: React.FC = () => {
   const [isClearLogsModalOpen, setIsClearLogsModalOpen] = useState(false);
   const [isClearingLogs, setIsClearingLogs] = useState(false);
   const [isCopyingLogs, setIsCopyingLogs] = useState(false);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
 
   const handleMobileOverrideChange = (value: string | null) => {
     const newValue = value || "-";
@@ -66,26 +72,36 @@ const DeveloperSection: React.FC = () => {
     );
   };
 
-  const handleSimulateNotification = () => {
-    // Симулируем добавление уведомления в очередь
-    const simulatedNotification = {
-      package_name: "ru.raiffeisennews",
-      title: "Заплатили картой *9012",
-      text: "− 689.68 ₽ в Пятерочка. Теперь на карте 34 574.90 ₽",
-      timestamp: Date.now(),
-    };
+  const handleSimulateNotification = async () => {
+    if (!isTauriMobile()) {
+      showToast("Симуляция доступна только в мобильном приложении", "error");
+      return;
+    }
 
-    // Добавляем в localStorage для обработки
-    const existingNotifications = JSON.parse(
-      localStorage.getItem("dev_simulated_notifications") || "[]"
-    );
-    existingNotifications.push(simulatedNotification);
-    localStorage.setItem(
-      "dev_simulated_notifications",
-      JSON.stringify(existingNotifications)
-    );
-
-    showToast("Тестовое уведомление добавлено в очередь", "success");
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("simulate_app_payment_notification", {
+        title: "Заплатили картой *9012",
+        body: "− 689.68 ₽ в Пятерочка. Теперь на карте 34 574.90 ₽",
+      });
+      showToast("Тестовое уведомление отправлено", "success");
+    } catch (error) {
+      logger.error("Failed to simulate payment notification:", error);
+      showToast("Не удалось отправить тестовое уведомление", "error");
+    }
+  };
+  
+  const handleSendTestEmail = async () => {
+    setIsSendingTestEmail(true);
+    try {
+      await userApi.sendTestEmailNotification();
+      showToast("Тестовое email-уведомление отправлено", "success");
+    } catch (error) {
+      logger.error("Failed to send developer test email:", error);
+      showToast("Не удалось отправить тестовое письмо", "error");
+    } finally {
+      setIsSendingTestEmail(false);
+    }
   };
 
   const handleDownloadLogs = async () => {
@@ -201,7 +217,8 @@ const DeveloperSection: React.FC = () => {
               Разработка
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Инструменты для разработчиков и тестирования функциональности приложения
+              Инструменты для разработчиков и тестирования функциональности
+              приложения
             </p>
           </div>
         </div>
@@ -252,8 +269,8 @@ const DeveloperSection: React.FC = () => {
                   Показать отладочные уведомления
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Показывает техническую информацию о обработке
-                  уведомлений платежей
+                  Показывает техническую информацию о обработке уведомлений
+                  платежей
                 </p>
               </div>
               <ToggleSwitch
@@ -261,6 +278,28 @@ const DeveloperSection: React.FC = () => {
                 onChange={handleDebugToastsToggle}
               />
             </div>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            Тестовое email-уведомление
+          </h4>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Отправляет письмо с контрольной фразой "email notifications
+              functionality check" на ваш текущий email. Используйте для
+              проверки SMTP-настроек.
+            </p>
+            <button
+              onClick={handleSendTestEmail}
+              disabled={isSendingTestEmail}
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSendingTestEmail
+                ? "Отправка..."
+                : "Отправить тестовое email-уведомление"}
+            </button>
           </div>
         </div>
 
@@ -274,8 +313,8 @@ const DeveloperSection: React.FC = () => {
               <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   <strong>Тестирование:</strong> Симулирует получение
-                  уведомления от Райффайзен банка для проверки
-                  автоматической обработки платежей.
+                  уведомления от Райффайзен банка для проверки автоматической
+                  обработки платежей.
                 </p>
               </div>
               <button
@@ -297,9 +336,9 @@ const DeveloperSection: React.FC = () => {
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Файл логов:</strong> Все логи приложения за
-                  сегодня сохраняются в файл logs.txt. Вы можете
-                  скачать, скопировать или очистить этот файл.
+                  <strong>Файл логов:</strong> Все логи приложения за сегодня
+                  сохраняются в файл logs.txt. Вы можете скачать, скопировать
+                  или очистить этот файл.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -314,9 +353,7 @@ const DeveloperSection: React.FC = () => {
                   disabled={isCopyingLogs}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isCopyingLogs
-                    ? "Копирование..."
-                    : "Копировать в буфер"}
+                  {isCopyingLogs ? "Копирование..." : "Копировать в буфер"}
                 </button>
                 <button
                   onClick={() => setIsClearLogsModalOpen(true)}

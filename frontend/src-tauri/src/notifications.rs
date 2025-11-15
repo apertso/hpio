@@ -11,6 +11,7 @@ pub struct PendingNotification {
     pub title: String,
     pub text: String,
     pub timestamp: i64,
+    pub notification_type: Option<String>,
 }
 
 #[tauri::command]
@@ -218,6 +219,54 @@ pub fn open_app_notification_settings() -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn simulate_app_payment_notification(title: String, body: String) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::{JObject, JString, JValue};
+        use jni::{AttachGuard, JavaVM};
+        use std::os::raw::c_void;
+
+        let ctx = ndk_context::android_context();
+        let vm_ptr = ctx.vm() as *mut c_void;
+        let vm = unsafe { JavaVM::from_raw(vm_ptr as *mut jni::sys::JavaVM) }
+            .map_err(|e| format!("Failed to get JavaVM: {:?}", e))?;
+
+        let mut env: AttachGuard = vm.attach_current_thread()
+            .map_err(|e| format!("Failed to attach thread: {:?}", e))?;
+
+        let context = unsafe { JObject::from_raw(ctx.context() as *mut jni::sys::_jobject) };
+        let helper_class = env.find_class("com/hochuplachu/hpio/NotificationPermissionHelper")
+            .map_err(|e| format!("Failed to find helper class: {:?}", e))?;
+
+        let title_jstring: JString = env.new_string(title)
+            .map_err(|e| format!("Failed to create title string: {:?}", e))?;
+        let body_jstring: JString = env.new_string(body)
+            .map_err(|e| format!("Failed to create body string: {:?}", e))?;
+        let title_object = JObject::from(title_jstring);
+        let body_object = JObject::from(body_jstring);
+
+        env.call_static_method(
+            helper_class,
+            "simulatePaymentNotification",
+            "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V",
+            &[
+                JValue::Object(&context),
+                JValue::Object(&title_object),
+                JValue::Object(&body_object),
+            ],
+        )
+        .map_err(|e| format!("Failed to call simulatePaymentNotification: {:?}", e))?;
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Err("Payment notification simulation is only available on Android".to_string())
+    }
+}
+
+#[tauri::command]
 pub fn get_pending_notifications() -> Result<Vec<PendingNotification>, String> {
     #[cfg(target_os = "android")]
     {
@@ -283,6 +332,17 @@ pub fn get_pending_notifications() -> Result<Vec<PendingNotification>, String> {
         let mut notifications = Vec::new();
         if let Some(array) = json_array.as_array() {
             for item in array {
+                let notification_type = item
+                    .get("notificationType")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                if let Some(ref notif_type) = notification_type {
+                    if notif_type != "PAYMENT" {
+                        continue;
+                    }
+                }
+
                 if let (Some(package_name), Some(title), Some(text), Some(timestamp)) = (
                     item.get("packageName").and_then(|v| v.as_str()),
                     item.get("title").and_then(|v| v.as_str()),
@@ -294,6 +354,7 @@ pub fn get_pending_notifications() -> Result<Vec<PendingNotification>, String> {
                         title: title.to_string(),
                         text: text.to_string(),
                         timestamp,
+                        notification_type,
                     });
                 }
             }

@@ -1,6 +1,6 @@
 import React from "react";
 import { useDropdown } from "../hooks/useDropdown";
-import DropdownOverlay from "./DropdownOverlay";
+import Overlay from "./Overlay";
 import { ChevronDownIcon } from "./ChevronDownIcon";
 
 export interface YearSelectorDropdownProps {
@@ -41,9 +41,8 @@ export const YearSelectorDropdown: React.FC<YearSelectorDropdownProps> = ({
         </span>
       </button>
 
-      <DropdownOverlay
+      <Overlay
         isOpen={isOpen}
-        align="left"
         widthClass="min-w-60"
         anchorRef={containerRef}
       >
@@ -70,7 +69,7 @@ export const YearSelectorDropdown: React.FC<YearSelectorDropdownProps> = ({
             </div>
           ))}
         </div>
-      </DropdownOverlay>
+      </Overlay>
     </div>
   );
 };

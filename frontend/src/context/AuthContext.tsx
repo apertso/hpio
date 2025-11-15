@@ -85,8 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
     delete axiosInstance.defaults.headers.common["Authorization"]; // Удаляем заголовок Authorization
     logger.info("Logout successful");
-    // Для мобильного приложения перенаправляем на / (страница входа), для десктопа - на /login
-    navigate(isTauriMobile() ? "/" : "/login");
+    // Перенаправляем на страницу входа
+    navigate("/login");
   }, [navigate]); // Зависимость от navigate
 
   // Эффект для проверки токена при загрузке приложения и настройки Axios

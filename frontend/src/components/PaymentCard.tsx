@@ -11,7 +11,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/solid";
 import { useDropdown } from "../hooks/useDropdown";
-import DropdownOverlay from "./DropdownOverlay";
+import Overlay from "./Overlay";
 import PaymentIconDisplay from "./PaymentIconDisplay";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
 
@@ -94,9 +94,8 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
               >
                 <EllipsisVerticalIcon className="h-5 w-5" />
               </button>
-              <DropdownOverlay
+              <Overlay
                 isOpen={isMenuOpen}
-                align="right"
                 widthClass="w-48"
                 anchorRef={menuRef}
               >
@@ -129,7 +128,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
                     <TrashIcon className="w-4 h-4 mr-2" /> Удалить
                   </button>
                 </div>
-              </DropdownOverlay>
+              </Overlay>
             </div>
           )}
         </div>

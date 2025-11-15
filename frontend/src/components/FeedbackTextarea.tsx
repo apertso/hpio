@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { Input } from "./Input";
 
 interface FeedbackTextareaProps {
   value: string;
@@ -126,13 +127,14 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
               <span className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping"></span>
             )}
           </button>
-          <input
+          <Input
             {...getInputProps()}
             ref={fileInputRef}
             type="file"
             className="sr-only"
             onChange={handleFileInputChange}
             accept="*/*"
+            unstyled
           />
         </div>
       </div>

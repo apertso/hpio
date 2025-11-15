@@ -3,8 +3,10 @@ import React from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Input } from "./Input";
+import { EmailField, PasswordField } from "./Input";
+import { Button } from "./Button";
 import Spinner from "./Spinner";
+import useFormPersistence from "../hooks/useFormPersistence";
 
 const loginSchema = z.object({
   email: z.string().email("Неверный формат email."),
@@ -12,6 +14,7 @@ const loginSchema = z.object({
 });
 
 type LoginFormInputs = z.infer<typeof loginSchema>;
+const LOGIN_FORM_STORAGE_KEY = "login_form_data";
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -32,9 +35,15 @@ const LoginForm: React.FC<LoginFormProps> = ({
     delayError: 1000,
   });
 
+  const { clearPersistedData } = useFormPersistence(
+    loginForm,
+    LOGIN_FORM_STORAGE_KEY
+  );
+
   const handleLoginSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     try {
       await onLogin(data.email, data.password);
+      clearPersistedData();
     } catch (err: unknown) {
       let message = "Ошибка входа";
       if (
@@ -58,55 +67,55 @@ const LoginForm: React.FC<LoginFormProps> = ({
         onSubmit={loginForm.handleSubmit(handleLoginSubmit)}
         className="space-y-6"
       >
-        <Input
-          label="Email"
-          id="login-email"
-          type="email"
+        <EmailField
+          inputId="login-email"
           placeholder="your@email.com"
+          autoComplete="email"
           {...loginForm.register("email")}
           error={loginForm.formState.errors.email?.message}
           disabled={loginForm.formState.isSubmitting}
-          className="text-base py-3" // Larger touch targets for mobile
+          className="text-base py-3"
+          required
         />
         <div className="space-y-1">
-          <Input
-            label="Пароль"
-            id="login-password"
-            type="password"
+          <PasswordField
+            inputId="login-password"
             placeholder="********"
+            autoComplete="current-password"
             {...loginForm.register("password")}
             error={loginForm.formState.errors.password?.message}
             disabled={loginForm.formState.isSubmitting}
             className="text-base py-3"
+            required
           />
           <div className="flex justify-end">
-            <button
+            <Button
+              variant="link"
+              size="small"
               type="button"
               onClick={onSwitchToPasswordReset}
-              className="text-sm text-blue-500 hover:text-blue-600 font-medium"
             >
               Забыли пароль?
-            </button>
+            </Button>
           </div>
         </div>
-        <button
-          className="w-full bg-blue-500 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-4 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-base"
+        <Button
+          variant="primary"
+          size="large"
           type="submit"
           disabled={loginForm.formState.isSubmitting}
+          className="w-full md:w-auto md:min-w-[24em] md:mx-auto"
         >
           {loginForm.formState.isSubmitting ? <Spinner size="sm" /> : "Войти"}
-        </button>
+        </Button>
       </form>
 
       {/* Registration Link */}
       <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-4">
         Впервые здесь?{" "}
-        <button
-          onClick={onSwitchToRegister}
-          className="text-blue-500 hover:text-blue-600 font-medium"
-        >
+        <Button variant="link" size="small" onClick={onSwitchToRegister}>
           Создать аккаунт
-        </button>
+        </Button>
       </p>
     </div>
   );

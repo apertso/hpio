@@ -9,6 +9,7 @@ import {
 import useFileUploadLogic from "../hooks/useFileUploadLogic";
 import useFileDeletionLogic from "../hooks/useFileDeletionLogic";
 import Spinner from "./Spinner";
+import { Input } from "./Input";
 
 const maxFileSize = 5 * 1024 * 1024; // 5 МБ
 
@@ -142,9 +143,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
                           }`} // Отключаем, если идет загрузка/удаление, форма отправляется или нет paymentId
           aria-disabled={isUploading || isDeleting || isSubmitting} // Добавляем для доступности
         >
-          <input
+          <Input
             {...getInputProps()}
             disabled={isUploading || isDeleting || isSubmitting}
+            className="sr-only"
+            unstyled
           />{" "}
           {/* Скрытый input */}
           {isUploading ? (

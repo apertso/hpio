@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 import Spinner from "../components/Spinner";
-import { Input } from "../components/Input";
+import { PasswordField } from "../components/Input";
 import FormBlock from "../components/FormBlock";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -113,31 +113,26 @@ const ResetPasswordPage: React.FC = () => {
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Input
-                label="Новый пароль"
-                id="password"
-                type="password"
-                placeholder="********"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading || !!success}
-              />
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Пароль должен содержать минимум 8 символов, включая заглавную
-                букву, цифру и спецсимвол.
-              </p>
-            </div>
-            <Input
+            <PasswordField
+              label="Новый пароль"
+              inputId="password"
+              placeholder="********"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isLoading || !!success}
+              description="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол."
+              autoComplete="new-password"
+            />
+            <PasswordField
               label="Подтвердите новый пароль"
-              id="confirm-password"
-              type="password"
+              inputId="confirm-password"
               placeholder="********"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={isLoading || !!success}
+              autoComplete="new-password"
             />
             <div className="flex items-center justify-center pt-2">
               <button

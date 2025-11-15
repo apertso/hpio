@@ -94,7 +94,7 @@ const DownloadPage: React.FC = () => {
             <DownloadCard
               title="Скачать для arm64"
               description="Быстрая и легкая версия для современных устройств"
-              downloadUrl="https://cdn.hpio.ru/releases/0.4.0/app-arm64-release.apk"
+              downloadUrl="https://cdn.hpio.ru/releases/0.6.0/app-arm64-release.apk"
               recommended={true}
             />
 
@@ -102,7 +102,7 @@ const DownloadPage: React.FC = () => {
             <DownloadCard
               title="Скачать Universal"
               description="Резервный вариант, если первая версия не установилась"
-              downloadUrl="https://cdn.hpio.ru/releases/0.4.0/app-universal-release.apk"
+              downloadUrl="https://cdn.hpio.ru/releases/0.6.0/app-universal-release.apk"
             />
           </div>
 

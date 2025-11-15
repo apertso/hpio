@@ -4,7 +4,7 @@
 
 @theme {
   --font-sans: "Roboto", "Segoe UI", "Tahoma", "Arial", "Helvetica", sans-serif;
-  --color-dark-bg: #0a0a0a;
+  --color-dark-bg: #111827;
   --color-card-bg: #303030;
   --color-border-dark: #303030;
   --color-text-secondary: #ababab;
@@ -35,6 +35,22 @@ body {
   padding-bottom: calc(
     var(--safe-area-inset-bottom) + calc(var(--spacing) * 4)
   ) !important;
+}
+
+/**
+ * TODO: These styles for the "Trash" button.
+ * It should be converted into a Button,
+ * and the style should be removed from here.
+ **/
+@media (max-width: 767px) {
+  button:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed;
+  }
+
+  button:disabled:hover {
+    background-color: transparent;
+  }
 }
 
 :root {

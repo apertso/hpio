@@ -1,5 +1,6 @@
 import React from "react";
 import { CheckIcon } from "@heroicons/react/24/outline";
+import { Input } from "./Input";
 
 interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: React.ReactNode;
@@ -20,7 +21,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
 
     return (
       <label htmlFor={id} className="flex items-center cursor-pointer group">
-        <input
+        <Input
           id={id}
           type="checkbox"
           ref={ref}
@@ -28,6 +29,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           {...rest}
           checked={checked}
           onChange={handleChange}
+          unstyled
         />
         <span
           className={`w-7 h-7 md:w-5 md:h-5 border-2 rounded flex items-center justify-center transition-all flex-shrink-0 focus-within:ring-2 focus-within:ring-blue-400 dark:focus-within:ring-blue-600 ${

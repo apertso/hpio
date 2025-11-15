@@ -5,6 +5,7 @@ import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import com.hochuplachu.hpio.BuildConfig
 import androidx.annotation.Keep
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import org.json.JSONArray
@@ -17,6 +18,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
     companion object {
         private const val TAG = "PaymentNotificationListener"
         private const val NOTIFICATIONS_FILE = "pending_notifications.json"
+        private const val MAX_PENDING_NOTIFICATIONS = 50
         private const val DEDUP_FILE = "notification_dedup.json"
         private const val DEDUP_TIME_WINDOW_MS = 60_000L // 60 seconds
         const val ACTION_NEW_NOTIFICATION = "com.hochuplachu.hpio.NEW_NOTIFICATION"
@@ -29,7 +31,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         private val PAYMENT_PATTERN = Regex("\\b(покупка|оплата|заплатили|списание|платеж|transaction|purchase|payment)\\b")
 
         // Поддерживаемые имена пакетов для парсинга уведомлений о платежах
-        private val SUPPORTED_PACKAGES = setOf(
+        private val SUPPORTED_PACKAGES = (setOf(
             // Тестовые
             "com.android.shell",
             // Банковские приложения
@@ -74,7 +76,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
             "ru.mtsbank.business",
             "ru.bspb.business",
             "ru.tcsbank.business",
-        )
+        ) + BuildConfig.APPLICATION_ID)
 
         /**
          * Notification type enumeration
@@ -133,8 +135,70 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         // Извлекаем данные уведомления один раз
         val notification: Notification = sbn.notification
         val extras = notification.extras
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+        val isInternalSummary = extras.getBoolean(NotificationPermissionHelper.INTERNAL_SUMMARY_EXTRA, false)
+
+        var title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val bigTitle = extras.getCharSequence(Notification.EXTRA_TITLE_BIG)?.toString()
+        val subTitle = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+        if (!bigTitle.isNullOrBlank()) {
+            title = bigTitle.trim()
+        } else if (title.isBlank() && !subTitle.isNullOrBlank()) {
+            title = subTitle.trim()
+        } else if (title.isBlank()) {
+            val infoTitle = extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString()
+            if (!infoTitle.isNullOrBlank()) {
+                title = infoTitle.trim()
+            }
+        }
+        if (title.isBlank()) {
+            title = notification.tickerText?.toString()?.trim() ?: ""
+        }
+
+        var text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+        if (text.isBlank()) {
+            val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
+            if (!bigText.isNullOrBlank()) {
+                text = bigText.trim()
+            }
+        }
+        if (text.isBlank()) {
+            val textLines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+            if (!textLines.isNullOrEmpty()) {
+                text = textLines.joinToString(" ") { it?.toString() ?: "" }.trim()
+            }
+        }
+        if (text.isBlank()) {
+            val summaryText = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString()
+            if (!summaryText.isNullOrBlank()) {
+                text = summaryText.trim()
+            }
+        }
+        if (text.isBlank()) {
+            val infoText = extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString()
+            if (!infoText.isNullOrBlank()) {
+                text = infoText.trim()
+            }
+        }
+        if (text.isBlank()) {
+            text = notification.tickerText?.toString()?.trim() ?: ""
+        }
+
+        try {
+            val extraKeys = extras.keySet()
+            val snapshotBuilder = StringBuilder()
+            for (key in extraKeys) {
+                val value = extras.get(key)
+                snapshotBuilder.append(key)
+                snapshotBuilder.append("=")
+                snapshotBuilder.append(value?.toString() ?: "null")
+                snapshotBuilder.append("; ")
+            }
+            val snapshot = snapshotBuilder.toString()
+            Log.d(TAG, "Notification extras: $snapshot")
+            LoggerUtil.debug(this, TAG, "Notification extras: $snapshot")
+        } catch (e: Exception) {
+            LoggerUtil.error(this, TAG, "Failed to log notification extras", e)
+        }
 
         // Ранний выход для пустого текста
         if (text.isEmpty()) {
@@ -144,12 +208,23 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         // Логируем все уведомления от поддерживаемых пакетов для отладки
         LoggerUtil.debug(this, TAG, "Received notification from ${sbn.packageName}: title='$title', text='$text'")
 
-        // Проверяем, является ли это уведомление о платеже
-        if (!isPaymentNotification(text, title)) {
-            LoggerUtil.debug(this, TAG, "Notification filtered out - not a payment type: ${sbn.packageName}")
-            return
+        // Определяем тип уведомления (платеж/возврат/перевод/другое)
+        val notificationType = detectNotificationType("$title $text")
+        LoggerUtil.debug(this, TAG, "Notification type=$notificationType from ${sbn.packageName}")
+
+        if (sbn.packageName == BuildConfig.APPLICATION_ID) {
+            if (isInternalSummary) {
+                LoggerUtil.debug(this, TAG, "Skipping internal summary notification")
+                return
+            }
+
+            if (notificationType != NotificationType.PAYMENT) {
+                LoggerUtil.debug(this, TAG, "Skipping internal notification - not a payment type")
+                return
+            }
         }
 
+        // Выполняем дедупликацию и проверку
         // Проверяем дубликаты с постоянным хранилищем
         val notificationId = "${sbn.packageName}|$title|$text"
         if (isDuplicate(notificationId)) {
@@ -158,7 +233,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         }
 
         // Только теперь выполняем тяжелую работу (файловый I/O)
-        handlePaymentNotification(sbn, title, text)
+        handlePaymentNotification(sbn, title, text, notificationType)
     }
 
     private fun isDuplicate(notificationId: String): Boolean {
@@ -208,16 +283,23 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         }
     }
 
-    private fun handlePaymentNotification(sbn: StatusBarNotification, title: String, text: String) {
+    private fun handlePaymentNotification(
+        sbn: StatusBarNotification,
+        title: String,
+        text: String,
+        notificationType: NotificationType,
+    ) {
         try {
             val notificationData = JSONObject().apply {
                 put("packageName", sbn.packageName)
                 put("title", title)
                 put("text", text)
                 put("timestamp", System.currentTimeMillis())
+                put("notificationType", notificationType.name)
             }
 
             saveNotification(notificationData)
+            LoggerUtil.info(this, TAG, "Notification saved (type=$notificationType) from ${sbn.packageName}")
         } catch (e: Exception) {
             LoggerUtil.error(this, TAG, "Error handling payment notification", e)
         }
@@ -244,13 +326,25 @@ class PaymentNotificationListenerService : NotificationListenerService() {
 
             LoggerUtil.info(this, TAG, "Notification saved to pending_notifications.json: ${notificationData.toString()}")
 
+            // Ограничиваем очередь, чтобы не копить тысячи записей
+            val trimmedNotifications = if (notifications.length() > MAX_PENDING_NOTIFICATIONS) {
+                val trimmed = JSONArray()
+                val startIndex = notifications.length() - MAX_PENDING_NOTIFICATIONS
+                for (i in startIndex until notifications.length()) {
+                    trimmed.put(notifications.get(i))
+                }
+                trimmed
+            } else {
+                notifications
+            }
+
             // Записываем атомарно используя временный файл для безопасности данных
             val tempFile = File(filesDir, "$NOTIFICATIONS_FILE.tmp")
-            tempFile.writeText(notifications.toString())
+            tempFile.writeText(trimmedNotifications.toString())
             tempFile.renameTo(file)
 
             // Показываем локальное уведомление пользователю
-            showPaymentNotification(notifications.length())
+            showPaymentNotification(trimmedNotifications.length())
 
             // Отправляем событие для уведомления приложения
             broadcastNewNotification()
@@ -317,5 +411,3 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         LoggerUtil.info(this, TAG, "Notification listener service destroyed")
     }
 }
-
-

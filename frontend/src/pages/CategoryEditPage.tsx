@@ -8,13 +8,14 @@ import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 import Spinner from "../components/Spinner";
 import getErrorMessage from "../utils/getErrorMessage";
-import { Input } from "../components/Input";
+import { TextInputField } from "../components/Input";
 import FormBlock from "../components/FormBlock";
 import IconSelector from "../components/IconSelector";
 import { BuiltinIcon } from "../utils/builtinIcons";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { usePageTitle } from "../context/PageTitleContext";
+import { Button } from "../components/Button";
 
 const categoryFormSchema = z.object({
   name: z
@@ -134,14 +135,15 @@ const CategoryEditPage: React.FC = () => {
                     </div>
                   )}
                   <div className="mb-6">
-                    <Input
-                      id="category-name"
+                    <TextInputField
                       label="Название категории"
+                      inputId="category-name"
+                      error={errors.name?.message}
+                      required
                       type="text"
                       placeholder="Например, Продукты"
-                      {...register("name")}
                       disabled={combinedIsLoading}
-                      error={errors.name?.message}
+                      {...register("name")}
                     />
                   </div>
                   <div className="mb-6">
@@ -152,22 +154,39 @@ const CategoryEditPage: React.FC = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-start space-x-4 mt-4">
-                    <button
-                      type="button"
+                  <div className="hidden md:flex items-center justify-end space-x-4 mt-4">
+                    <Button
+                      variant="secondary"
                       onClick={() => navigate("/categories")}
-                      className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 dark:hover:bg-gray-500"
                       disabled={combinedIsLoading}
-                    >
-                      Отмена
-                    </button>
-                    <button
+                      label="Отмена"
+                    />
+                    <Button
+                      variant="primary"
                       type="submit"
-                      className="inline-flex justify-center items-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 min-w-28"
+                      loading={combinedIsLoading}
                       disabled={combinedIsLoading}
-                    >
-                      {combinedIsLoading ? <Spinner size="sm" /> : "Сохранить"}
-                    </button>
+                      label="Сохранить"
+                    />
+                  </div>
+                  <div className="flex flex-col md:hidden mt-6 space-y-3">
+                    <Button
+                      variant="primary"
+                      size="large"
+                      type="submit"
+                      loading={combinedIsLoading}
+                      disabled={combinedIsLoading}
+                      label="Сохранить"
+                      className="w-full"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => navigate("/categories")}
+                      disabled={combinedIsLoading}
+                      label="Отмена"
+                      className="w-full"
+                    />
                   </div>
                 </div>
                 <div className="hidden md:flex justify-center items-center">

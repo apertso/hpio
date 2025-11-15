@@ -1,5 +1,8 @@
 import db from "../models";
-import { RecurringSeriesInstance } from "../models/RecurringSeries";
+import {
+  RecurringSeriesInstance,
+  RecurringSeriesAttributes,
+} from "../models/RecurringSeries";
 import { RecurringSeriesCreationAttributes } from "../models/RecurringSeries";
 import logger from "../config/logger";
 import { Op } from "sequelize";
@@ -33,13 +36,12 @@ export const getRecurringSeriesById = async (
 };
 
 /**
- * Updates a recurring series by splitting it. The old series is deactivated,
- * future payments of the old series are deleted, a new series is created,
- * and the cut-off payment is updated and linked to the new series.
- * @param seriesId - The ID of the old recurring series to update.
+ * Updates a recurring series. If only non-recurrence fields change, updates the existing series.
+ * If the recurrence rule changes, splits the series by deactivating the old one and creating a new one.
+ * @param seriesId - The ID of the recurring series to update.
  * @param userId - The ID of the user.
- * @param data - The data for the new series, including the cut-off payment ID and new start date.
- * @returns The new recurring series instance or null if not found or not owned by the user.
+ * @param data - The data for updating the series, including the cut-off payment ID and new start date.
+ * @returns The updated recurring series instance or null if not found or not owned by the user.
  */
 export const updateRecurringSeries = async (
   seriesId: string,
@@ -55,13 +57,13 @@ export const updateRecurringSeries = async (
     throw new Error("cutOffPaymentId is required to update a series.");
   }
   if (!startDate) {
-    throw new Error("startDate is required for the new series.");
+    throw new Error("startDate is required for the series.");
   }
 
   const transaction = await db.sequelize.transaction();
   try {
-    // Find the old series and the payment that serves as the cut-off point
-    const oldSeries = await db.RecurringSeries.findOne({
+    // Find the series and the payment that serves as the cut-off point
+    const series = await db.RecurringSeries.findOne({
       where: { id: seriesId, userId },
       transaction,
     });
@@ -70,81 +72,128 @@ export const updateRecurringSeries = async (
       transaction,
     });
 
-    if (
-      !oldSeries ||
-      !cutOffPayment ||
-      cutOffPayment.seriesId !== oldSeries.id
-    ) {
+    if (!series || !cutOffPayment || cutOffPayment.seriesId !== series.id) {
       throw new Error(
         "Series or payment not found, or payment does not belong to the series."
       );
     }
 
-    // 1. Deactivate the old series by setting its end date to the day before the cut-off payment
-    const cutOffDate = new Date(cutOffPayment.dueDate);
-    cutOffDate.setDate(cutOffDate.getDate() - 1);
-    oldSeries.recurrenceEndDate = cutOffDate;
-    oldSeries.isActive = false; // Mark as inactive
-    await oldSeries.save({ transaction });
-    logger.info(`Deactivated old series ${oldSeries.id}.`);
+    // Check if recurrence rule is changing
+    const recurrenceRuleChanged =
+      newSeriesData.recurrenceRule &&
+      newSeriesData.recurrenceRule !== series.recurrenceRule;
 
-    // 2. Delete all future payments of the old series that are after the cut-off payment
-    await db.Payment.destroy({
-      where: {
-        seriesId: oldSeries.id,
-        dueDate: { [Op.gt]: cutOffPayment.dueDate },
-      },
-      transaction,
-    });
-    logger.info(`Deleted future payments for old series ${oldSeries.id}.`);
+    if (recurrenceRuleChanged) {
+      // Recurrence rule changed - split the series (old behavior)
+      logger.info(
+        `Recurrence rule changed for series ${seriesId}, splitting series.`
+      );
 
-    // 3. Create the new series with data from the form
-    const newSeries = await db.RecurringSeries.create(
-      {
-        userId,
-        title: newSeriesData.title ?? oldSeries.title,
-        amount: newSeriesData.amount ?? oldSeries.amount,
-        categoryId:
-          newSeriesData.categoryId !== undefined
-            ? newSeriesData.categoryId
-            : oldSeries.categoryId,
-        recurrenceRule:
-          newSeriesData.recurrenceRule ?? oldSeries.recurrenceRule,
-        startDate: startDate,
-        recurrenceEndDate: newSeriesData.recurrenceEndDate,
-        builtinIconName:
-          newSeriesData.builtinIconName !== undefined
-            ? newSeriesData.builtinIconName
-            : oldSeries.builtinIconName,
-        remind: newSeriesData.remind ?? oldSeries.remind,
-        isActive: true,
-      },
-      { transaction }
-    );
-    logger.info(`Created new series ${newSeries.id}.`);
+      // 1. Deactivate the old series by setting its end date to the day before the cut-off payment
+      const cutOffDate = new Date(cutOffPayment.dueDate);
+      cutOffDate.setDate(cutOffDate.getDate() - 1);
+      series.recurrenceEndDate = cutOffDate;
+      series.isActive = false; // Mark as inactive
+      await series.save({ transaction });
+      logger.info(`Deactivated old series ${series.id}.`);
 
-    // 4. Update the cut-off payment to become the first instance of the new series
-    cutOffPayment.seriesId = newSeries.id;
-    cutOffPayment.title = newSeries.title;
-    cutOffPayment.amount = newSeries.amount;
-    cutOffPayment.categoryId = newSeries.categoryId;
-    cutOffPayment.builtinIconName = newSeries.builtinIconName;
-    cutOffPayment.dueDate = startDate; // The dueDate becomes the new startDate
-    await cutOffPayment.save({ transaction });
-    logger.info(
-      `Updated payment ${cutOffPayment.id} to be the first of new series ${newSeries.id}.`
-    );
+      // 2. Delete all future payments of the old series that are after the cut-off payment
+      await db.Payment.destroy({
+        where: {
+          seriesId: series.id,
+          dueDate: { [Op.gt]: cutOffPayment.dueDate },
+        },
+        transaction,
+      });
+      logger.info(`Deleted future payments for old series ${series.id}.`);
 
-    await transaction.commit();
+      // 3. Create the new series with data from the form
+      const newSeries = await db.RecurringSeries.create(
+        {
+          userId,
+          title: newSeriesData.title ?? series.title,
+          amount: newSeriesData.amount ?? series.amount,
+          categoryId:
+            newSeriesData.categoryId !== undefined
+              ? newSeriesData.categoryId
+              : series.categoryId,
+          recurrenceRule: newSeriesData.recurrenceRule!,
+          startDate: startDate,
+          recurrenceEndDate: newSeriesData.recurrenceEndDate,
+          builtinIconName:
+            newSeriesData.builtinIconName !== undefined
+              ? newSeriesData.builtinIconName
+              : series.builtinIconName,
+          remind: newSeriesData.remind ?? series.remind,
+          isActive: true,
+        },
+        { transaction }
+      );
+      logger.info(`Created new series ${newSeries.id}.`);
 
-    const result = await getRecurringSeriesById(newSeries.id, userId);
-    return result;
+      // 4. Update the cut-off payment to become the first instance of the new series
+      cutOffPayment.seriesId = newSeries.id;
+      cutOffPayment.title = newSeries.title;
+      cutOffPayment.amount = newSeries.amount;
+      cutOffPayment.categoryId = newSeries.categoryId;
+      cutOffPayment.builtinIconName = newSeries.builtinIconName;
+      cutOffPayment.dueDate = startDate; // The dueDate becomes the new startDate
+      await cutOffPayment.save({ transaction });
+      logger.info(
+        `Updated payment ${cutOffPayment.id} to be the first of new series ${newSeries.id}.`
+      );
+
+      await transaction.commit();
+      const result = await getRecurringSeriesById(newSeries.id, userId);
+      return result;
+    } else {
+      // Recurrence rule not changed - update the existing series
+      logger.info(`Updating existing series ${seriesId} without splitting.`);
+
+      // Update the series fields
+      const updatedFields: Partial<RecurringSeriesAttributes> = {};
+      if (newSeriesData.title !== undefined)
+        updatedFields.title = newSeriesData.title;
+      if (newSeriesData.amount !== undefined)
+        updatedFields.amount = newSeriesData.amount;
+      if (newSeriesData.categoryId !== undefined)
+        updatedFields.categoryId = newSeriesData.categoryId;
+      if (newSeriesData.recurrenceEndDate !== undefined)
+        updatedFields.recurrenceEndDate = newSeriesData.recurrenceEndDate;
+      if (newSeriesData.builtinIconName !== undefined)
+        updatedFields.builtinIconName = newSeriesData.builtinIconName;
+      if (newSeriesData.remind !== undefined)
+        updatedFields.remind = newSeriesData.remind;
+      updatedFields.startDate = startDate; // Always update start date
+
+      await series.update(updatedFields, { transaction });
+      logger.info(`Updated series ${series.id} fields.`);
+
+      // Update the cut-off payment to reflect the new series data and due date
+      const paymentUpdates: any = {
+        dueDate: startDate, // Update due date to match new start date
+      };
+      if (newSeriesData.title !== undefined)
+        paymentUpdates.title = newSeriesData.title;
+      if (newSeriesData.amount !== undefined)
+        paymentUpdates.amount = newSeriesData.amount;
+      if (newSeriesData.categoryId !== undefined)
+        paymentUpdates.categoryId = newSeriesData.categoryId;
+      if (newSeriesData.builtinIconName !== undefined)
+        paymentUpdates.builtinIconName = newSeriesData.builtinIconName;
+
+      await cutOffPayment.update(paymentUpdates, { transaction });
+      logger.info(
+        `Updated payment ${cutOffPayment.id} to reflect series changes.`
+      );
+
+      await transaction.commit();
+      const result = await getRecurringSeriesById(series.id, userId);
+      return result;
+    }
   } catch (error) {
     await transaction.rollback();
-    logger.error(
-      `Error splitting recurring series with ID ${seriesId}:`,
-      error
-    );
+    logger.error(`Error updating recurring series with ID ${seriesId}:`, error);
     throw error;
   }
 };

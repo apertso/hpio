@@ -1,8 +1,8 @@
 import React from "react";
 import { UseFormRegister, UseFormSetValue, FieldErrors } from "react-hook-form";
-import CustomDatePicker from "./CustomDatePicker";
+import DatePicker from "./DatePicker";
 import { PaymentFormInputs } from "./PaymentForm"; // Assuming PaymentFormInputs is exported from PaymentForm
-import { Input } from "./Input";
+import { TextInputField, NumberField } from "./Input";
 
 interface PaymentDetailsSectionProps {
   register: UseFormRegister<PaymentFormInputs>;
@@ -22,33 +22,34 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   return (
     <>
       {/* Поля: Название, Сумма, Срок оплаты */}
-      <Input
-        id="title"
+      <TextInputField
         label="Название"
-        type="text"
-        {...register("title")}
-        disabled={isSubmitting}
+        inputId="title"
         error={errors.title?.message}
+        required
+        disabled={isSubmitting}
+        {...register("title")}
       />
-      <Input
-        id="amount"
+      <NumberField
         label="Сумма"
-        type="number"
+        inputId="amount"
         step="0.01"
         {...register("amount", { valueAsNumber: true })}
         disabled={isSubmitting}
         error={errors.amount?.message}
+        required
       />
-      <CustomDatePicker
+      <DatePicker
         id="dueDate"
+        mode="single"
         label="Срок оплаты"
         selected={watchDueDate || null}
-        onChange={(date: Date | null) => {
+        onSingleChange={(date: Date | null) => {
           setValue("dueDate", date as Date, { shouldValidate: true });
         }}
         dateFormat="yyyy-MM-dd"
         disabled={isSubmitting}
-        placeholderText="Выберите дату"
+        placeholder="Выберите дату"
         error={errors.dueDate?.message}
       />
     </>

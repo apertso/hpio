@@ -1,6 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
+import DatePicker from "./DatePicker";
 import { PaymentFormInputs } from "./PaymentForm";
 import Select, { SelectOption } from "./Select";
 import { Input } from "./Input";
@@ -63,7 +68,6 @@ interface PaymentRecurrenceSectionProps {
   currentRule?: PaymentFormInputs["recurrenceRule"];
   dueDate?: PaymentFormInputs["dueDate"];
   // Компонент всегда показывает настройки повторения без переключателя
-  isEditingSeries?: boolean;
 }
 
 const weekdayMap = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
@@ -170,8 +174,8 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
   isSubmitting,
   currentRule,
   dueDate,
-  isEditingSeries,
 }) => {
+  const shouldNotifyRef = useRef(false);
   const [state, setState] = useState<RecurrenceState>(() => {
     const parsed = parseRrule(currentRule);
     const initialDayOfMonth = dueDate?.getDate() || new Date().getDate();
@@ -238,19 +242,23 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
       setState((prevState) => {
         const newState = { ...prevState, ...part };
         if (triggerRuleChange) {
-          onRuleChange(generateRuleFromState(newState));
+          shouldNotifyRef.current = true;
         }
         return newState;
       });
     },
-    [onRuleChange]
+    []
   );
+
+  useEffect(() => {
+    if (!shouldNotifyRef.current) return;
+    shouldNotifyRef.current = false;
+    onRuleChange(generateRuleFromState(state));
+  }, [state, onRuleChange]);
 
   // Sync state with dueDate changes
   useEffect(() => {
     if (!dueDate) return;
-    // При редактировании серии не перезаписываем значения, пришедшие из RRULE
-    if (isEditingSeries && currentRule) return;
     const dayOfMonth = dueDate.getDate();
     const weekday = weekdayMap[dueDate.getDay()];
     const updates: Partial<RecurrenceState> = {
@@ -260,8 +268,8 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
     if (state.freq === "WEEKLY") {
       updates.byday = [weekday];
     }
-    updateState(updates);
-  }, [dueDate, isEditingSeries, currentRule, state.freq, updateState]);
+    updateState(updates, true); // Always trigger rule change when due date changes
+  }, [dueDate, state.freq, updateState]);
 
   // Initialize the rule on mount or when currentRule is not set
   useEffect(() => {
@@ -390,7 +398,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                 true
               )
             }
-            className="w-20"
+            className="py-2"
             disabled={isSubmitting}
           />
           <Select
@@ -486,12 +494,15 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   <span>До даты:</span>
                   <DatePicker
+                    mode="single"
                     selected={state.until}
-                    onChange={(date) => updateState({ until: date }, true)}
+                    onSingleChange={(date) =>
+                      updateState({ until: date }, true)
+                    }
                     dateFormat="yyyy-MM-dd"
-                    className="w-full rounded-md border-gray-300 bg-white px-3 py-1.5 text-sm dark:bg-gray-800"
-                    wrapperClassName="w-40"
+                    className="w-40"
                     disabled={state.end_type !== "UNTIL" || isSubmitting}
+                    inline={false}
                   />
                 </div>
               }
@@ -516,7 +527,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                         true
                       )
                     }
-                    className="w-20"
+                    className="py-2"
                     disabled={state.end_type !== "COUNT" || isSubmitting}
                   />
                   <span>повторений</span>

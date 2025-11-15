@@ -1,5 +1,5 @@
 import React from "react";
-import DropdownOverlay from "./DropdownOverlay";
+import Overlay from "./Overlay";
 import { useDropdown } from "../hooks/useDropdown";
 import { DropdownOption } from "./DropdownButton";
 import TableSkeleton from "../components/TableSkeleton";
@@ -39,9 +39,8 @@ function RowActions({ options }: { options: DropdownOption[] }) {
       >
         <EllipsisVerticalIcon className="h-5 w-5" />
       </button>
-      <DropdownOverlay
+      <Overlay
         isOpen={isOpen}
-        align="right"
         widthClass="w-56"
         anchorRef={containerRef}
       >
@@ -61,7 +60,7 @@ function RowActions({ options }: { options: DropdownOption[] }) {
             </button>
           ))}
         </div>
-      </DropdownOverlay>
+      </Overlay>
     </div>
   );
 }

@@ -28,7 +28,6 @@ interface DragState {
   locked: boolean;
 }
 
-const EDGE_DRAG_THRESHOLD = 24;
 const DRAG_ACTIVATION_DISTANCE = 6;
 const DEFAULT_DRAWER_WIDTH = 288;
 
@@ -51,6 +50,7 @@ interface MobileNavigationDrawerProps {
   navItems: NavItem[];
   currentPath: string;
   onLogout: () => void;
+  gesturesEnabled?: boolean;
 }
 
 const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
@@ -62,6 +62,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   navItems,
   currentPath,
   onLogout,
+  gesturesEnabled = true,
 }) => {
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
@@ -134,11 +135,23 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   }, [shouldRender, updateDrawerWidth]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("ontouchstart" in window)) {
+    if (
+      typeof window === "undefined" ||
+      !("ontouchstart" in window) ||
+      !gesturesEnabled
+    ) {
       return;
     }
 
     let rafId: number | null = null;
+
+    const shouldIgnoreGesture = (event: TouchEvent): boolean => {
+      const target = event.target as HTMLElement | null;
+      if (!target) {
+        return false;
+      }
+      return Boolean(target.closest("[data-prevent-drawer-gesture]"));
+    };
 
     const startDrag = (mode: DragMode, touch: Touch) => {
       if (dragStateRef.current) {
@@ -158,13 +171,13 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
     };
 
     const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) {
+      if (event.touches.length !== 1 || shouldIgnoreGesture(event)) {
         return;
       }
 
       const touch = event.touches[0];
 
-      if (!isOpenRef.current && touch.clientX <= EDGE_DRAG_THRESHOLD) {
+      if (!isOpenRef.current) {
         startDrag("opening", touch);
         return;
       }
@@ -276,7 +289,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
       setIsDragging(false);
       setDragProgress(null);
     };
-  }, [onClose, onOpen]);
+  }, [gesturesEnabled, onClose, onOpen]);
 
   useEffect(() => {
     if (!isOpen) {

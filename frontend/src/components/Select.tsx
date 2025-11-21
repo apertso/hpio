@@ -100,7 +100,7 @@ const Select: React.FC<SelectProps> = ({
   const selectedOption = options.find((opt) => opt.value === value);
 
   const baseClasses =
-    "relative block w-full min-w-[12em] max-w-[64em] rounded-lg bg-gray-50 px-4 py-3 text-base text-gray-900 placeholder:text-gray-500 shadow-sm focus:outline-none focus:ring-3 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500 text-left flex items-center justify-between cursor-pointer transition-colors";
+    "relative block w-full min-w-[12em] max-w-[64em] rounded-xl bg-white px-3 py-2.5 text-base text-gray-900 placeholder:text-gray-500 shadow-sm border border-gray-200 focus:outline-none focus:ring-3 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500 text-left flex items-center justify-between cursor-pointer transition-colors";
   const errorClasses = error ? "focus:ring-3 focus:ring-red-500" : "";
   const disabledClasses = disabled
     ? "cursor-not-allowed opacity-70 bg-gray-100 text-gray-500 dark:bg-gray-900 dark:text-gray-500"
@@ -150,7 +150,7 @@ const Select: React.FC<SelectProps> = ({
         ReactDOM.createPortal(
           <div
             data-select-dropdown
-            className="fixed z-[9999] rounded-md bg-gray-50 dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-600 max-h-60 overflow-y-auto"
+            className="fixed z-[9999] rounded-xl bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 max-h-60 overflow-y-auto"
             style={{
               top: dropdownPosition.top,
               left: dropdownPosition.left,
@@ -163,7 +163,7 @@ const Select: React.FC<SelectProps> = ({
                   key={option.value || "null-option"}
                   className={`px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
                     value === option.value
-                      ? "bg-gray-200 dark:bg-gray-600 font-bold"
+                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
                       : ""
                   }`}
                   onClick={() => handleSelect(option.value)}

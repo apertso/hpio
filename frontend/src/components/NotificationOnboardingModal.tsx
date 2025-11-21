@@ -15,6 +15,7 @@ import {
 import { useToast } from "../context/ToastContext";
 import MobilePanel from "./MobilePanel";
 import { Button } from "./Button";
+import logger from "../utils/logger";
 
 interface NotificationOnboardingModalProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ const NotificationOnboardingModal: React.FC<
         setIsLoading(false);
       }, 1000);
     } catch (error) {
-      console.error("Failed to open settings:", error);
+      logger.error("Failed to open settings:", error);
       showToast("Не удалось открыть настройки", "error");
       setIsLoading(false);
     }
@@ -65,7 +66,7 @@ const NotificationOnboardingModal: React.FC<
         onComplete();
       }
     } catch (error) {
-      console.error("Failed to request app notification permission:", error);
+      logger.error("Failed to request app notification permission:", error);
       showToast("Не удалось запросить разрешение", "error");
     } finally {
       setIsLoading(false);
@@ -161,8 +162,7 @@ const NotificationOnboardingModal: React.FC<
           label="Открыть настройки"
         ></Button>
         <Button
-          variant="secondary"
-          size="small"
+          variant="ghost"
           className="w-full"
           onClick={handleSkip}
           label="Пропустить"
@@ -247,16 +247,14 @@ const NotificationOnboardingModal: React.FC<
         ></Button>
         <div className="flex gap-2">
           <Button
-            variant="secondary"
-            size="small"
+            variant="ghost"
             className="flex-1"
             onClick={handleBack}
             loading={isLoading}
             label="Назад"
           ></Button>
           <Button
-            variant="secondary"
-            size="small"
+            variant="ghost"
             className="flex-1"
             onClick={handleSkip}
             loading={isLoading}
@@ -285,12 +283,7 @@ const NotificationOnboardingModal: React.FC<
         </div>,
         document.body
       )}
-      <MobilePanel
-        isOpen={isOpen}
-        onClose={onClose}
-        title=""
-        showCloseButton={false}
-      >
+      <MobilePanel isOpen={isOpen} onClose={onClose} title="">
         {renderContent("mobile")}
       </MobilePanel>
     </>

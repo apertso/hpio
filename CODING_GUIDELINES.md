@@ -225,3 +225,16 @@ To prevent crashes when the suggestions array changes during use (e.g., after a 
 2.  **Defensive Checks**: The component includes optional chaining (`?.`) when accessing suggestion properties and early returns if `currentSuggestion` is undefined, providing a safety net against edge cases.
 
 This multi-layered approach ensures the modal is helpful without being intrusive, and remains stable even when suggestions change during user interaction.
+
+## Component specs (`*.spec.md`)
+
+- React components may have `.spec.md` next to them.
+- File contains bullet-point hard rules for the component (non-negotiable).
+
+AI:
+
+- must read and obey all rules in `.spec.md`
+- must NOT edit `.spec.md`
+- must NOT create new `.spec.md`
+- must NOT delete `.spec.md` while `.tsx` exists
+- may change `.tsx` only if all `.spec.md` rules stay true

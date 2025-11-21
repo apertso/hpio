@@ -1,3 +1,5 @@
+import logger from "./logger";
+
 export interface ParsedPayment {
   merchantName: string;
   amount: number;
@@ -83,7 +85,7 @@ export function parseRaiffeisenNotification(
       amount,
     };
   } catch (error) {
-    console.error("Error parsing Raiffeisen notification:", error);
+    logger.error("Error parsing Raiffeisen notification:", error);
     return null;
   }
 }
@@ -119,7 +121,7 @@ export function parseSberbankNotification(
       amount,
     };
   } catch (error) {
-    console.error("Error parsing Sberbank notification:", error);
+    logger.error("Error parsing Sberbank notification:", error);
     return null;
   }
 }
@@ -151,7 +153,7 @@ export function parseYandexBankNotification(
       amount,
     };
   } catch (error) {
-    console.error("Error parsing Yandex Bank notification:", error);
+    logger.error("Error parsing Yandex Bank notification:", error);
     return null;
   }
 }
@@ -200,7 +202,7 @@ export function parseOzonNotification(
 
     return null;
   } catch (error) {
-    console.error("Error parsing Ozon notification:", error);
+    logger.error("Error parsing Ozon notification:", error);
     return null;
   }
 }
@@ -234,7 +236,7 @@ export function parseTBankNotification(
       amount,
     };
   } catch (error) {
-    console.error("Error parsing T-Bank notification:", error);
+    logger.error("Error parsing T-Bank notification:", error);
     return null;
   }
 }
@@ -280,7 +282,7 @@ export function parseNotification(
     return null;
   }
   if (title && !validateRaiffeisenTitle(title)) {
-    console.log("Raiffeisen notification title:", title);
+    logger.info("Raiffeisen notification title:", title);
     return null;
   }
   return parseRaiffeisenNotification(text);

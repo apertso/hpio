@@ -1,0 +1,20 @@
+import { Meta, IconGallery, IconItem } from "@storybook/blocks";
+import { builtinIconComponents } from "../../components/PaymentIconDisplay";
+
+<Meta title="Foundations/Icons" />
+
+<div style={{ maxHeight: 'calc(100vh - 57px)', overflowY: 'auto', paddingBottom: 32 }}>
+
+# Icons
+
+The following icons are available for use in Categories and Payments. They are part of the `builtinIcons` set.
+
+<IconGallery>
+  {Object.entries(builtinIconComponents).map(([name, Icon]) => (
+    <IconItem name={name} key={name}>
+      <Icon className="w-6 h-6" />
+    </IconItem>
+  ))}
+</IconGallery>
+
+</div>

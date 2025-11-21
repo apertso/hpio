@@ -1,10 +1,12 @@
 import { Router, Request, Response } from "express";
+import { ParsedQs } from "qs";
 import { protect } from "../middleware/authMiddleware";
 import {
   getArchivedPayments,
   restorePayment,
   permanentDeletePayment,
   clearTrash,
+  PaymentFilterParams,
 } from "../services/paymentService"; // Функции для архива из paymentService
 import logger from "../config/logger";
 
@@ -13,11 +15,38 @@ const router = Router();
 // Все маршруты архива должны быть защищены
 router.use(protect);
 
+type QueryParam = string | ParsedQs | (string | ParsedQs)[] | undefined;
+
+const normalizeQueryParam = (value: QueryParam): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return typeof first === "string" ? first : undefined;
+  }
+
+  return typeof value === "string" ? value : undefined;
+};
+
 // GET /api/archive - Получить список платежей из архива
 router.get("/", async (req: Request, res: Response) => {
   try {
-    // req.query могут содержать параметры фильтрации/сортировки для архива
-    const filterParams = req.query;
+    const { status, search, categoryId, isRecurring, hasFile } = req.query;
+    const filterParams: PaymentFilterParams = {
+      status: normalizeQueryParam(status),
+      search: normalizeQueryParam(search),
+      categoryId: normalizeQueryParam(categoryId),
+      isRecurring: normalizeQueryParam(isRecurring) as
+        | "true"
+        | "false"
+        | undefined,
+      hasFile: normalizeQueryParam(hasFile) as
+        | "true"
+        | "false"
+        | undefined,
+    };
     const archivedPayments = await getArchivedPayments(
       req.user!.id,
       filterParams

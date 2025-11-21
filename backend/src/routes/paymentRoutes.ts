@@ -1,9 +1,11 @@
 /// <reference path="../types/express.d.ts" />
 import { Router, Response, Request } from "express";
+import { ParsedQs } from "qs";
 import { protect } from "../middleware/authMiddleware";
 import {
   getUpcomingPayments,
   getFilteredPayments,
+  PaymentFilterParams,
   createPayment,
   getPaymentById,
   updatePayment,
@@ -40,10 +42,37 @@ router.get("/upcoming", async (req: Request, res: Response) => {
 
 // GET /api/payments/list - Получить полный список платежей с фильтрацией (2.3)
 // Принимает параметры запроса для фильтрации, сортировки, пагинации (пока базовая фильтрация по статусу)
+type QueryParam = string | ParsedQs | (string | ParsedQs)[] | undefined;
+
+const normalizeQueryParam = (value: QueryParam): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return typeof first === "string" ? first : undefined;
+  }
+
+  return typeof value === "string" ? value : undefined;
+};
+
 router.get("/list", async (req: Request, res: Response) => {
   try {
-    // req.query содержит параметры фильтрации из URL
-    const filterParams = req.query;
+    const { status, search, categoryId, isRecurring, hasFile } = req.query;
+    const filterParams: PaymentFilterParams = {
+      status: normalizeQueryParam(status),
+      search: normalizeQueryParam(search),
+      categoryId: normalizeQueryParam(categoryId),
+      isRecurring: normalizeQueryParam(isRecurring) as
+        | "true"
+        | "false"
+        | undefined,
+      hasFile: normalizeQueryParam(hasFile) as
+        | "true"
+        | "false"
+        | undefined,
+    };
     const payments = await getFilteredPayments(req.user!.id, filterParams);
     res.json(payments);
   } catch (error: any) {

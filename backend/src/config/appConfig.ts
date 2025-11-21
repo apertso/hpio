@@ -44,6 +44,7 @@ export const config = {
     pass: process.env.SMTP_PASS,
     fromName: process.env.SMTP_FROM_NAME,
     fromEmail: process.env.SMTP_FROM_EMAIL,
+    tlsServername: process.env.SMTP_TLS_SERVERNAME,
   },
   fluentBit: {
     host: process.env.FLUENT_BIT_HOST,

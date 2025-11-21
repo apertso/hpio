@@ -90,7 +90,7 @@ const DeveloperSection: React.FC = () => {
       showToast("Не удалось отправить тестовое уведомление", "error");
     }
   };
-  
+
   const handleSendTestEmail = async () => {
     setIsSendingTestEmail(true);
     try {
@@ -111,12 +111,6 @@ const DeveloperSection: React.FC = () => {
     }
 
     try {
-      // Добавляем тестовую запись в лог для проверки работы логирования
-      console.log("Testing file logger...");
-      logger.info(
-        "Test log entry from Settings page - download logs button clicked"
-      );
-
       const logContent = await readLogFile();
 
       if (!logContent) {
@@ -140,7 +134,7 @@ const DeveloperSection: React.FC = () => {
         showToast("Логи успешно сохранены", "success");
       }
     } catch (error) {
-      console.error("Error downloading logs:", error);
+      logger.error("Error downloading logs:", error);
       showToast("Не удалось скачать логи", "error");
     }
   };
@@ -161,7 +155,7 @@ const DeveloperSection: React.FC = () => {
         showToast("Не удалось очистить логи", "error");
       }
     } catch (error) {
-      console.error("Error clearing logs:", error);
+      logger.error("Error clearing logs:", error);
       showToast("Не удалось очистить логи", "error");
     } finally {
       setIsClearingLogs(false);
@@ -198,7 +192,7 @@ const DeveloperSection: React.FC = () => {
         showToast("Не удалось скопировать логи", "error");
       }
     } catch (error) {
-      console.error("Error copying logs:", error);
+      logger.error("Error copying logs:", error);
       showToast("Не удалось скопировать логи", "error");
     } finally {
       setIsCopyingLogs(false);
@@ -207,7 +201,7 @@ const DeveloperSection: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <SettingsSection>
+      <SettingsSection className="card-base p-6">
         <div className="flex items-start gap-4 mb-6">
           <div className="flex-shrink-0 w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
             <CodeBracketIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
@@ -281,7 +275,7 @@ const DeveloperSection: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
           <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
             Тестовое email-уведомление
           </h4>
@@ -305,12 +299,12 @@ const DeveloperSection: React.FC = () => {
 
         {/* Notification Simulation Section */}
         {isTauriMobile() && (
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
             <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Симуляция уведомлений
             </h4>
             <div className="space-y-4">
-              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-900/30 rounded-lg">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   <strong>Тестирование:</strong> Симулирует получение
                   уведомления от Райффайзен банка для проверки автоматической
@@ -329,12 +323,12 @@ const DeveloperSection: React.FC = () => {
 
         {/* Log Download Section */}
         {isTauriMobile() && (
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
             <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Логи приложения
             </h4>
             <div className="space-y-4">
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
                   <strong>Файл логов:</strong> Все логи приложения за сегодня
                   сохраняются в файл logs.txt. Вы можете скачать, скопировать

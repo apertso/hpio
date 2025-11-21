@@ -243,7 +243,7 @@ const AccountSection: React.FC = () => {
     <div className="space-y-8">
       {/* Profile Section */}
       <form onSubmit={handleSettingsSubmit(onSettingsSubmit)}>
-        <SettingsSection>
+        <SettingsSection className="card-base p-6">
           <div className="flex items-start gap-4 mb-6">
             <div className="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
               <UserIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -376,7 +376,7 @@ const AccountSection: React.FC = () => {
       </form>
 
       {/* Password Section */}
-      <SettingsSection>
+      <SettingsSection className="card-base p-6">
         <div className="flex items-start gap-4 mb-6">
           <div className="flex-shrink-0 w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
             <LockClosedIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -457,7 +457,7 @@ const AccountSection: React.FC = () => {
         </div>
       </SettingsSection>
       {/* Удаление аккаунта */}
-      <SettingsSection>
+      <SettingsSection className="card-base p-6">
         <div className="flex items-start gap-4 mb-6">
           <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
             <ExclamationTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />

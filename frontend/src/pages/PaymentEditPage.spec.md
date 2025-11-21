@@ -1,0 +1,1 @@
+- no internal separators inside the card (no horizontal dividers)

@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { isTauri } from "../utils/platform";
 
 export interface PermissionStatus {
@@ -10,6 +11,10 @@ export interface PendingNotification {
   text: string;
   timestamp: number;
   notification_type?: string;
+}
+
+interface NativeServiceStatus {
+  last_heartbeat: number;
 }
 
 /**
@@ -25,7 +30,7 @@ export async function checkNotificationPermission(): Promise<PermissionStatus> {
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<PermissionStatus>("check_notification_permission");
   } catch (error) {
-    console.error("Failed to check notification permission:", error);
+    logger.error("Failed to check notification permission:", error);
     return { granted: false };
   }
 }
@@ -36,14 +41,16 @@ export async function checkNotificationPermission(): Promise<PermissionStatus> {
 export async function openNotificationSettings(): Promise<void> {
   // Only attempt to call Tauri APIs if actually running in Tauri
   if (!isTauri()) {
-    throw new Error("Notification settings only available in Tauri environment");
+    throw new Error(
+      "Notification settings only available in Tauri environment"
+    );
   }
 
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("open_notification_settings");
   } catch (error) {
-    console.error("Failed to open notification settings:", error);
+    logger.error("Failed to open notification settings:", error);
     throw error;
   }
 }
@@ -63,7 +70,7 @@ export async function getPendingNotifications(): Promise<
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<PendingNotification[]>("get_pending_notifications");
   } catch (error) {
-    console.error("Failed to get pending notifications:", error);
+    logger.error("Failed to get pending notifications:", error);
     return [];
   }
 }
@@ -81,7 +88,7 @@ export async function clearPendingNotifications(): Promise<void> {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("clear_pending_notifications");
   } catch (error) {
-    console.error("Failed to clear pending notifications:", error);
+    logger.error("Failed to clear pending notifications:", error);
     throw error;
   }
 }
@@ -100,7 +107,7 @@ export async function checkAppNotificationPermission(): Promise<PermissionStatus
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<PermissionStatus>("check_app_notification_permission");
   } catch (error) {
-    console.error("Failed to check app notification permission:", error);
+    logger.error("Failed to check app notification permission:", error);
     return { granted: false };
   }
 }
@@ -121,7 +128,7 @@ export async function requestAppNotificationPermission(): Promise<PermissionStat
       "request_app_notification_permission"
     );
   } catch (error) {
-    console.error("Failed to request app notification permission:", error);
+    logger.error("Failed to request app notification permission:", error);
     return { granted: false };
   }
 }
@@ -132,14 +139,16 @@ export async function requestAppNotificationPermission(): Promise<PermissionStat
 export async function openAppNotificationSettings(): Promise<void> {
   // Only attempt to call Tauri APIs if actually running in Tauri
   if (!isTauri()) {
-    throw new Error("App notification settings only available in Tauri environment");
+    throw new Error(
+      "App notification settings only available in Tauri environment"
+    );
   }
 
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("open_app_notification_settings");
   } catch (error) {
-    console.error("Failed to open app notification settings:", error);
+    logger.error("Failed to open app notification settings:", error);
     throw error;
   }
 }
@@ -158,7 +167,7 @@ export async function checkBatteryOptimizationDisabled(): Promise<boolean> {
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<boolean>("check_battery_optimization_disabled");
   } catch (error) {
-    console.error("Failed to check battery optimization status:", error);
+    logger.error("Failed to check battery optimization status:", error);
     return false;
   }
 }
@@ -169,14 +178,52 @@ export async function checkBatteryOptimizationDisabled(): Promise<boolean> {
 export async function openBatteryOptimizationSettings(): Promise<void> {
   // Only attempt to call Tauri APIs if actually running in Tauri
   if (!isTauri()) {
-    throw new Error("Battery optimization settings only available in Tauri environment");
+    throw new Error(
+      "Battery optimization settings only available in Tauri environment"
+    );
   }
 
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("open_battery_optimization_settings");
   } catch (error) {
-    console.error("Failed to open battery optimization settings:", error);
+    logger.error("Failed to open battery optimization settings:", error);
+    throw error;
+  }
+}
+
+export async function getNotificationServiceHeartbeat(): Promise<
+  number | null
+> {
+  if (!isTauri()) {
+    return null;
+  }
+
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const status = await invoke<NativeServiceStatus>(
+      "get_notification_service_status"
+    );
+    if (typeof status?.last_heartbeat !== "number") {
+      return null;
+    }
+    return status.last_heartbeat > 0 ? status.last_heartbeat : null;
+  } catch (error) {
+    logger.error("Failed to get notification service heartbeat:", error);
+    return null;
+  }
+}
+
+export async function pingNotificationService(): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("ping_notification_listener_service");
+  } catch (error) {
+    logger.error("Failed to ping notification service:", error);
     throw error;
   }
 }

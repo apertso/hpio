@@ -40,13 +40,13 @@ const Modal: React.FC<ModalProps> = ({
   // Используем React Portal для рендеринга модального окна вне основного DOM-дерева
   return ReactDOM.createPortal(
     <div
-      className={`fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50 ${
+      className={`fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 ${
         className || ""
       }`}
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {title && (

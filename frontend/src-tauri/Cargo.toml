@@ -1,6 +1,6 @@
 [package]
 name = "hochu-plachu"
-version = "0.6.0"
+version = "1.0.0"
 description = "Трекер подписок и регулярных платежей с напоминаниями и анализом расходов."
 authors = ["Хочу Плачу "]
 license = "MIT"

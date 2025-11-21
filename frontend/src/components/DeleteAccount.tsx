@@ -346,7 +346,6 @@ const DeleteAccount: React.FC<DeleteAccountProps> = ({
         isOpen={isOpen}
         onClose={handleClose}
         title="Удалить аккаунт"
-        showCloseButton={true}
       >
         <DeleteAccountContent {...sharedProps} showHeader={false} />
       </MobilePanel>

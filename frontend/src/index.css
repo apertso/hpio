@@ -5,11 +5,30 @@
 @theme {
   --font-sans: "Roboto", "Segoe UI", "Tahoma", "Arial", "Helvetica", sans-serif;
   --color-dark-bg: #111827;
-  --color-card-bg: #303030;
-  --color-border-dark: #303030;
-  --color-text-secondary: #ababab;
-  --color-dark-gray: #303030;
+  --color-card-bg: #1f2937;
+  --color-border-dark: #374151;
+  --color-text-secondary: #9ca3af;
+  --color-dark-gray: #1f2937;
   --animate-subtle-pulse: subtle-pulse 4s ease-in-out infinite;
+}
+
+@layer utilities {
+  .text-sm {
+    font-size: 11px;
+    line-height: 16px;
+  }
+}
+
+@layer components {
+  .card-base {
+    @apply bg-white dark:bg-gray-800 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 dark:border-gray-700/50 transition-all duration-300;
+  }
+  .card-hover {
+    @apply hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-500/20 dark:hover:border-indigo-400/20 transform hover:-translate-y-0.5;
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium;
+  }
 }
 
 :root {
@@ -17,14 +36,15 @@
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
 }
 
+#root,
 html,
 body {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
   width: 100vw;
-  overflow-x: hidden;
 }
 
 .safe-area-top {
@@ -134,4 +154,14 @@ body {
 
 .dark .feedback-ripple::before {
   background: rgba(96, 165, 250, 0.28);
+}
+
+input.number-field-input::-webkit-outer-spin-button,
+input.number-field-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input.number-field-input[type="number"] {
+  -moz-appearance: textfield;
 }

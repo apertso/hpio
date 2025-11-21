@@ -1,5 +1,6 @@
 import axiosInstance from "./axiosInstance";
 import { isTauri } from "../utils/platform";
+import logger from "../utils/logger";
 
 export interface FcmTokenResponse {
   success: boolean;
@@ -19,7 +20,7 @@ export async function getFcmToken(): Promise<string | null> {
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<string | null>("get_fcm_token");
   } catch (error) {
-    console.error("Failed to get FCM token:", error);
+    logger.error("Failed to get FCM token:", error);
     return null;
   }
 }
@@ -34,7 +35,7 @@ export async function registerFcmToken(
     const response = await axiosInstance.post("/user/fcm-token", { token });
     return response.data;
   } catch (error) {
-    console.error("Failed to register FCM token:", error);
+    logger.error("Failed to register FCM token:", error);
     throw error;
   }
 }
@@ -52,7 +53,7 @@ export async function getPendingNavigation(): Promise<string | null> {
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<string | null>("get_pending_navigation");
   } catch (error) {
-    console.error("Failed to get pending navigation:", error);
+    logger.error("Failed to get pending navigation:", error);
     return null;
   }
 }
@@ -70,6 +71,6 @@ export async function clearPendingNavigation(): Promise<void> {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("clear_pending_navigation");
   } catch (error) {
-    console.error("Failed to clear pending navigation:", error);
+    logger.error("Failed to clear pending navigation:", error);
   }
 }

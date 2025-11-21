@@ -113,7 +113,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   });
 
   const [formError, setFormError] = useState<string | null>(null);
-  const [selectedIconName, setSelectedIconName] = useState<BuiltinIcon | null>(
+  const [manualIconName, setManualIconName] = useState<BuiltinIcon | null>(
     null
   );
   const [attachedFile, setAttachedFile] = useState<{
@@ -179,7 +179,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       };
       reset(dataToSet);
 
-      setSelectedIconName(
+      setManualIconName(
         (editScope === "series" && initialData.series
           ? initialData.series.builtinIconName
           : initialData.builtinIconName) || null
@@ -201,7 +201,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         recurrenceRule: null,
         remind: false,
       });
-      setSelectedIconName(null);
+      setManualIconName(null);
       setAttachedFile(null);
       setPaymentStatus(null);
       setShouldRepeat(false);
@@ -209,7 +209,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   }, [initialData, editScope, isEditMode, reset]);
 
   const handleIconChange = useCallback((iconName: BuiltinIcon | null) => {
-    setSelectedIconName(iconName);
+    setManualIconName(iconName);
   }, []);
 
   const handleRecurrenceRuleChange = useCallback(
@@ -222,6 +222,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const actualSubmit = async (data: PaymentFormInputs) => {
     // Determine if we're dealing with series based on shouldRepeat toggle
     const wasSeriesPayment = !!initialData?.seriesId;
+    const builtinIconForPayload = data.categoryId ? null : manualIconName;
 
     try {
       if (isEditMode && paymentId) {
@@ -232,7 +233,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             amount: Number(data.amount),
             dueDate: formatDateToLocal(data.dueDate),
             categoryId: data.categoryId || null,
-            builtinIconName: selectedIconName,
+            builtinIconName: builtinIconForPayload,
             remind: data.remind || false,
             completedAt: data.completedAt
               ? data.completedAt.toISOString()
@@ -271,12 +272,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             amount: Number(data.amount),
             categoryId: data.categoryId || null,
             recurrenceRule: data.recurrenceRule,
-            builtinIconName: selectedIconName,
+            builtinIconName: builtinIconForPayload,
             cutOffPaymentId: paymentId,
             startDate: formatDateToLocal(data.dueDate),
           };
           await seriesApi.updateSeries(seriesId, payload);
           logger.info(`Recurring series updated (ID: ${seriesId})`);
+          showToast("Серия платежей обновлена.", "success");
           onSuccess(paymentId);
         }
       } else {
@@ -287,7 +289,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           dueDate: formatDateToLocal(data.dueDate),
           categoryId: data.categoryId || null,
           recurrenceRule: shouldRepeat ? data.recurrenceRule : null,
-          builtinIconName: selectedIconName,
+          builtinIconName: builtinIconForPayload,
           remind: data.remind || false,
         };
 
@@ -381,32 +383,29 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     await actualSubmit(data);
   };
 
-  const watchDueDate = watch("dueDate");
-  const watchCategoryId = watch("categoryId");
-  const currentRule = watch("recurrenceRule");
-
   const findCategoryIcon = useCallback(
     (categoryId: string | null | undefined) => {
       if (!categoryId) return null;
       const category = categories?.find((c) => c.id === categoryId);
-      return category?.builtinIconName;
+      return category?.builtinIconName || null;
     },
     [categories]
   );
 
+  const watchDueDate = watch("dueDate");
+  const watchCategoryId = watch("categoryId");
+  const currentRule = watch("recurrenceRule");
+  const categoryIconName = findCategoryIcon(watchCategoryId);
+  const iconSelectorDisabled = !!watchCategoryId;
+  const iconSelectorDisplayIcon = iconSelectorDisabled
+    ? categoryIconName || null
+    : manualIconName;
+
   useEffect(() => {
     if (initialData) {
-      setSelectedIconName(initialData.builtinIconName || null);
+      setManualIconName(initialData.builtinIconName || null);
     }
   }, [initialData]);
-
-  const [newCategoryId, setNewCategoryId] = useState<string | null>();
-
-  // Автовыбор иконки при смене категории (применяем, только если выбор сделан пользователем)
-  useEffect(() => {
-    const catIconName = findCategoryIcon(newCategoryId);
-    setSelectedIconName((catIconName || null) as BuiltinIcon | null);
-  }, [newCategoryId, findCategoryIcon]);
 
   const handleShouldRepeatChange = (newValue: boolean) => {
     setShouldRepeat(newValue);
@@ -450,21 +449,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               setValue={setValue}
               watchDueDate={watchDueDate}
               isSubmitting={isSubmitting}
+              showSeriesStartHint={editScope === "series"}
             />
-            {editScope === "series" && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-4 ml-1">
-                Эта дата станет датой начала для измененной серии.
-              </p>
-            )}
 
             <PaymentCategorySelect
               errors={errors}
               setValue={setValue}
               watchCategoryId={watchCategoryId}
               isSubmitting={isSubmitting}
-              onUserCategoryChange={(newCategoryId: string | null) =>
-                setNewCategoryId(newCategoryId)
-              }
             />
 
             {editScope === "single" && (
@@ -501,9 +493,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             </label>
 
             <IconSelector
-              selectedIconName={selectedIconName}
+              selectedIconName={iconSelectorDisplayIcon}
               onIconChange={handleIconChange}
               isFormSubmitting={isSubmitting}
+              isDisabled={iconSelectorDisabled}
             />
 
             {!isEditMode && (
@@ -551,12 +544,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           </div>
         </fieldset>
 
-        <div className="hidden md:flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="hidden md:flex justify-end space-x-4 pt-6">
           <Button
-            variant="secondary"
+            variant="ghost"
             onClick={onCancel}
             label="Отмена"
-            loading={isSubmitting}
+            disabled={isSubmitting}
           />
           <Button
             variant="primary"
@@ -579,10 +572,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             onClick={handleSubmit(handleFormSubmit)}
           />
           <Button
-            variant="secondary"
-            size="small"
+            variant="ghost"
             label="Отмена"
-            loading={isSubmitting}
+            disabled={isSubmitting}
             className="w-full"
             onClick={onCancel}
           />

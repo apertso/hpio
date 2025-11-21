@@ -47,14 +47,19 @@ const Overlay: React.FC<OverlayProps> = ({
       const padding = 8;
       const bottomSpace = window.innerHeight - (a.bottom + offset);
       const topSpace = a.top - offset;
+      const leftSpace = a.left - offset;
+      const rightSpace = window.innerWidth - (a.right + offset);
       const fitsBelow = bottomSpace >= o.height;
       const fitsAbove = topSpace >= o.height;
+      const fitsLeft = leftSpace >= o.width;
+      const fitsRight = rightSpace >= o.width;
 
       let top = 0;
       let left = 0;
       let transformOrigin: string;
 
       const anchorCenter = a.left + a.width / 2;
+      const anchorVerticalCenter = a.top + a.height / 2;
 
       if (fitsBelow) {
         top = a.bottom + offset;
@@ -64,6 +69,14 @@ const Overlay: React.FC<OverlayProps> = ({
         top = a.top - o.height - offset;
         left = anchorCenter - o.width / 2;
         transformOrigin = "bottom center";
+      } else if (fitsLeft) {
+        top = anchorVerticalCenter - o.height / 2;
+        left = a.left - o.width - offset;
+        transformOrigin = "center right";
+      } else if (fitsRight) {
+        top = anchorVerticalCenter - o.height / 2;
+        left = a.right + offset;
+        transformOrigin = "center left";
       } else {
         top = Math.max(padding, (window.innerHeight - o.height) / 2);
         left = Math.max(padding, (window.innerWidth - o.width) / 2);
@@ -74,6 +87,10 @@ const Overlay: React.FC<OverlayProps> = ({
         left = Math.max(
           padding,
           Math.min(left, window.innerWidth - o.width - padding)
+        );
+        top = Math.max(
+          padding,
+          Math.min(top, window.innerHeight - o.height - padding)
         );
       }
 
@@ -102,7 +119,7 @@ const Overlay: React.FC<OverlayProps> = ({
 
   if (!isOpen) return null;
 
-  const baseClasses = `rounded-xl bg-white dark:bg-slate-900 shadow-[0_28px_45px_rgba(15,23,42,0.15)] dark:shadow-[0_35px_60px_rgba(0,0,0,0.55)] focus:outline-none border border-gray-300 dark:border-slate-700 overflow-hidden ${widthClass} ${className}`;
+  const baseClasses = `rounded-md bg-white dark:bg-gray-800 shadow-lg focus:outline-none border border-gray-200 dark:border-gray-700 overflow-hidden ${widthClass} ${className}`;
 
   // Рендерим в портал, чтобы ОВЕРЛЕЙ был вне document flow таблицы
   return ReactDOM.createPortal(

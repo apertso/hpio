@@ -58,7 +58,7 @@ const LoginPage: React.FC = () => {
           </div>
         </button>
         <div className="flex-1 flex w-full items-center justify-center">
-          <FormBlock className="w-full max-w-xl px-4 md:p-6">
+          <FormBlock className="w-full max-w-xl bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             <LoginForm
               onLogin={login}
               onShowToast={showToast}

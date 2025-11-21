@@ -25,6 +25,7 @@ import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import Modal from "../components/Modal"; // Add this import
 import { useReset } from "../context/ResetContext";
 import SegmentedControl, {
+  SegmentedControlOption,
   TimeRangeOption,
 } from "../components/SegmentedControl";
 import AdvancedFiltersPanel from "../components/AdvancedFiltersPanel";
@@ -138,6 +139,13 @@ const getInitialTimeRange = (): TimeRangeOption => {
   return "1d";
 };
 
+const dashboardTimeRangeOptions: SegmentedControlOption<TimeRangeOption>[] = [
+  { value: "1d", label: "День" },
+  { value: "1w", label: "Неделя" },
+  { value: "1m", label: "Месяц" },
+  { value: "1y", label: "Год" },
+];
+
 import CustomDailySpendingChart from "../components/CustomDailySpendingChart";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -202,8 +210,8 @@ const MobileActionsOverlay: React.FC<{
       isOpen={!!payment}
       onClose={onClose}
       title=""
-      showCloseButton={false}
       shouldClose={shouldClose}
+      enableBackdropClick={false}
     >
       <div className="flex justify-around items-center">
         {actions.map((action) => (
@@ -450,6 +458,39 @@ const HomePage: React.FC = () => {
   const mobilePaymentsToRender = useMemo(() => {
     return showAllUpcoming ? upcomingPayments : upcomingPayments.slice(0, 5);
   }, [showAllUpcoming, upcomingPayments]);
+
+  const desktopPaymentsToRender = useMemo(() => {
+    return showAllUpcoming ? upcomingPayments : upcomingPayments.slice(0, 10);
+  }, [showAllUpcoming, upcomingPayments]);
+
+  const groupedDesktopPayments = useMemo(() => {
+    const groups: {
+      key: string;
+      label: string;
+      payments: PaymentData[];
+    }[] = [];
+    const groupIndexMap = new Map<string, number>();
+
+    desktopPaymentsToRender.forEach((payment) => {
+      const dateKey = payment.dueDate;
+      const existingIndex = groupIndexMap.get(dateKey);
+
+      if (existingIndex !== undefined) {
+        groups[existingIndex].payments.push(payment);
+        return;
+      }
+
+      const label = formatUpcomingDateHeading(dateKey);
+      groupIndexMap.set(dateKey, groups.length);
+      groups.push({
+        key: dateKey,
+        label,
+        payments: [payment],
+      });
+    });
+
+    return groups;
+  }, [desktopPaymentsToRender]);
 
   const groupedMobilePayments = useMemo(() => {
     const groups: {
@@ -1069,11 +1110,11 @@ const HomePage: React.FC = () => {
       <div className="dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
               Ближайшие платежи
             </h2>
             <DropdownButton
-              className="text-lg font-semibold text-gray-500 dark:text-gray-400"
+              className="text-sm font-medium text-gray-500 dark:text-gray-400"
               label={dayOptions.find((o) => o.value === upcomingDays)!.label}
               options={dayOptions.map((opt) => ({
                 label: opt.label,
@@ -1101,7 +1142,7 @@ const HomePage: React.FC = () => {
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex-shrink-0 w-68 h-40 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-pulse"
+                    className="flex-shrink-0 w-72 h-40 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-pulse"
                   />
                 ))}
               </div>
@@ -1136,34 +1177,54 @@ const HomePage: React.FC = () => {
                   <div className="relative">
                     <div
                       ref={scrollContainerRef}
-                      className="flex overflow-x-auto pb-4 gap-x-4"
+                      className="flex overflow-x-auto p-4 pb-10 gap-x-8"
                     >
-                      {(showAllUpcoming
-                        ? upcomingPayments
-                        : upcomingPayments.slice(0, 10)
-                      ).map((payment) => (
-                        <div key={payment.id} className="flex-shrink-0 w-68">
-                          <PaymentCard
-                            payment={payment}
-                            onEdit={() => handleEditPayment(payment.id)}
-                            onComplete={() => handleCompletePayment(payment)}
-                            onDelete={() => handleDeletePayment(payment)}
-                          />
+                      {groupedDesktopPayments.map((group) => (
+                        <div
+                          key={group.key}
+                          className="flex-shrink-0 flex flex-col gap-3"
+                        >
+                          <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            {group.label}
+                          </h4>
+                          <div className="flex gap-4">
+                            {group.payments.map((payment) => (
+                              <div
+                                key={payment.id}
+                                className="flex-shrink-0 w-72"
+                              >
+                                <PaymentCard
+                                  payment={payment}
+                                  onEdit={() => handleEditPayment(payment.id)}
+                                  onComplete={() =>
+                                    handleCompletePayment(payment)
+                                  }
+                                  onDelete={() => handleDeletePayment(payment)}
+                                  hideDate
+                                />
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                       {upcomingPayments.length > 10 && (
-                        <div className="flex-shrink-0 flex items-center justify-center w-68">
-                          <button
-                            onClick={() => setShowAllUpcoming((prev) => !prev)}
-                            className="p-4 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors w-full h-full font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            {showAllUpcoming ? "Свернуть" : "Показать больше"}
-                            {showAllUpcoming ? (
-                              <ChevronUpIcon />
-                            ) : (
-                              <ChevronDownIcon />
-                            )}
-                          </button>
+                        <div className="flex-shrink-0 flex flex-col gap-3">
+                          <div className="h-5" aria-hidden="true"></div>
+                          <div className="w-72 h-40">
+                            <button
+                              onClick={() =>
+                                setShowAllUpcoming((prev) => !prev)
+                              }
+                              className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full h-full font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer flex items-center justify-center gap-2"
+                            >
+                              {showAllUpcoming ? "Свернуть" : "Показать больше"}
+                              {showAllUpcoming ? (
+                                <ChevronUpIcon />
+                              ) : (
+                                <ChevronDownIcon />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1226,7 +1287,7 @@ const HomePage: React.FC = () => {
                   {upcomingPayments.length > 5 && (
                     <button
                       onClick={() => setShowAllUpcoming((prev) => !prev)}
-                      className="w-full mt-1 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full mt-1 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer flex items-center justify-center gap-2"
                     >
                       {showAllUpcoming ? "Свернуть" : "Показать больше"}
                       {showAllUpcoming ? (
@@ -1253,7 +1314,7 @@ const HomePage: React.FC = () => {
         <div className="mt-8">
           {" "}
           {/* Добавляем отступ сверху */}
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+          <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-6">
             Статистика
           </h2>
           {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
@@ -1263,13 +1324,12 @@ const HomePage: React.FC = () => {
               startDate={startDate}
               endDate={endDate}
               onRangeChange={handleStatsRangeChange}
-              wrapperClassName="!w-auto !gap-0"
-              inputClassName="!w-40 !min-w-8 md:!w-46 !rounded-xl text-sm text-center font-semibold tracking-tight px-4 !py-[9.7px] md:px-5 md:!py-[8.2px] text-slate-900 dark:text-slate-100 bg-gradient-to-br from-white/95 via-white/90 to-white/80 dark:from-[#151c2d] dark:via-[#111827] dark:to-[#0b1220] border border-slate-200/70 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/30 focus:border-[#3d7cff] dark:focus:border-[#7ea8ff] focus:ring-2 focus:ring-[#3d7cff]/30 dark:focus:ring-[#4c6fff]/35 focus:ring-offset-1 focus:ring-offset-white/70 dark:focus:ring-offset-transparent focus:outline-none shadow-[0_6px_16px_rgba(15,23,42,0.09)] dark:shadow-[0_16px_30px_rgba(3,7,18,0.55)] backdrop-blur-2xl transition-all duration-200 ease-out"
-              labelClassName="hidden"
+              variant="compact"
               label="Период"
             />
             <SegmentedControl
               className="flex-shrink-0"
+              options={dashboardTimeRangeOptions}
               optionClassName="!px-2 md:!px-4"
               selected={timeRange}
               onChange={(option) => {
@@ -1355,7 +1415,7 @@ const HomePage: React.FC = () => {
               {/* TODO: Форматировать месяц на русский */}
               {/* Блоки с общими суммами */}
               <div className="grid grid-cols-2 gap-2 md:gap-6">
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
+                <div className="card-base p-6">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
                     <span className="md:hidden">Предстоящие</span>
                     <span className="hidden md:inline">
@@ -1372,7 +1432,7 @@ const HomePage: React.FC = () => {
                     </span>
                   </p>
                 </div>
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
+                <div className="card-base p-6">
                   <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
                     <span className="md:hidden">Выполненные</span>
                     <span className="hidden md:inline">
@@ -1392,10 +1452,10 @@ const HomePage: React.FC = () => {
                 {/* TODO: Добавить другие суммарные показатели, если нужны */}
               </div>
               {/* Блоки с графиками */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-2 md:gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 {/* Распределение по категориям */}
-                <div className="lg:col-span-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col min-h-80">
-                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-6">
+                <div className="lg:col-span-2 card-base p-6 flex flex-col min-h-80">
+                  <p className="text-base font-medium text-gray-900 dark:text-white mb-6">
                     Распределение по категориям
                   </p>
                   <CategoryDistributionBars
@@ -1409,20 +1469,21 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* График платежной нагрузки по дням/часам */}
-                <div className="lg:col-span-3 bg-gray-100 dark:bg-gray-800 rounded-lg p-6 flex flex-col h-full min-h-80">
-                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-1">
-                    Платежная нагрузка {isHourly ? "по часам" : "по дням"}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                    Кликните на точку на графике, чтобы увидеть детали за{" "}
-                    {isHourly ? "час" : "день"}.
-                  </p>
+                <div className="lg:col-span-3 card-base p-6 flex flex-col h-full min-h-80">
+                  <div className="mb-6">
+                    <p className="text-base font-medium text-gray-900 dark:text-white">
+                      Платежная нагрузка {isHourly ? "по часам" : "по дням"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Кликните на точку на графике, чтобы увидеть детали
+                    </p>
+                  </div>
                   {noDailyData ? (
-                    <div className="flex items-center justify-center flex-1 text-center text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center justify-center flex-1 text-center text-gray-500 dark:text-gray-400 text-sm">
                       Нет данных о платежной нагрузке за этот период.
                     </div>
                   ) : (
-                    <div className="relative flex-1 w-full">
+                    <div className="relative flex-1 w-full min-h-[200px]">
                       <CustomDailySpendingChart
                         data={chartData}
                         labels={chartLabels}
@@ -1561,7 +1622,6 @@ const HomePage: React.FC = () => {
                   )
                 : ""
             }`}
-            showCloseButton
           >
             {dailyPaymentsModal.payments.length > 0 ? (
               <ul className="space-y-3">

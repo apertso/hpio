@@ -88,7 +88,7 @@ function Table<T>(props: TableProps<T>) {
               scope="col"
               className={
                 col.thClassName ||
-                "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                "px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
               }
             >
               {col.header}
@@ -117,7 +117,7 @@ function Table<T>(props: TableProps<T>) {
           data.map((row) => (
             <tr
               key={getRowKey(row)}
-              className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-100 group"
+              className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-100 group"
             >
               {columns.map((col) => (
                 <td

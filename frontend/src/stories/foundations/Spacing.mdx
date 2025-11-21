@@ -1,0 +1,45 @@
+import { Meta } from "@storybook/blocks";
+
+<Meta title="Foundations/Spacing" />
+
+<div style={{ maxHeight: 'calc(100vh - 57px)', overflowY: 'auto', paddingBottom: 32 }}>
+
+# Spacing
+
+The design system uses the Tailwind CSS default spacing scale. The base unit is **0.25rem (4px)**.
+
+<div className="flex flex-col gap-4 mt-8">
+  {[
+    { name: "0", size: "0px" },
+    { name: "1", size: "4px" },
+    { name: "2", size: "8px" },
+    { name: "3", size: "12px" },
+    { name: "4", size: "16px" },
+    { name: "5", size: "20px" },
+    { name: "6", size: "24px" },
+    { name: "8", size: "32px" },
+    { name: "10", size: "40px" },
+    { name: "12", size: "48px" },
+    { name: "16", size: "64px" },
+    { name: "20", size: "80px" },
+    { name: "24", size: "96px" },
+  ].map((space) => (
+    <div key={space.name} className="flex items-center">
+      <div className="w-24 text-sm font-mono text-gray-500">
+        {space.name} ({space.size})
+      </div>
+      <div
+        className="bg-indigo-500 h-4 rounded"
+        style={{ width: space.size }}
+      ></div>
+    </div>
+  ))}
+</div>
+
+## Usage Guidelines
+
+- **Layout Padding:** Use `p-4` (16px) or `p-6` (24px) for containers.
+- **Component Spacing:** Use `gap-2` (8px) to `gap-4` (16px) for grouping related elements.
+- **Section Spacing:** Use `space-y-6` (24px) or `space-y-8` (32px) between major page sections.
+
+</div>

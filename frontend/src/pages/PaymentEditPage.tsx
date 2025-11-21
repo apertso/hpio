@@ -8,7 +8,7 @@ import { PaymentData } from "../types/paymentData";
 import Spinner from "../components/Spinner";
 import logger from "../utils/logger";
 import getErrorMessage from "../utils/getErrorMessage";
-import RadioButton from "../components/RadioButton";
+import SegmentedControl from "../components/SegmentedControl";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { usePageTitle } from "../context/PageTitleContext";
@@ -60,7 +60,7 @@ const PaymentEditPage: React.FC = () => {
   }, [isEditMode, editScope, setPageTitle]);
 
   const handleSuccess = () => {
-    navigate("/dashboard");
+    navigate(-1);
   };
 
   const handleCancel = () => {
@@ -119,7 +119,7 @@ const PaymentEditPage: React.FC = () => {
           </h2>
         </div>
 
-        <FormBlock className="md:bg-white md:dark:bg-gray-900 md:p-6 md:rounded-lg md:shadow-md">
+        <FormBlock className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
           {isLoading ? (
             <div className="flex justify-center items-center h-40">
               <Spinner />
@@ -134,28 +134,25 @@ const PaymentEditPage: React.FC = () => {
           ) : (
             <>
               {showEditScopeHeader && (
-                <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-700/20">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                     Это повторяющийся платеж. Что вы хотите изменить?
                   </h4>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <RadioButton
-                      id="edit-single"
-                      name="edit-scope"
-                      value="single"
-                      checked={editScope === "single"}
-                      onChange={() => setEditScope("single")}
-                      label="Только этот платеж"
-                    />
-                    <RadioButton
-                      id="edit-series"
-                      name="edit-scope"
-                      value="series"
-                      checked={editScope === "series"}
-                      onChange={() => setEditScope("series")}
-                      label="Этот и все будущие платежи"
-                    />
-                  </div>
+                  <SegmentedControl
+                    options={[
+                      { value: "single", label: "Только этот платеж" },
+                      { value: "series", label: "Вся серия" },
+                    ]}
+                    selected={editScope}
+                    onChange={(val) => setEditScope(val as "single" | "series")}
+                    className="w-full"
+                    optionClassName="flex-1 justify-center"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
+                    {editScope === "single"
+                      ? "Изменения коснутся только текущего платежа. Остальные платежи серии останутся прежними."
+                      : "Изменения будут применены к этому и всем будущим платежам серии. Прошлые платежи не изменятся."}
+                  </p>
                 </div>
               )}
               <PaymentForm

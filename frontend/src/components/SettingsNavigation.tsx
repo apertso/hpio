@@ -93,7 +93,7 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
 
   // Боковая панель для десктопа
   return (
-    <div className="w-64 pr-8 border-r border-gray-200 dark:border-gray-700">
+    <div className="w-64 pr-8 border-r border-gray-100 dark:border-gray-800">
       <nav className="space-y-2">
         {sections.map((section) => {
           const Icon = section.icon;
@@ -102,7 +102,7 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
             <button
               key={section.id}
               onClick={() => onSectionChange(section.id)}
-              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-xl transition-colors ${
                 isActive
                   ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                   : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"

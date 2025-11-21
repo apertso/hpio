@@ -21,7 +21,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
   label,
   icon,
   options,
-  className = "h-9 min-w-20 rounded-xl bg-gray-100 dark:bg-[#111316] pl-4 pr-3 text-sm text-gray-800 dark:text-white",
+  className = "h-9 min-w-20 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 pl-4 pr-3 text-sm text-gray-700 dark:text-gray-200",
   selectedValue,
   ...rest
 }) => {

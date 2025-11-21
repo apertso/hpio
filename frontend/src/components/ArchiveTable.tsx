@@ -79,7 +79,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
               {payment.series.recurrenceEndDate &&
                 ` до ${new Date(
                   payment.series.recurrenceEndDate
-                ).toLocaleDateString()}`}
+                ).toLocaleDateString("ru-RU")}`}
             </span>
           ) : (
             "Разовый"
@@ -111,7 +111,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       thClassName: `${thBaseClassName} w-36`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
-      cell: (payment) => <>{new Date(payment.dueDate).toLocaleDateString()}</>,
+      cell: (payment) => <>{new Date(payment.dueDate).toLocaleDateString("ru-RU")}</>,
     },
     {
       id: "completedOrDeleted",

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import {
   Input,
@@ -105,4 +106,26 @@ export const NumberFieldExample: Story = {
       required
     />
   ),
+};
+
+export const NumberFieldWithSuffix: Story = {
+  name: "NumberFieldWithSuffix",
+  render: () => {
+    const [value, setValue] = useState(1);
+
+    return (
+      <NumberField
+        label="Повторять"
+        inputId="storybook-interval"
+        value={value}
+        min={1}
+        onChange={(event) => {
+          const nextValue = Math.max(1, parseInt(event.target.value, 10) || 1);
+          setValue(nextValue);
+        }}
+        suffix={value === 1 ? "раз в" : "раза в"}
+        required
+      />
+    );
+  },
 };

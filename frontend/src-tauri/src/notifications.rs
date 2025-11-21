@@ -14,6 +14,11 @@ pub struct PendingNotification {
     pub notification_type: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NotificationServiceStatus {
+    pub last_heartbeat: i64,
+}
+
 #[tauri::command]
 pub fn check_notification_permission() -> Result<PermissionStatus, String> {
     #[cfg(target_os = "android")]
@@ -422,6 +427,85 @@ pub fn clear_pending_notifications() -> Result<(), String> {
             fs::write(&file_path, "[]")
                 .map_err(|e| format!("Failed to clear notifications file: {:?}", e))?;
         }
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(())
+    }
+}
+
+#[tauri::command]
+pub fn get_notification_service_status() -> Result<NotificationServiceStatus, String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        use jni::{AttachGuard, JavaVM};
+        use std::os::raw::c_void;
+
+        let ctx = ndk_context::android_context();
+        let vm_ptr = ctx.vm() as *mut c_void;
+        let vm = unsafe { JavaVM::from_raw(vm_ptr as *mut jni::sys::JavaVM) }
+            .map_err(|e| format!("Failed to get JavaVM: {:?}", e))?;
+
+        let mut env: AttachGuard = vm.attach_current_thread()
+            .map_err(|e| format!("Failed to attach thread: {:?}", e))?;
+
+        let context = unsafe { jni::objects::JObject::from_raw(ctx.context() as *mut jni::sys::_jobject) };
+
+        let helper_class = env.find_class("com/hochuplachu/hpio/NotificationPermissionHelper")
+            .map_err(|e| format!("Failed to find helper class: {:?}", e))?;
+
+        let value = env.call_static_method(
+            helper_class,
+            "getNotificationListenerHeartbeat",
+            "(Landroid/content/Context;)J",
+            &[JValue::Object(&context)],
+        )
+        .map_err(|e| format!("Failed to call method: {:?}", e))?;
+
+        let last_heartbeat = value.j()
+            .map_err(|e| format!("Failed to get long result: {:?}", e))?;
+
+        Ok(NotificationServiceStatus { last_heartbeat })
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(NotificationServiceStatus { last_heartbeat: 0 })
+    }
+}
+
+#[tauri::command]
+pub fn ping_notification_listener_service() -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        use jni::{AttachGuard, JavaVM};
+        use std::os::raw::c_void;
+
+        let ctx = ndk_context::android_context();
+        let vm_ptr = ctx.vm() as *mut c_void;
+        let vm = unsafe { JavaVM::from_raw(vm_ptr as *mut jni::sys::JavaVM) }
+            .map_err(|e| format!("Failed to get JavaVM: {:?}", e))?;
+
+        let mut env: AttachGuard = vm.attach_current_thread()
+            .map_err(|e| format!("Failed to attach thread: {:?}", e))?;
+
+        let context = unsafe { jni::objects::JObject::from_raw(ctx.context() as *mut jni::sys::_jobject) };
+
+        let helper_class = env.find_class("com/hochuplachu/hpio/NotificationPermissionHelper")
+            .map_err(|e| format!("Failed to find helper class: {:?}", e))?;
+
+        env.call_static_method(
+            helper_class,
+            "pingNotificationListenerService",
+            "(Landroid/content/Context;)V",
+            &[JValue::Object(&context)],
+        )
+        .map_err(|e| format!("Failed to call method: {:?}", e))?;
 
         Ok(())
     }

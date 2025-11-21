@@ -24,7 +24,11 @@ const ProtectedRoute: React.FC = () => {
   }
 
   // Если пользователь аутентифицирован, рендерим вложенные маршруты
-  return <Outlet />;
+  return (
+    <div className="w-full flex-1 p-3 sm:px-6 sm:py-6 md:px-8 lg:px-12">
+      <Outlet />
+    </div>
+  );
 };
 
 export default ProtectedRoute;

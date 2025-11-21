@@ -393,7 +393,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-opacity cursor-pointer ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-opacity cursor-pointer ${
                   isActive
                     ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
                     : "text-gray-900 dark:text-gray-100 hover:opacity-80"
@@ -416,7 +416,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
           <Link
             to="/settings"
             onClick={onClose}
-            className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-opacity cursor-pointer ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-opacity cursor-pointer ${
               currentPath === "/settings"
                 ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
                 : "text-gray-900 dark:text-gray-100 hover:opacity-80"
@@ -440,7 +440,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
               onClose();
               onLogout();
             }}
-            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-base font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
+            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
           >
             <ArrowRightOnRectangleIcon className="h-5 w-5" />
             Выйти

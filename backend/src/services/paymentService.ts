@@ -30,6 +30,14 @@ interface PaymentData {
   // seriesId is not part of input data for create/update payment instance
 }
 
+export interface PaymentFilterParams {
+  status?: string;
+  search?: string;
+  categoryId?: string;
+  isRecurring?: "true" | "false";
+  hasFile?: "true" | "false";
+}
+
 // --- Вспомогательная функция: рассчитать следующую дату платежа ---
 // Новая версия с rrule
 const calculateNextDueDate = (
@@ -239,29 +247,47 @@ export const getUpcomingPayments = async (userId: string, days: number) => {
 
 // Получить полный список платежей с фильтрацией (2.3)
 // Реализация фильтрации будет дорабатываться в Части 6
-export const getFilteredPayments = async (userId: string, filters: any) => {
+export const getFilteredPayments = async (
+  userId: string,
+  filters: PaymentFilterParams = {}
+): Promise<PaymentInstance[]> => {
   try {
-    const where: any = { userId: userId };
-
-    // Базовая фильтрация по статусу
-    if (
-      filters.status &&
+    const where: Record<string, unknown> = { userId };
+    const statusValue =
+      typeof filters.status === "string" &&
       ["upcoming", "overdue", "completed", "deleted"].includes(filters.status)
-    ) {
-      where.status = filters.status;
+        ? filters.status
+        : undefined;
+
+    if (statusValue) {
+      where.status = statusValue;
     } else {
-      // По умолчанию показываем только активные платежи (upcoming и overdue)
       where.status = {
-        [Op.notIn]: ["completed", "deleted"], // Исключаем completed и deleted из основного списка
+        [Op.notIn]: ["completed", "deleted"],
       };
     }
 
-    // TODO: Добавить фильтрацию по категориям (categoryId in [...])
-    // TODO: Добавить фильтрацию по диапазону дат (dueDate between start/end)
-    // TODO: Добавить поиск по названию (title like '%search%')
+    if (typeof filters.search === "string" && filters.search.trim()) {
+      where.title = { [Op.iLike]: `%${filters.search.trim()}%` };
+    }
 
-    // TODO: Добавить сортировку и пагинацию (order, limit, offset)
-    const order: any = [["dueDate", "ASC"]]; // Сортировка по умолчанию
+    if (typeof filters.categoryId === "string" && filters.categoryId.trim()) {
+      where.categoryId = filters.categoryId;
+    }
+
+    if (filters.isRecurring === "true") {
+      where.seriesId = { [Op.ne]: null };
+    } else if (filters.isRecurring === "false") {
+      where.seriesId = { [Op.eq]: null };
+    }
+
+    if (filters.hasFile === "true") {
+      where.filePath = { [Op.ne]: null };
+    } else if (filters.hasFile === "false") {
+      where.filePath = { [Op.eq]: null };
+    }
+
+    const order: any = [["dueDate", "ASC"]];
 
     const payments = await db.Payment.findAll({
       where,
@@ -271,7 +297,7 @@ export const getFilteredPayments = async (userId: string, filters: any) => {
           model: db.Category,
           as: "category",
           attributes: ["id", "name", "builtinIconName"],
-        }, // Include category
+        },
         {
           model: db.RecurringSeries,
           as: "series",
@@ -284,9 +310,8 @@ export const getFilteredPayments = async (userId: string, filters: any) => {
             "builtinIconName",
             "isActive",
           ],
-        }, // Include recurring series data
+        },
       ],
-      // TODO: limit, offset for pagination
     });
 
     logger.info(
@@ -801,31 +826,56 @@ export const deletePayment = async (paymentId: string, userId: string) => {
 // Эта функция будет вызываться при перманентном удалении из архива.
 // Она должна удалить запись из БД и, если файл еще существует (хотя он должен быть удален при soft-delete), удалить его.
 // --- Новая функция: Получить список платежей из архива (2.5) ---
-export const getArchivedPayments = async (userId: string, filters: any) => {
+export const getArchivedPayments = async (
+  userId: string,
+  filters: PaymentFilterParams = {}
+): Promise<PaymentInstance[]> => {
   try {
-    const where: any = {
+    const where: Record<string, unknown> = {
       userId: userId,
-      status: { [Op.in]: ["completed", "deleted"] }, // Payments with status 'completed' or 'deleted'
+      status: { [Op.in]: ["completed", "deleted"] },
     };
 
-    // TODO: Add filtering by categories, date range, search (similar to getFilteredPayments)
-    // Status filtering is already in where above, but you can add the option to select only completed OR only deleted
-    if (filters.status && ["completed", "deleted"].includes(filters.status)) {
-      where.status = filters.status; // Override if a more specific archive status is specified
+    const statusValue =
+      typeof filters.status === "string" &&
+      ["completed", "deleted"].includes(filters.status)
+        ? filters.status
+        : undefined;
+
+    if (statusValue) {
+      where.status = statusValue;
     }
 
-    // TODO: Add sorting (e.g., by completedAt or createdAt) and pagination
+    if (typeof filters.search === "string" && filters.search.trim()) {
+      where.title = { [Op.iLike]: `%${filters.search.trim()}%` };
+    }
+
+    if (typeof filters.categoryId === "string" && filters.categoryId.trim()) {
+      where.categoryId = filters.categoryId;
+    }
+
+    if (filters.isRecurring === "true") {
+      where.seriesId = { [Op.ne]: null };
+    } else if (filters.isRecurring === "false") {
+      where.seriesId = { [Op.eq]: null };
+    }
+
+    if (filters.hasFile === "true") {
+      where.filePath = { [Op.ne]: null };
+    } else if (filters.hasFile === "false") {
+      where.filePath = { [Op.eq]: null };
+    }
+
     const order: any = [
       ["completedAt", "DESC"],
       ["createdAt", "DESC"],
-    ]; // Default sort: latest completed/deleted first
+    ];
 
     const payments = await db.Payment.findAll({
       where,
       order,
       include: [
         {
-          // Include category data
           model: db.Category,
           as: "category",
           attributes: ["id", "name", "builtinIconName"],
@@ -842,7 +892,6 @@ export const getArchivedPayments = async (userId: string, filters: any) => {
           ],
         },
       ],
-      // limit, offset
     });
 
     logger.info(

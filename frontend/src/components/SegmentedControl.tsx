@@ -1,38 +1,38 @@
-import React from "react";
-
 export type TimeRangeOption = "1d" | "1w" | "1m" | "1y" | "custom";
 
-interface SegmentedControlProps {
-  selected: TimeRangeOption;
-  onChange: (option: TimeRangeOption) => void;
+export interface SegmentedControlOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+interface SegmentedControlProps<T extends string> {
+  options: SegmentedControlOption<T>[];
+  selected?: T;
+  onChange: (option: T) => void;
   className?: string;
   optionClassName?: string;
 }
 
-const SegmentedControl: React.FC<SegmentedControlProps> = ({
+const SegmentedControl = <T extends string>({
+  options,
   selected,
   onChange,
   className = "",
   optionClassName = "",
-}) => {
-  const timeRangeOptions = [
-    { value: "1d" as TimeRangeOption, label: "День" },
-    { value: "1w" as TimeRangeOption, label: "Неделя" },
-    { value: "1m" as TimeRangeOption, label: "Месяц" },
-    { value: "1y" as TimeRangeOption, label: "Год" },
-  ];
+}: SegmentedControlProps<T>) => {
   return (
     <div
-      className={`inline-flex rounded-lg bg-gray-100 dark:bg-gray-800 p-1 gap-1 ${className}`}
+      className={`inline-flex rounded-xl bg-gray-100 dark:bg-gray-800/50 p-1 gap-1 ${className}`}
     >
-      {timeRangeOptions.map((option) => (
+      {options.map((option) => (
         <button
           key={option.value}
+          type="button"
           onClick={() => onChange(option.value)}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+          className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ${
             selected === option.value
-              ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
-              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600"
+              ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer"
           } ${optionClassName}`}
         >
           {option.label}

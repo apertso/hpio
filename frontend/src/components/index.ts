@@ -2,7 +2,6 @@ export { default as Table } from "./Table";
 export { default as PaymentsTable } from "./PaymentsTable";
 export { default as ArchiveTable } from "./ArchiveTable";
 export { default as CategoriesTable } from "./CategoriesTable";
-export { default as PaymentFilterTabs } from "./PaymentFilterTabs";
 export { Tooltip } from "./Tooltip";
 export { default as SettingsNavigation } from "./SettingsNavigation";
 export { default as SettingsSection } from "./SettingsSection";

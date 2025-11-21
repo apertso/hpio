@@ -1,6 +1,7 @@
 // src/hooks/useFormPersistence.ts
 import { useEffect, useCallback } from "react";
 import type { UseFormReturn } from "react-hook-form";
+import logger from "../utils/logger";
 
 interface UseFormPersistenceResult {
   clearPersistedData: () => void;
@@ -20,7 +21,7 @@ const useFormPersistence = <T>(
         }
       }
     } catch (error) {
-      console.warn(`Failed to load saved form data for ${storageKey}:`, error);
+      logger.warn(`Failed to load saved form data for ${storageKey}:`, error);
     }
   }, [form, storageKey]);
 
@@ -29,10 +30,7 @@ const useFormPersistence = <T>(
       try {
         sessionStorage.setItem(storageKey, JSON.stringify(data));
       } catch (error) {
-        console.warn(
-          `Failed to save form data for ${storageKey}:`,
-          error
-        );
+        logger.warn(`Failed to save form data for ${storageKey}:`, error);
       }
     });
     return () => subscription.unsubscribe();
@@ -42,10 +40,7 @@ const useFormPersistence = <T>(
     try {
       sessionStorage.removeItem(storageKey);
     } catch (error) {
-      console.warn(
-        `Failed to clear form data for ${storageKey}:`,
-        error
-      );
+      logger.warn(`Failed to clear form data for ${storageKey}:`, error);
     }
   }, [storageKey]);
 

@@ -49,19 +49,23 @@ const Input = forwardRef<HTMLInputElement, InputProps>((props, ref) => {
         "w-full",
         "min-w-[12em]",
         "max-w-[64em]",
-        "rounded-lg",
-        "bg-gray-50",
-        "px-4",
-        "py-3",
+        "rounded-xl",
+        "bg-white",
+        "border",
+        "border-gray-200",
+        "px-3",
+        "py-2.5",
         "text-base",
         "text-gray-900",
         "placeholder:text-gray-500",
         "shadow-sm",
         "transition-colors",
         "focus:outline-none",
-        "focus:ring-3",
+        "focus:ring-2",
         "focus:ring-indigo-500",
-        "dark:bg-gray-700",
+        "focus:border-indigo-500",
+        "dark:bg-gray-900",
+        "dark:border-gray-700",
         "dark:text-gray-100",
         "dark:placeholder:text-gray-500",
       ];
@@ -78,7 +82,12 @@ const Input = forwardRef<HTMLInputElement, InputProps>((props, ref) => {
   }
 
   if (!skipStyling && isInvalid) {
-    baseClasses.push("focus:ring-3", "focus:ring-red-500");
+    baseClasses.push(
+      "border-red-500",
+      "focus:ring-2",
+      "focus:ring-red-500",
+      "focus:border-red-500"
+    );
   }
 
   const resolvedAutoComplete =
@@ -207,7 +216,7 @@ const TextFieldInput = forwardRef<HTMLInputElement, InputProps>(
       <Input
         ref={ref}
         id={id ?? inputId}
-        className={className}
+        className={`min-w-[100px] ${className}`}
         isInvalid={isInvalid ?? hasError}
         aria-describedby={combinedDescribedBy}
         unstyled={unstyled}
@@ -355,8 +364,12 @@ const EmailField = forwardRef<HTMLInputElement, BaseFieldProps>(
 
 EmailField.displayName = "EmailField";
 
-const NumberField = forwardRef<HTMLInputElement, BaseFieldProps>(
-  (props, ref) => {
+interface NumberFieldProps extends BaseFieldProps {
+  suffix?: ReactNode;
+}
+
+const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
+  (props, forwardedRef) => {
     const {
       label,
       hint,
@@ -366,8 +379,45 @@ const NumberField = forwardRef<HTMLInputElement, BaseFieldProps>(
       wrapperClassName = "",
       className = "",
       inputId,
+      suffix,
+      step = 1,
       ...rest
     } = props;
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+    const mergedRef = (node: HTMLInputElement | null): void => {
+      inputRef.current = node;
+      if (typeof forwardedRef === "function") {
+        forwardedRef(node);
+      } else if (forwardedRef) {
+        (
+          forwardedRef as React.MutableRefObject<HTMLInputElement | null>
+        ).current = node;
+      }
+    };
+
+    const isDisabled = Boolean(rest.disabled);
+
+    const fieldClasses = [
+      "group flex items-stretch rounded-xl border border-gray-200 bg-white shadow-sm transition-colors",
+      "focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500",
+      "dark:bg-gray-900 dark:border-gray-700",
+      "text-base",
+    ];
+
+    if (isDisabled) {
+      fieldClasses.push(
+        "opacity-70 cursor-not-allowed",
+        "dark:text-gray-500",
+        "text-gray-500"
+      );
+    }
+
+    if (error) {
+      fieldClasses.push(
+        "border-red-500 focus-within:border-red-500 focus-within:ring-red-500"
+      );
+    }
 
     return (
       <TextField
@@ -379,13 +429,24 @@ const NumberField = forwardRef<HTMLInputElement, BaseFieldProps>(
         inputId={inputId}
         className={wrapperClassName}
       >
-        <TextField.Input
-          ref={ref}
-          type="number"
-          required={required}
-          className={className}
-          {...rest}
-        />
+        <div className={`${fieldClasses.join(" ")} ${className}`.trim()}>
+          <TextField.Input
+            ref={mergedRef}
+            type="number"
+            required={required}
+            step={step}
+            unstyled
+            className={`number-field-input appearance-none flex-1 bg-transparent py-2.5 text-base text-gray-900 placeholder:text-gray-500 focus:outline-none dark:text-gray-100 ${
+              suffix ? "text-right pr-1 pl-3" : "text-left px-3"
+            }`}
+            {...rest}
+          />
+          {suffix && (
+            <span className="flex items-center pl-0 pr-4 text-sm font-medium text-gray-700 dark:text-gray-200 whitespace-nowrap">
+              {suffix}
+            </span>
+          )}
+        </div>
       </TextField>
     );
   }

@@ -210,37 +210,6 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
 
   // Strict hit radius for pointer and touch
   const HIT_RADIUS = 8; // px in SVG units
-  // const TOUCH_HIT_RADIUS = 16; // px in SVG units для тача
-
-  // const TOUCH_HIT_RADIUS = 16; // px in SVG units для тача (не используется при X-снапе)
-  // Функция попадания по окружности более не используется после перехода на X-снап
-  // const getPointAtEvent = useCallback(
-  //   (
-  //     clientX: number,
-  //     clientY: number,
-  //     overrideRadius?: number
-  //   ): number | null => {
-  //     const svg = svgRef.current;
-  //     if (!svg || points.length === 0) return null;
-  //     const p = svg.createSVGPoint();
-  //     p.x = clientX;
-  //     p.y = clientY;
-  //     const svgPoint = p.matrixTransform(svg.getScreenCTM()!.inverse());
-  //     let found: number | null = null;
-  //     for (let i = 0; i < points.length; i++) {
-  //       const dx = points[i].x - svgPoint.x;
-  //       const dy = points[i].y - svgPoint.y;
-  //       const dist = Math.sqrt(dx * dx + dy * dy);
-  //       const radius = overrideRadius ?? HIT_RADIUS;
-  //       if (dist <= radius) {
-  //         found = i;
-  //         break;
-  //       }
-  //     }
-  //     return found;
-  //   },
-  //   [points]
-  // );
 
   // Поиск ближайшей точки по оси X (игнорируя отклонение по Y)
   const getNearestIndexByClientX = useCallback(
@@ -392,10 +361,10 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
     setIsTouching(false);
   }, []);
 
-  const lineColor = theme === "dark" ? "#a78bfa" : "#6d28d9";
-  const gradientStartColor = theme === "dark" ? "#5b21b6" : "#c4b5fd";
-  const gradientEndColor =
-    theme === "dark" ? "rgba(20, 20, 20, 0)" : "rgba(237, 233, 254, 0)";
+  // Strict professional colors
+  const lineColor = theme === "dark" ? "#818cf8" : "#4f46e5"; // Indigo 400 / 600
+  const gradientStartColor = theme === "dark" ? "#818cf8" : "#4f46e5";
+  const gradientEndColor = theme === "dark" ? "#1f2937" : "#ffffff"; // Fade to bg
 
   const cursorStyle =
     onPointClick && hoveredIndex !== null ? "pointer" : "default";
@@ -424,13 +393,9 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
             <stop
               offset="0%"
               stopColor={gradientStartColor}
-              stopOpacity={0.4}
+              stopOpacity={0.2}
             />
-            <stop
-              offset="100%"
-              stopColor={gradientEndColor}
-              stopOpacity={0.1}
-            />
+            <stop offset="100%" stopColor={gradientEndColor} stopOpacity={0} />
           </linearGradient>
         </defs>
 
@@ -438,16 +403,17 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         {yAxisTicks.map((tick, i) => (
           <g
             key={`y-${i}`}
-            className="text-xs"
-            fill={theme === "dark" ? "#9ca3af" : "#6b7280"}
+            className="text-xs font-medium"
+            fill={theme === "dark" ? "#6b7280" : "#94a3b8"}
           >
             <line
               x1={yAxisAreaWidth + padding.left}
               x2={width - padding.right}
               y1={tick.y}
               y2={tick.y}
-              stroke={theme === "dark" ? "#374151" : "#e5e7eb"}
+              stroke={theme === "dark" ? "#374151" : "#f1f5f9"} // Darker/Lighter lines
               strokeWidth="1"
+              strokeDasharray="4 4"
             />
             <text x={yAxisAreaWidth - 8} y={tick.y + 4} textAnchor="end">
               {tick.value === 0
@@ -463,8 +429,8 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         {xAxisTicks.map((tick, i) => (
           <g
             key={`x-${i}`}
-            className="text-xs"
-            fill={theme === "dark" ? "#9ca3af" : "#6b7280"}
+            className="text-xs font-medium"
+            fill={theme === "dark" ? "#6b7280" : "#94a3b8"}
           >
             <text
               x={tick.x}
@@ -481,7 +447,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
           d={linePath}
           fill="none"
           stroke={lineColor}
-          strokeWidth="3"
+          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
           pointerEvents="none"
@@ -492,13 +458,20 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
           const isHovered = hoveredIndex === idx;
           return (
             <g key={`pt-${idx}`}>
-              {/* Visible point for hover feedback (уменьшен размер, однотонная заливка, без белой обводки) */}
+              {/* Visible point for hover feedback */}
               <circle
                 cx={pt.x}
                 cy={pt.y}
-                r={isHovered ? 4 : 3}
+                r={isHovered ? 4 : 2} // Only visible on hover for strict look
                 fill={lineColor}
-                stroke="none"
+                stroke={
+                  isHovered
+                    ? theme === "dark"
+                      ? "#1f2937"
+                      : "#ffffff"
+                    : "transparent"
+                }
+                strokeWidth="2"
                 pointerEvents="none"
               />
               {/* Strict hit target */}
@@ -533,7 +506,6 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
                   setTooltip(null);
                 }}
               />
-              {/* Focus ring убран */}
             </g>
           );
         })}
@@ -548,7 +520,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
               y2={padding.top}
               stroke={lineColor}
               strokeWidth="1"
-              strokeDasharray="4 2"
+              strokeDasharray="2 2"
               opacity="0.5"
               pointerEvents="none"
             />
@@ -557,7 +529,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
       </svg>
       {tooltip?.visible && (
         <div
-          className="absolute p-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md shadow-lg pointer-events-none border border-gray-200 dark:border-gray-700"
+          className="absolute p-2 text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded shadow-md pointer-events-none border border-gray-100 dark:border-gray-700 z-10"
           style={{
             left: `${(tooltip.x / (width || 1)) * 100}%`,
             top: `${(tooltip.y / (height || 1)) * 100}%`,

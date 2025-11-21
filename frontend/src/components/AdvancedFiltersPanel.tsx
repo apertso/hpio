@@ -33,8 +33,6 @@ const AdvancedFiltersPanel: React.FC<AdvancedFiltersPanelProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         title={title}
-        showCloseButton={false}
-        enableBackdropClick={true}
       >
         {children}
       </MobilePanel>

@@ -67,7 +67,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </button>
         <button
           type="button"
-          className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
+          className="mt-3 w-full inline-flex justify-center rounded-md px-4 py-2 bg-transparent text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 sm:mt-0 sm:w-auto sm:text-sm"
           onClick={onClose}
         >
           {cancelText}
@@ -85,7 +85,6 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         title={title}
-        showCloseButton
       >
         {renderContent({ showTitleInBody: false })}
       </MobilePanel>

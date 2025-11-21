@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Routes,
   Route,
@@ -10,16 +10,24 @@ import {
   useSearchParams,
 } from "react-router-dom";
 
+// Contexts
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
+import { useReset } from "./context/ResetContext";
+import { usePageTitle } from "./context/PageTitleContext";
+import { useToast } from "./context/ToastContext";
+
+// Components
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotificationOnboardingModal from "./components/NotificationOnboardingModal";
 import SuggestionModal from "./components/SuggestionModal";
-
-import { useDropdown } from "./hooks/useDropdown";
 import Overlay from "./components/Overlay";
 import SyncStatusIndicator from "./components/SyncStatusIndicator";
 import MobileNavigationDrawer from "./components/MobileNavigationDrawer";
+import FeedbackWidget from "./components/FeedbackWidget";
+import VerificationBanner from "./components/VerificationBanner";
+
+// Icons
 import {
   Cog6ToothIcon,
   SunIcon,
@@ -31,11 +39,14 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
+
+// Utilities & API
 import axiosInstance from "./api/axiosInstance";
+import { useDropdown } from "./hooks/useDropdown";
 import { useAvatarCache } from "./hooks/useAvatarCache";
-import { useReset } from "./context/ResetContext";
 import { isTauri, isTauriMobile } from "./utils/platform";
-import { usePageTitle } from "./context/PageTitleContext";
+import logger from "./utils/logger";
+import { trackNavigation } from "./utils/breadcrumbs";
 import {
   getPendingNotifications,
   clearPendingNotifications,
@@ -48,11 +59,8 @@ import { normalizeNotificationTimestamp } from "./utils/dateUtils";
 import { suggestionApi } from "./api/suggestionApi";
 import { merchantRuleApi } from "./api/merchantRuleApi";
 import { notificationApi } from "./api/notificationApi";
-import { useToast } from "./context/ToastContext";
-import logger from "./utils/logger";
-import { trackNavigation } from "./utils/breadcrumbs";
 
-// Replace static page imports with lazy imports
+// Lazy Pages
 const HomePage = React.lazy(() => import("./pages/HomePage"));
 const PaymentsPage = React.lazy(() => import("./pages/PaymentsPage"));
 const CategoriesPage = React.lazy(() => import("./pages/CategoriesPage"));
@@ -71,19 +79,16 @@ const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage"));
 const AboutPage = React.lazy(() => import("./pages/AboutPage"));
 const DownloadPage = React.lazy(() => import("./pages/DownloadPage"));
 
-const VerificationBanner = React.lazy(
-  () => import("./components/VerificationBanner")
-);
-const FeedbackWidget = React.lazy(() => import("./components/FeedbackWidget"));
-
 const NATIVE_NOTIFICATION_EVENT = "hpio-native-notification";
+
+// --- Helper Components ---
 
 const ThemeSwitcher = () => {
   const { setTheme, resolvedTheme } = useTheme();
   return (
     <button
       onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-      className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+      className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer focus:outline-none"
       aria-label="Переключить тему"
       title="Переключить тему"
     >
@@ -104,7 +109,6 @@ type PendingSuggestionState = {
   notificationTimestamp?: number | null;
 };
 
-// Компонент навигации, который зависит от статуса аутентификации
 const Navigation: React.FC = () => {
   const { isAuthenticated, user, logout, token } = useAuth();
   const location = useLocation();
@@ -115,7 +119,6 @@ const Navigation: React.FC = () => {
   } = useDropdown();
   const { avatarUrl } = useAvatarCache(user?.photoPath, token);
 
-  // На страницах аутентификации показываем только переключатель темы
   const authPaths = [
     "/login",
     "/register",
@@ -124,50 +127,67 @@ const Navigation: React.FC = () => {
     "/verify-email",
   ];
   if (authPaths.includes(location.pathname)) {
-    return;
+    return null;
   }
 
+  const navLinkClass = (isActive: boolean) =>
+    `text-sm font-medium transition-opacity duration-200 hover:opacity-80 ${
+      isActive
+        ? "text-black dark:text-white"
+        : "text-gray-600 dark:text-gray-400"
+    }`;
+
   return (
-    <nav className="flex items-center gap-2 sm:gap-8">
+    <nav className="flex items-center gap-2 sm:gap-6">
       {isAuthenticated ? (
         <>
-          <div className="hidden md:flex items-center gap-9">
+          <div className="hidden md:flex items-center gap-8 mr-4">
             <Link
               to="/dashboard"
-              className="text-black dark:text-white text-sm font-medium leading-normal hover:opacity-80 transition-opacity"
+              className={navLinkClass(location.pathname === "/dashboard")}
             >
               Главная
             </Link>
             <Link
               to="/payments"
-              className="text-black dark:text-white text-sm font-medium leading-normal hover:opacity-80 transition-opacity"
+              className={navLinkClass(
+                location.pathname.startsWith("/payments")
+              )}
             >
               Платежи
             </Link>
             <Link
               to="/categories"
-              className="text-black dark:text-white text-sm font-medium leading-normal hover:opacity-80 transition-opacity"
+              className={navLinkClass(
+                location.pathname.startsWith("/categories")
+              )}
             >
               Категории
             </Link>
           </div>
-          <div className="hidden md:flex items-center space-x-4">
+
+          <div className="hidden md:flex items-center gap-2 pl-4 border-l border-gray-200 dark:border-gray-700">
+            <ThemeSwitcher />
+            <FeedbackWidget />
+          </div>
+
+          <div className="hidden md:flex items-center pl-2">
             <div className="relative" ref={popoverRef}>
               <button
                 onClick={() => setIsUserPopoverOpen(!isUserPopoverOpen)}
-                className="flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-card-bg hover:opacity-80 transition-all focus:outline-none cursor-pointer"
-                aria-label="Открыть меню пользователя"
+                className="flex items-center justify-center rounded-full hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
+                aria-label="Меню пользователя"
                 aria-expanded={isUserPopoverOpen}
               >
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
                     alt="User Avatar"
-                    className="size-10 rounded-full object-cover bg-gray-300 dark:bg-card-bg"
+                    className="size-9 rounded-full object-cover bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-gray-700"
                   />
                 ) : (
-                  <div className="flex items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 size-10 shadow-sm">
-                    <UserIcon className="w-6 h-6 text-white" />
+                  <div className="flex items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 size-9 shadow-sm">
+                    <UserIcon className="w-5 h-5 text-white" />
                   </div>
                 )}
               </button>
@@ -176,47 +196,43 @@ const Navigation: React.FC = () => {
                 isOpen={isUserPopoverOpen}
                 widthClass="w-72"
                 anchorRef={popoverRef}
+                offset={12}
               >
-                <div
-                  role="menu"
-                  aria-orientation="vertical"
-                  aria-labelledby="user-menu-button"
-                >
+                <div role="menu" aria-orientation="vertical">
                   {(user?.email || user?.name) && (
-                    <div className="p-4 border-b border-gray-200 dark:border-slate-700">
+                    <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
                       {user.name && (
-                        <p className="text-base font-semibold text-gray-800 dark:text-slate-200 truncate mb-1">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {user.name}
                         </p>
                       )}
                       {user.email && (
-                        <p className="text-sm text-gray-500 dark:text-slate-400 truncate">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
                           {user.email}
                         </p>
                       )}
                     </div>
                   )}
-                  <div className="py-2 px-4 border-t border-gray-200 dark:border-slate-700">
+                  <div className="p-1">
                     <Link
                       to="/settings"
                       onClick={() => setIsUserPopoverOpen(false)}
-                      className="w-full text-left text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-1.5 px-3 rounded-md transition-colors flex items-center text-sm cursor-pointer"
+                      className="w-full text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 px-3 py-2 rounded-md transition-colors flex items-center text-sm cursor-pointer"
                       role="menuitem"
                     >
-                      <Cog6ToothIcon className="mr-3 h-5 w-5 text-gray-500 dark:text-slate-400" />
+                      <Cog6ToothIcon className="mr-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
                       Настройки
                     </Link>
-                  </div>
-                  <div className="py-2 px-4 border-t border-gray-200 dark:border-slate-700">
+                    <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
                     <button
                       onClick={() => {
                         logout();
                         setIsUserPopoverOpen(false);
                       }}
-                      className="w-full text-left text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 py-1.5 px-3 rounded-md transition-colors flex items-center text-sm font-medium cursor-pointer"
+                      className="w-full text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-md transition-colors flex items-center text-sm cursor-pointer"
                       role="menuitem"
                     >
-                      <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-red-500" />
+                      <ArrowRightOnRectangleIcon className="mr-3 h-4 w-4 opacity-70" />
                       Выйти
                     </button>
                   </div>
@@ -231,14 +247,17 @@ const Navigation: React.FC = () => {
             to="/login"
             className="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+            <ArrowRightOnRectangleIcon className="h-4 w-4" />
             <span>Войти</span>
           </Link>
+          <ThemeSwitcher />
         </div>
       )}
     </nav>
   );
 };
+
+// --- Main App Component ---
 
 function App() {
   const { isAuthenticated, user, logout, token } = useAuth();
@@ -247,13 +266,16 @@ function App() {
   const [searchParams] = useSearchParams();
   const { triggerReset } = useReset();
   const { showToast } = useToast();
-  const { pageTitle, headerAction } = usePageTitle();
+  const { pageTitle, headerAction, headerRightAction } = usePageTitle();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
+
   const mobileNavItems = [
     { to: "/dashboard", label: "Главная" },
     { to: "/payments", label: "Платежи" },
     { to: "/categories", label: "Категории" },
   ];
+
+  // State
   const [showNotificationOnboarding, setShowNotificationOnboarding] =
     useState(false);
   const [showSuggestionModal, setShowSuggestionModal] = useState(false);
@@ -272,12 +294,13 @@ function App() {
       if (!stored) return new Set();
       return new Set(JSON.parse(stored));
     } catch (error) {
-      console.error("Failed to load processed notification keys:", error);
+      logger.error("Failed to load processed notification keys:", error);
       return new Set();
     }
   });
+  const [canClearTrash, setCanClearTrash] = useState(false);
 
-  // Set safe area inset for mobile development override and initialize mobile detection
+  // --- Logic: Mobile Safe Area ---
   useEffect(() => {
     const override = localStorage.getItem("dev_mobile_override");
     if (override === "on") {
@@ -295,7 +318,7 @@ function App() {
     }
   }, []);
 
-  // Показываем onboarding для уведомлений при первом входе (только Android)
+  // --- Logic: Notification Onboarding ---
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -307,10 +330,7 @@ function App() {
     );
 
     if (isTauriMobile() && (!hasSeenOnboarding || devForceShow === "on")) {
-      // Небольшая задержка, чтобы пользователь увидел главный экран
-      const timer = setTimeout(() => {
-        setShowNotificationOnboarding(true);
-      }, 500);
+      const timer = setTimeout(() => setShowNotificationOnboarding(true), 500);
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated]);
@@ -320,113 +340,71 @@ function App() {
     setShowNotificationOnboarding(false);
   };
 
-  const createNotificationKey = (notification: PendingNotification): string => {
-    return `${notification.timestamp}_${notification.package_name}_${notification.text}`;
-  };
+  // --- Logic: Notification Processing (Core) ---
+  const createNotificationKey = (notification: PendingNotification): string =>
+    `${notification.timestamp}_${notification.package_name}_${notification.text}`;
 
   const saveProcessedKeysToStorage = (keys: Set<string>) => {
     try {
       const keysArray = Array.from(keys);
-      const maxKeys = 1000;
-      const trimmedKeys = keysArray.slice(-maxKeys);
+      const trimmedKeys = keysArray.slice(-1000);
       localStorage.setItem(
         "processed_notification_keys",
         JSON.stringify(trimmedKeys)
       );
     } catch (error) {
-      console.error("Failed to save processed notification keys:", error);
+      logger.error("Failed to save processed notification keys:", error);
     }
   };
 
-  const processNotifications = async () => {
-    const automationEnabled =
-      localStorage.getItem("automation_enabled") !== "false";
-    if (!automationEnabled) {
-      logger.info("Notification automation disabled, skipping processing");
-      return; // Feature is disabled by the user
+  const processNotifications = useCallback(async () => {
+    if (!isAuthenticated) return;
+    if (localStorage.getItem("automation_enabled") === "false") {
+      logger.info("Notification automation disabled.");
+      return;
     }
 
-    if (!isAuthenticated) return;
-
     try {
-      // Проверяем dev_mobile_override для обхода проверки разрешений
       const devMobileOverride = localStorage.getItem("dev_mobile_override");
       const isActuallyTauri = isTauri();
       const shouldBypassPermissionCheck = devMobileOverride === "on";
 
-      // Если мы не в Tauri и не в режиме разработки с обходом, пропускаем
       if (!isActuallyTauri && !shouldBypassPermissionCheck) {
-        logger.info(
-          "Skipping notification processing - not running in Tauri environment"
-        );
         return;
       }
 
       let notifications: PendingNotification[] = [];
 
       if (isActuallyTauri && !shouldBypassPermissionCheck) {
-        // Получаем реальные уведомления только если мы действительно в Tauri
         const { granted } = await checkNotificationPermission();
         if (!granted) {
-          logger.warn(
-            "Notification listener permission is not granted, skipping processing"
-          );
+          logger.warn("Notification permission missing.");
           return;
         }
-
         notifications = await getPendingNotifications();
-        logger.info(
-          `Fetched ${notifications.length} pending notifications from native storage`
+        notifications = notifications.filter(
+          (n) => !n.notification_type || n.notification_type === "PAYMENT"
         );
-
-        const filteredNotifications = notifications.filter(
-          (notification) =>
-            !notification.notification_type ||
-            notification.notification_type === "PAYMENT"
-        );
-
-        if (filteredNotifications.length !== notifications.length) {
-          logger.info(
-            `Filtered out ${
-              notifications.length - filteredNotifications.length
-            } non-payment notifications from pending queue`
-          );
-        }
-
-        notifications = filteredNotifications;
       }
 
       const unprocessedNotifications = notifications.filter(
-        (notification) =>
-          !processedNotificationKeys.has(createNotificationKey(notification))
+        (n) => !processedNotificationKeys.has(createNotificationKey(n))
       );
 
-      if (unprocessedNotifications.length < notifications.length) {
-        logger.info(
-          `Skipping ${
-            notifications.length - unprocessedNotifications.length
-          } already processed notifications`
-        );
-      } else if (unprocessedNotifications.length === 0) {
-        logger.info("No new notifications to process");
-      }
-
-      // Обрабатываем уведомления, если они есть
       if (unprocessedNotifications.length > 0) {
         const newKeys = new Set(processedNotificationKeys);
+
         for (const notification of unprocessedNotifications) {
-          const rawData = `Raw notification from ${
-            notification.package_name
-          }:\nTitle: ${notification.title || "N/A"}\nText: ${
-            notification.text
-          }`;
+          logger.info(
+            `Processing notification from ${notification.package_name}`
+          );
 
-          // Всегда логируем в файл на Android
-          logger.info(rawData);
-
-          // Показываем debug toast если включено в настройках
           if (localStorage.getItem("dev_show_debug_toasts") === "true") {
-            showToast(rawData, "info", 8000);
+            showToast(
+              `New notification: ${notification.package_name}`,
+              "info",
+              3000
+            );
           }
 
           const parsed = parseNotification(
@@ -443,8 +421,8 @@ function App() {
               text: combinedText,
               from: notification.package_name,
             });
-          } catch (error) {
-            logger.error("Failed to send notification to backend:", error);
+          } catch (e) {
+            /* silent fail */
           }
 
           if (!parsed) {
@@ -453,18 +431,17 @@ function App() {
           }
 
           const normalizedMerchant = normalizeMerchantName(parsed.merchantName);
-
           const existingRule = await merchantRuleApi.findRuleByMerchant(
             normalizedMerchant
           );
 
           if (existingRule) {
             const today = new Date().toISOString().split("T")[0];
-            const notificationCompletedAt = normalizeNotificationTimestamp(
+            const completedAt = normalizeNotificationTimestamp(
               notification.timestamp
             );
             try {
-              const payload: Record<string, unknown> = {
+              const payload: any = {
                 title: parsed.merchantName,
                 amount: parsed.amount,
                 dueDate: today,
@@ -472,40 +449,29 @@ function App() {
                 createAsCompleted: true,
                 autoCreated: true,
               };
-              if (notificationCompletedAt) {
-                payload.completedAt = notificationCompletedAt;
-              }
-              const response = await axiosInstance.post("/payments", payload);
-              const newPayment = response.data; // The newly created payment
+              if (completedAt) payload.completedAt = completedAt;
+
+              const resp = await axiosInstance.post("/payments", payload);
 
               const handleUndo = async () => {
                 try {
                   await axiosInstance.delete(
-                    `/payments/${newPayment.id}/permanent`
+                    `/payments/${resp.data.id}/permanent`
                   );
-                  showToast("Создание платежа отменено", "info");
-                } catch (undoError) {
-                  console.error("Error undoing payment creation:", undoError);
-                  showToast("Не удалось отменить создание", "error");
+                  showToast("Создание отменено", "info");
+                } catch (e) {
+                  showToast("Ошибка отмены", "error");
                 }
               };
 
               showToast(
-                `Платёж для "${
-                  parsed.merchantName
-                }" автоматически добавлен в категорию "${
-                  existingRule.category?.name || "Без категории"
-                }"`,
+                `Автоплатёж: ${parsed.merchantName} (${existingRule.category?.name})`,
                 "success",
-                10000, // Longer duration for undo
-                {
-                  label: "Отменить",
-                  onClick: handleUndo,
-                }
+                8000,
+                { label: "Отменить", onClick: handleUndo }
               );
-            } catch (error) {
-              logger.error("Failed to auto-create payment:", error);
-              // Молча игнорируем ошибку согласно требованиям
+            } catch (e) {
+              logger.error("Auto-create failed", e);
             }
           } else {
             await suggestionApi.createSuggestion({
@@ -515,153 +481,106 @@ function App() {
               notificationTimestamp: notification.timestamp,
             });
           }
-
           newKeys.add(createNotificationKey(notification));
         }
 
         setProcessedNotificationKeys(newKeys);
         saveProcessedKeysToStorage(newKeys);
 
-        // Очищаем реальные уведомления только если мы в Tauri
         if (isActuallyTauri && !shouldBypassPermissionCheck) {
           await clearPendingNotifications();
         }
       }
 
-      // Всегда загружаем все pending suggestions из бэкенда для синхронизации между устройствами
-      const allPendingSuggestions = await suggestionApi.getPendingSuggestions();
-
-      // Фильтруем уже обработанные предложения
-      const newSuggestions = allPendingSuggestions.filter(
+      const allPending = await suggestionApi.getPendingSuggestions();
+      const newSuggestions = allPending.filter(
         (s) => !processedSuggestionIds.has(s.id)
       );
 
       if (newSuggestions.length > 0) {
-        // Проверяем, есть ли новые предложения, которых не было в текущем списке
-        const currentSuggestionIds = new Set(suggestions.map((s) => s.id));
-        const hasNewSuggestions = newSuggestions.some(
-          (s) => !currentSuggestionIds.has(s.id)
-        );
+        const currentIds = new Set(suggestions.map((s) => s.id));
+        const hasFresh = newSuggestions.some((s) => !currentIds.has(s.id));
 
-        const mappedSuggestions: PendingSuggestionState[] = newSuggestions.map(
-          (suggestion) => ({
-            id: suggestion.id,
-            merchantName: suggestion.merchantName,
-            amount: suggestion.amount,
-            notificationData: suggestion.notificationData,
-            notificationTimestamp: suggestion.notificationTimestamp ?? null,
-          })
-        );
+        const mapped = newSuggestions.map((s) => ({
+          id: s.id,
+          merchantName: s.merchantName,
+          amount: s.amount,
+          notificationData: s.notificationData,
+          notificationTimestamp: s.notificationTimestamp ?? null,
+        }));
 
-        setSuggestions(mappedSuggestions);
+        setSuggestions(mapped);
 
-        // Показываем модалку только если она не была закрыта вручную или есть новые предложения
-        if (!suggestionModalDismissed || hasNewSuggestions) {
+        if (!suggestionModalDismissed || hasFresh) {
           setShowSuggestionModal(true);
-          // Сбрасываем флаг закрытия при появлении новых предложений
-          if (hasNewSuggestions) {
-            setSuggestionModalDismissed(false);
-          }
+          if (hasFresh) setSuggestionModalDismissed(false);
         }
       }
     } catch (error) {
-      console.error("Error processing notifications:", error);
+      logger.error("Error in processNotifications:", error);
     }
-  };
+  }, [
+    isAuthenticated,
+    processedNotificationKeys,
+    suggestions,
+    processedSuggestionIds,
+    suggestionModalDismissed,
+    showToast,
+  ]);
 
+  // --- Logic: Event Listeners ---
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Логируем инициализацию приложения
-    logger.info("App initialized - notification processing started");
+    logger.info("App init: listeners active");
 
-    // Обрабатываем навигацию при клике на уведомление
     if (isTauriMobile()) {
-      (async () => {
-        try {
-          const { getPendingNavigation, clearPendingNavigation } = await import(
-            "./api/fcmApi"
-          );
+      import("./api/fcmApi").then(
+        async ({ getPendingNavigation, clearPendingNavigation }) => {
           const action = await getPendingNavigation();
           if (action) {
             await clearPendingNavigation();
-
-            // Навигация в зависимости от действия
-            if (action === "archive") {
-              navigate("/payments?tab=archive");
-            } else if (action === "main") {
-              // Для основного действия (предложения) просто открываем приложение
-              // Не навигируем - предложения уже показаны
-              logger.info(
-                "Notification clicked with main action - bringing app to focus"
-              );
-            } else {
-              navigate("/dashboard");
-            }
-
-            logger.info(`Navigated from notification: ${action}`);
+            if (action === "archive") navigate("/payments?tab=archive");
+            else if (action !== "main") navigate("/dashboard");
           }
-        } catch (error) {
-          logger.error("Failed to handle notification navigation:", error);
         }
-      })();
+      );
     }
 
-    // Первоначальная проверка при монтировании
     processNotifications();
 
-    const handleNativeNotification = () => {
-      logger.info("Received native notification event");
+    const handleNativeEvent = () => {
+      logger.info("Native notification event");
       processNotifications();
     };
 
-    window.addEventListener(
-      NATIVE_NOTIFICATION_EVENT,
-      handleNativeNotification as EventListener
-    );
+    window.addEventListener(NATIVE_NOTIFICATION_EVENT, handleNativeEvent);
 
-    // Слушаем новые уведомления от Android сервиса
-    let unlistenNotification: (() => void) | undefined;
+    let unlistenTauri: (() => void) | undefined;
     if (isTauri()) {
-      (async () => {
-        try {
-          const { listen } = await import("@tauri-apps/api/event");
-          unlistenNotification = await listen(
-            "payment-notification-received",
-            () => {
-              logger.info("Received payment-notification-received event");
-              processNotifications();
-            }
-          );
-        } catch (error) {
-          logger.error("Failed to setup notification event listener:", error);
-        }
-      })();
+      import("@tauri-apps/api/event").then(async ({ listen }) => {
+        unlistenTauri = await listen("payment-notification-received", () => {
+          logger.info("Tauri event received");
+          processNotifications();
+        });
+      });
     }
 
-    // Проверяем когда пользователь возвращается в приложение
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        processNotifications();
-      }
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") processNotifications();
     };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener(
-        NATIVE_NOTIFICATION_EVENT,
-        handleNativeNotification as EventListener
-      );
-      if (unlistenNotification) {
-        unlistenNotification();
-      }
+      window.removeEventListener(NATIVE_NOTIFICATION_EVENT, handleNativeEvent);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (unlistenTauri) unlistenTauri();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, processNotifications, navigate]);
 
-  const handleSuggestionProcessed = (suggestionId: string) => {
-    setProcessedSuggestionIds((prev) => new Set(prev).add(suggestionId));
+  // --- Logic: Handlers ---
+  const handleSuggestionProcessed = (id: string) => {
+    setProcessedSuggestionIds((prev) => new Set(prev).add(id));
   };
 
   const handleSuggestionModalClose = () => {
@@ -676,23 +595,9 @@ function App() {
     setShowSuggestionModal(false);
   };
 
-  useEffect(() => {
-    if (!isAuthenticated && isMobileDrawerOpen) {
-      setIsMobileDrawerOpen(false);
-    }
-  }, [isAuthenticated, isMobileDrawerOpen]);
-
-  useEffect(() => {
-    if (isMobileDrawerOpen) {
-      setIsMobileDrawerOpen(false);
-    }
-    trackNavigation(location.pathname);
-  }, [location.pathname]);
-
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const targetUrl = isAuthenticated ? "/dashboard" : "/";
-
     if (isAuthenticated && location.pathname === targetUrl) {
       triggerReset();
     } else {
@@ -700,28 +605,19 @@ function App() {
     }
   };
 
-  const [canClearTrash, setCanClearTrash] = useState(false);
-
   useEffect(() => {
-    const handleTrashState = (
-      event: Event & { detail?: { hasItems?: boolean } }
-    ) => {
-      setCanClearTrash(Boolean(event.detail?.hasItems));
+    const handler = (e: Event & { detail?: { hasItems?: boolean } }) => {
+      setCanClearTrash(Boolean(e.detail?.hasItems));
     };
-
-    window.addEventListener(
-      "payments:trash-state",
-      handleTrashState as EventListener
-    );
-
-    return () => {
+    window.addEventListener("payments:trash-state", handler as EventListener);
+    return () =>
       window.removeEventListener(
         "payments:trash-state",
-        handleTrashState as EventListener
+        handler as EventListener
       );
-    };
   }, []);
 
+  // --- Mobile Floating Action Logic ---
   let mobileAddAction: (() => void) | null = null;
   let mobileActionIcon: React.ReactNode | null = null;
   let mobileActionAriaLabel: string | null = null;
@@ -735,11 +631,8 @@ function App() {
     } else if (location.pathname === "/payments") {
       const currentTab = searchParams.get("tab") || "active";
       if (currentTab === "trash") {
-        mobileAddAction = () => {
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("payments:clear-trash-request"));
-          }
-        };
+        mobileAddAction = () =>
+          window.dispatchEvent(new CustomEvent("payments:clear-trash-request"));
         mobileActionIcon = <TrashIcon className="h-6 w-6" />;
         mobileActionAriaLabel = "Очистить корзину";
         mobileActionDisabled = !canClearTrash;
@@ -759,9 +652,22 @@ function App() {
     }
   }
 
-  const headerClassName = `flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-solid border-gray-300 dark:border-border-dark px-1 py-3 sm:px-4 md:px-10 z-20`;
+  useEffect(() => {
+    if (isMobileDrawerOpen) setIsMobileDrawerOpen(false);
+    trackNavigation(location.pathname);
+  }, [location.pathname]);
 
-  // Check if current page is an edit/add page that should show back button in header
+  const isTermsOrPrivacyPage =
+    location.pathname === "/terms" || location.pathname === "/privacy";
+  const isPublicAuthPage = ["/login", "/register", "/forgot-password"].includes(
+    location.pathname
+  );
+
+  const showHeader =
+    !isPublicAuthPage &&
+    !(isTauriMobile() && location.pathname === "/") &&
+    !(isTauriMobile() && isTermsOrPrivacyPage);
+
   const isEditPage =
     isAuthenticated &&
     (location.pathname === "/payments/new" ||
@@ -769,63 +675,62 @@ function App() {
       location.pathname === "/categories/new" ||
       location.pathname.startsWith("/categories/edit/"));
 
-  const header = (
-    <header className={headerClassName}>
-      <div className="flex items-center gap-3">
+  // --- Render Helpers ---
+
+  const Header = () => (
+    <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-gray-200/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl px-3 py-3 sm:px-6 md:px-8 z-30 transition-colors duration-300">
+      <div className="flex items-center gap-3 min-w-0">
         {isAuthenticated && isEditPage ? (
-          // Show back button on mobile for edit pages
           <>
             <button
               onClick={() => navigate(-1)}
-              className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg text-gray-800 dark:text-gray-200"
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               aria-label="Назад"
             >
               <ArrowLeftIcon className="h-6 w-6" />
             </button>
-            {pageTitle ? (
-              <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
-                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate flex-1">
+            {pageTitle && (
+              <div className="md:hidden flex items-center gap-2 min-w-0">
+                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
                   {pageTitle}
                 </h1>
                 {headerAction}
               </div>
-            ) : null}
+            )}
           </>
         ) : isAuthenticated && !isEditPage ? (
-          // Show hamburger menu on mobile for non-edit pages
           <>
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
-              className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-card-bg hover:opacity-80 transition-all text-gray-800 dark:text-gray-200"
-              aria-label="Открыть меню навигации"
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              aria-label="Меню"
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
-            {pageTitle ? (
-              <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
-                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate flex-1">
+            {pageTitle && (
+              <div className="md:hidden flex items-center gap-2 min-w-0">
+                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
                   {pageTitle}
                 </h1>
                 {headerAction}
               </div>
-            ) : null}
+            )}
           </>
         ) : null}
+
         <a
           href={isAuthenticated ? "/dashboard" : "/"}
           onClick={handleLogoClick}
-          className={
-            !isAuthenticated && !isTauriMobile()
-              ? "flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
-              : "hidden md:flex items-center gap-4 text-black dark:text-white hover:opacity-80 transition-opacity"
-          }
-          style={{ textDecoration: "none" }}
+          className={`flex items-center gap-3 group focus-visible:outline-none rounded-lg focus-visible:ring-2 focus-visible:ring-indigo-500/50 ${
+            !isAuthenticated && !isTauriMobile() ? "flex" : "hidden md:flex"
+          }`}
         >
-          <div className="size-4 ml-2 md:ml-0 text-black dark:text-white">
+          <div className="size-4 text-black dark:text-white transition-transform group-hover:scale-105">
             <svg
               viewBox="0 0 48 48"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              className="w-full h-full"
             >
               <path
                 fillRule="evenodd"
@@ -835,47 +740,113 @@ function App() {
               ></path>
             </svg>
           </div>
-          <div className="text-lg font-bold leading-tight tracking-[-0.015em]">
+          <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight transition-opacity group-hover:opacity-80">
             Хочу Плачу
-          </div>
+          </span>
         </a>
       </div>
-      <div className="flex items-center gap-3">
+
+      <div className="flex items-center gap-2 sm:gap-4">
         <SyncStatusIndicator />
         <Navigation />
-        {mobileAddAction && mobileActionIcon && (
-          <button
-            onClick={mobileAddAction}
-            disabled={mobileActionDisabled}
-            className="md:hidden p-2 rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none"
-            aria-label={mobileActionAriaLabel || "Действие"}
-          >
-            {mobileActionIcon}
-          </button>
-        )}
+
+        <div className="md:hidden flex items-center gap-2">
+          {headerRightAction}
+          {mobileAddAction && mobileActionIcon && (
+            <button
+              onClick={mobileAddAction}
+              disabled={mobileActionDisabled}
+              className="p-2 rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none disabled:opacity-50"
+              aria-label={mobileActionAriaLabel || "Действие"}
+            >
+              {mobileActionIcon}
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );
 
-  // Check if current page is terms or privacy page
-  const isTermsOrPrivacyPage =
-    location.pathname === "/terms" || location.pathname === "/privacy";
-  const isPublicAuthPage =
-    location.pathname === "/login" ||
-    location.pathname === "/register" ||
-    location.pathname === "/forgot-password";
+  const Footer = () => (
+    <footer className="border-t border-gray-200 dark:border-gray-800 py-8 bg-white dark:bg-gray-900 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="text-center md:text-left">
+          <p>
+            Создано{" "}
+            <a
+              href="https://linkedin.com/in/artur-pertsev/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              apertso
+            </a>{" "}
+            · 2025
+          </p>
+        </div>
 
-  const mainClassName =
-    "flex flex-col flex-1 overflow-auto" +
-    (isTauriMobile() && (location.pathname === "/" || isTermsOrPrivacyPage)
-      ? ""
-      : " p-3 sm:px-4 sm:py-5 md:px-10");
+        <nav className="flex gap-6 font-medium">
+          <Link
+            to="/terms"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          >
+            Соглашение
+          </Link>
+          <Link
+            to="/privacy"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          >
+            Приватность
+          </Link>
+          <Link
+            to="/about"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          >
+            О нас
+          </Link>
+        </nav>
 
-  const mainContent = (
-    <main className={mainClassName}>
-      <div className="flex flex-col flex-1 w-full">
+        <div className="flex items-center gap-4">
+          {githubUrl && (
+            <a
+              href={githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              aria-label="GitHub"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.30.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
+              </svg>
+            </a>
+          )}
+          {!isAuthenticated && (
+            <>
+              <ThemeSwitcher />
+              <FeedbackWidget />
+            </>
+          )}
+        </div>
+      </div>
+    </footer>
+  );
+
+  // --- Render Layout ---
+  const layoutClasses = `relative flex h-screen flex-col bg-gray-50 dark:bg-dark-bg font-sans overflow-hidden transition-colors duration-300 ${
+    isTauriMobile() ? "safe-area-top safe-area-bottom" : ""
+  }`;
+  // Enforce min-h-0 to allow scrolling within flex container
+  const mainClasses = `flex flex-col flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden scroll-smooth`;
+
+  return (
+    <div className={layoutClasses}>
+      {showHeader && <Header />}
+
+      <VerificationBanner />
+
+      <main className={mainClasses}>
         <Routes>
-          {/* Public routes */}
+          {/* Public Routes */}
           <Route
             path="/"
             element={
@@ -906,7 +877,8 @@ function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/download" element={<DownloadPage />} />
-          {/* Protected routes */}
+
+          {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<HomePage />} />
             <Route path="/payments" element={<PaymentsPage />} />
@@ -917,194 +889,46 @@ function App() {
             <Route path="/categories/edit/:id" element={<CategoryEditPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
+
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
-      </div>
-    </main>
-  );
 
-  const footer = (
-    <footer className="border-t border-solid border-gray-300 dark:border-border-dark p-4 sm:p-6 text-sm text-gray-600 dark:text-slate-300">
-      <div className="hidden sm:flex items-center justify-between w-full">
-        <p className="whitespace-nowrap">
-          Создано{" "}
-          <a
-            href="https://linkedin.com/in/artur-pertsev/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
-          >
-            apertso
-          </a>{" "}
-          · 2025
-        </p>
-        <div className="flex items-center gap-6">
-          <nav className="flex items-center gap-6">
-            <Link
-              to="/terms"
-              className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-            >
-              Пользовательское соглашение
-            </Link>
-            <Link
-              to="/privacy"
-              className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-            >
-              Политика конфиденциальности
-            </Link>
-            <Link
-              to="/about"
-              className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
-            >
-              О нас
-            </Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            {githubUrl && (
-              <a
-                href={githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="GitHub"
-                title="GitHub"
-                className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                >
-                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.30.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
-                </svg>
-              </a>
-            )}
-            <ThemeSwitcher />
-            {isAuthenticated && <FeedbackWidget />}
-          </div>
-        </div>
-      </div>
-      <div className="sm:hidden flex flex-col items-center gap-2">
-        <p className="text-center">
-          Создано{" "}
-          <a
-            href="https://linkedin.com/in/artur-pertsev"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
-          >
-            apertso
-          </a>{" "}
-          · 2025
-        </p>
-        <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2">
-          <Link
-            to="/terms"
-            className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity"
-          >
-            Пользовательское соглашение
-          </Link>
-          <Link
-            to="/privacy"
-            className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity"
-          >
-            Политика конфиденциальности
-          </Link>
-          <Link
-            to="/about"
-            className="text-gray-700 dark:text-slate-300 hover:opacity-80 transition-opacity"
-          >
-            О нас
-          </Link>
-        </nav>
-        <div className="flex items-center gap-2">
-          {githubUrl && (
-            <a
-              href={githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="GitHub"
-              title="GitHub"
-              className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-5 w-5"
-                aria-hidden="true"
-              >
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.758-1.333-1.758-1.09-.744.082-.729.082-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.833 2.805 1.303 3.49.997.108-.775.418-1.303.76-1.603-2.665-.303-5.466-1.333-5.466-5.93 0-1.31.47-2.38 1.235-3.22-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.003.403 2.29-1.552 3.297-1.23 3.297-1.30.655 1.653.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.22 0 4.61-2.804 5.625-5.476 5.922.43.372.813 1.102.813 2.222 0 1.606-.015 2.902-.015 3.296 0 .32.217.694.825.576C20.565 21.796 24 17.3 24 12c0-6.63-5.37-12-12-12Z" />
-              </svg>
-            </a>
+        {/* Footer acts as a spacer in the scroll view for mobile, or real footer on desktop */}
+        {!isTauriMobile() &&
+          location.pathname !== "/login" &&
+          location.pathname !== "/register" && (
+            <div className="mt-auto pt-10">
+              <Footer />
+            </div>
           )}
-          <ThemeSwitcher />
-          {isAuthenticated && <FeedbackWidget />}
-        </div>
-      </div>
-    </footer>
+      </main>
+
+      {/* Global Modals */}
+      <NotificationOnboardingModal
+        isOpen={showNotificationOnboarding}
+        onClose={() => setShowNotificationOnboarding(false)}
+        onComplete={handleOnboardingComplete}
+      />
+      <SuggestionModal
+        isOpen={showSuggestionModal}
+        suggestions={suggestions}
+        onClose={handleSuggestionModalClose}
+        onComplete={handleSuggestionComplete}
+        onSuggestionProcessed={handleSuggestionProcessed}
+      />
+      <MobileNavigationDrawer
+        isOpen={isMobileDrawerOpen}
+        onClose={() => setIsMobileDrawerOpen(false)}
+        onOpen={() => setIsMobileDrawerOpen(true)}
+        user={user}
+        token={token}
+        navItems={mobileNavItems}
+        currentPath={location.pathname}
+        onLogout={logout}
+        gesturesEnabled={showHeader}
+      />
+    </div>
   );
-
-  // Hide header on mobile landing page and on terms/privacy pages in Tauri mobile app
-  const showHeader =
-    !isPublicAuthPage &&
-    !(isTauriMobile() && location.pathname === "/") &&
-    !(isTauriMobile() && isTermsOrPrivacyPage);
-
-  if (isAuthenticated) {
-    // --- Лэйаут для авторизованного пользователя (фиксированный хедер) ---
-    const containerClassName = `relative flex h-screen flex-col bg-white dark:bg-dark-bg font-sans${
-      isTauriMobile() ? " safe-area-top safe-area-bottom" : ""
-    }`;
-
-    return (
-      <>
-        <div className={containerClassName}>
-          {showHeader && header}
-          <VerificationBanner />
-          <div className="flex flex-col min-h-0 flex-1">
-            {mainContent}
-            {!isTauriMobile() && footer}
-          </div>
-        </div>
-        <NotificationOnboardingModal
-          isOpen={showNotificationOnboarding}
-          onClose={() => setShowNotificationOnboarding(false)}
-          onComplete={handleOnboardingComplete}
-        />
-        <SuggestionModal
-          isOpen={showSuggestionModal}
-          suggestions={suggestions}
-          onClose={handleSuggestionModalClose}
-          onComplete={handleSuggestionComplete}
-          onSuggestionProcessed={handleSuggestionProcessed}
-        />
-        <MobileNavigationDrawer
-          isOpen={isMobileDrawerOpen}
-          onClose={() => setIsMobileDrawerOpen(false)}
-          onOpen={() => setIsMobileDrawerOpen(true)}
-          user={user}
-          token={token}
-          navItems={mobileNavItems}
-          currentPath={location.pathname}
-          onLogout={logout}
-          gesturesEnabled={showHeader}
-        />
-      </>
-    );
-  } else {
-    // --- Лэйаут для гостя (скролл всей страницы) ---
-    const containerClassName = `relative flex min-h-screen flex-col bg-white dark:bg-dark-bg font-sans${
-      isTauriMobile() ? " safe-area-top safe-area-bottom" : ""
-    }`;
-
-    return (
-      <div className={containerClassName}>
-        {showHeader && header}
-        {mainContent}
-        {!isTauriMobile() && footer}
-      </div>
-    );
-  }
 }
 
 export default App;

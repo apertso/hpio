@@ -82,7 +82,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
               {payment.series.recurrenceEndDate &&
                 ` до ${new Date(
                   payment.series.recurrenceEndDate
-                ).toLocaleDateString()}`}
+                ).toLocaleDateString("ru-RU")}`}
             </span>
           ) : payment.seriesId && !payment.series?.isActive ? (
             <span className="flex items-center text-gray-400 italic">
@@ -119,7 +119,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
       thClassName: `${thBaseClassName} w-36`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
-      cell: (payment) => <>{new Date(payment.dueDate).toLocaleDateString()}</>,
+      cell: (payment) => <>{new Date(payment.dueDate).toLocaleDateString("ru-RU")}</>,
     },
     {
       id: "category",

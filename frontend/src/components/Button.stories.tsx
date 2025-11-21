@@ -10,7 +10,7 @@ const meta: Meta<typeof Button> = {
     onClick: { action: "clicked" },
     variant: {
       control: "select",
-      options: ["primary", "secondary", "destructive", "link"],
+      options: ["primary", "secondary", "destructive", "link", "ghost"],
     },
     size: {
       control: "select",
@@ -54,6 +54,13 @@ export const Link: Story = {
   args: {
     label: "Link Button",
     variant: "link",
+  },
+};
+
+export const Ghost: Story = {
+  args: {
+    label: "Ghost Button",
+    variant: "ghost",
   },
 };
 

@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import MobilePanel from "./MobilePanel";
 import { Input, TextField } from "./Input";
 import { Button } from "./Button";
@@ -13,6 +14,7 @@ import Overlay from "./Overlay";
 import "./DatePicker.css";
 
 export type DatePickerMode = "single" | "range" | "datetime";
+export type DatePickerVariant = "default" | "compact";
 
 export interface DatePickerProps {
   mode?: DatePickerMode;
@@ -44,6 +46,7 @@ export interface DatePickerProps {
   showActionButtons?: boolean;
   applyLabel?: string;
   cancelLabel?: string;
+  variant?: DatePickerVariant;
 }
 
 const WEEK_DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
@@ -287,6 +290,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
   dateFormat = DEFAULT_DATE_FORMAT,
   minDate,
   maxDate,
+  variant = "default",
 }) => {
   const showTimePicker = mode === "datetime" || showTimeSelect;
   const useDraftWorkflow = showActionButtons;
@@ -416,6 +420,8 @@ const DatePicker: React.FC<DatePickerProps> = ({
   const minDateStart = minDate ? startOfDay(minDate) : undefined;
   const maxDateStart = maxDate ? startOfDay(maxDate) : undefined;
 
+  const isCompactVariant = variant === "compact";
+
   const interactionClasses = disabled
     ? "cursor-not-allowed opacity-60"
     : "cursor-pointer";
@@ -424,17 +430,33 @@ const DatePicker: React.FC<DatePickerProps> = ({
     interactionClasses,
     className,
     inputClassName,
+    isCompactVariant ? "hp-datepicker__trigger--compact !w-auto min-w-[140px] pl-10" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
-  const containerClassName = ["hp-datepicker", wrapperClassName]
+  const containerClassName = [
+    "hp-datepicker",
+    isCompactVariant ? "hp-datepicker--compact" : "",
+    wrapperClassName,
+  ]
     .filter(Boolean)
     .join(" ");
 
+  const shouldWrapLabel =
+    Boolean(label) && (Boolean(labelClassName) || isCompactVariant);
   const resolvedLabel =
-    labelClassName && label ? (
-      <span className={labelClassName}>{label}</span>
+    shouldWrapLabel && label ? (
+      <span
+        className={[
+          labelClassName,
+          isCompactVariant ? "hp-datepicker__label--compact" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {label}
+      </span>
     ) : (
       label
     );
@@ -825,7 +847,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
         <div className="hidden md:flex justify-end space-x-4 mt-6 pt-6">
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             label={cancelLabel}
             onClick={handleCancelAction}
           />
@@ -849,8 +871,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
           />
           <Button
             type="button"
-            variant="secondary"
-            size="small"
+            variant="ghost"
             label={cancelLabel}
             onClick={handleCancelAction}
             className="w-full"
@@ -1014,6 +1035,11 @@ const DatePicker: React.FC<DatePickerProps> = ({
 
   const renderDesktopTrigger = () => (
     <div className="relative" ref={triggerWrapperRef}>
+      {isCompactVariant && (
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+          <CalendarDaysIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+        </div>
+      )}
       <DatePickerTriggerInput
         id={id}
         name={name}
@@ -1070,8 +1096,6 @@ const DatePicker: React.FC<DatePickerProps> = ({
             isOpen={isMobilePanelOpen}
             onClose={() => setIsMobilePanelOpen(false)}
             title={label || "Выбор даты"}
-            showCloseButton
-            enableBackdropClick
           >
             {renderPickerSurface(true)}
           </MobilePanel>

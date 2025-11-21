@@ -142,7 +142,6 @@ const FeedbackWidget: React.FC = () => {
             isOpen={isOpen}
             onClose={() => setIsOpen(false)}
             title="Оставить отзыв"
-            showCloseButton
           >
             {renderForm("mt-2")}
           </MobilePanel>

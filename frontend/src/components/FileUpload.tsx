@@ -5,6 +5,7 @@ import {
   XCircleIcon,
   DocumentIcon,
   PhotoIcon,
+  ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline";
 import useFileUploadLogic from "../hooks/useFileUploadLogic";
 import useFileDeletionLogic from "../hooks/useFileDeletionLogic";
@@ -60,7 +61,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     onError,
     isSubmitting,
     onPendingFileSelected: (f) => {
-      // Отображаем выбранный (еще не загруженный) файл сразу в UI
       setFile({ filePath: "", fileName: f.name });
       onPendingFileChange?.(f);
     },
@@ -76,21 +76,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
     onError,
   });
 
-  // Хелпер для определения иконки файла по имени/типу
   const getFileIcon = useCallback((fileName: string) => {
     const parts = fileName.split(".");
     const ext = parts.length > 1 ? "." + parts.pop()?.toLowerCase() : "";
 
     if ([".jpg", ".jpeg", ".png", ".gif", ".bmp"].includes(ext)) {
-      return <PhotoIcon className="h-6 w-6 text-blue-500" />;
+      return <PhotoIcon className="h-5 w-5 text-indigo-500" />;
     }
     if (ext === ".pdf") {
-      return <DocumentIcon className="h-6 w-6 text-red-500" />;
+      return <DocumentIcon className="h-5 w-5 text-red-500" />;
     }
     if ([".doc", ".docx", ".xls", ".xlsx"].includes(ext)) {
-      return <DocumentIcon className="h-6 w-6 text-green-500" />;
+      return <DocumentIcon className="h-5 w-5 text-blue-500" />;
     }
-    return <DocumentIcon className="h-6 w-6 text-gray-500" />;
+    return <DocumentIcon className="h-5 w-5 text-gray-400" />;
   }, []);
 
   return (
@@ -99,11 +98,24 @@ const FileUpload: React.FC<FileUploadProps> = ({
         Прикрепить файл
       </label>
 
-      {/* Отображение прикрепленного файла, если он есть */}
+      {/* File Preview Card */}
       {file && !isUploading ? (
-        <div className="flex items-center space-x-3 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-          {getFileIcon(file.fileName)}
-          <span className="flex-1 truncate">{file.fileName}</span>
+        <div className="group relative flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-full border border-gray-200 dark:border-gray-600">
+              {getFileIcon(file.fileName)}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {file.fileName}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {!paymentId && "Ожидает загрузки"}
+                {paymentId && "Файл загружен"}
+              </span>
+            </div>
+          </div>
+
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -115,91 +127,92 @@ const FileUpload: React.FC<FileUploadProps> = ({
               }
               handleDeleteFile();
             }}
-            disabled={isDeleting || isSubmitting} // Отключаем кнопку, если удаляется или форма отправляется
-            className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-600 disabled:opacity-50"
+            disabled={isDeleting || isSubmitting}
+            className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
             title={isDeleting ? "Удаление..." : "Удалить файл"}
           >
             {isDeleting ? (
               <Spinner size="sm" />
             ) : (
-              <XCircleIcon className="h-5 w-5" /> // Иконка удаления
+              <XCircleIcon className="h-5 w-5" />
             )}
           </button>
         </div>
       ) : (
-        // Drag-and-drop область, если файла нет или идет загрузка
+        // Dropzone / Mobile Button
         <div
-          {...getRootProps()} // Привязываем события dropzone к div
-          className={`border-2 border-dashed p-6 rounded-md text-center cursor-pointer transition-colors duration-200
-                          ${
-                            isDragActive
-                              ? "border-blue-500 bg-blue-100 dark:bg-blue-900"
-                              : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
-                          }
-                          ${
-                            isUploading || isDeleting || isSubmitting
-                              ? "opacity-50 cursor-not-allowed"
-                              : ""
-                          }`} // Отключаем, если идет загрузка/удаление, форма отправляется или нет paymentId
-          aria-disabled={isUploading || isDeleting || isSubmitting} // Добавляем для доступности
+          {...getRootProps()}
+          className={`relative transition-all duration-200 cursor-pointer
+            ${
+              isUploading || isDeleting || isSubmitting
+                ? "opacity-50 cursor-not-allowed"
+                : ""
+            }
+            ${
+              isDragActive
+                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                : "hover:bg-gray-50 dark:hover:bg-gray-800"
+            }
+          `}
+          aria-disabled={isUploading || isDeleting || isSubmitting}
         >
           <Input
             {...getInputProps()}
             disabled={isUploading || isDeleting || isSubmitting}
             className="sr-only"
             unstyled
-          />{" "}
-          {/* Скрытый input */}
+          />
+
           {isUploading ? (
-            // Индикатор загрузки
-            <div>
-              <div className="flex flex-col items-center justify-center">
+            // Loading State
+            <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
+              <div className="flex flex-col items-center justify-center py-2">
                 <Spinner />
-                <p className="mt-2 text-sm text-gray-900 dark:text-gray-100">
+                <p className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                   Загрузка файла...
                 </p>
+                <div className="w-full max-w-xs bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 mt-3 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-indigo-600 transition-all duration-300 ease-out"
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
               </div>
-              {/* TODO: Реализовать визуальный прогресс-бар */}
-              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-600 mt-2">
-                <div
-                  className="h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {uploadProgress}%
-              </p>
             </div>
           ) : (
-            // Текст в области dropzone
-            <div>
-              <PaperClipIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-300" />
-              <p className="mt-2 text-sm text-gray-900 dark:text-gray-100">
-                {isDragActive
-                  ? "Перетащите файл сюда..."
-                  : "Перетащите файл сюда или кликните для выбора"}
-              </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {`Разрешены: JPG, PNG, PDF, DOC(X), XLS(X) (до ${
-                  maxFileSize / 1024 / 1024
-                }МБ)`}
-              </p>
-              {!paymentId && ( // Если нет paymentId, объясняем, что загрузка произойдет после сохранения
-                <p className="mt-2 text-sm font-semibold text-red-500 dark:text-red-400">
-                  Файл будет загружен автоматически после сохранения платежа.
+            <>
+              {/* Mobile: Compact Button Style */}
+              <div className="md:hidden w-full flex items-center justify-center gap-2 p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm active:bg-gray-50 dark:active:bg-gray-700">
+                <ArrowUpTrayIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Загрузить файл
+                </span>
+              </div>
+
+              {/* Desktop: Full Dropzone */}
+              <div className="hidden md:flex flex-col items-center justify-center py-1 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 bg-gray-50/50 dark:bg-gray-800/50">
+                <div className="mb-3 p-2 bg-white dark:bg-gray-700 rounded-full shadow-sm border border-gray-200 dark:border-gray-600">
+                  <PaperClipIcon className="h-6 w-6 text-gray-400 dark:text-gray-300" />
+                </div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {isDragActive
+                    ? "Отпустите файл"
+                    : "Нажмите или перетащите файл"}
                 </p>
-              )}
-            </div>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
+                  JPG, PNG, PDF, DOCX до {maxFileSize / 1024 / 1024} МБ
+                </p>
+              </div>
+            </>
           )}
         </div>
       )}
 
-      {/* Отображение ошибок загрузки или удаления */}
-      {uploadError && (
-        <p className="mt-1 text-sm text-red-600">{uploadError.message}</p>
-      )}
-      {deleteError && (
-        <p className="mt-1 text-sm text-red-600">{deleteError.message}</p>
+      {(uploadError || deleteError) && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+          <XCircleIcon className="h-4 w-4" />
+          {uploadError?.message || deleteError?.message}
+        </p>
       )}
     </div>
   );

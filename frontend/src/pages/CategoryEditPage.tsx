@@ -117,7 +117,7 @@ const CategoryEditPage: React.FC = () => {
           </h2>
         </div>
 
-        <FormBlock className="md:bg-white md:dark:bg-gray-900 md:p-6 md:rounded-lg md:shadow-md">
+        <FormBlock className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
           {isLoading && isEditMode ? (
             <div className="flex justify-center items-center h-40">
               <Spinner />
@@ -156,7 +156,7 @@ const CategoryEditPage: React.FC = () => {
 
                   <div className="hidden md:flex items-center justify-end space-x-4 mt-4">
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       onClick={() => navigate("/categories")}
                       disabled={combinedIsLoading}
                       label="Отмена"
@@ -180,8 +180,7 @@ const CategoryEditPage: React.FC = () => {
                       className="w-full"
                     />
                     <Button
-                      variant="secondary"
-                      size="small"
+                      variant="ghost"
                       onClick={() => navigate("/categories")}
                       disabled={combinedIsLoading}
                       label="Отмена"

@@ -13,7 +13,7 @@ const Icon: React.FC<IconProps> = ({ className = "", ...props }) => {
       className={className}
       {...props}
       stroke="currentColor"
-      strokeWidth={3}
+      strokeWidth={1.5}
       strokeLinecap="round"
       strokeLinejoin="round"
     >

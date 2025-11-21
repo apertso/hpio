@@ -6,14 +6,14 @@ import {
   PlusIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
-import { InformationIcon } from "../components/InformationIcon";
 import { Button } from "../components/Button"; // Import the Button component
+import { InformationIcon } from "../components/InformationIcon";
 import useApi from "../hooks/useApi"; // Import useApi
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
-import { CategoriesTable, Tooltip } from "../components"; // Import CategoriesTable and Tooltip from the index
+import { CategoriesTable, Tooltip } from "../components"; // Import CategoriesTable from the index
 import { BuiltinIcon } from "../utils/builtinIcons";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -61,8 +61,8 @@ const MobileActionsOverlay: React.FC<{
       isOpen={!!category}
       onClose={onClose}
       title=""
-      showCloseButton={false}
       shouldClose={shouldClose}
+      enableBackdropClick={false}
     >
       <div className="flex justify-around items-center">
         {actions.map((action) => (
@@ -89,7 +89,7 @@ const CategoryListItem: React.FC<{
   <button
     type="button"
     data-mobile-list-item-id={category.id}
-    className={`w-full text-left flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow ${
+    className={`w-full text-left flex items-center justify-between p-4 card-base card-hover ${
       className || ""
     }`}
   >
@@ -115,20 +115,16 @@ const CategoriesPage: React.FC = () => {
 
   useEffect(() => {
     setHeaderAction(
-      <Tooltip
-        content="Категории позволяют навести порядок в ваших расходах: они используются при просмотре платежей, в архиве и в статистике на главной странице."
-        position="bottom"
-      >
+      <Tooltip content="Категории группируют платежи и напрямую влияют на аналитику.">
         <button className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
           <InformationIcon className="h-[16px] w-[16px]" />
         </button>
       </Tooltip>
     );
 
-    return () => {
-      setHeaderAction(null);
-    };
+    return () => setHeaderAction(null);
   }, [setHeaderAction]);
+
 
   // Use useApi for fetching the categories list
   const {
@@ -279,10 +275,7 @@ const CategoriesPage: React.FC = () => {
             <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
               Управление категориями
             </h2>
-            <Tooltip
-              content="Категории позволяют навести порядок в ваших расходах: они используются при просмотре платежей, в архиве и в статистике на главной странице."
-              position="bottom"
-            >
+            <Tooltip content="Категории группируют платежи и напрямую влияют на аналитику.">
               <div className="hidden md:block p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
                 <InformationIcon className="h-[16px] w-[16px]" />
               </div>
@@ -298,7 +291,7 @@ const CategoriesPage: React.FC = () => {
 
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="hidden md:block overflow-x-auto card-base">
             <CategoriesTable
               data={categories || []}
               isLoading={isLoadingCategories}

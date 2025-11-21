@@ -1,0 +1,118 @@
+import { Meta, ColorPalette, ColorItem } from "@storybook/blocks";
+
+<Meta title="Foundations/Colors" />
+
+<div style={{ maxHeight: 'calc(100vh - 57px)', overflowY: 'auto', paddingBottom: 32 }}>
+
+# Color System
+
+This project uses Tailwind CSS colors with specific overrides for dark mode support.
+
+## Primary Colors (Indigo)
+
+Used for primary buttons, active states, and key interactive elements.
+
+<ColorPalette>
+  <ColorItem
+    title="Indigo"
+    subtitle="Primary Brand Color"
+    colors={{
+      50: "#eef2ff",
+      100: "#e0e7ff",
+      200: "#c7d2fe",
+      300: "#a5b4fc",
+      400: "#818cf8",
+      500: "#6366f1",
+      600: "#4f46e5",
+      700: "#4338ca",
+      800: "#3730a3",
+      900: "#312e81",
+    }}
+  />
+</ColorPalette>
+
+## Functional Colors
+
+Used for status indicators, alerts, and feedback.
+
+<ColorPalette>
+  <ColorItem
+    title="Success (Green)"
+    subtitle="Completed, Success"
+    colors={{
+      100: "#dcfce7",
+      500: "#22c55e",
+      700: "#15803d",
+    }}
+  />
+  <ColorItem
+    title="Error (Red)"
+    subtitle="Deleted, Overdue, Error"
+    colors={{
+      100: "#fee2e2",
+      500: "#ef4444",
+      600: "#dc2626",
+      700: "#b91c1c",
+    }}
+  />
+  <ColorItem
+    title="Warning (Yellow/Orange)"
+    subtitle="Attention needed"
+    colors={{
+      100: "#fef9c3",
+      500: "#eab308",
+      600: "#ca8a04",
+    }}
+  />
+  <ColorItem
+    title="Info (Blue)"
+    subtitle="Links, Information"
+    colors={{
+      100: "#dbeafe",
+      500: "#3b82f6",
+      600: "#2563eb",
+    }}
+  />
+</ColorPalette>
+
+## Neutrals
+
+Used for text, backgrounds, and borders.
+
+<ColorPalette>
+  <ColorItem
+    title="Gray"
+    subtitle="Slate/Gray scale"
+    colors={{
+      50: "#f9fafb",
+      100: "#f3f4f6",
+      200: "#e5e7eb",
+      300: "#d1d5db",
+      400: "#9ca3af",
+      500: "#6b7280",
+      600: "#4b5563",
+      700: "#374151",
+      800: "#1f2937",
+      900: "#111827",
+    }}
+  />
+</ColorPalette>
+
+## Custom Theme Colors
+
+Specific variables defined in `index.css` for deep dark mode integration.
+
+<ColorPalette>
+  <ColorItem
+    title="Dark Mode Custom"
+    subtitle="CSS Variables"
+    colors={{
+      "--color-dark-bg": "#111827",
+      "--color-card-bg": "#303030",
+      "--color-border-dark": "#303030",
+      "--color-text-secondary": "#ababab",
+      "--color-dark-gray": "#303030",
+    }}
+  />
+</ColorPalette>
+</div>

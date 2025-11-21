@@ -1,4 +1,5 @@
 import imageCompression from "browser-image-compression";
+import logger from "./logger";
 
 /**
  * Сжимает изображение профиля до WebP формата
@@ -31,14 +32,13 @@ export async function compressProfileImage(file: File): Promise<File> {
       100
     ).toFixed(1);
 
-    console.log(
+    logger.info(
       `Image compression: ${originalSizeKB}KB → ${compressedSizeKB}KB (${compressionRatio}% reduction)`
     );
 
     return webpFile;
   } catch (error) {
-    console.error("Image compression failed:", error);
+    logger.error("Image compression failed:", error);
     throw new Error("Не удалось сжать изображение");
   }
 }
-

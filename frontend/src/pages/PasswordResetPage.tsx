@@ -25,14 +25,14 @@ const PasswordResetPage: React.FC = () => {
       <div className="flex flex-col flex-1 items-center w-full px-4 py-6 gap-6">
         <div className="flex justify-start w-full max-w-xl">
           <Button
-            variant="secondary"
+            variant="ghost"
             icon={<ArrowLeftIcon className="w-5 h-5" />}
             label="Назад"
             onClick={() => navigate("/login")}
           />
         </div>
         <div className="flex-1 flex w-full items-center justify-center">
-          <FormBlock className="w-full max-w-xl px-4 md:p-6">
+          <FormBlock className="w-full max-w-xl bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             <PasswordResetForm
               onSubmit={handlePasswordReset}
               onShowToast={showToast}

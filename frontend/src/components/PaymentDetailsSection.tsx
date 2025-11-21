@@ -10,6 +10,7 @@ interface PaymentDetailsSectionProps {
   setValue: UseFormSetValue<PaymentFormInputs>;
   watchDueDate: PaymentFormInputs["dueDate"];
   isSubmitting: boolean;
+  showSeriesStartHint?: boolean;
 }
 
 const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
@@ -18,6 +19,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   setValue,
   watchDueDate,
   isSubmitting,
+  showSeriesStartHint,
 }) => {
   return (
     <>
@@ -30,28 +32,37 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
         disabled={isSubmitting}
         {...register("title")}
       />
-      <NumberField
-        label="Сумма"
-        inputId="amount"
-        step="0.01"
-        {...register("amount", { valueAsNumber: true })}
-        disabled={isSubmitting}
-        error={errors.amount?.message}
-        required
-      />
-      <DatePicker
-        id="dueDate"
-        mode="single"
-        label="Срок оплаты"
-        selected={watchDueDate || null}
-        onSingleChange={(date: Date | null) => {
-          setValue("dueDate", date as Date, { shouldValidate: true });
-        }}
-        dateFormat="yyyy-MM-dd"
-        disabled={isSubmitting}
-        placeholder="Выберите дату"
-        error={errors.dueDate?.message}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <NumberField
+          label="Сумма"
+          inputId="amount"
+          step="0.01"
+          {...register("amount", { valueAsNumber: true })}
+          disabled={isSubmitting}
+          error={errors.amount?.message}
+          required
+        />
+        <div className="space-y-1">
+          <DatePicker
+            id="dueDate"
+            mode="single"
+            label="Срок оплаты"
+            selected={watchDueDate || null}
+            onSingleChange={(date: Date | null) => {
+              setValue("dueDate", date as Date, { shouldValidate: true });
+            }}
+            dateFormat="yyyy-MM-dd"
+            disabled={isSubmitting}
+            placeholder="Выберите дату"
+            error={errors.dueDate?.message}
+          />
+          {showSeriesStartHint && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 hidden md:block">
+              Эта дата станет датой начала для измененной серии.
+            </p>
+          )}
+        </div>
+      </div>
     </>
   );
 };

@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import Modal from "./Modal";
 import DatePicker from "./DatePicker";
-import RadioButton from "./RadioButton";
 import MobilePanel from "./MobilePanel";
+import { Button } from "./Button";
+import SegmentedControl, { SegmentedControlOption } from "./SegmentedControl";
 
 interface ConfirmCompletionDateModalProps {
   isOpen: boolean;
@@ -16,6 +17,14 @@ type ContentOptions = {
   showHeadingSpacing: boolean;
 };
 
+type SegmentValue = "today" | "due";
+
+const normalizeDate = (date: Date): Date => {
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+};
+
 const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
   isOpen,
   onClose,
@@ -23,83 +32,113 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
   dueDate,
   isConfirming,
 }) => {
-  type Selection = "today" | "due" | "custom";
-  const [selectedOption, setSelectedOption] = useState<Selection>("today");
-  const [customDate, setCustomDate] = useState<Date | null>(new Date());
-
-  const handleConfirm = () => {
-    if (selectedOption === "today") {
-      onConfirm(new Date());
-    } else if (selectedOption === "due") {
-      onConfirm(dueDate);
-    } else if (customDate) {
-      onConfirm(customDate);
-    }
-  };
+  const [selectedDate, setSelectedDate] = useState<Date | null>(
+    () => new Date()
+  );
 
   if (!isOpen) return null;
 
+  const today = normalizeDate(new Date());
+  const normalizedDueDate = normalizeDate(dueDate);
+  const normalizedSelected = selectedDate ? normalizeDate(selectedDate) : null;
+
+  const segmentOptions: SegmentedControlOption<SegmentValue>[] = [
+    { value: "today", label: "Сегодня" },
+    {
+      value: "due",
+      label: "По дате платежа",
+    },
+  ];
+
+  const segmentSelection: SegmentValue | undefined = normalizedSelected
+    ? normalizedSelected.getTime() === today.getTime()
+      ? "today"
+      : normalizedSelected.getTime() === normalizedDueDate.getTime()
+      ? "due"
+      : undefined
+    : undefined;
+
+  const handleSegmentChange = (value: SegmentValue): void => {
+    if (value === "today") {
+      setSelectedDate(normalizeDate(new Date()));
+      return;
+    }
+    setSelectedDate(normalizeDate(dueDate));
+  };
+
+  const handleDateChange = (date: Date | null): void => {
+    setSelectedDate(date);
+  };
+
+  const handleConfirm = (): void => {
+    if (selectedDate) {
+      onConfirm(selectedDate);
+    }
+  };
+
+  const isConfirmDisabled = !selectedDate || isConfirming;
+
   const renderContent = ({ showHeadingSpacing }: ContentOptions) => (
-    <div className={`space-y-4 text-gray-800 dark:text-gray-200 ${showHeadingSpacing ? "" : "mt-2"}`}>
+    <div
+      className={`space-y-5 text-gray-800 dark:text-gray-200 ${
+        showHeadingSpacing ? "" : "mt-2"
+      }`}
+    >
       <p>
-        Дата выполнения платежа отличается от сегодняшней. Пожалуйста,
-        выберите, какой датой отметить платеж как выполненный.
+        Дата выполнения платежа отличается от сегодняшней. Пожалуйста, выберите,
+        какой датой отметить платеж как выполненный.
       </p>
 
-      <fieldset className="space-y-2">
-        <RadioButton
-          id="today"
-          name="date-option"
-          value="today"
-          checked={selectedOption === "today"}
-          onChange={() => setSelectedOption("today")}
-          label={`Сегодня (${new Date().toLocaleDateString("ru-RU")})`}
+      <div className="flex flex-row items-center gap-4">
+        <DatePicker
+          mode="single"
+          selected={selectedDate}
+          onSingleChange={handleDateChange}
+          placeholder="Выберите дату"
+          label="Дата выполнения"
+          variant="compact"
         />
-        <RadioButton
-          id="due"
-          name="date-option"
-          value="due"
-          checked={selectedOption === "due"}
-          onChange={() => setSelectedOption("due")}
-          label={`По дате платежа (${dueDate.toLocaleDateString("ru-RU")})`}
+        <SegmentedControl
+          options={segmentOptions}
+          selected={segmentSelection}
+          onChange={handleSegmentChange}
+          className="flex-nowrap"
+          optionClassName="!px-2 md:!px-4"
         />
-        <RadioButton
-          id="custom"
-          name="date-option"
-          value="custom"
-          checked={selectedOption === "custom"}
-          onChange={() => setSelectedOption("custom")}
-          label="Выбрать другую дату:"
-        />
-        {selectedOption === "custom" && (
-          <div className="pl-7">
-            <DatePicker
-              mode="single"
-              selected={customDate}
-              onSingleChange={(date: Date | null) => setCustomDate(date)}
-              dateFormat="yyyy-MM-dd"
-              placeholder="Выберите дату"
-            />
-          </div>
-        )}
-      </fieldset>
+      </div>
 
-      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button
+      <div className="hidden md:flex justify-end space-x-4 pt-4">
+        <Button
+          variant="ghost"
           onClick={onClose}
-          type="button"
-          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100"
-        >
-          Отмена
-        </button>
-        <button
-          onClick={handleConfirm}
+          label="Отмена"
           disabled={isConfirming}
-          type="button"
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isConfirming ? "Подтверждение..." : "Подтвердить"}
-        </button>
+        />
+        <Button
+          variant="primary"
+          onClick={handleConfirm}
+          label="Подтвердить"
+          loading={isConfirming}
+          disabled={isConfirmDisabled}
+        />
+      </div>
+      <div className="flex flex-col md:hidden gap-3 pt-4">
+        <Button
+          variant="primary"
+          size="large"
+          label="Подтвердить"
+          className="w-full"
+          onClick={handleConfirm}
+          loading={isConfirming}
+          disabled={isConfirmDisabled}
+        />
+        <Button
+          variant="ghost"
+          label="Отмена"
+          className="w-full"
+          onClick={onClose}
+          disabled={isConfirming}
+        />
       </div>
     </div>
   );
@@ -118,7 +157,6 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         title="Выберите дату выполнения"
-        showCloseButton
       >
         {renderContent({ showHeadingSpacing: false })}
       </MobilePanel>

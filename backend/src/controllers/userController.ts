@@ -6,6 +6,11 @@ import { StorageFactory } from "../services/storage/StorageFactory";
 import db from "../models";
 import { sendDeveloperTestEmail } from "../services/emailService";
 
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return String(error);
+};
+
 // Получить профиль пользователя
 export const getProfile = async (req: Request, res: Response) => {
   try {
@@ -153,11 +158,14 @@ export const sendTestEmailNotification = async (
     await sendDeveloperTestEmail(user.email, user.name || "");
     res.json({ message: "Тестовое письмо отправлено." });
   } catch (error: any) {
+    const errorMessage = getErrorMessage(error);
     logger.error(
-      `Error sending developer test email for user ${req.user!.id}:`,
-      error
+      `Error sending developer test email for user ${req.user!.id}: ${errorMessage}`
     );
-    res.status(500).json({ message: "Не удалось отправить тестовое письмо." });
+    res.status(500).json({
+      message: "Не удалось отправить тестовое письмо.",
+      details: errorMessage,
+    });
   }
 };
 
@@ -187,3 +195,4 @@ export const registerFcmToken = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error registering FCM token." });
   }
 };
+

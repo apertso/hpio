@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import DatePicker, { DatePickerMode } from "./DatePicker";
+import DatePicker, {
+  DatePickerMode,
+  DatePickerVariant,
+} from "./DatePicker";
 
 const meta: Meta<typeof DatePicker> = {
   title: "Components/DatePicker",
@@ -19,6 +22,11 @@ const meta: Meta<typeof DatePicker> = {
     showTimeSelect: { control: "boolean" },
     inline: { control: "boolean" },
     dateFormat: { control: "text" },
+    variant: {
+      control: "select",
+      options: ["default", "compact"] as DatePickerVariant[],
+      description: "Visual style variant",
+    },
   },
   parameters: {
     docs: {
@@ -56,6 +64,23 @@ export const DateRange: Story = {
     mode: "range",
     label: "Select Date Range",
     placeholder: "Choose start and end dates",
+  },
+};
+
+export const CompactRange: Story = {
+  args: {
+    mode: "range",
+    label: "Compact Range",
+    variant: "compact",
+    placeholder: "Select period",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Compact variant matches the KPI widgets where the trigger shrinks to auto width with tighter padding and gradient styling.",
+      },
+    },
   },
 };
 

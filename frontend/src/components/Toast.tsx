@@ -227,7 +227,7 @@ const Toast: React.FC<ToastProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={`relative flex items-center w-full max-w-sm p-4 text-white rounded-lg shadow-lg touch-pan-y select-none overflow-hidden ${colors[type]}`}
+      className={`relative flex items-center w-full max-w-sm p-4 text-white rounded-2xl shadow-lg touch-pan-y select-none overflow-hidden ${colors[type]}`}
       style={{
         transform: `translateX(${translateX}px) scale(${scale})`,
         opacity: isSwipingAway ? 0 : isVisible ? 1 : 0,

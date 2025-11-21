@@ -12,6 +12,7 @@ import {
 } from "../../api/notificationPermission";
 import userApi from "../../api/userApi";
 import getErrorMessage from "../../utils/getErrorMessage";
+import logger from "../../utils/logger";
 
 const NotificationsSection: React.FC = () => {
   const { showToast } = useToast();
@@ -43,7 +44,7 @@ const NotificationsSection: React.FC = () => {
           const appStatus = await checkAppNotificationPermission();
           setAppNotificationPermissionGranted(appStatus.granted);
         } catch (error) {
-          console.error("Failed to check app notification permission:", error);
+          logger.error("Failed to check app notification permission:", error);
         } finally {
           setIsCheckingAppPermission(false);
         }
@@ -124,7 +125,7 @@ const NotificationsSection: React.FC = () => {
     setIsUpdatingPreferences(true);
 
     try {
-      await userApi.updateUser({
+      await userApi.updateProfile({
         notificationTime: time,
       });
       setNotificationTime(time);
@@ -144,7 +145,7 @@ const NotificationsSection: React.FC = () => {
     <div className="space-y-8">
       {/* App Notifications Section (Android only) */}
 
-      <SettingsSection>
+      <SettingsSection className="card-base p-6">
         <div className="flex items-start gap-4 mb-6">
           <div className="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
             <BellAlertIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />

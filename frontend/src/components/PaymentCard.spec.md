@@ -1,0 +1,2 @@
+- no internal separators inside the card (no horizontal dividers)
+- title may span at most two lines: if it overflows the first line, it can continue on the second, then must end with an ellipsis.

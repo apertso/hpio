@@ -4,10 +4,12 @@ import {
   exists,
   writeTextFile,
   readTextFile,
+  open,
 } from "@tauri-apps/plugin-fs";
 import { isTauri, isTauriMobile } from "./platform";
 
 const LOG_FILE_NAME = "logs.txt";
+const HEADER_READ_BYTES = 4096;
 
 export type LogLevel = "INFO" | "WARN" | "ERROR" | "DEBUG";
 export type ErrorType =
@@ -51,6 +53,28 @@ function getCurrentDateString(): string {
   return now.toISOString().split("T")[0];
 }
 
+async function readLogFileHead(): Promise<string | null> {
+  try {
+    const file = await open(LOG_FILE_NAME, {
+      read: true,
+      baseDir: BaseDirectory.AppData,
+    });
+    try {
+      const buffer = new Uint8Array(HEADER_READ_BYTES);
+      const bytesRead = await file.read(buffer);
+      if (!bytesRead || bytesRead <= 0) {
+        return null;
+      }
+      return new TextDecoder().decode(buffer.slice(0, bytesRead));
+    } finally {
+      await file.close();
+    }
+  } catch (error) {
+    console.error("Error reading log file head:", error);
+    return null;
+  }
+}
+
 /**
  * Gets a formatted timestamp for log entries
  */
@@ -67,13 +91,10 @@ async function isLogFileFromToday(): Promise<boolean> {
       return false;
     }
 
-    const content = await readTextFile(LOG_FILE_NAME, {
-      baseDir: BaseDirectory.AppData,
-    });
-    if (!content) return false;
+    const headContent = await readLogFileHead();
+    if (!headContent) return false;
 
-    // Check first line for date marker
-    const firstLine = content.split("\n")[0];
+    const firstLine = headContent.split("\n")[0];
 
     return firstLine.includes(getCurrentDateString());
   } catch (error) {

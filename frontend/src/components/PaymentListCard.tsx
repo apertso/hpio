@@ -10,7 +10,6 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, TrashIcon } from "@heroicons/react/24/solid";
-import { getUpcomingBadgeClasses } from "../utils/paymentColors";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
 
 type PaymentListCardContext = "home" | "payments" | "archive";
@@ -76,113 +75,108 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
   return (
     <div
       data-mobile-list-item-id={payment.id}
-      className={
-        "w-full text-left flex flex-col p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow space-y-3 cursor-pointer " +
-        (className || "")
-      }
+      className={`card-base card-hover w-full text-left flex flex-col p-4 cursor-pointer space-y-3 group ${
+        className || ""
+      }`}
     >
-      <div className="mb-1 relative">
-        <p className="font-medium text-gray-900 dark:text-gray-100 overflow-hidden text-ellipsis">
-          <span className="inline-flex align-middle flex-shrink-0 mr-2">
-            <PaymentIconDisplay payment={payment} sizeClass="h-6 w-6" />
-          </span>
-          <span
-            className="float-right font-bold text-lg text-gray-900 dark:text-gray-100 ml-2"
-            style={{
-              lineHeight: "21px",
-            }}
-          >
+      <div className="flex justify-between items-start gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="mt-1 flex-shrink-0 text-gray-500 dark:text-gray-400 group-hover:text-indigo-500 transition-colors duration-200">
+            <PaymentIconDisplay payment={payment} sizeClass="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p
+              className="font-medium text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 break-words"
+              title={payment.title}
+            >
+              {payment.title}
+            </p>
+            {payment.category?.name && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">
+                {payment.category.name}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <span className="block font-semibold text-lg text-gray-900 dark:text-gray-100">
             {amount}
-            <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
+            <span className="ml-1 text-sm font-normal text-gray-600 dark:text-gray-400">
               ₽
             </span>
           </span>
-          {payment.title}
-        </p>
-      </div>
-
-      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-        <div className="flex items-center gap-2 flex-wrap">
-          {payment.category?.name && (
-            <p className="text-gray-600 dark:text-gray-400">
-              {payment.category.name}
+          {!hideDate && (
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              {displayDate}
             </p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 flex-wrap text-sm text-gray-600 dark:text-gray-400">
-        <div className="flex items-center text-xs gap-2 flex-wrap">
-          {!hideDate && <p>{displayDate}</p>}
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-3">
           {showRecurring && payment.series?.recurrenceRule && (
-            <span className="inline-flex items-center">
-              <ArrowPathIcon className="h-6 w-3.5 mr-1" />
+            <span
+              className="inline-flex items-center text-xs text-gray-500 dark:text-gray-400"
+              title="Повторяющийся платеж"
+            >
+              <ArrowPathIcon className="h-3.5 w-3.5 mr-1.5" />
               {formatRecurrenceRule(payment.series.recurrenceRule)}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {showUpcomingBadge &&
-            (() => {
-              const { badgeClass, iconClass } = getUpcomingBadgeClasses(
-                payment.dueDate
-              );
-              return (
-                <span
-                  className={`inline-flex items-center px-2 py-1 h-6 rounded-full text-xs font-medium ${badgeClass}`}
-                >
-                  <ClockIcon className={`h-3.5 w-3.5 mr-1 ${iconClass}`} />
-                  Предстоящий
-                </span>
-              );
-            })()}
+
+        <div className="flex items-center gap-2">
+          {showUpcomingBadge && (
+            <span className="badge bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
+              <ClockIcon className="h-3 w-3 mr-1" />
+              Предстоящий
+            </span>
+          )}
           {showTodayBadge && (
-            <span className="inline-flex items-center px-2 py-1 h-6 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              <CalendarDaysIcon className="h-3.5 w-3.5 mr-1 text-green-600" />
+            <span className="badge bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-800/30">
+              <CalendarDaysIcon className="h-3 w-3 mr-1" />
               Сегодня
             </span>
           )}
           {showOverdueBadge && (
-            <span className="inline-flex items-center px-2 py-1 h-6 rounded-full text-xs font-medium bg-red-100 text-red-800">
-              <ExclamationCircleIcon className="h-3.5 w-3.5 mr-1 text-red-600" />
+            <span className="badge bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800/30">
+              <ExclamationCircleIcon className="h-3 w-3 mr-1" />
               Просрочен
             </span>
           )}
           {showCompletedBadge && (
-            <span className="inline-flex items-center px-2 py-1 h-6 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              <CheckCircleIcon className="h-3.5 w-3.5 mr-1 text-green-600" />
+            <span className="badge bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
+              <CheckCircleIcon className="h-3 w-3 mr-1 text-green-500 dark:text-green-600/80" />
               Выполнен
             </span>
           )}
           {showDeletedBadge && (
-            <span className="inline-flex items-center px-2 py-1 h-6 rounded-full text-xs font-medium bg-red-100 text-red-800">
-              <TrashIcon className="h-3.5 w-3.5 mr-1 text-red-600" />
+            <span className="badge bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
+              <TrashIcon className="h-3 w-3 mr-1 text-gray-400" />
               Удален
             </span>
           )}
+
           {payment.isVirtual && (
+            <span
+              className="text-blue-400 dark:text-blue-500/80"
+              title="Виртуальный платеж"
+            >
+              <SparklesIcon className="h-4 w-4" />
+            </span>
+          )}
+
+          {payment.filePath && payment.fileName && (
             <button
               type="button"
-              title="Платеж виртуальный, его нельзя редактировать или удалять, он будет создан, как только предыдущий платеж из серии не будет предстоящим"
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500"
+              onClick={handleFileClick}
+              title={payment.fileName}
+              className="text-gray-400 hover:text-indigo-500 dark:text-gray-500 dark:hover:text-indigo-400 transition-colors"
             >
-              <SparklesIcon className="h-6 w-6" />
+              <PaperClipIcon className="h-4 w-4" />
             </button>
           )}
-          {payment.filePath &&
-            payment.fileName &&
-            (onDownloadFile ? (
-              <button
-                type="button"
-                onClick={handleFileClick}
-                title={payment.fileName}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-500"
-              >
-                <PaperClipIcon className="h-6 w-4" />
-              </button>
-            ) : (
-              <PaperClipIcon className="h-6 w-4" />
-            ))}
         </div>
       </div>
     </div>

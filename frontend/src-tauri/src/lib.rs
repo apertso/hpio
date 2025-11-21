@@ -65,6 +65,8 @@ pub fn run() {
       notifications::simulate_app_payment_notification,
       notifications::get_pending_notifications,
       notifications::clear_pending_notifications,
+      notifications::get_notification_service_status,
+      notifications::ping_notification_listener_service,
       notifications::check_battery_optimization_disabled,
       notifications::open_battery_optimization_settings,
       fcm::get_fcm_token,

@@ -1,7 +1,11 @@
 package com.hochuplachu.hpio
 
 import android.app.Notification
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -122,6 +126,14 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    private val heartbeatReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == NotificationPermissionHelper.ACTION_SERVICE_HEARTBEAT_PING) {
+                updateServiceHeartbeat("ping_received")
+            }
+        }
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
 
@@ -131,6 +143,8 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         if (!SUPPORTED_PACKAGES.contains(sbn.packageName)) {
             return
         }
+
+        updateServiceHeartbeat("notification_received")
 
         // Извлекаем данные уведомления один раз
         val notification: Notification = sbn.notification
@@ -222,6 +236,11 @@ class PaymentNotificationListenerService : NotificationListenerService() {
                 LoggerUtil.debug(this, TAG, "Skipping internal notification - not a payment type")
                 return
             }
+        }
+
+        if (notificationType != NotificationType.PAYMENT) {
+            LoggerUtil.info(this, TAG, "Non-payment notification ignored: package=${sbn.packageName}, type=$notificationType, title='$title'")
+            return
         }
 
         // Выполняем дедупликацию и проверку
@@ -353,6 +372,15 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    private fun updateServiceHeartbeat(reason: String) {
+        try {
+            NotificationPermissionHelper.updateNotificationListenerHeartbeat(this)
+            LoggerUtil.debug(this, TAG, "Heartbeat updated: $reason")
+        } catch (e: Exception) {
+            LoggerUtil.error(this, TAG, "Error updating heartbeat ($reason)", e)
+        }
+    }
+
     private fun broadcastNewNotification() {
         try {
             val intent = Intent(ACTION_NEW_NOTIFICATION)
@@ -394,6 +422,7 @@ class PaymentNotificationListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         LoggerUtil.info(this, TAG, "Notification listener connected and ready to receive notifications")
+        updateServiceHeartbeat("listener_connected")
     }
 
     override fun onListenerDisconnected() {
@@ -404,10 +433,29 @@ class PaymentNotificationListenerService : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         LoggerUtil.info(this, TAG, "Notification listener service created")
+        try {
+            val filter = IntentFilter(NotificationPermissionHelper.ACTION_SERVICE_HEARTBEAT_PING)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(heartbeatReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(heartbeatReceiver, filter)
+            }
+            LoggerUtil.debug(this, TAG, "Heartbeat receiver registered")
+        } catch (e: Exception) {
+            LoggerUtil.error(this, TAG, "Error registering heartbeat receiver", e)
+        }
+        updateServiceHeartbeat("service_created")
     }
 
     override fun onDestroy() {
         super.onDestroy()
         LoggerUtil.info(this, TAG, "Notification listener service destroyed")
+        try {
+            unregisterReceiver(heartbeatReceiver)
+            LoggerUtil.debug(this, TAG, "Heartbeat receiver unregistered")
+        } catch (e: Exception) {
+            LoggerUtil.error(this, TAG, "Error unregistering heartbeat receiver", e)
+        }
     }
 }
+

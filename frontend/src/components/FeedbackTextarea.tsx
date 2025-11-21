@@ -93,7 +93,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
         }`}
       >
         <textarea
-          className="block w-full bg-white dark:bg-gray-800 rounded-lg p-3 pr-12 text-sm text-gray-900 dark:text-gray-100 focus:outline-none transition duration-150 ease-in-out resize-none border-0"
+          className="block w-full bg-white dark:bg-gray-900 rounded-lg p-3 pr-12 text-sm text-gray-900 dark:text-gray-100 focus:outline-none transition duration-150 ease-in-out resize-none border-0"
           rows={6}
           placeholder={placeholder}
           value={value}

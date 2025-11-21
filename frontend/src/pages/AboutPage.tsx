@@ -58,7 +58,7 @@ const AboutPage: React.FC = () => {
     <>
       <PageMeta {...metadata} />
 
-      <section className="w-full max-w-4xl mx-auto py-12 px-6 sm:px-8 lg:px-12 bg-white dark:bg-gray-800 rounded-2xl shadow-lg mb-10">
+      <section className="w-full max-w-4xl mx-auto py-12 px-6 sm:px-8 lg:px-12 bg-white dark:bg-gray-800 rounded-2xl shadow-lg mb-10 mt-6 md:mt-10">
         <div className="prose dark:prose-invert max-w-none">
           <div className="text-center mb-12">
             <div className="flex justify-center mb-6">

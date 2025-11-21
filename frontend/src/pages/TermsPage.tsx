@@ -17,7 +17,7 @@ const TermsPage: React.FC = () => {
         className={`w-full max-w-3xl mx-auto ${
           isTauriMobile()
             ? "px-8 pb-8"
-            : "py-8 px-4 sm:px-6 lg:px-8 mb-10 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg"
+            : "py-8 px-4 sm:px-6 lg:px-8 mb-10 mt-6 md:mt-10 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg"
         }`}
       >
         {isTauriMobile() && (

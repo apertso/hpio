@@ -19,6 +19,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 
 object NotificationPermissionHelper {
+    private const val PREFS_NAME_SERVICE_STATE = "service_state"
+    private const val KEY_LAST_HEARTBEAT = "notification_listener_last_heartbeat"
+    const val ACTION_SERVICE_HEARTBEAT_PING = "com.hochuplachu.hpio.SERVICE_HEARTBEAT_PING"
+
     /**
      * Проверяет, имеет ли приложение доступ к уведомлениям (Notification Listener)
      */
@@ -250,6 +254,29 @@ object NotificationPermissionHelper {
             .build()
 
         notificationManager.notify(notificationId, notification)
+    }
+
+    @JvmStatic
+    @Keep
+    fun updateNotificationListenerHeartbeat(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME_SERVICE_STATE, Context.MODE_PRIVATE)
+        prefs.edit().putLong(KEY_LAST_HEARTBEAT, System.currentTimeMillis()).apply()
+    }
+
+    @JvmStatic
+    @Keep
+    fun getNotificationListenerHeartbeat(context: Context): Long {
+        val prefs = context.getSharedPreferences(PREFS_NAME_SERVICE_STATE, Context.MODE_PRIVATE)
+        return prefs.getLong(KEY_LAST_HEARTBEAT, 0L)
+    }
+
+    @JvmStatic
+    @Keep
+    fun pingNotificationListenerService(context: Context) {
+        val intent = Intent(ACTION_SERVICE_HEARTBEAT_PING).apply {
+            setPackage(context.packageName)
+        }
+        context.sendBroadcast(intent)
     }
 
     private const val REQUEST_CODE_POST_NOTIFICATIONS = 1001

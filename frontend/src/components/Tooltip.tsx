@@ -1,23 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
-import ReactDOM from "react-dom";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import Overlay from "./Overlay";
 
 interface TooltipProps {
   content: string;
   children: React.ReactNode;
-  position?: "top" | "bottom" | "left" | "right";
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({
   content,
   children,
-  position = "bottom",
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [translateX, setTranslateX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isSwipingAway, setIsSwipingAway] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const tooltipRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number>(0);
@@ -25,58 +22,12 @@ export const Tooltip: React.FC<TooltipProps> = ({
 
   const isMobile = window.innerWidth < 768; // md breakpoint
 
-  const calculatePosition = () => {
-    if (!triggerRef.current) return;
-
-    const triggerRect = triggerRef.current.getBoundingClientRect();
-    const tooltipWidth = 320; // w-80 = 320px
-    const tooltipHeight = 60; // approximate height
-    const margin = 8;
-
-    let top = 0;
-    let left = 0;
-
-    switch (position) {
-      case "top":
-        top = triggerRect.top - tooltipHeight - margin;
-        left = triggerRect.left + triggerRect.width / 2 - tooltipWidth / 2;
-        break;
-      case "bottom":
-        top = triggerRect.bottom + margin;
-        left = triggerRect.left + triggerRect.width / 2 - tooltipWidth / 2;
-        break;
-      case "left":
-        top = triggerRect.top + triggerRect.height / 2 - tooltipHeight / 2;
-        left = triggerRect.left - tooltipWidth - margin;
-        break;
-      case "right":
-        top = triggerRect.top + triggerRect.height / 2 - tooltipHeight / 2;
-        left = triggerRect.right + margin;
-        break;
-    }
-
-    // Ensure tooltip stays within viewport
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    left = Math.max(
-      margin,
-      Math.min(left, viewportWidth - tooltipWidth - margin)
-    );
-    top = Math.max(
-      margin,
-      Math.min(top, viewportHeight - tooltipHeight - margin)
-    );
-
-    setTooltipPosition({ top, left });
-  };
-
   const toggleTooltip = () => {
     setIsVisible(!isVisible);
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handlePointerOutside = (event: MouseEvent | TouchEvent) => {
       if (
         tooltipRef.current &&
         !tooltipRef.current.contains(event.target as Node)
@@ -85,15 +36,16 @@ export const Tooltip: React.FC<TooltipProps> = ({
       }
     };
 
-    // Only add click outside handler on desktop
-    if (isVisible && !isMobile) {
-      document.addEventListener("mousedown", handleClickOutside);
+    if (isVisible) {
+      document.addEventListener("mousedown", handlePointerOutside, true);
+      document.addEventListener("touchstart", handlePointerOutside, true);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("mousedown", handlePointerOutside, true);
+      document.removeEventListener("touchstart", handlePointerOutside, true);
     };
-  }, [isVisible, isMobile]);
+  }, [isVisible]);
 
   // Reset swipe states when tooltip closes
   useEffect(() => {
@@ -105,12 +57,6 @@ export const Tooltip: React.FC<TooltipProps> = ({
   }, [isVisible]);
 
   // Calculate position when tooltip becomes visible
-  useEffect(() => {
-    if (isVisible) {
-      calculatePosition();
-    }
-  }, [isVisible, position]);
-
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return;
     touchStartXRef.current = e.touches[0].clientX;
@@ -168,43 +114,44 @@ export const Tooltip: React.FC<TooltipProps> = ({
         {children}
       </div>
 
-      {isVisible &&
-        ReactDOM.createPortal(
-          <div
-            ref={tooltipRef}
-            className="fixed z-[100] w-80 max-w-sm"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            style={{
-              top: `${tooltipPosition.top}px`,
-              left: `${tooltipPosition.left}px`,
-              transform: `translateX(${translateX}px)`,
-              opacity: isSwipingAway ? 0 : 1,
-              transition: isDragging
-                ? "none"
-                : isSwipingAway
-                ? "transform 0.5s cubic-bezier(0.4, 0, 0.1, 1), opacity 0.5s ease-out"
-                : "transform 0.3s cubic-bezier(0.4, 0, 0.1, 1)",
-            }}
-          >
-            <div className="bg-gray-900 text-white text-sm rounded-lg shadow-lg p-3 border border-gray-700 touch-pan-y">
-              <div className="flex justify-between items-start">
-                <p className="flex-1">{content}</p>
-                {!isMobile && (
-                  <button
-                    onClick={() => setIsVisible(false)}
-                    className="ml-2 flex-shrink-0 text-gray-400 hover:text-white transition-colors"
-                    aria-label="Закрыть"
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+      <Overlay
+        isOpen={isVisible}
+        anchorRef={triggerRef}
+        widthClass="w-auto"
+        className="!bg-transparent !dark:bg-transparent !border-none !shadow-none !overflow-visible"
+      >
+        <div
+          ref={tooltipRef}
+          className="w-80 max-w-sm touch-pan-y"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            transform: `translateX(${translateX}px)`,
+            opacity: isSwipingAway ? 0 : 1,
+            transition: isDragging
+              ? "none"
+              : isSwipingAway
+              ? "transform 0.5s cubic-bezier(0.4, 0, 0.1, 1), opacity 0.5s ease-out"
+              : "transform 0.3s cubic-bezier(0.4, 0, 0.1, 1)",
+          }}
+        >
+          <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+            <div className="flex items-start justify-between">
+              <p className="flex-1">{content}</p>
+              {!isMobile && (
+                <button
+                  onClick={() => setIsVisible(false)}
+                  className="ml-2 flex-shrink-0 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-white"
+                  aria-label="Close tooltip"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              )}
             </div>
-          </div>,
-          document.body
-        )}
+          </div>
+        </div>
+      </Overlay>
     </>
   );
 };

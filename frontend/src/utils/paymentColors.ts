@@ -70,6 +70,36 @@ const iconColorMap: Record<BuiltinIcon, string> = {
   bolt: "#a16207", // amber-700
   cloud: "#16a34a", // green-600
   fire: "#991b1b", // dark-red-800
+  banknotes: "#22c55e", // green-500 (cash)
+  bank: "#1d4ed8", // blue-700 (institutional)
+  education: "#4f46e5", // indigo-600
+  briefcase: "#78350f", // amber-900 (leather)
+  cake: "#db2777", // pink-600
+  chat: "#2dd4bf", // teal-400
+  computer: "#0891b2", // cyan-700
+  mobile: "#6366f1", // indigo-500
+  internet: "#0284c7", // sky-600
+  key: "#f59e0b", // amber-500
+  lightbulb: "#eab308", // yellow-500
+  location: "#dc2626", // red-600
+  music: "#a855f7", // purple-500
+  puzzle: "#f43f5e", // rose-500
+  qrcode: "#2563eb", // blue-600
+  radio: "#ea580c", // orange-600
+  rocket: "#6366f1", // indigo-500
+  scale: "#a855f7", // purple-500
+  scissors: "#db2777", // pink-600
+  shield: "#059669", // emerald-600
+  ticket: "#f59e0b", // amber-500
+  trophy: "#ca8a04", // yellow-600
+  user: "#f472b6", // pink-400
+  video: "#dc2626", // red-600
+  wallet: "#854d0e", // yellow-800 (leather)
+  bus: "#eab308", // yellow-500
+  coins: "#fbbf24", // amber-400
+  parking: "#3b82f6", // blue-500
+  gas: "#ef4444", // red-500
+  taxi: "#f59e0b", // amber-500
 };
 
 export const getIconColorByName = (name: string): string => {

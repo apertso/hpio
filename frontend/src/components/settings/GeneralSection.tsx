@@ -21,7 +21,7 @@ const GeneralSection: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <SettingsSection>
+      <SettingsSection className="card-base p-6">
         <div className="flex items-start gap-4 mb-6">
           <div className="flex-shrink-0 w-12 h-12 bg-gray-100 dark:bg-gray-800/50 rounded-full flex items-center justify-center">
             <CogIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
@@ -51,7 +51,7 @@ const GeneralSection: React.FC = () => {
         </div>
       </SettingsSection>
 
-      <p className="mt-12 text-center text-xs text-gray-500 dark:text-gray-600">
+      <p className="mt-4 text-center text-xs text-gray-400 dark:text-gray-600">
         Версия приложения: {import.meta.env.VITE_APP_VERSION}
       </p>
     </div>

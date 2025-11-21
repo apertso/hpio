@@ -10,6 +10,7 @@ import { suggestionApi } from "../api/suggestionApi";
 import { merchantRuleApi } from "../api/merchantRuleApi";
 import { normalizeMerchantName } from "../utils/merchantNormalizer";
 import { normalizeNotificationTimestamp } from "../utils/dateUtils";
+import logger from "../utils/logger";
 
 interface ParsedSuggestion {
   id: string;
@@ -126,7 +127,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
         onClose();
       }
     } catch (error) {
-      console.error("Error accepting suggestion:", error);
+      logger.error("Error accepting suggestion:", error);
       showToast("Не удалось добавить платёж", "error");
     } finally {
       setIsProcessing(false);
@@ -151,7 +152,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
         onClose();
       }
     } catch (error) {
-      console.error("Error dismissing suggestion:", error);
+      logger.error("Error dismissing suggestion:", error);
       showToast("Не удалось отклонить предложение", "error");
     } finally {
       setIsProcessing(false);

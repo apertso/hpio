@@ -11,6 +11,11 @@ const emailSentCounter = meter.createCounter("emails.sent", {
 });
 // -----------------------------------------
 
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return String(error);
+};
+
 const transporter = nodemailer.createTransport({
   host: config.smtp.host,
   port: config.smtp.port,
@@ -19,6 +24,11 @@ const transporter = nodemailer.createTransport({
     user: config.smtp.user,
     pass: config.smtp.pass,
   },
+  tls: config.smtp.tlsServername
+    ? {
+        servername: config.smtp.tlsServername,
+      }
+    : undefined,
 });
 
 const createEmailTemplate = (name: string, resetLink: string): string => {
@@ -370,11 +380,13 @@ export const sendDeveloperTestEmail = async (
       status: "success",
     });
   } catch (error) {
-    logger.error(`Failed to send developer test email to ${recipientEmail}:`, error);
+    const errorMessage = getErrorMessage(error);
+    logger.error(`Failed to send developer test email to ${recipientEmail}: ${errorMessage}`);
     emailSentCounter.add(1, {
       "email.type": "developer_test",
       status: "failure",
     });
-    throw error;
+    throw new Error(errorMessage);
   }
 };
+

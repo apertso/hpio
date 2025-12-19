@@ -46,7 +46,8 @@ function getDeviceInfo(): DeviceInfo {
 }
 
 /**
- * Gets the current date in YYYY-MM-DD format
+ * Gets the current date in YYYY-MM-DD format (UTC)
+ * Matches Kotlin logger behavior.
  */
 function getCurrentDateString(): string {
   const now = new Date();
@@ -76,7 +77,8 @@ async function readLogFileHead(): Promise<string | null> {
 }
 
 /**
- * Gets a formatted timestamp for log entries
+ * Gets a formatted timestamp for log entries (UTC)
+ * Matches Kotlin logger format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
  */
 function getTimestamp(): string {
   return new Date().toISOString();
@@ -105,6 +107,7 @@ async function isLogFileFromToday(): Promise<boolean> {
 
 /**
  * Writes a log entry to the file
+ * Uses append mode to avoid race conditions with Kotlin/Rust loggers.
  */
 async function writeToLogFile(level: string, message: string): Promise<void> {
   if (!isTauri() || !isTauriMobile()) {
@@ -117,22 +120,38 @@ async function writeToLogFile(level: string, message: string): Promise<void> {
     const logEntry = `[${timestamp}] [T] [${level}] ${message}\n`;
 
     if (!isFromToday) {
+      // Overwrite file with new header if new day
       const deviceInfo = getDeviceInfo();
       const header = `=== Log Date: ${getCurrentDateString()} ===\n=== Device: ${
         deviceInfo.platform
       } | UA: ${deviceInfo.userAgent} | Version: ${
         deviceInfo.appVersion
       } ===\n`;
-      await writeTextFile(LOG_FILE_NAME, header + logEntry, {
+
+      const file = await open(LOG_FILE_NAME, {
+        write: true,
+        truncate: true,
+        create: true,
         baseDir: BaseDirectory.AppData,
       });
+      try {
+        await file.write(new TextEncoder().encode(header + logEntry));
+      } finally {
+        await file.close();
+      }
     } else {
-      const existingContent = await readTextFile(LOG_FILE_NAME, {
+      // Append safely to existing file
+      const file = await open(LOG_FILE_NAME, {
+        write: true,
+        append: true,
+        create: true,
         baseDir: BaseDirectory.AppData,
       });
-      await writeTextFile(LOG_FILE_NAME, existingContent + logEntry, {
-        baseDir: BaseDirectory.AppData,
-      });
+      try {
+        await file.write(new TextEncoder().encode(logEntry));
+      } finally {
+        await file.close();
+      }
     }
   } catch (error) {
     console.error("Error writing to log file:", error);
@@ -172,6 +191,7 @@ async function logStructuredError(
       structuredLog
     )}\n`;
 
+    // Use same safe write logic
     const isFromToday = await isLogFileFromToday();
     if (!isFromToday) {
       const header = `=== Log Date: ${getCurrentDateString()} ===\n=== Device: ${
@@ -179,16 +199,30 @@ async function logStructuredError(
       } | UA: ${deviceInfo.userAgent} | Version: ${
         deviceInfo.appVersion
       } ===\n`;
-      await writeTextFile(LOG_FILE_NAME, header + logEntry, {
+
+      const file = await open(LOG_FILE_NAME, {
+        write: true,
+        truncate: true,
+        create: true,
         baseDir: BaseDirectory.AppData,
       });
+      try {
+        await file.write(new TextEncoder().encode(header + logEntry));
+      } finally {
+        await file.close();
+      }
     } else {
-      const existingContent = await readTextFile(LOG_FILE_NAME, {
+      const file = await open(LOG_FILE_NAME, {
+        write: true,
+        append: true,
+        create: true,
         baseDir: BaseDirectory.AppData,
       });
-      await writeTextFile(LOG_FILE_NAME, existingContent + logEntry, {
-        baseDir: BaseDirectory.AppData,
-      });
+      try {
+        await file.write(new TextEncoder().encode(logEntry));
+      } finally {
+        await file.close();
+      }
     }
   } catch (err) {
     console.error("Error writing structured error to log file:", err);
@@ -297,6 +331,7 @@ export async function logBreadcrumb(
       breadcrumbData
     )}\n`;
 
+    // Use same safe write logic
     const isFromToday = await isLogFileFromToday();
     if (!isFromToday) {
       const deviceInfo = getDeviceInfo();
@@ -305,16 +340,30 @@ export async function logBreadcrumb(
       } | UA: ${deviceInfo.userAgent} | Version: ${
         deviceInfo.appVersion
       } ===\n`;
-      await writeTextFile(LOG_FILE_NAME, header + logEntry, {
+
+      const file = await open(LOG_FILE_NAME, {
+        write: true,
+        truncate: true,
+        create: true,
         baseDir: BaseDirectory.AppData,
       });
+      try {
+        await file.write(new TextEncoder().encode(header + logEntry));
+      } finally {
+        await file.close();
+      }
     } else {
-      const existingContent = await readTextFile(LOG_FILE_NAME, {
+      const file = await open(LOG_FILE_NAME, {
+        write: true,
+        append: true,
+        create: true,
         baseDir: BaseDirectory.AppData,
       });
-      await writeTextFile(LOG_FILE_NAME, existingContent + logEntry, {
-        baseDir: BaseDirectory.AppData,
-      });
+      try {
+        await file.write(new TextEncoder().encode(logEntry));
+      } finally {
+        await file.close();
+      }
     }
   } catch (error) {
     console.error("Error writing breadcrumb to log file:", error);

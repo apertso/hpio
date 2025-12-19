@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Routes,
   Route,
@@ -78,6 +78,8 @@ const TermsPage = React.lazy(() => import("./pages/TermsPage"));
 const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage"));
 const AboutPage = React.lazy(() => import("./pages/AboutPage"));
 const DownloadPage = React.lazy(() => import("./pages/DownloadPage"));
+const BlogPage = React.lazy(() => import("./pages/BlogPage"));
+const BlogPostPage = React.lazy(() => import("./pages/BlogPostPage"));
 
 const NATIVE_NOTIFICATION_EVENT = "hpio-native-notification";
 
@@ -299,6 +301,8 @@ function App() {
     }
   });
   const [canClearTrash, setCanClearTrash] = useState(false);
+  const isProcessingNotificationsRef = useRef(false);
+  const processNotificationsRef = useRef<(() => Promise<void>) | null>(null);
 
   // --- Logic: Mobile Safe Area ---
   useEffect(() => {
@@ -364,6 +368,13 @@ function App() {
       return;
     }
 
+    // Mutex: предотвращает параллельную обработку уведомлений
+    if (isProcessingNotificationsRef.current) {
+      logger.info("Notification processing already in progress, skipping.");
+      return;
+    }
+    isProcessingNotificationsRef.current = true;
+
     try {
       const devMobileOverride = localStorage.getItem("dev_mobile_override");
       const isActuallyTauri = isTauri();
@@ -393,102 +404,121 @@ function App() {
 
       if (unprocessedNotifications.length > 0) {
         const newKeys = new Set(processedNotificationKeys);
+        let autoCreatedCount = 0;
+        const successfullyProcessedKeys: string[] = [];
 
         for (const notification of unprocessedNotifications) {
-          logger.info(
-            `Processing notification from ${notification.package_name}`
-          );
-
-          if (localStorage.getItem("dev_show_debug_toasts") === "true") {
-            showToast(
-              `New notification: ${notification.package_name}`,
-              "info",
-              3000
-            );
-          }
-
-          const parsed = parseNotification(
-            notification.package_name,
-            notification.text,
-            notification.title
-          );
-
+          const notificationKey = createNotificationKey(notification);
           try {
-            const combinedText = notification.title
-              ? `${notification.title} ${notification.text}`
-              : notification.text;
-            await notificationApi.logTransactionNotification({
-              text: combinedText,
-              from: notification.package_name,
-            });
-          } catch (e) {
-            /* silent fail */
-          }
-
-          if (!parsed) {
-            newKeys.add(createNotificationKey(notification));
-            continue;
-          }
-
-          const normalizedMerchant = normalizeMerchantName(parsed.merchantName);
-          const existingRule = await merchantRuleApi.findRuleByMerchant(
-            normalizedMerchant
-          );
-
-          if (existingRule) {
-            const today = new Date().toISOString().split("T")[0];
-            const completedAt = normalizeNotificationTimestamp(
-              notification.timestamp
+            logger.info(
+              `Processing notification from ${notification.package_name}`
             );
-            try {
-              const payload: any = {
-                title: parsed.merchantName,
-                amount: parsed.amount,
-                dueDate: today,
-                categoryId: existingRule.categoryId,
-                createAsCompleted: true,
-                autoCreated: true,
-              };
-              if (completedAt) payload.completedAt = completedAt;
 
-              const resp = await axiosInstance.post("/payments", payload);
-
-              const handleUndo = async () => {
-                try {
-                  await axiosInstance.delete(
-                    `/payments/${resp.data.id}/permanent`
-                  );
-                  showToast("Создание отменено", "info");
-                } catch (e) {
-                  showToast("Ошибка отмены", "error");
-                }
-              };
-
+            if (localStorage.getItem("dev_show_debug_toasts") === "true") {
               showToast(
-                `Автоплатёж: ${parsed.merchantName} (${existingRule.category?.name})`,
-                "success",
-                8000,
-                { label: "Отменить", onClick: handleUndo }
+                `New notification: ${notification.package_name}`,
+                "info",
+                3000
               );
-            } catch (e) {
-              logger.error("Auto-create failed", e);
             }
-          } else {
-            await suggestionApi.createSuggestion({
-              merchantName: parsed.merchantName,
-              amount: parsed.amount,
-              notificationData: notification.text,
-              notificationTimestamp: notification.timestamp,
-            });
+
+            const parsed = parseNotification(
+              notification.package_name,
+              notification.text,
+              notification.title
+            );
+
+            try {
+              const combinedText = notification.title
+                ? `${notification.title} ${notification.text}`
+                : notification.text;
+              await notificationApi.logTransactionNotification({
+                text: combinedText,
+                from: notification.package_name,
+              });
+            } catch (e) {
+              /* silent fail */
+            }
+
+            if (!parsed) {
+              newKeys.add(notificationKey);
+              successfullyProcessedKeys.push(notificationKey);
+              continue;
+            }
+
+            const normalizedMerchant = normalizeMerchantName(
+              parsed.merchantName
+            );
+            const existingRule = await merchantRuleApi.findRuleByMerchant(
+              normalizedMerchant
+            );
+
+            if (existingRule) {
+              const today = new Date().toISOString().split("T")[0];
+              const completedAt = normalizeNotificationTimestamp(
+                notification.timestamp
+              );
+              try {
+                const payload: any = {
+                  title: parsed.merchantName,
+                  amount: parsed.amount,
+                  dueDate: today,
+                  categoryId: existingRule.categoryId,
+                  createAsCompleted: true,
+                  autoCreated: true,
+                  notificationTimestamp: notification.timestamp,
+                };
+                if (completedAt) payload.completedAt = completedAt;
+
+                logger.info(
+                  `Auto-creating payment: ${parsed.merchantName}, ${parsed.amount}, ts=${notification.timestamp}`
+                );
+
+                await axiosInstance.post("/payments", payload);
+                autoCreatedCount += 1;
+              } catch (e) {
+                logger.error("Auto-create failed", e);
+                // We re-throw or handle here. If we want to retry auto-creation,
+                // we should NOT add to successfullyProcessedKeys.
+                // However, if the error is non-transient (e.g. 400 Bad Request), maybe we should mark as processed?
+                // For now, assuming network/server errors are transient -> do not mark as processed.
+                throw e;
+              }
+            } else {
+              await suggestionApi.createSuggestion({
+                merchantName: parsed.merchantName,
+                amount: parsed.amount,
+                notificationData: notification.text,
+                notificationTimestamp: notification.timestamp,
+              });
+            }
+            newKeys.add(notificationKey);
+            successfullyProcessedKeys.push(notificationKey);
+          } catch (itemError) {
+            logger.error(
+              `Failed to process notification from ${notification.package_name}`,
+              itemError
+            );
+            // Do NOT add to successfullyProcessedKeys, so it remains in the file
           }
-          newKeys.add(createNotificationKey(notification));
+        }
+
+        if (autoCreatedCount > 0) {
+          showToast(
+            `Автоматически добавлено ${autoCreatedCount} платежей.`,
+            "success"
+          );
         }
 
         setProcessedNotificationKeys(newKeys);
         saveProcessedKeysToStorage(newKeys);
 
-        if (isActuallyTauri && !shouldBypassPermissionCheck) {
-          await clearPendingNotifications();
+        if (
+          isActuallyTauri &&
+          !shouldBypassPermissionCheck &&
+          successfullyProcessedKeys.length > 0
+        ) {
+          await clearPendingNotifications(successfullyProcessedKeys);
         }
       }
 
@@ -518,6 +548,8 @@ function App() {
       }
     } catch (error) {
       logger.error("Error in processNotifications:", error);
+    } finally {
+      isProcessingNotificationsRef.current = false;
     }
   }, [
     isAuthenticated,
@@ -527,6 +559,9 @@ function App() {
     suggestionModalDismissed,
     showToast,
   ]);
+
+  // Храним актуальную версию processNotifications в ref для использования в useEffect
+  processNotificationsRef.current = processNotifications;
 
   // --- Logic: Event Listeners ---
   useEffect(() => {
@@ -547,11 +582,12 @@ function App() {
       );
     }
 
-    processNotifications();
+    // Используем ref чтобы избежать бесконечного цикла useEffect
+    processNotificationsRef.current?.();
 
     const handleNativeEvent = () => {
       logger.info("Native notification event");
-      processNotifications();
+      processNotificationsRef.current?.();
     };
 
     window.addEventListener(NATIVE_NOTIFICATION_EVENT, handleNativeEvent);
@@ -561,13 +597,14 @@ function App() {
       import("@tauri-apps/api/event").then(async ({ listen }) => {
         unlistenTauri = await listen("payment-notification-received", () => {
           logger.info("Tauri event received");
-          processNotifications();
+          processNotificationsRef.current?.();
         });
       });
     }
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") processNotifications();
+      if (document.visibilityState === "visible")
+        processNotificationsRef.current?.();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
@@ -576,7 +613,7 @@ function App() {
       document.removeEventListener("visibilitychange", handleVisibility);
       if (unlistenTauri) unlistenTauri();
     };
-  }, [isAuthenticated, processNotifications, navigate]);
+  }, [isAuthenticated, navigate]);
 
   // --- Logic: Handlers ---
   const handleSuggestionProcessed = (id: string) => {
@@ -788,19 +825,25 @@ function App() {
         <nav className="flex gap-6 font-medium">
           <Link
             to="/terms"
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
           >
             Соглашение
           </Link>
           <Link
             to="/privacy"
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
           >
             Приватность
           </Link>
           <Link
+            to="/blog"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+          >
+            Блог
+          </Link>
+          <Link
             to="/about"
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
           >
             О нас
           </Link>
@@ -877,6 +920,8 @@ function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/download" element={<DownloadPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>

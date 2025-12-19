@@ -87,6 +87,20 @@ export const pageMetadata: Record<string, PageConfig> = {
     ogDescription:
       "История создания и цели сервиса для управления личными финансами и контроля расходов.",
   },
+  blog: {
+    ...publicConfig,
+    canonical: "https://hpio.ru/blog",
+    ogTitle: "Блог Хочу Плачу",
+    ogDescription:
+      "Полезные материалы о личных финансах, управлении платежами и сравнении сервисов.",
+  },
+  blogPost: {
+    ...publicConfig,
+    ogType: "article",
+    ogTitle: "Блог Хочу Плачу",
+    ogDescription:
+      "Полезные материалы о личных финансах, управлении платежами и сравнении сервисов.",
+  },
 
   // Private pages
   dashboard: {

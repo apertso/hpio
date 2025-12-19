@@ -14,6 +14,7 @@ import {
 import { offlineStorage, OfflineData } from "../utils/offlineStorage";
 import logger from "../utils/logger";
 import { useToast } from "./ToastContext";
+import { useAuth } from "./AuthContext";
 
 interface OfflineContextType {
   connectionStatus: ConnectionStatus;
@@ -53,6 +54,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
   children,
 }) => {
   const { showToast } = useToast();
+  const { isAuthenticated } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
     syncService.getConnectionStatus()
   );
@@ -164,8 +166,8 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
       setQueueStats(stats);
     };
 
-    // Initial sync if online
-    if (syncService.isOnline()) {
+    // Initial sync if online and authenticated
+    if (syncService.isOnline() && isAuthenticated) {
       syncService.syncAllData().catch((error) => {
         logger.error("Initial sync failed:", error);
       });

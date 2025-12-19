@@ -1469,7 +1469,7 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* График платежной нагрузки по дням/часам */}
-                <div className="lg:col-span-3 card-base p-6 flex flex-col h-full min-h-80">
+                <div className="lg:col-span-3 card-base p-6 flex flex-col h-full min-h-80 max-h-[360px]">
                   <div className="mb-6">
                     <p className="text-base font-medium text-gray-900 dark:text-white">
                       Платежная нагрузка {isHourly ? "по часам" : "по дням"}
@@ -1483,7 +1483,7 @@ const HomePage: React.FC = () => {
                       Нет данных о платежной нагрузке за этот период.
                     </div>
                   ) : (
-                    <div className="relative flex-1 w-full min-h-[200px]">
+                    <div className="relative flex-1 w-full min-h-[200px] max-h-[360px] min-h-0">
                       <CustomDailySpendingChart
                         data={chartData}
                         labels={chartLabels}

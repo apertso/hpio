@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import logger from "../utils/logger"; // Используем простой логгер на фронтенде
 import userApi from "../api/userApi"; // <-- ADD THIS
 import { isTauriMobile } from "../utils/platform";
+import getErrorMessage from "../utils/getErrorMessage";
 
 export interface User {
   id: string;
@@ -41,19 +42,6 @@ interface AuthContextProps {
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
-
-// Type guard for error with response
-function isAxiosErrorWithMessage(
-  error: unknown
-): error is { response: { data: { message: string } } } {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "response" in error &&
-    typeof (error as unknown as { response?: { data?: { message?: unknown } } })
-      .response?.data?.message === "string"
-  );
-}
 
 const USER_STORAGE_KEY = "user";
 
@@ -317,12 +305,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logger.info("Login successful");
         navigate("/dashboard"); // Перенаправить на главную страницу после входа
       } catch (error: unknown) {
-        let message = "Ошибка входа";
-        if (isAxiosErrorWithMessage(error)) {
-          message = error.response.data.message;
-        } else if (error instanceof Error) {
-          message = error.message;
-        }
+        const message = getErrorMessage(error) || "Ошибка входа";
         logger.error("Login failed:", message);
         setLoading(false);
         throw new Error(message); // Пробросить ошибку для отображения в UI
@@ -374,12 +357,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logger.info("Registration successful");
         navigate("/dashboard"); // Перенаправить на главную страницу после регистрации
       } catch (error: unknown) {
-        let message = "Ошибка регистрации";
-        if (isAxiosErrorWithMessage(error)) {
-          message = error.response.data.message;
-        } else if (error instanceof Error) {
-          message = error.message;
-        }
+        const message = getErrorMessage(error) || "Ошибка регистрации";
         logger.error("Registration failed:", message);
         setLoading(false);
         throw new Error(message);

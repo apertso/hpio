@@ -10,6 +10,7 @@ import Feedback from "./Feedback";
 import Suggestion from "./Suggestion";
 import MerchantCategoryRule from "./MerchantCategoryRule";
 import TransactionNotification from "./TransactionNotification";
+import BlogPost from "./BlogPost";
 
 const sequelizeConfig: Options = {
   host: config.database.host,
@@ -52,6 +53,7 @@ interface Db {
   Suggestion: Model & Associate;
   MerchantCategoryRule: Model & Associate;
   TransactionNotification: Model;
+  BlogPost: Model;
   // Add other models here with & Associate if they have an associate method
   [key: string]: any; // Allow indexing with strings for other potential properties
 }
@@ -68,6 +70,7 @@ const db = {
   Suggestion: Suggestion(sequelize, DataTypes),
   MerchantCategoryRule: MerchantCategoryRule(sequelize, DataTypes),
   TransactionNotification: TransactionNotification(sequelize, DataTypes),
+  BlogPost: BlogPost(sequelize, DataTypes),
   // Сюда же можно добавить Category, Notification и другие модели
 };
 

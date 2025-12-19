@@ -143,17 +143,26 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   // Effect to populate the form with initial data
   useEffect(() => {
     if (initialData) {
-      // В режиме редактирования серии «Срок оплаты» берём из series.generatedUntil (или сегодня, если его нет)
+      // В режиме редактирования серии «Срок оплаты» берём из series.generatedUntil (или даты последнего платежа)
       let dueDateForForm = new Date(initialData.dueDate);
+      if (Number.isNaN(dueDateForForm.getTime())) {
+        dueDateForForm = new Date();
+      }
       if (editScope === "series") {
-        const generatedUntil = initialData.series
-          ? (
-              initialData.series as {
-                generatedUntil?: string | null;
-              }
-            ).generatedUntil
-          : undefined;
-        dueDateForForm = generatedUntil ? new Date(generatedUntil) : new Date();
+        const rawSeriesDate =
+          (initialData.series
+            ? (
+                initialData.series as {
+                  generatedUntil?: string | null;
+                }
+              ).generatedUntil
+            : null) || initialData.dueDate;
+        if (rawSeriesDate) {
+          const parsedSeriesDate = new Date(rawSeriesDate);
+          if (!Number.isNaN(parsedSeriesDate.getTime())) {
+            dueDateForForm = parsedSeriesDate;
+          }
+        }
       }
       const dataToSet = {
         title:
@@ -199,7 +208,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         dueDate: new Date(),
         categoryId: null,
         recurrenceRule: null,
-        remind: false,
+        remind: true,
       });
       setManualIconName(null);
       setAttachedFile(null);
@@ -267,6 +276,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           if (!seriesId) {
             throw new Error("Series ID not found for editing.");
           }
+          const rawSeriesStartDate =
+            initialData?.series?.generatedUntil || initialData?.dueDate || null;
+          let derivedStartDate = data.dueDate;
+          if (rawSeriesStartDate) {
+            const parsed = new Date(rawSeriesStartDate);
+            if (!Number.isNaN(parsed.getTime())) {
+              derivedStartDate = parsed;
+            }
+          }
           const payload = {
             title: data.title,
             amount: Number(data.amount),
@@ -274,7 +292,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             recurrenceRule: data.recurrenceRule,
             builtinIconName: builtinIconForPayload,
             cutOffPaymentId: paymentId,
-            startDate: formatDateToLocal(data.dueDate),
+            startDate: formatDateToLocal(derivedStartDate),
+            remind: data.remind ?? false,
           };
           await seriesApi.updateSeries(seriesId, payload);
           logger.info(`Recurring series updated (ID: ${seriesId})`);
@@ -295,6 +314,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
         if (markAsCompleted) {
           payload.createAsCompleted = true;
+          if (data.completedAt) {
+            payload.completedAt = data.completedAt.toISOString();
+          }
         }
 
         const res = await axiosInstance.post("/payments", payload);
@@ -395,9 +417,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const watchDueDate = watch("dueDate");
   const watchCategoryId = watch("categoryId");
   const currentRule = watch("recurrenceRule");
+  const watchCompletedAt = watch("completedAt");
   const categoryIconName = findCategoryIcon(watchCategoryId);
-  const iconSelectorDisabled = !!watchCategoryId;
-  const iconSelectorDisplayIcon = iconSelectorDisabled
+  const iconSelectorReadOnly = !!watchCategoryId;
+  const iconSelectorDisplayIcon = iconSelectorReadOnly
     ? categoryIconName || null
     : manualIconName;
 
@@ -419,6 +442,30 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   };
 
   // Определяем, показывать ли блок повторения
+  useEffect(() => {
+    const shouldSyncCompletion =
+      paymentStatus === "completed" || (markAsCompleted && !isEditMode);
+
+    if (!shouldSyncCompletion || !watchDueDate || watchCompletedAt) {
+      return;
+    }
+
+    const completionDate = new Date(watchDueDate);
+    if (Number.isNaN(completionDate.getTime())) {
+      return;
+    }
+
+    completionDate.setHours(12, 0, 0, 0);
+    setValue("completedAt", completionDate, { shouldValidate: true });
+  }, [
+    paymentStatus,
+    markAsCompleted,
+    isEditMode,
+    watchDueDate,
+    watchCompletedAt,
+    setValue,
+  ]);
+
   const wasSeriesPayment = !!initialData?.seriesId;
   const showRecurrence =
     (isEditMode && editScope === "series") || // Editing the series itself
@@ -452,12 +499,24 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               showSeriesStartHint={editScope === "series"}
             />
 
-            <PaymentCategorySelect
-              errors={errors}
-              setValue={setValue}
-              watchCategoryId={watchCategoryId}
-              isSubmitting={isSubmitting}
-            />
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="md:w-1/3">
+                <IconSelector
+                  selectedIconName={iconSelectorDisplayIcon}
+                  onIconChange={handleIconChange}
+                  isFormSubmitting={isSubmitting}
+                  isReadOnly={iconSelectorReadOnly}
+                />
+              </div>
+              <div className="md:flex-1">
+                <PaymentCategorySelect
+                  errors={errors}
+                  setValue={setValue}
+                  watchCategoryId={watchCategoryId}
+                  isSubmitting={isSubmitting}
+                />
+              </div>
+            </div>
 
             {editScope === "single" && (
               <label className="flex items-center gap-3 cursor-pointer">
@@ -491,13 +550,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 Напоминать
               </span>
             </label>
-
-            <IconSelector
-              selectedIconName={iconSelectorDisplayIcon}
-              onIconChange={handleIconChange}
-              isFormSubmitting={isSubmitting}
-              isDisabled={iconSelectorDisabled}
-            />
 
             {!isEditMode && (
               <label className="flex items-center gap-3 cursor-pointer">
@@ -538,7 +590,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 placeholder="Выберите дату и время выполнения"
                 showTimeSelect
                 timeFormat="HH:mm"
-                dateFormat="yyyy-MM-dd HH:mm"
+                dateFormat="dd.MM.yyyy"
               />
             )}
           </div>

@@ -1,0 +1,75 @@
+name: Release (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v1.2.3"
+        required: true
+        type: string
+      release_name:
+        description: "Display name (defaults to tag)"
+        required: false
+        type: string
+      notes:
+        description: "Release notes (markdown)"
+        required: false
+        type: string
+      publish:
+        description: "Publish immediately (false = create draft)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    name: Package and Draft Release
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find the successful build run for the current commit
+          RUN_ID=$(gh run list --workflow=build.yml --commit=${{ github.sha }} --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No successful build found for commit ${{ github.sha }}. Ensure the 'Build & Package' workflow has completed successfully."
+            exit 1
+          fi
+
+          echo "Downloading artifacts from run $RUN_ID..."
+          gh run download $RUN_ID -n frontend-dist -D frontend/dist
+          gh run download $RUN_ID -n frontend-storybook -D frontend/storybook-static
+          gh run download $RUN_ID -n backend-dist -D backend/dist
+
+      - name: Package artifacts
+        run: |
+          mkdir -p release-assets
+          tar -czf release-assets/frontend-dist.tar.gz -C frontend dist
+          tar -czf release-assets/storybook-static.tar.gz -C frontend storybook-static
+          tar -czf release-assets/backend-dist.tar.gz -C backend dist
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.release_name != '' && inputs.release_name || inputs.tag }}
+          body: ${{ inputs.notes }}
+          draft: ${{ inputs.publish != true }}
+          files: |
+            release-assets/frontend-dist.tar.gz
+            release-assets/storybook-static.tar.gz
+            release-assets/backend-dist.tar.gz
+          target_commitish: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -175,6 +175,19 @@ Empty state messages must be contextual and reflect the current view or filter. 
 - "Архив пуст" - Archive tab
 - "Корзина пуста" - Trash tab
 
+## Backend Architecture
+
+### Service-Model Responsibility
+
+Each database model should be accessible only from the corresponding service that serves the model.
+- **Exceptions**:
+  - **Includes/Joins**: It is permissible to export the Model class (e.g. `SeriesModel`) from the service to allow other services to include it in Sequelize queries for joins.
+  - **Transactions**: Services may accept transaction objects to participate in cross-service atomic operations.
+
+**Examples:**
+- `db.RecurringSeries` should be accessed directly only in `seriesService.ts`. Other services (like `paymentService.ts`) must import helper functions from `seriesService.ts`.
+- `db.Payment` should be accessed directly only in `paymentService.ts`.
+
 ## Recurring Payments
 
 ### Generation Logic

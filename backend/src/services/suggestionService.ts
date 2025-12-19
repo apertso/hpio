@@ -1,6 +1,6 @@
 import db from "../models";
 import logger from "../config/logger";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 
 interface SuggestionData {
   merchantName: string;
@@ -55,7 +55,6 @@ export const createSuggestion = async (
           merchantName: data.merchantName,
           amount: data.amount,
           notificationData: data.notificationData,
-          status: "pending",
           notificationTimestamp: {
             [Op.gte]: threeSecondsAgo,
           },
@@ -86,6 +85,24 @@ export const createSuggestion = async (
 
     return suggestion;
   } catch (error) {
+    // Обработка race condition: если уникальный индекс сработал, возвращаем существующую запись
+    if (error instanceof UniqueConstraintError) {
+      logger.info(
+        `Race condition handled: duplicate suggestion for user ${userId}, fetching existing`
+      );
+      const existing = await db.Suggestion.findOne({
+        where: {
+          userId,
+          notificationData: data.notificationData,
+          ...(data.notificationTimestamp !== undefined
+            ? { notificationTimestamp: data.notificationTimestamp }
+            : {}),
+        },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
     logger.error(`Error creating suggestion for user ${userId}:`, error);
     throw new Error("Не удалось создать предложение.");
   }

@@ -1,0 +1,2 @@
+- Everything is drawn with particles except for dot's glow and block's shadow.
+- The glow and shadow appear immediately after assembly finishes and hides when dispersal starts.

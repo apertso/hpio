@@ -78,7 +78,9 @@ export async function getPendingNotifications(): Promise<
 /**
  * Очищает список ожидающих уведомлений (Android only)
  */
-export async function clearPendingNotifications(): Promise<void> {
+export async function clearPendingNotifications(
+  processedKeys: string[] = []
+): Promise<void> {
   // Only attempt to call Tauri APIs if actually running in Tauri
   if (!isTauri()) {
     return;
@@ -86,7 +88,7 @@ export async function clearPendingNotifications(): Promise<void> {
 
   try {
     const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("clear_pending_notifications");
+    await invoke("clear_pending_notifications", { processedKeys });
   } catch (error) {
     logger.error("Failed to clear pending notifications:", error);
     throw error;
@@ -192,6 +194,34 @@ export async function openBatteryOptimizationSettings(): Promise<void> {
   }
 }
 
+export async function checkAutostartEnabled(): Promise<boolean> {
+  if (!isTauri()) {
+    return false;
+  }
+
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return await invoke<boolean>("check_autostart_enabled");
+  } catch (error) {
+    logger.error("Failed to check autostart status:", error);
+    return false;
+  }
+}
+
+export async function openAutostartSettings(): Promise<void> {
+  if (!isTauri()) {
+    throw new Error("Autostart settings only available in Tauri environment");
+  }
+
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("open_autostart_settings");
+  } catch (error) {
+    logger.error("Failed to open autostart settings:", error);
+    throw error;
+  }
+}
+
 export async function getNotificationServiceHeartbeat(): Promise<
   number | null
 > {
@@ -225,5 +255,19 @@ export async function pingNotificationService(): Promise<void> {
   } catch (error) {
     logger.error("Failed to ping notification service:", error);
     throw error;
+  }
+}
+
+export async function getDeviceManufacturer(): Promise<string> {
+  if (!isTauri()) {
+    return "";
+  }
+
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return await invoke<string>("get_device_manufacturer");
+  } catch (error) {
+    logger.error("Failed to get device manufacturer:", error);
+    return "";
   }
 }

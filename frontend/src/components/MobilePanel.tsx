@@ -43,8 +43,6 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
     }
   }, [shouldClose, isOpen, handleClose]);
 
-  if (!isOpen) return null;
-
   const handleBackdropClick = useCallback(() => {
     const sinceOpenMs = performance.now() - openedAtRef.current;
     if (sinceOpenMs < 350) {
@@ -52,6 +50,8 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
     }
     handleClose();
   }, [handleClose]);
+
+  if (!isOpen) return null;
 
   return ReactDOM.createPortal(
     <div className="md:hidden" aria-modal="true" role="dialog">

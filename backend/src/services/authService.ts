@@ -11,6 +11,7 @@ import fs from "fs/promises";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./emailService";
 import crypto from "crypto";
 import { StorageFactory } from "./storage/StorageFactory";
+import { deleteAllUserSeries } from "./seriesService";
 
 // Вспомогательная функция для валидации пароля
 const validatePassword = (password: string): string | null => {
@@ -415,7 +416,7 @@ export const deleteUserAccount = async (userId: string) => {
     // Сначала удаляем платежи, так как они могут ссылаться на другие таблицы
     await db.Payment.destroy({ where: { userId }, transaction });
     // Затем удаляем серии, которые также могут иметь зависимости
-    await db.RecurringSeries.destroy({ where: { userId }, transaction });
+    await deleteAllUserSeries(userId, transaction); // <-- REFACTORED
     // После этого удаляем категории
     await db.Category.destroy({ where: { userId }, transaction });
 

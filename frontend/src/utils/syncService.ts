@@ -228,6 +228,17 @@ class SyncService {
 
     // Не синхронизируем данные если последняя синхронизация была менее 5 минут назад (если не принудительно)
     const MIN_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    // Если время последней синхронизации не в памяти, попробуем загрузить из хранилища
+    if (!this.lastSyncTime) {
+      try {
+        const storedLastSync = await offlineStorage.getLastSync();
+        if (storedLastSync) {
+          this.lastSyncTime = storedLastSync;
+        }
+      } catch (e) {
+        // Игнорируем ошибку чтения, продолжим синхронизацию
+      }
+    }
     if (
       !force &&
       this.lastSyncTime &&

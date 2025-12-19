@@ -60,6 +60,62 @@ const initialFilterState: FilterState = {
   hasFile: "all",
 };
 
+const PAYMENTS_STATE_STORAGE_KEY = "paymentsPageState";
+const NO_CATEGORY_FILTER_VALUE = "__NO_CATEGORY__";
+
+const isBooleanFilterValue = (
+  value: unknown
+): value is FilterState["isRecurring"] => {
+  return value === "all" || value === "true" || value === "false";
+};
+
+const getStoredFilterState = (): FilterState | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(PAYMENTS_STATE_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const filters = (parsed as { filters?: Partial<FilterState> }).filters;
+    if (!filters || typeof filters !== "object") {
+      return null;
+    }
+
+    const search = typeof filters.search === "string" ? filters.search : "";
+    const categoryId =
+      typeof filters.categoryId === "string"
+        ? filters.categoryId
+        : filters.categoryId === null
+        ? null
+        : null;
+    const isRecurring = isBooleanFilterValue(filters.isRecurring)
+      ? filters.isRecurring
+      : "all";
+    const hasFile = isBooleanFilterValue(filters.hasFile)
+      ? filters.hasFile
+      : "all";
+
+    return {
+      search,
+      categoryId,
+      isRecurring,
+      hasFile,
+    };
+  } catch (error) {
+    logger.error("Failed to read saved payments filters", error);
+    return null;
+  }
+};
+
 type MobileActionsOverlayProps = {
   payment: PaymentData | null;
   shouldClose: boolean;
@@ -169,12 +225,13 @@ const PaymentsPage: React.FC = () => {
   const metadata = getPageMetadata("payments");
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as PaymentTabType) || "active";
+  const storedFiltersRef = useRef<FilterState | null>(getStoredFilterState());
 
   const [activeFilters, setActiveFilters] = useState<FilterState>(
-    initialFilterState
+    storedFiltersRef.current || initialFilterState
   );
   const [draftFilters, setDraftFilters] = useState<FilterState>(
-    initialFilterState
+    storedFiltersRef.current || initialFilterState
   );
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -232,6 +289,21 @@ const PaymentsPage: React.FC = () => {
 
     return () => setHeaderRightAction(null);
   }, [activeFilters, isSearchVisible, setHeaderRightAction]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        PAYMENTS_STATE_STORAGE_KEY,
+        JSON.stringify({ filters: activeFilters })
+      );
+    } catch (error) {
+      logger.error("Failed to store payments filters", error);
+    }
+  }, [activeFilters]);
 
   const applyDraftFilters = () => {
     setActiveFilters(draftFilters);
@@ -1047,6 +1119,7 @@ const PaymentsPage: React.FC = () => {
             <Select
               options={[
                 { value: null, label: "Все категории" },
+                { value: NO_CATEGORY_FILTER_VALUE, label: "Без категории" },
                 ...(categories?.map((c) => ({ value: c.id, label: c.name })) || []),
               ]}
               value={draftFilters.categoryId}

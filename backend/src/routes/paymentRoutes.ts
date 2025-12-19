@@ -68,10 +68,7 @@ router.get("/list", async (req: Request, res: Response) => {
         | "true"
         | "false"
         | undefined,
-      hasFile: normalizeQueryParam(hasFile) as
-        | "true"
-        | "false"
-        | undefined,
+      hasFile: normalizeQueryParam(hasFile) as "true" | "false" | undefined,
     };
     const payments = await getFilteredPayments(req.user!.id, filterParams);
     res.json(payments);

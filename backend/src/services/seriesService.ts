@@ -5,7 +5,12 @@ import {
 } from "../models/RecurringSeries";
 import { RecurringSeriesCreationAttributes } from "../models/RecurringSeries";
 import logger from "../config/logger";
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
+import { RRule } from "rrule";
+import { normalizeDateToUTC } from "../utils/dateUtils";
+
+// Export the model for includes in other services
+export const SeriesModel = db.RecurringSeries;
 
 /**
  * Get a recurring series by ID and user ID.
@@ -15,7 +20,8 @@ import { Op } from "sequelize";
  */
 export const getRecurringSeriesById = async (
   seriesId: string,
-  userId: string
+  userId: string,
+  transaction?: Transaction
 ): Promise<RecurringSeriesInstance | null> => {
   try {
     const series = await db.RecurringSeries.findOne({
@@ -27,11 +33,371 @@ export const getRecurringSeriesById = async (
         { model: db.User, as: "user" },
         { model: db.Category, as: "category" },
       ],
+      transaction,
     });
     return series;
   } catch (error) {
     logger.error(`Error getting recurring series by ID ${seriesId}:`, error);
     throw error;
+  }
+};
+
+/**
+ * Get a recurring series by ID (internal use/system jobs).
+ * @param seriesId - The ID of the recurring series.
+ * @returns The recurring series instance or null.
+ */
+export const getRecurringSeriesByIdInternal = async (
+  seriesId: string,
+  transaction?: Transaction
+): Promise<RecurringSeriesInstance | null> => {
+  try {
+    const series = await db.RecurringSeries.findOne({
+      where: { id: seriesId },
+      transaction,
+    });
+    return series;
+  } catch (error) {
+    logger.error(
+      `Error getting recurring series internal by ID ${seriesId}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+/**
+ * Get active recurring series for a user.
+ * @param userId - The ID of the user.
+ * @returns An array of active recurring series instances.
+ */
+export const getActiveRecurringSeries = async (
+  userId: string
+): Promise<RecurringSeriesInstance[]> => {
+  try {
+    const series = await db.RecurringSeries.findAll({
+      where: {
+        userId: userId,
+        isActive: true,
+      },
+    });
+    return series;
+  } catch (error) {
+    logger.error(
+      `Error getting active recurring series for user ${userId}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+/**
+ * Get active recurring series for a user with category included.
+ * @param userId - The ID of the user.
+ * @returns An array of active recurring series instances.
+ */
+export const getActiveRecurringSeriesWithCategory = async (
+  userId: string
+): Promise<RecurringSeriesInstance[]> => {
+  try {
+    const series = await db.RecurringSeries.findAll({
+      where: { userId: userId, isActive: true },
+      include: [
+        {
+          model: db.Category,
+          as: "category",
+          attributes: ["id", "name", "builtinIconName"],
+        },
+      ],
+    });
+    return series;
+  } catch (error) {
+    logger.error(
+      `Error getting active recurring series with category for user ${userId}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+/**
+ * Get ALL active recurring series (system-wide).
+ * @returns An array of all active recurring series.
+ */
+export const getAllActiveRecurringSeries = async (): Promise<
+  RecurringSeriesInstance[]
+> => {
+  try {
+    const series = await db.RecurringSeries.findAll({
+      where: { isActive: true },
+    });
+    return series;
+  } catch (error) {
+    logger.error("Error getting all active recurring series:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update the 'generatedUntil' field of a series.
+ * @param seriesId - The ID of the recurring series.
+ * @param generatedUntil - The new date.
+ * @param transaction - Optional transaction.
+ */
+export const updateSeriesGeneratedUntil = async (
+  seriesId: string,
+  generatedUntil: string | Date,
+  transaction?: Transaction
+) => {
+  try {
+    let dateStr: string | undefined;
+    if (generatedUntil instanceof Date) {
+      dateStr = generatedUntil.toISOString().split("T")[0];
+    } else {
+      dateStr = generatedUntil;
+    }
+
+    await db.RecurringSeries.update(
+      { generatedUntil: dateStr },
+      { where: { id: seriesId }, transaction }
+    );
+  } catch (error) {
+    logger.error(
+      `Error updating generatedUntil for series ${seriesId}:`,
+      error
+    );
+    throw error;
+  }
+};
+
+/**
+ * Deactivate a series (set isActive = false).
+ * @param seriesId - The ID of the recurring series.
+ * @param transaction - Optional transaction.
+ */
+export const deactivateSeries = async (
+  seriesId: string,
+  transaction?: Transaction
+) => {
+  try {
+    await db.RecurringSeries.update(
+      { isActive: false },
+      { where: { id: seriesId }, transaction }
+    );
+    logger.info(`Deactivated series ${seriesId}.`);
+  } catch (error) {
+    logger.error(`Error deactivating series ${seriesId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Activate a series (set isActive = true).
+ * @param seriesId - The ID of the recurring series.
+ * @param transaction - Optional transaction.
+ */
+export const activateSeries = async (
+  seriesId: string,
+  transaction?: Transaction
+) => {
+  try {
+    await db.RecurringSeries.update(
+      { isActive: true },
+      { where: { id: seriesId }, transaction }
+    );
+    logger.info(`Activated series ${seriesId}.`);
+  } catch (error) {
+    logger.error(`Error activating series ${seriesId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Delete orphaned series (those not in the provided list of IDs).
+ * @param validSeriesIds - Array of valid series IDs.
+ * @returns The number of deleted series.
+ */
+export const deleteOrphanedSeries = async (
+  validSeriesIds: string[]
+): Promise<number> => {
+  try {
+    const deletedCount = await db.RecurringSeries.destroy({
+      where: {
+        id: {
+          [Op.notIn]: validSeriesIds,
+        },
+      },
+    });
+    return deletedCount;
+  } catch (error) {
+    logger.error("Error deleting orphaned series:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete all series for a user.
+ * @param userId - The ID of the user.
+ * @param transaction - Optional transaction.
+ */
+export const deleteAllUserSeries = async (
+  userId: string,
+  transaction?: Transaction
+) => {
+  try {
+    await db.RecurringSeries.destroy({ where: { userId }, transaction });
+  } catch (error) {
+    logger.error(`Error deleting all series for user ${userId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Calculate the next due date for a series.
+ * @param series - The recurring series instance.
+ * @param boundaryDate - The boundary date (exclusive start for search).
+ * @returns The next due date or null.
+ */
+export const calculateNextDueDateForSeries = (
+  series: RecurringSeriesInstance,
+  boundaryDate: Date
+): Date | null => {
+  try {
+    const options = RRule.parseString(series.recurrenceRule);
+    options.dtstart = normalizeDateToUTC(new Date(series.startDate));
+    const rule = new RRule(options);
+    const nextDueDate = rule.after(normalizeDateToUTC(boundaryDate), false);
+
+    const seriesEndDate = series.recurrenceEndDate
+      ? new Date(series.recurrenceEndDate)
+      : null;
+
+    if (seriesEndDate) {
+      // Normalize seriesEndDate to end of day for comparison if needed,
+      // but standard comparison works if nextDueDate is normalized.
+      // If nextDueDate > seriesEndDate, it's invalid.
+      if (nextDueDate && nextDueDate > seriesEndDate) {
+        return null;
+      }
+    }
+    return nextDueDate;
+  } catch (e) {
+    logger.error(`Error calculating next due date for series ${series.id}`, e);
+    return null;
+  }
+};
+
+/**
+ * Checks if a series should be deactivated based on a completed payment date.
+ * Also updates generatedUntil if needed.
+ * @returns The updated series (or found series) and whether it is still active.
+ */
+export const processSeriesAfterPaymentCompletion = async (
+  seriesId: string,
+  paymentDueDate: Date
+): Promise<{ series: RecurringSeriesInstance | null; isActive: boolean }> => {
+  const series = await db.RecurringSeries.findOne({ where: { id: seriesId } });
+  if (!series) {
+    return { series: null, isActive: false };
+  }
+
+  const normalizedPaymentDate = new Date(paymentDueDate);
+  normalizedPaymentDate.setHours(0, 0, 0, 0);
+
+  let isActive = series.isActive;
+
+  if (series.recurrenceEndDate) {
+    const seriesEndDate = new Date(series.recurrenceEndDate);
+    seriesEndDate.setHours(0, 0, 0, 0);
+    if (normalizedPaymentDate >= seriesEndDate) {
+      isActive = false;
+      if (series.isActive) {
+        await series.update({ isActive: false });
+        logger.info(
+          `Recurring series ${series.id} deactivated as completed payment was on/after recurrenceEndDate.`
+        );
+      }
+    }
+  }
+
+  if (isActive) {
+    // Update generatedUntil if valid
+    try {
+      const currentBoundary = series.generatedUntil
+        ? new Date(series.generatedUntil)
+        : null;
+      if (!currentBoundary || paymentDueDate > currentBoundary) {
+        let dateStr: string | undefined;
+        if (paymentDueDate instanceof Date) {
+          dateStr = paymentDueDate.toISOString().split("T")[0];
+        } else {
+          dateStr = paymentDueDate;
+        }
+        await series.update({ generatedUntil: dateStr });
+      }
+    } catch (e) {
+      logger.warn(
+        `Could not update generatedUntil for series ${series.id}.`,
+        e
+      );
+    }
+  }
+
+  return { series, isActive };
+};
+
+/**
+ * Creates a new recurring series from a payment.
+ * Note: Does NOT generate the next payment instance automatically to avoid circular dependency.
+ * The caller is responsible for triggering next payment generation if needed.
+ * @param userId - The ID of the user.
+ * @param seriesData - Data for the new series.
+ * @returns The created recurring series instance.
+ */
+export const createRecurringSeries = async (
+  userId: string,
+  seriesData: {
+    title: string;
+    amount: number;
+    categoryId?: string | null;
+    startDate: string;
+    recurrenceRule: string;
+    recurrenceEndDate?: Date | null;
+    builtinIconName?: string | null;
+    remind: boolean;
+  }
+): Promise<RecurringSeriesInstance> => {
+  try {
+    const newSeries = await db.RecurringSeries.create({
+      userId: userId,
+      title: seriesData.title,
+      amount: seriesData.amount,
+      categoryId: seriesData.categoryId || null,
+      startDate: seriesData.startDate,
+      recurrenceRule: seriesData.recurrenceRule,
+      recurrenceEndDate: seriesData.recurrenceEndDate,
+      builtinIconName: seriesData.builtinIconName || null,
+      remind: seriesData.remind,
+      isActive: true,
+    });
+
+    logger.info(
+      `Created new recurring series (ID: ${newSeries.id}, User: ${userId})`
+    );
+
+    // Initialize generatedUntil with the start date
+    try {
+      await newSeries.update({ generatedUntil: seriesData.startDate });
+    } catch (e) {
+      logger.warn(
+        `Could not initialize generatedUntil for series ${newSeries.id}. Field may not exist in DB yet.`
+      );
+    }
+
+    return newSeries;
+  } catch (error: any) {
+    logger.error(`Error creating recurring series for user ${userId}:`, error);
+    throw new Error(error.message || "Failed to create recurring series.");
   }
 };
 
@@ -138,6 +504,7 @@ export const updateRecurringSeries = async (
       cutOffPayment.categoryId = newSeries.categoryId;
       cutOffPayment.builtinIconName = newSeries.builtinIconName;
       cutOffPayment.dueDate = startDate; // The dueDate becomes the new startDate
+      cutOffPayment.remind = newSeries.remind;
       await cutOffPayment.save({ transaction });
       logger.info(
         `Updated payment ${cutOffPayment.id} to be the first of new series ${newSeries.id}.`
@@ -181,6 +548,8 @@ export const updateRecurringSeries = async (
         paymentUpdates.categoryId = newSeriesData.categoryId;
       if (newSeriesData.builtinIconName !== undefined)
         paymentUpdates.builtinIconName = newSeriesData.builtinIconName;
+      if (newSeriesData.remind !== undefined)
+        paymentUpdates.remind = newSeriesData.remind;
 
       await cutOffPayment.update(paymentUpdates, { transaction });
       logger.info(

@@ -64,6 +64,7 @@ export interface IconSelectorProps {
   onIconChange: (iconName: BuiltinIcon | null) => void;
   isFormSubmitting?: boolean;
   isDisabled?: boolean;
+  isReadOnly?: boolean;
 }
 
 const IconSelector: React.FC<IconSelectorProps> = ({
@@ -71,16 +72,18 @@ const IconSelector: React.FC<IconSelectorProps> = ({
   onIconChange,
   isFormSubmitting,
   isDisabled,
+  isReadOnly,
 }) => {
   const { isOpen, setIsOpen, containerRef } = useDropdown();
   const [searchTerm, setSearchTerm] = useState("");
   useEffect(() => {
-    if (isDisabled && isOpen) {
+    if ((isDisabled || isReadOnly) && isOpen) {
       setIsOpen(false);
       setSearchTerm("");
     }
-  }, [isDisabled, isOpen, setIsOpen]);
-  const isInteractionLocked = isFormSubmitting || isDisabled;
+  }, [isDisabled, isReadOnly, isOpen, setIsOpen]);
+  const isSelectionLocked = isFormSubmitting || isDisabled || isReadOnly;
+  const isTriggerDisabled = isFormSubmitting || isDisabled;
 
   const filteredIcons = useMemo(() => {
     if (!searchTerm) return builtinIcons;
@@ -92,7 +95,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
   }, [searchTerm]);
 
   const handleSelectBuiltinIcon = (iconName: BuiltinIcon) => {
-    if (isInteractionLocked) return;
+    if (isSelectionLocked) return;
     onIconChange(iconName);
     setIsOpen(false);
     setSearchTerm(""); // Reset search on select
@@ -100,7 +103,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
 
   const handleClearIcon = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (isInteractionLocked) return;
+    if (isSelectionLocked) return;
     onIconChange(null);
   };
 
@@ -129,82 +132,71 @@ const IconSelector: React.FC<IconSelectorProps> = ({
   };
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
         Иконка
       </label>
 
       <div ref={containerRef} className="relative">
-        {/* Trigger Button */}
-        <div
+        <button
+          type="button"
           onClick={() => {
-            if (isInteractionLocked) return;
+            if (isSelectionLocked) return;
             setIsOpen(!isOpen);
-            // Focus search input when opening? We can't easily ref the input inside Overlay here before render.
-            // But standard behavior is fine.
-            if (!isOpen) setSearchTerm(""); // Reset search on open
+            if (!isOpen) setSearchTerm("");
           }}
-          className={`flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border transition-all duration-200 ${
+          className={`relative block w-full rounded-xl bg-white dark:bg-gray-900 px-3 pr-12 py-2.5 text-base text-gray-900 dark:text-gray-100 shadow-sm border transition-colors text-left flex items-center gap-3 ${
             isOpen
               ? "border-indigo-500 ring-2 ring-indigo-500/20"
-              : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600"
+              : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
           } ${
-            isInteractionLocked
-              ? "cursor-not-allowed opacity-70"
-              : "cursor-pointer"
+            isTriggerDisabled
+              ? "cursor-not-allowed opacity-70 bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500"
+              : isReadOnly
+              ? "cursor-default"
+              : "cursor-pointer focus:outline-none focus:ring-3 focus:ring-indigo-500"
           }`}
+          disabled={isTriggerDisabled}
         >
-          <div className="flex items-center gap-3">
-            <div
-              className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full border transition-colors ${
+          <span className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="flex items-center">
+              <IconDisplay iconName={selectedIconName} sizeClass="h-5 w-5" />
+            </span>
+            <span
+              className={`text-base truncate ${
                 selectedIconName
-                  ? "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white"
-                  : "bg-gray-50 dark:bg-gray-800 border-dashed border-gray-300 dark:border-gray-600 text-gray-400"
+                  ? "text-gray-900 dark:text-gray-100"
+                  : "text-gray-500 dark:text-gray-400"
               }`}
             >
-              <IconDisplay iconName={selectedIconName} sizeClass="h-6 w-6" />
-            </div>
-            <div className="flex flex-col">
-              <span
-                className={`text-sm font-medium ${
-                  selectedIconName
-                    ? "text-gray-900 dark:text-gray-100"
-                    : "text-gray-500 dark:text-gray-400"
-                }`}
-              >
-                {selectedIconName
-                  ? iconTranslations[selectedIconName] || "Неизвестная"
-                  : "Выберите иконку"}
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {selectedIconName ? "Нажмите для изменения" : "Из списка"}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedIconName && !isDisabled && (
-              <button
-                type="button"
-                onClick={handleClearIcon}
-                disabled={isInteractionLocked}
-                className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 z-10"
-                title="Удалить иконку"
-              >
-                <XCircleIcon className="h-5 w-5" />
-              </button>
-            )}
-            <ChevronDownIcon
-              className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${
-                isOpen ? "rotate-180" : ""
-              }`}
-            />
-          </div>
-        </div>
+              {selectedIconName
+                ? iconTranslations[selectedIconName] || selectedIconName
+                : "Выбрать иконку"}
+            </span>
+          </span>
+        </button>
+        {selectedIconName && !isDisabled && !isReadOnly && (
+          <button
+            type="button"
+            onClick={handleClearIcon}
+            disabled={isSelectionLocked}
+            className="absolute right-11 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 bg-white dark:bg-gray-900"
+            title="Удалить иконку"
+          >
+            <XCircleIcon className="h-5 w-5" />
+          </button>
+        )}
+        {!isReadOnly && (
+          <ChevronDownIcon
+            className={`absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-transform duration-200 pointer-events-none ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        )}
 
         {/* Overlay */}
         <Overlay
-          isOpen={!isDisabled && isOpen}
+          isOpen={!isDisabled && !isReadOnly && isOpen}
           anchorRef={containerRef}
           widthClass="w-[340px]"
           className="p-3"
@@ -234,7 +226,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
                 key={iconName}
                 type="button"
                 onClick={() => handleSelectBuiltinIcon(iconName)}
-                disabled={isInteractionLocked}
+                disabled={isSelectionLocked}
                 className={`aspect-square flex items-center justify-center rounded-xl transition-all duration-200 disabled:opacity-50 outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800
                   ${
                     selectedIconName === iconName

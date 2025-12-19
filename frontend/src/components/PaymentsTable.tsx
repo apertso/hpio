@@ -119,7 +119,9 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
       thClassName: `${thBaseClassName} w-36`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
-      cell: (payment) => <>{new Date(payment.dueDate).toLocaleDateString("ru-RU")}</>,
+      cell: (payment) => (
+        <>{new Date(payment.dueDate).toLocaleDateString("ru-RU")}</>
+      ),
     },
     {
       id: "category",

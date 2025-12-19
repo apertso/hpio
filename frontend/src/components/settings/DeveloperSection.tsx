@@ -15,9 +15,12 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import logger from "../../utils/logger";
 import ConfirmModal from "../ConfirmModal";
 import userApi from "../../api/userApi";
+import ParticleNotification from "../ParticleNotification";
 
 const DeveloperSection: React.FC = () => {
   const { showToast } = useToast();
+  const [showParticleNotification, setShowParticleNotification] =
+    useState(false);
   const [mobileOverride, setMobileOverride] = useState<string>(() =>
     typeof window !== "undefined"
       ? localStorage.getItem("dev_mobile_override") || "-"
@@ -359,6 +362,22 @@ const DeveloperSection: React.FC = () => {
             </div>
           </div>
         )}
+
+        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex items-start gap-3 mb-4">
+            <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+              Демонстрация Particle Notification
+            </h4>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowParticleNotification(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+            >
+              Показать тестовое уведомление
+            </button>
+          </div>
+        </div>
       </SettingsSection>
 
       <ConfirmModal
@@ -369,6 +388,12 @@ const DeveloperSection: React.FC = () => {
         message="Вы уверены, что хотите очистить все логи? Это действие нельзя будет отменить."
         confirmText="Очистить"
         isConfirming={isClearingLogs}
+      />
+
+      <ParticleNotification
+        text="Тестовое уведомление"
+        isOpen={showParticleNotification}
+        onClose={() => setShowParticleNotification(false)}
       />
     </div>
   );

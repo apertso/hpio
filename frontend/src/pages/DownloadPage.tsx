@@ -10,6 +10,8 @@ import {
 import { Button } from "../components/Button";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import { DeviceMockup } from "../components/DeviceMockup";
+import { useTheme } from "../context/ThemeContext";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.6.0";
 
@@ -116,6 +118,7 @@ const Step = ({
 
 const DownloadPage: React.FC = () => {
   const metadata = getPageMetadata("download");
+  const { resolvedTheme } = useTheme();
 
   return (
     <>
@@ -126,24 +129,40 @@ const DownloadPage: React.FC = () => {
         {/* Hero Header */}
         <section className="relative py-20 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-indigo-50/50 to-transparent dark:from-indigo-950/10 dark:to-transparent pointer-events-none" />
-          <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-            <div className="inline-flex items-center justify-center p-2 mb-6 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700">
-              <DevicePhoneMobileIcon className="w-5 h-5 text-gray-500 mr-2" />
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-300 pr-2">
-                Android Release
-              </span>
+          <div className="max-w-6xl mx-auto px-6 relative z-10">
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              <div className="flex-1 text-center md:text-left">
+                <div className="inline-flex items-center justify-center p-2 mb-6 bg-white dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700">
+                  <DevicePhoneMobileIcon className="w-5 h-5 text-gray-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300 pr-2">
+                    Android Release
+                  </span>
+                </div>
+                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6">
+                  Установите{" "}
+                  <span className="text-indigo-600 dark:text-indigo-400">
+                    Хочу Плачу
+                  </span>
+                </h1>
+                <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
+                  Полный контроль над финансами без интернета.{" "}
+                  <br className="hidden sm:inline" />
+                  Официальные сборки для Android устройств.
+                </p>
+              </div>
+
+              <div className="flex-1 flex justify-center md:justify-end">
+                <div className="transform rotate-3 hover:rotate-0 transition-transform duration-500 scale-90 md:scale-100">
+                  <DeviceMockup
+                    type="mobile"
+                    src={`/hero/mobile-${
+                      resolvedTheme === "dark" ? "dark" : "light"
+                    }.png`}
+                    alt="Mobile App Preview"
+                  />
+                </div>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6">
-              Установите{" "}
-              <span className="text-indigo-600 dark:text-indigo-400">
-                Хочу Плачу
-              </span>
-            </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed">
-              Полный контроль над финансами без интернета.{" "}
-              <br className="hidden sm:inline" />
-              Официальные сборки для Android устройств.
-            </p>
           </div>
         </section>
 

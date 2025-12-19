@@ -42,10 +42,7 @@ router.get("/", async (req: Request, res: Response) => {
         | "true"
         | "false"
         | undefined,
-      hasFile: normalizeQueryParam(hasFile) as
-        | "true"
-        | "false"
-        | undefined,
+      hasFile: normalizeQueryParam(hasFile) as "true" | "false" | undefined,
     };
     const archivedPayments = await getArchivedPayments(
       req.user!.id,

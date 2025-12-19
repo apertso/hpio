@@ -53,6 +53,7 @@ const WEEK_DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 const TIME_STEP_MINUTES = 30;
 const DEFAULT_DATE_FORMAT = "dd.MM.yyyy";
 const DEFAULT_TIME_FORMAT = "HH:mm";
+const DATE_FORMAT_TIME_TOKEN_REGEX = /(H{1,2}|h{1,2}|m{1,2}|s{1,2})/;
 const RANGE_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
   day: "2-digit",
   month: "short",
@@ -177,6 +178,10 @@ const formatDateValue = (
 
   const base = formatWithTokens(date, dateFormat);
   if (!includeTime) {
+    return base;
+  }
+
+  if (DATE_FORMAT_TIME_TOKEN_REGEX.test(dateFormat)) {
     return base;
   }
 

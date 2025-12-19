@@ -375,7 +375,7 @@ pub fn get_pending_notifications() -> Result<Vec<PendingNotification>, String> {
 }
 
 #[tauri::command]
-pub fn clear_pending_notifications() -> Result<(), String> {
+pub fn clear_pending_notifications(processed_keys: Vec<String>) -> Result<(), String> {
     #[cfg(target_os = "android")]
     {
         use std::fs;
@@ -423,10 +423,50 @@ pub fn clear_pending_notifications() -> Result<(), String> {
         let mut file_path = PathBuf::from(files_dir);
         file_path.push("pending_notifications.json");
 
-        if file_path.exists() {
-            fs::write(&file_path, "[]")
-                .map_err(|e| format!("Failed to clear notifications file: {:?}", e))?;
+        if !file_path.exists() {
+            return Ok(());
         }
+
+        // If no keys provided, do nothing (safety check)
+        if processed_keys.is_empty() {
+            return Ok(());
+        }
+
+        // Read current file content
+        let content = fs::read_to_string(&file_path)
+            .map_err(|e| format!("Failed to read notifications file: {:?}", e))?;
+
+        if content.is_empty() {
+            return Ok(());
+        }
+
+        let json_array: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse JSON: {:?}", e))?;
+
+        let mut remaining_notifications = Vec::new();
+        if let Some(array) = json_array.as_array() {
+            for item in array {
+                // Construct the key for this notification to match frontend logic
+                // Key format: timestamp_packageName_text
+                let package_name = item.get("packageName").and_then(|v| v.as_str()).unwrap_or("");
+                let text = item.get("text").and_then(|v| v.as_str()).unwrap_or("");
+                let timestamp = item.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0);
+
+                let key = format!("{}_{}_{}", timestamp, package_name, text);
+
+                // If this key is NOT in the processed list, keep it
+                if !processed_keys.contains(&key) {
+                    remaining_notifications.push(item.clone());
+                }
+            }
+        }
+
+        // Write back remaining notifications
+        let new_content = serde_json::to_string(&remaining_notifications)
+            .map_err(|e| format!("Failed to serialize JSON: {:?}", e))?;
+
+        fs::write(&file_path, new_content)
+            .map_err(|e| format!("Failed to update notifications file: {:?}", e))?;
 
         Ok(())
     }
@@ -592,5 +632,141 @@ pub fn open_battery_optimization_settings() -> Result<(), String> {
     #[cfg(not(target_os = "android"))]
     {
         Err("This feature is only available on Android".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn check_autostart_enabled() -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        use jni::{AttachGuard, JavaVM};
+        use std::os::raw::c_void;
+
+        let ctx = ndk_context::android_context();
+        let vm_ptr = ctx.vm() as *mut c_void;
+        let vm = unsafe { JavaVM::from_raw(vm_ptr as *mut jni::sys::JavaVM) }
+            .map_err(|e| format!("Failed to get JavaVM: {:?}", e))?;
+
+        let mut env: AttachGuard = vm
+            .attach_current_thread()
+            .map_err(|e| format!("Failed to attach thread: {:?}", e))?;
+
+        let context =
+            unsafe { jni::objects::JObject::from_raw(ctx.context() as *mut jni::sys::_jobject) };
+
+        let helper_class = env
+            .find_class("com/hochuplachu/hpio/NotificationPermissionHelper")
+            .map_err(|e| format!("Failed to find helper class: {:?}", e))?;
+
+        let is_enabled = env
+            .call_static_method(
+                helper_class,
+                "isAutostartEnabled",
+                "(Landroid/content/Context;)Z",
+                &[JValue::Object(&context)],
+            )
+            .map_err(|e| format!("Failed to call method: {:?}", e))?;
+
+        let result = is_enabled
+            .z()
+            .map_err(|e| format!("Failed to get boolean result: {:?}", e))?;
+
+        Ok(result)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+pub fn open_autostart_settings() -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JValue;
+        use jni::{AttachGuard, JavaVM};
+        use std::os::raw::c_void;
+
+        let ctx = ndk_context::android_context();
+        let vm_ptr = ctx.vm() as *mut c_void;
+        let vm = unsafe { JavaVM::from_raw(vm_ptr as *mut jni::sys::JavaVM) }
+            .map_err(|e| format!("Failed to get JavaVM: {:?}", e))?;
+
+        let mut env: AttachGuard = vm
+            .attach_current_thread()
+            .map_err(|e| format!("Failed to attach thread: {:?}", e))?;
+
+        let context =
+            unsafe { jni::objects::JObject::from_raw(ctx.context() as *mut jni::sys::_jobject) };
+
+        let helper_class = env
+            .find_class("com/hochuplachu/hpio/NotificationPermissionHelper")
+            .map_err(|e| format!("Failed to find helper class: {:?}", e))?;
+
+        env.call_static_method(
+            helper_class,
+            "openAutostartSettings",
+            "(Landroid/content/Context;)V",
+            &[JValue::Object(&context)],
+        )
+        .map_err(|e| format!("Failed to call method: {:?}", e))?;
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Err("This feature is only available on Android".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn get_device_manufacturer() -> Result<String, String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::JString;
+        use jni::{AttachGuard, JavaVM};
+        use std::os::raw::c_void;
+
+        let ctx = ndk_context::android_context();
+        let vm_ptr = ctx.vm() as *mut c_void;
+        let vm = unsafe { JavaVM::from_raw(vm_ptr as *mut jni::sys::JavaVM) }
+            .map_err(|e| format!("Failed to get JavaVM: {:?}", e))?;
+
+        let mut env: AttachGuard = vm
+            .attach_current_thread()
+            .map_err(|e| format!("Failed to attach thread: {:?}", e))?;
+
+        let helper_class = env
+            .find_class("com/hochuplachu/hpio/NotificationPermissionHelper")
+            .map_err(|e| format!("Failed to find helper class: {:?}", e))?;
+
+        let manufacturer_value = env
+            .call_static_method(
+                helper_class,
+                "getDeviceManufacturer",
+                "()Ljava/lang/String;",
+                &[],
+            )
+            .map_err(|e| format!("Failed to call method: {:?}", e))?;
+
+        let manufacturer_obj = manufacturer_value
+            .l()
+            .map_err(|e| format!("Failed to get object result: {:?}", e))?;
+
+        let manufacturer_jstring = JString::from(manufacturer_obj);
+        let manufacturer: String = env
+            .get_string(&manufacturer_jstring)
+            .map_err(|e| format!("Failed to read string: {:?}", e))?
+            .into();
+
+        Ok(manufacturer)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(String::new())
     }
 }

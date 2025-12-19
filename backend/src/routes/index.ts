@@ -11,6 +11,7 @@ import feedbackRoutes from "./feedbackRoutes";
 import suggestionRoutes from "./suggestionRoutes";
 import merchantRuleRoutes from "./merchantRuleRoutes";
 import notificationRoutes from "./notificationRoutes";
+import blogRoutes from "./blogRoutes";
 // Импортируйте другие маршруты
 
 const router = Router();
@@ -27,6 +28,7 @@ router.use("/feedback", feedbackRoutes);
 router.use("/suggestions", suggestionRoutes);
 router.use("/merchant-rules", merchantRuleRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/blog", blogRoutes);
 // Используйте другие маршруты:
 
 export default router;

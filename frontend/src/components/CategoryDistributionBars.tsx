@@ -25,11 +25,12 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
 
   // Calculate total amount for percentage calculation
   const totalAmount = data.reduce((sum, category) => sum + category.amount, 0);
+  const sortedData = [...data].sort((a, b) => b.amount - a.amount);
 
   return (
     <div className="flex h-full">
       <div className="w-full">
-        {data.map((category, index) => {
+        {sortedData.map((category, index) => {
           const percentage =
             totalAmount > 0 ? (category.amount / totalAmount) * 100 : 0;
           const color = colors[index % colors.length];
@@ -47,7 +48,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
                 {category.name}
               </span>
               {/* Progress bar - col-span-8 */}
-              <div className="md:col-span-8 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div className="md:col-span-8 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 overflow-hidden">
                 <div
                   className="h-2.5 rounded-full"
                   style={{
@@ -64,7 +65,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
           );
         })}
         {/* Mobile layout */}
-        {data.map((category, index) => {
+        {sortedData.map((category, index) => {
           const percentage =
             totalAmount > 0 ? (category.amount / totalAmount) * 100 : 0;
           const color = colors[index % colors.length];
@@ -87,7 +88,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
                 </span>
               </div>
               {/* Progress bar below */}
-              <div className="bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div className="bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 overflow-hidden">
                 <div
                   className="h-2.5 rounded-full"
                   style={{

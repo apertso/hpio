@@ -1,5 +1,6 @@
 import db from "../models";
 import logger from "../config/logger";
+import { Op } from "sequelize";
 
 interface TransactionNotificationData {
   text: string;
@@ -10,6 +11,25 @@ export const logTransactionNotification = async (
   data: TransactionNotificationData
 ) => {
   try {
+    // Проверяем дубликаты за последние 10 секунд
+    const tenSecondsAgo = new Date(Date.now() - 10 * 1000);
+    const existing = await db.TransactionNotification.findOne({
+      where: {
+        text: data.text,
+        from: data.from,
+        createdAt: {
+          [Op.gte]: tenSecondsAgo,
+        },
+      },
+    });
+
+    if (existing) {
+      logger.info(
+        `Duplicate transaction notification detected (id: ${existing.id}), skipping creation.`
+      );
+      return existing;
+    }
+
     logger.info("transaction", {
       text: data.text,
       from: data.from,

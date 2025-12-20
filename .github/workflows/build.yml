@@ -2,11 +2,11 @@ name: Build & Package
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: "22"
 
 permissions:
   contents: read
@@ -36,7 +36,7 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: npm run test:run -- --runInBand
+        run: npm run test:run -- --no-file-parallelism
 
       - name: Build app
         run: npm run build

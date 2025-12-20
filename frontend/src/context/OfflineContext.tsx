@@ -6,11 +6,8 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
-import {
-  syncService,
-  ConnectionStatus,
-  QueueStats,
-} from "../utils/syncService";
+import { syncService, QueueStats } from "../utils/syncService";
+import { ConnectionStatus } from "../types/connection";
 import { offlineStorage, OfflineData } from "../utils/offlineStorage";
 import logger from "../utils/logger";
 import { useToast } from "./ToastContext";
@@ -83,7 +80,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
   }, []);
 
   // Функция для отображения тоста об отсутствии соединения с throttling
-  const showOfflineToast = () => {
+  const showOfflineToast = React.useCallback(() => {
     const now = Date.now();
     const lastToastAt = lastOfflineToastTimeRef.current;
     const timeSinceLastToast = now - lastToastAt;
@@ -115,7 +112,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
         5000
       );
     }, 500);
-  };
+  }, [showToast]);
 
   useEffect(() => {
     const handleConnectionChange = (status: ConnectionStatus) => {
@@ -192,7 +189,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
         handleOfflineApiRequest
       );
     };
-  }, []);
+  }, [isAuthenticated, showOfflineToast, showToast]);
 
   const syncData = async () => {
     try {

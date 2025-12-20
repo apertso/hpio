@@ -110,7 +110,7 @@ export const NumberFieldExample: Story = {
 
 export const NumberFieldWithSuffix: Story = {
   name: "NumberFieldWithSuffix",
-  render: () => {
+  render: function Render() {
     const [value, setValue] = useState(1);
 
     return (

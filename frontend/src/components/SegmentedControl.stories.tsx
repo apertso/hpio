@@ -30,7 +30,7 @@ export const Default: Story = {
   args: {
     options: defaultOptions,
   },
-  render: (args) => {
+  render: function Render(args) {
     const [selected, setSelected] = useState<TimeRangeOption>("1d");
 
     return (

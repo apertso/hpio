@@ -55,6 +55,8 @@ fn append_to_android_logs(log_line: &str) -> bool {
   if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_path) {
     let _ = file.write_all(log_line.as_bytes());
     return true;
+  } else {
+    eprintln!("Failed to open log file for appending");
   }
 
   false
@@ -106,41 +108,60 @@ fn setup_panic_hook() {
 pub fn run() {
   setup_panic_hook();
 
-  tauri::Builder::default()
-    .plugin(tauri_plugin_fs::init())
-    .plugin(tauri_plugin_http::init())
-    .plugin(tauri_plugin_os::init())
-    .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_clipboard_manager::init())
-    .invoke_handler(tauri::generate_handler![
-      notifications::check_notification_permission,
-      notifications::open_notification_settings,
-      notifications::check_app_notification_permission,
-      notifications::request_app_notification_permission,
-      notifications::open_app_notification_settings,
-      notifications::simulate_app_payment_notification,
-      notifications::get_pending_notifications,
-      notifications::clear_pending_notifications,
-      notifications::get_notification_service_status,
-      notifications::ping_notification_listener_service,
-      notifications::check_battery_optimization_disabled,
-      notifications::open_battery_optimization_settings,
-      notifications::check_autostart_enabled,
-      notifications::open_autostart_settings,
-      fcm::get_fcm_token,
-      fcm::get_pending_navigation,
-      fcm::clear_pending_navigation
-    ])
-    .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
+  let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    tauri::Builder::default()
+      .plugin(tauri_plugin_fs::init())
+      .plugin(tauri_plugin_http::init())
+      .plugin(tauri_plugin_os::init())
+      .plugin(tauri_plugin_dialog::init())
+      .plugin(tauri_plugin_clipboard_manager::init())
+      .invoke_handler(tauri::generate_handler![
+        notifications::check_notification_permission,
+        notifications::open_notification_settings,
+        notifications::check_app_notification_permission,
+        notifications::request_app_notification_permission,
+        notifications::open_app_notification_settings,
+        notifications::simulate_app_payment_notification,
+        notifications::get_pending_notifications,
+        notifications::clear_pending_notifications,
+        notifications::get_notification_service_status,
+        notifications::ping_notification_listener_service,
+        notifications::check_battery_optimization_disabled,
+        notifications::open_battery_optimization_settings,
+        notifications::check_autostart_enabled,
+        notifications::open_autostart_settings,
+        fcm::get_fcm_token,
+        fcm::get_pending_navigation,
+        fcm::clear_pending_navigation
+      ])
+      .setup(|app| {
+        if cfg!(debug_assertions) {
+          app.handle().plugin(
+            tauri_plugin_log::Builder::default()
+              .level(log::LevelFilter::Info)
+              .build(),
+          )?;
+        }
+        Ok(())
+      })
+      .run(tauri::generate_context!())
+  }));
+
+  match result {
+    Ok(run_result) => {
+      if let Err(e) = run_result {
+        let error_log = format!(
+          "[{}] [R] [ERROR] [TAURI_RUN_ERROR] {{\"message\":\"{}\"}}\n",
+          chrono::Utc::now().to_rfc3339(),
+          e.to_string().replace("\"", "\\\"")
+        );
+        eprintln!("{}", error_log);
+        #[cfg(target_os = "android")]
+        append_to_android_logs(&error_log);
       }
-      Ok(())
-    })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    }
+    Err(_) => {
+      eprintln!("Recovered from panic in tauri run");
+    }
+  }
 }

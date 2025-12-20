@@ -392,6 +392,7 @@ const HomePage: React.FC = () => {
   // Effect to trigger the fetch on mount and when upcomingDays changes
   useEffect(() => {
     executeFetchUpcomingPayments(upcomingDays);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [upcomingDays, resetKey]); // Removed executeFetchUpcomingPayments to prevent infinite loop
 
   // --- Состояние для данных дашборда ---
@@ -554,7 +555,7 @@ const HomePage: React.FC = () => {
           );
           endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           break;
-        case "1w":
+        case "1w": {
           // Start from Monday of current week
           const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
           const monday = new Date(now);
@@ -563,6 +564,7 @@ const HomePage: React.FC = () => {
           startDate = monday;
           endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           break;
+        }
         case "1m":
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
           endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -806,7 +808,7 @@ const HomePage: React.FC = () => {
     if (derivedTimeRange !== timeRange) {
       setTimeRange(derivedTimeRange);
     }
-  }, [periodType, year, month, customDateFrom, customDateTo]);
+  }, [periodType, year, month, customDateFrom, customDateTo, timeRange]);
 
   // Эффект для сохранения timeRange в localStorage при изменении
   useEffect(() => {
@@ -849,9 +851,9 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const closeMobilePanel = () => {
+  const closeMobilePanel = useCallback(() => {
     setShouldCloseMobilePanel(true);
-  };
+  }, []);
 
   useEffect(() => {
     if (!selectedMobilePaymentId) return;
@@ -1338,7 +1340,7 @@ const HomePage: React.FC = () => {
                 setTimeRange(option);
 
                 switch (option) {
-                  case "1d":
+                  case "1d": {
                     setPeriodType("custom");
                     // Start from today
                     setCustomDateFrom(
@@ -1348,7 +1350,8 @@ const HomePage: React.FC = () => {
                       new Date(now.getFullYear(), now.getMonth(), now.getDate())
                     );
                     break;
-                  case "1w":
+                  }
+                  case "1w": {
                     setPeriodType("custom");
                     // Start from Monday of current week
                     const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -1362,17 +1365,20 @@ const HomePage: React.FC = () => {
                       new Date(now.getFullYear(), now.getMonth(), now.getDate())
                     );
                     break;
-                  case "1m":
+                  }
+                  case "1m": {
                     setPeriodType("month");
                     // Use current month from the 1st day
                     setMonth(now.getMonth());
                     setYear(now.getFullYear());
                     break;
-                  case "1y":
+                  }
+                  case "1y": {
                     setPeriodType("year");
                     // Use current year from the 1st day
                     setYear(now.getFullYear());
                     break;
+                  }
                 }
 
                 // Reset the flag after a short delay

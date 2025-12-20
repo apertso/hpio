@@ -10,6 +10,7 @@ import {
 import { PaymentData } from "../types/paymentData";
 import logger from "./logger";
 import { AxiosHeaders, AxiosRequestConfig, AxiosResponse, Method } from "axios";
+import { ConnectionStatus } from "../types/connection";
 
 interface Category {
   id: string;
@@ -17,11 +18,7 @@ interface Category {
   builtinIconName?: string | null;
 }
 
-export enum ConnectionStatus {
-  ONLINE = "online",
-  OFFLINE = "offline",
-  SYNCING = "syncing",
-}
+export { ConnectionStatus };
 
 export interface QueueStats {
   total: number;
@@ -235,7 +232,7 @@ class SyncService {
         if (storedLastSync) {
           this.lastSyncTime = storedLastSync;
         }
-      } catch (e) {
+      } catch {
         // Игнорируем ошибку чтения, продолжим синхронизацию
       }
     }

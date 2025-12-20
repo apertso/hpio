@@ -67,6 +67,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
     queueStats.inProgress,
     syncStatus.message,
     queueStats.total,
+    displayState,
   ]);
 
   if (!isAuthenticated || displayState === "idle") {

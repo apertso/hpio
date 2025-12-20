@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useContext,
   useMemo,
+  useCallback,
 } from "react";
 
 type Theme = "light" | "dark" | "system";
@@ -56,11 +57,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [resolvedTheme]);
 
   // Функция для изменения темы пользователем
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem("theme", newTheme); // Сохраняем выбор пользователя
     // TODO: Возможно, отправить выбор темы на бэкенд в настройки пользователя
-  };
+  }, []);
 
   const value = useMemo(
     () => ({

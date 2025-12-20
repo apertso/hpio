@@ -69,31 +69,31 @@ const Toast: React.FC<ToastProps> = ({
     }
   };
 
-  const startProgress = () => {
-    const startAt = Date.now();
-    const startProgress = progress; // Resume from current progress
-
-    progressIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startAt;
-      const newProgress = Math.min(
-        startProgress + (elapsed / duration) * 100,
-        100
-      );
-      setProgress(newProgress);
-
-      if (newProgress >= 100 && !isPaused) {
-        clearTimers();
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-          timerRef.current = null;
-        }
-        setIsVisible(false);
-        setTimeout(() => onClose(id), 700);
-      }
-    }, 50);
-  };
-
   useEffect(() => {
+    const startProgress = () => {
+      const startAt = Date.now();
+      const startProgressVal = progress; // Resume from current progress
+
+      progressIntervalRef.current = setInterval(() => {
+        const elapsed = Date.now() - startAt;
+        const newProgress = Math.min(
+          startProgressVal + (elapsed / duration) * 100,
+          100
+        );
+        setProgress(newProgress);
+
+        if (newProgress >= 100 && !isPaused) {
+          clearTimers();
+          if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+          }
+          setIsVisible(false);
+          setTimeout(() => onClose(id), 700);
+        }
+      }, 50);
+    };
+
     // Animate in with bubble pop effect
     setIsVisible(true);
     // Animate scale from 0.85 to 1
@@ -111,7 +111,7 @@ const Toast: React.FC<ToastProps> = ({
     return () => {
       clearTimers();
     };
-  }, [id, duration, onClose]);
+  }, [id, duration, onClose, isPaused, progress]);
 
   const handleMouseEnter = () => {
     if (!isDragging && !isPaused) {

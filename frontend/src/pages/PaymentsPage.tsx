@@ -453,6 +453,7 @@ const PaymentsPage: React.FC = () => {
   useEffect(() => {
     executeFetchActivePayments(fetchParams);
     executeFetchArchivedPayments(fetchParams);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchParams]);
 
   const allPayments = useMemo(() => {
@@ -523,10 +524,10 @@ const PaymentsPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const refetchData = () => {
+  const refetchData = React.useCallback(() => {
     executeFetchActivePayments(fetchParams);
     executeFetchArchivedPayments(fetchParams);
-  };
+  }, [executeFetchActivePayments, executeFetchArchivedPayments, fetchParams]);
 
   const callCompleteApi = async (paymentId: string, completionDate?: Date) => {
     setIsCompleting(true);
@@ -706,7 +707,7 @@ const PaymentsPage: React.FC = () => {
     });
   };
 
-  const performClearTrash = async () => {
+  const performClearTrash = React.useCallback(async () => {
     setIsClearingTrash(true);
     try {
       await axiosInstance.delete("/archive/trash");
@@ -719,9 +720,9 @@ const PaymentsPage: React.FC = () => {
     } finally {
       setIsClearingTrash(false);
     }
-  };
+  }, [refetchData, showToast]);
 
-  const handleClearTrashRequest = () => {
+  const handleClearTrashRequest = React.useCallback(() => {
     if (trashCount === 0) {
       return;
     }
@@ -732,7 +733,7 @@ const PaymentsPage: React.FC = () => {
       message:
         "Вы уверены, что хотите удалить все платежи из корзины? Это действие необратимо.",
     });
-  };
+  }, [trashCount, performClearTrash]);
 
   useEffect(() => {
     if (typeof window === "undefined" || activeTab !== "trash") {
@@ -762,9 +763,9 @@ const PaymentsPage: React.FC = () => {
     navigate(`/payments/edit/${paymentId}`);
   };
 
-  const closeMobilePanel = () => {
+  const closeMobilePanel = React.useCallback(() => {
     setShouldCloseMobilePanel(true);
-  };
+  }, []);
 
   useEffect(() => {
     if (!selectedMobilePaymentId) return;
@@ -1120,7 +1121,8 @@ const PaymentsPage: React.FC = () => {
               options={[
                 { value: null, label: "Все категории" },
                 { value: NO_CATEGORY_FILTER_VALUE, label: "Без категории" },
-                ...(categories?.map((c) => ({ value: c.id, label: c.name })) || []),
+                ...(categories?.map((c) => ({ value: c.id, label: c.name })) ||
+                  []),
               ]}
               value={draftFilters.categoryId}
               onChange={(val) =>
@@ -1202,8 +1204,16 @@ const PaymentsPage: React.FC = () => {
               Сбросить
             </button>
             <div className="flex gap-3">
-              <Button variant="ghost" onClick={cancelDraftFilters} label="Отмена" />
-              <Button variant="primary" onClick={applyDraftFilters} label="Применить" />
+              <Button
+                variant="ghost"
+                onClick={cancelDraftFilters}
+                label="Отмена"
+              />
+              <Button
+                variant="primary"
+                onClick={applyDraftFilters}
+                label="Применить"
+              />
             </div>
           </div>
         </div>

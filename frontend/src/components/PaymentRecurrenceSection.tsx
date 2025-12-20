@@ -283,6 +283,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
       const initialRule = generateRuleFromState(state);
       onRuleChange(initialRule);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleWeekdayToggle = useCallback(

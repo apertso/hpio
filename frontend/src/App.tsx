@@ -436,7 +436,7 @@ function App() {
                 text: combinedText,
                 from: notification.package_name,
               });
-            } catch (e) {
+            } catch {
               /* silent fail */
             }
 
@@ -459,7 +459,7 @@ function App() {
                 notification.timestamp
               );
               try {
-                const payload: any = {
+                const payload: Record<string, unknown> = {
                   title: parsed.merchantName,
                   amount: parsed.amount,
                   dueDate: today,
@@ -690,7 +690,7 @@ function App() {
   }
 
   useEffect(() => {
-    if (isMobileDrawerOpen) setIsMobileDrawerOpen(false);
+    setIsMobileDrawerOpen(false);
     trackNavigation(location.pathname);
   }, [location.pathname]);
 

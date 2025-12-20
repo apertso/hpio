@@ -191,7 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         pollRef.current = null;
       }
     };
-  }, [user?.isVerified, revalidateMe]);
+  }, [user, user?.isVerified, revalidateMe]);
 
   // Первичная пере-валидация при монтировании
   useEffect(() => {
@@ -231,7 +231,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
                   }
                 }
               } catch (listenerError) {
-                logger.error("Failed to register FCM token after reconnect:", listenerError);
+                logger.error(
+                  "Failed to register FCM token after reconnect:",
+                  listenerError
+                );
               }
             };
             window.addEventListener("online", onlineListener);

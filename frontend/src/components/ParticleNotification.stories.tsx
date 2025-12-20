@@ -234,7 +234,7 @@ export const ThreeStates: Story = {
           window.removeEventListener("touchmove", handleMove);
           window.removeEventListener("touchend", handleUp);
         };
-      }, [isDragging]);
+      }, [isDragging, isVertical]);
 
       // We use a key based on the args to force a full remount whenever any arg changes.
       // This satisfies the requirement: "as soon as we change it, everything is redrawn and restarted."

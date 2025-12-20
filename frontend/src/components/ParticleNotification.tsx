@@ -3,6 +3,154 @@ import ReactDOM from "react-dom";
 import { generateParticles } from "../utils/particles/sampling";
 import { useTheme } from "../context/ThemeContext";
 
+export interface ParticleNotificationProps {
+  text: string;
+  isOpen: boolean;
+  onClose: () => void;
+
+  /**
+   * Duration of the assembly phase in seconds.
+   * Particles fly in and form the notification.
+   * @default 3.0
+   */
+  assembleDuration?: number;
+
+  /**
+   * Duration to stay assembled in seconds.
+   * Notification is readable during this time.
+   * @default 2.0
+   */
+  displayDuration?: number;
+
+  /**
+   * Duration of the dispersal phase in seconds.
+   * Particles explode and fade out.
+   * @default 3.0
+   */
+  disperseDuration?: number;
+
+  /**
+   * Base size of particles.
+   * Controls the visual size of each dot.
+   * @default 0.6
+   */
+  particleBaseSize?: number;
+
+  /**
+   * Spacing between particles in the hexagonal grid.
+   * Smaller values create denser notifications.
+   * @default 0.15
+   */
+  gridSpacing?: number;
+
+  /**
+   * Softness of the background grid particles (0.0 = hard square, 1.0 = soft).
+   * @default 0.0
+   */
+  bgSoftness?: number;
+
+  /**
+   * Softness of the text particles (0.0 = sharp, 1.0 = soft).
+   * @default 0.0
+   */
+  textSoftness?: number;
+
+  /**
+   * Softness of the border particles (0.0 = sharp, 1.0 = soft).
+   * @default 0.3
+   */
+  borderSoftness?: number;
+
+  /**
+   * Minimum feathering base for anti-aliasing.
+   * Controls the baseline sharpness. Lower = sharper/thinner text.
+   * @default 0.5
+   */
+  minFeatherBase?: number;
+
+  /**
+   * Text thickness/weight control.
+   * Slider 0..1 maps thin -> bold without disappearing.
+   * @default 0.42
+   */
+  textThickness?: number;
+
+  /**
+   * Density of border particles.
+   * Higher = more border dots. Default 0.08.
+   */
+  borderDensity?: number;
+
+  /**
+   * Visibility toggles for Storybook/debug.
+   * When false, the layer is hidden without changing layout.
+   */
+  showRectangle?: boolean;
+  showText?: boolean;
+  showDot?: boolean;
+
+  /**
+   * For testing/story purposes only.
+   * Overrides the internal timer and forces the animation to a specific timestamp.
+   */
+  forcedTime?: number;
+
+  /**
+   * Optional target container for the portal.
+   * Defaults to document.body.
+   */
+  portalTarget?: HTMLElement | null;
+
+  /**
+   * Optional reference to an existing HTML element to overlap.
+   * If provided, particles will be generated to match this element's position and size.
+   */
+  targetRef?: React.RefObject<HTMLElement>;
+
+  /**
+   * Callback fired when the assembly phase is complete.
+   * Useful for syncing with other animations (e.g. showing the HTML element).
+   */
+  onAssemblyComplete?: () => void;
+
+  /**
+   * For Storybook/Development: Loop a specific phase of the animation.
+   * 1: Assembly (loops 0 -> assembleDuration)
+   * 2: Assembled (loops assembleDuration -> explodeStartTime, though effectively static)
+   * 3: Dispersal (loops explodeStartTime -> totalDuration)
+   */
+  loopPhase?: 1 | 2 | 3;
+
+  /**
+   * For Storybook/Development: Force a specific theme ("light" | "dark")
+   * This overrides the system/provider theme.
+   */
+  forceTheme?: "light" | "dark";
+
+  /**
+   * Callback to receive the total number of particles generated.
+   * Useful for performance monitoring or debug displays.
+   */
+  onParticleCount?: (count: number) => void;
+}
+
+export const PARTICLE_NOTIFICATION_DEFAULTS = {
+  assembleDuration: 3.0,
+  displayDuration: 2.0,
+  disperseDuration: 3.0,
+  particleBaseSize: 0.5,
+  gridSpacing: 0.0,
+  bgSoftness: 0.0,
+  textSoftness: 0.0,
+  borderSoftness: 0.0,
+  minFeatherBase: 0.01,
+  textThickness: 0.28,
+  borderDensity: 0.01,
+  showRectangle: true,
+  showText: true,
+  showDot: true,
+} as const;
+
 // SHADERS
 
 const VS_SOURCE = `
@@ -176,154 +324,6 @@ void main() {
     gl_FragColor = vec4(v_color.rgb, v_color.a * alpha);
 }
 `;
-
-interface ParticleNotificationProps {
-  text: string;
-  isOpen: boolean;
-  onClose: () => void;
-
-  /**
-   * Duration of the assembly phase in seconds.
-   * Particles fly in and form the notification.
-   * @default 3.0
-   */
-  assembleDuration?: number;
-
-  /**
-   * Duration to stay assembled in seconds.
-   * Notification is readable during this time.
-   * @default 2.0
-   */
-  displayDuration?: number;
-
-  /**
-   * Duration of the dispersal phase in seconds.
-   * Particles explode and fade out.
-   * @default 3.0
-   */
-  disperseDuration?: number;
-
-  /**
-   * Base size of particles.
-   * Controls the visual size of each dot.
-   * @default 0.6
-   */
-  particleBaseSize?: number;
-
-  /**
-   * Spacing between particles in the hexagonal grid.
-   * Smaller values create denser notifications.
-   * @default 0.15
-   */
-  gridSpacing?: number;
-
-  /**
-   * Softness of the background grid particles (0.0 = hard square, 1.0 = soft).
-   * @default 0.0
-   */
-  bgSoftness?: number;
-
-  /**
-   * Softness of the text particles (0.0 = sharp, 1.0 = soft).
-   * @default 0.0
-   */
-  textSoftness?: number;
-
-  /**
-   * Softness of the border particles (0.0 = sharp, 1.0 = soft).
-   * @default 0.3
-   */
-  borderSoftness?: number;
-
-  /**
-   * Minimum feathering base for anti-aliasing.
-   * Controls the baseline sharpness. Lower = sharper/thinner text.
-   * @default 0.5
-   */
-  minFeatherBase?: number;
-
-  /**
-   * Text thickness/weight control.
-   * Slider 0..1 maps thin -> bold without disappearing.
-   * @default 0.42
-   */
-  textThickness?: number;
-
-  /**
-   * Density of border particles.
-   * Higher = more border dots. Default 0.08.
-   */
-  borderDensity?: number;
-
-  /**
-   * Visibility toggles for Storybook/debug.
-   * When false, the layer is hidden without changing layout.
-   */
-  showRectangle?: boolean;
-  showText?: boolean;
-  showDot?: boolean;
-
-  /**
-   * For testing/story purposes only.
-   * Overrides the internal timer and forces the animation to a specific timestamp.
-   */
-  forcedTime?: number;
-
-  /**
-   * Optional target container for the portal.
-   * Defaults to document.body.
-   */
-  portalTarget?: HTMLElement | null;
-
-  /**
-   * Optional reference to an existing HTML element to overlap.
-   * If provided, particles will be generated to match this element's position and size.
-   */
-  targetRef?: React.RefObject<HTMLElement>;
-
-  /**
-   * Callback fired when the assembly phase is complete.
-   * Useful for syncing with other animations (e.g. showing the HTML element).
-   */
-  onAssemblyComplete?: () => void;
-
-  /**
-   * For Storybook/Development: Loop a specific phase of the animation.
-   * 1: Assembly (loops 0 -> assembleDuration)
-   * 2: Assembled (loops assembleDuration -> explodeStartTime, though effectively static)
-   * 3: Dispersal (loops explodeStartTime -> totalDuration)
-   */
-  loopPhase?: 1 | 2 | 3;
-
-  /**
-   * For Storybook/Development: Force a specific theme ("light" | "dark")
-   * This overrides the system/provider theme.
-   */
-  forceTheme?: "light" | "dark";
-
-  /**
-   * Callback to receive the total number of particles generated.
-   * Useful for performance monitoring or debug displays.
-   */
-  onParticleCount?: (count: number) => void;
-}
-
-export const PARTICLE_NOTIFICATION_DEFAULTS = {
-  assembleDuration: 3.0,
-  displayDuration: 2.0,
-  disperseDuration: 3.0,
-  particleBaseSize: 0.5,
-  gridSpacing: 0.0,
-  bgSoftness: 0.0,
-  textSoftness: 0.0,
-  borderSoftness: 0.0,
-  minFeatherBase: 0.01,
-  textThickness: 0.28,
-  borderDensity: 0.01,
-  showRectangle: true,
-  showText: true,
-  showDot: true,
-} as const;
 
 const ParticleNotification: React.FC<ParticleNotificationProps> = ({
   text,
@@ -641,6 +641,10 @@ const ParticleNotification: React.FC<ParticleNotificationProps> = ({
     portalTarget,
     loopPhase,
     forceTheme,
+    borderDensity,
+    onAssemblyComplete,
+    onParticleCount,
+    targetRef,
   ]);
 
   if (!isActive) return null;

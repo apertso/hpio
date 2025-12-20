@@ -26,6 +26,7 @@ const useCategories = () => {
 
   useEffect(() => {
     fetchCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Removed fetchCategories to prevent infinite loop
 
   return { categories, isLoading, error, fetchCategories };

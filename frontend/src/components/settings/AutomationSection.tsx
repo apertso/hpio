@@ -193,10 +193,9 @@ const AutomationSection: React.FC = () => {
         );
         setServiceActive(false);
       } finally {
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          setIsCheckingServiceStatus(false);
         }
-        setIsCheckingServiceStatus(false);
       }
     };
 

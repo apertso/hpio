@@ -125,7 +125,6 @@ const CategoriesPage: React.FC = () => {
     return () => setHeaderAction(null);
   }, [setHeaderAction]);
 
-
   // Use useApi for fetching the categories list
   const {
     data: categories,
@@ -152,6 +151,7 @@ const CategoriesPage: React.FC = () => {
   // Effect to trigger the fetch on mount
   useEffect(() => {
     executeFetchCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Removed executeFetchCategories to prevent infinite loop
 
   const navigate = useNavigate();
@@ -164,9 +164,9 @@ const CategoriesPage: React.FC = () => {
     navigate(`/categories/edit/${id}`);
   };
 
-  const closeMobilePanel = () => {
+  const closeMobilePanel = React.useCallback(() => {
     setShouldCloseMobilePanel(true);
-  };
+  }, []);
 
   useEffect(() => {
     if (!selectedMobileCategoryId) return;

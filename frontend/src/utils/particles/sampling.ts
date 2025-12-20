@@ -117,7 +117,7 @@ export const generateParticles = (
     // Explode Velocity (Disintegration)
     const angle = Math.atan2(ty - centerY, tx - centerX);
     const speed = randomRange(4, 12); // Faster explosion
-    let vx = Math.cos(angle) * speed + randomRange(-2, 2);
+    const vx = Math.cos(angle) * speed + randomRange(-2, 2);
     let vy = Math.sin(angle) * speed + randomRange(-2, 2);
 
     // Gravity bias for explosion
@@ -153,7 +153,7 @@ export const generateParticles = (
   const scale = 5;
   const fontPx = viewportW <= 768 ? 14 : 12;
   let NOTIFICATION_W = overrideWidth || MIN_NOTIFICATION_W;
-  let NOTIFICATION_H_ACTUAL = overrideHeight || NOTIFICATION_H;
+  const NOTIFICATION_H_ACTUAL = overrideHeight || NOTIFICATION_H;
 
   // We use the variables left/top/right/bottom for the particle generation bounds
   let left = centerX - NOTIFICATION_W / 2;

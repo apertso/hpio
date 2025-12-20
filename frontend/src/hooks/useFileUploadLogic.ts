@@ -112,7 +112,7 @@ const useFileUploadLogic = ({
 
       setUploadProgress(0);
     },
-    [paymentId, executeUpload, onError]
+    [paymentId, executeUpload, onError, onPendingFileSelected]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

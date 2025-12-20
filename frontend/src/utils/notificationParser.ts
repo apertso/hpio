@@ -42,7 +42,7 @@ const OZON_TITLE_REGEX = /^Ozon Банк$/i;
 const OZON_TEXT_REGEX =
   /Покупка на\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:\.\d{2})?)\s+₽/i;
 const OZON_EXTERNAL_PURCHASE_REGEX =
-  /Покупка в\s+([^\.]+)\.\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:\.\d{2})?)\s+RUR/i;
+  /Покупка в\s+([^.]+)\.\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:\.\d{2})?)\s+RUR/i;
 
 const TBANK_TEXT_REGEX =
   /Покупка на\s+(\d{1,3}(?:[ \u00A0\u202F]?\d{3})*(?:[.,]\d{2})?)\s+₽/i;

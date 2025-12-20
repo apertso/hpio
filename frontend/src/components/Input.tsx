@@ -137,7 +137,6 @@ const TextFieldRoot: React.FC<TextFieldProps> = (props) => {
     hint,
     error,
     description,
-    required,
     inputId,
     className = "",
     children,

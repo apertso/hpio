@@ -1,3 +1,5 @@
+import { PaymentData } from "../types/paymentData";
+
 /**
  * Проверяет, содержит ли строка даты информацию о времени
  */
@@ -30,7 +32,7 @@ export const formatDateHour = (date: Date): string => {
  * Получает ключ часа для платежа на основе его статуса и данных
  * Используется для группировки платежей по часам в графиках
  */
-export const getPaymentHourKey = (payment: any): string => {
+export const getPaymentHourKey = (payment: PaymentData): string => {
   if (payment.status === "completed" && payment.completedAt) {
     return formatDateHour(new Date(payment.completedAt));
   } else {
@@ -44,7 +46,7 @@ export const getPaymentHourKey = (payment: any): string => {
  * Обрабатывает как ежедневные, так и ежечасные форматы данных
  */
 export const paymentMatchesDateKey = (
-  payment: any,
+  payment: PaymentData,
   dateKey: string
 ): boolean => {
   const isHourlyKey = isHourlyDateString(dateKey);

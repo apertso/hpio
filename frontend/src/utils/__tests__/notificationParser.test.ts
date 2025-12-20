@@ -644,6 +644,7 @@ describe("parseNotification", () => {
     );
     expect(result2).toBe(null);
     expect(consoleSpy).toHaveBeenCalledWith(
+      "[INFO]",
       "Raiffeisen notification title:",
       "Invalid title"
     );

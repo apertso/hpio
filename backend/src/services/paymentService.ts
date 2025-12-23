@@ -1,10 +1,10 @@
-import db from "../models"; // Доступ к моделям
-import { Op, Sequelize } from "sequelize"; // Для операторов запросов
+import db from "../models";
+import { Op, Sequelize, WhereAttributeHash, WhereOptions } from "sequelize";
 import logger from "../config/logger";
-import { deleteFileFromFS } from "./fileService"; // Переиспользуем удаление из ФС и открепление иконки
-import { PaymentInstance } from "../models/Payment";
+import { deleteFileFromFS } from "./fileService";
+import { PaymentInstance, PaymentAttributes } from "../models/Payment";
 import { CategoryInstance } from "../models/Category";
-import { RRule } from "rrule"; // Used for virtual payments generation locally (dashboard/list)
+import { RRule } from "rrule";
 import { normalizeDateToUTC } from "../utils/dateUtils";
 import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
 import { config } from "../config/appConfig";
@@ -54,6 +54,32 @@ export interface PaymentFilterParams {
   isRecurring?: "true" | "false";
   hasFile?: "true" | "false";
 }
+
+const getWhereWithSearch = (
+  where: WhereOptions<PaymentAttributes>,
+  search: string | undefined
+): WhereOptions<PaymentAttributes> => {
+  if (typeof search === "string" && search.trim()) {
+    const searchTerm = search.trim();
+    const isNumeric = /^-?(\d+(\.\d*)?|\.\d+)$/.test(searchTerm);
+
+    if (isNumeric) {
+      return {
+        ...where,
+        [Op.or]: [
+          { title: { [Op.iLike]: `%${searchTerm}%` } },
+          Sequelize.where(
+            Sequelize.cast(Sequelize.col("Payment.amount"), "text"),
+            { [Op.iLike]: `%${searchTerm}%` }
+          ),
+        ],
+      };
+    } else {
+      return { ...where, title: { [Op.iLike]: `%${searchTerm}%` } };
+    }
+  }
+  return where;
+};
 
 // --- Функции для горизонтальной ленты и полного списка ---
 
@@ -231,24 +257,23 @@ export const getFilteredPayments = async (
   filters: PaymentFilterParams = {}
 ): Promise<PaymentInstance[]> => {
   try {
-    const where: Record<string, unknown> = { userId };
     const statusValue =
       typeof filters.status === "string" &&
       ["upcoming", "overdue", "completed", "deleted"].includes(filters.status)
         ? filters.status
         : undefined;
 
-    if (statusValue) {
-      where.status = statusValue;
-    } else {
-      where.status = {
-        [Op.notIn]: ["completed", "deleted"],
-      };
-    }
+    const initialWhere: WhereOptions<PaymentAttributes> = {
+      userId,
+      status: statusValue
+        ? statusValue
+        : { [Op.notIn]: ["completed", "deleted"] },
+    };
 
-    if (typeof filters.search === "string" && filters.search.trim()) {
-      where.title = { [Op.iLike]: `%${filters.search.trim()}%` };
-    }
+    const where = getWhereWithSearch(
+      initialWhere,
+      filters.search
+    ) as WhereAttributeHash<PaymentAttributes>;
 
     if (typeof filters.categoryId === "string") {
       const trimmedCategoryId = filters.categoryId.trim();
@@ -834,24 +859,21 @@ export const getArchivedPayments = async (
   filters: PaymentFilterParams = {}
 ): Promise<PaymentInstance[]> => {
   try {
-    const where: Record<string, unknown> = {
-      userId: userId,
-      status: { [Op.in]: ["completed", "deleted"] },
-    };
-
     const statusValue =
       typeof filters.status === "string" &&
       ["completed", "deleted"].includes(filters.status)
         ? filters.status
         : undefined;
 
-    if (statusValue) {
-      where.status = statusValue;
-    }
+    const initialWhere: WhereOptions<PaymentAttributes> = {
+      userId,
+      status: statusValue ? statusValue : { [Op.in]: ["completed", "deleted"] },
+    };
 
-    if (typeof filters.search === "string" && filters.search.trim()) {
-      where.title = { [Op.iLike]: `%${filters.search.trim()}%` };
-    }
+    const where = getWhereWithSearch(
+      initialWhere,
+      filters.search
+    ) as WhereAttributeHash<PaymentAttributes>;
 
     if (typeof filters.categoryId === "string") {
       const trimmedCategoryId = filters.categoryId.trim();

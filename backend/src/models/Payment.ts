@@ -7,7 +7,7 @@ import { Literal } from "sequelize/types/utils";
 // Определим тип PaymentCreationAttributes, если нужны более строгие типы
 // Но для простоты пока обойдемся без них в этом примере
 
-interface PaymentAttributes {
+export interface PaymentAttributes {
   id: string;
   userId: string;
   title: string;

@@ -31,7 +31,7 @@ export const getRecurringSeriesById = async (
       },
       include: [
         { model: db.User, as: "user" },
-        { model: db.Category, as: "category" },
+        { model: db.TransactionCategory, as: "transactionCategory" },
       ],
       transaction,
     });
@@ -104,8 +104,8 @@ export const getActiveRecurringSeriesWithCategory = async (
       where: { userId: userId, isActive: true },
       include: [
         {
-          model: db.Category,
-          as: "category",
+          model: db.TransactionCategory,
+          as: "transactionCategory",
           attributes: ["id", "name", "builtinIconName"],
         },
       ],
@@ -511,7 +511,11 @@ export const updateRecurringSeries = async (
       );
 
       await transaction.commit();
-      const result = await getRecurringSeriesById(newSeries.id, userId);
+      const result = await getRecurringSeriesById(
+        newSeries.id,
+        userId,
+        undefined
+      );
       return result;
     } else {
       // Recurrence rule not changed - update the existing series
@@ -557,7 +561,11 @@ export const updateRecurringSeries = async (
       );
 
       await transaction.commit();
-      const result = await getRecurringSeriesById(series.id, userId);
+      const result = await getRecurringSeriesById(
+        series.id,
+        userId,
+        undefined
+      );
       return result;
     }
   } catch (error) {
@@ -638,7 +646,7 @@ export const getAllRecurringSeries = async (
       },
       include: [
         { model: db.User, as: "user" },
-        { model: db.Category, as: "category" },
+        { model: db.TransactionCategory, as: "transactionCategory" },
       ],
     });
     return series;

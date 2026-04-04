@@ -9,11 +9,15 @@ import {
 import { Button } from "../components/Button"; // Import the Button component
 import { InformationIcon } from "../components/InformationIcon";
 import useApi from "../hooks/useApi"; // Import useApi
+import getErrorMessage from "../utils/getErrorMessage";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import { CategoriesTable, Tooltip } from "../components"; // Import CategoriesTable from the index
+import SegmentedControl, {
+  SegmentedControlOption,
+} from "../components/SegmentedControl";
 import { BuiltinIcon } from "../utils/builtinIcons";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -24,8 +28,16 @@ import { usePageTitle } from "../context/PageTitleContext";
 interface Category {
   id: string;
   name: string;
+  type?: "expense" | "income";
   builtinIconName?: BuiltinIcon | null;
 }
+
+type CategoryTabType = "expense" | "income";
+
+const categoryTabOptions: SegmentedControlOption<CategoryTabType>[] = [
+  { value: "expense", label: "Расход" },
+  { value: "income", label: "Доход" },
+];
 
 // Define the raw API fetch function for categories list
 const fetchCategoriesApi = async (): Promise<Category[]> => {
@@ -134,6 +146,11 @@ const CategoriesPage: React.FC = () => {
     offlineDataKey: "categories",
   });
 
+  const [activeCategoryType, setActiveCategoryType] =
+    useState<CategoryTabType>("expense");
+  const filteredCategories =
+    categories?.filter((category) => category.type === activeCategoryType) || [];
+
   // New state for confirm modal
   const [confirmModalState, setConfirmModalState] = useState<{
     isOpen: boolean;
@@ -212,7 +229,7 @@ const CategoriesPage: React.FC = () => {
         return;
       }
 
-      const nextCategory = categories?.find(
+      const nextCategory = filteredCategories.find(
         (categoryItem) => categoryItem.id === mobileListItemId
       );
 
@@ -252,8 +269,8 @@ const CategoriesPage: React.FC = () => {
         await axiosInstance.delete(`/categories/${categoryId}`);
         executeFetchCategories();
         showToast("Категория успешно удалена.", "success");
-      } catch {
-        showToast("Не удалось удалить категорию. Попробуйте позже.", "error");
+      } catch (error) {
+        showToast(getErrorMessage(error), "error");
       }
     };
 
@@ -288,12 +305,21 @@ const CategoriesPage: React.FC = () => {
             className="hidden md:inline-flex"
           />
         </div>
+        <div className="flex justify-center md:justify-start mb-4">
+          <SegmentedControl
+            options={categoryTabOptions}
+            selected={activeCategoryType}
+            onChange={setActiveCategoryType}
+            className="w-full md:w-auto"
+            optionClassName="flex-1 md:flex-none justify-center"
+          />
+        </div>
 
         <>
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto card-base">
             <CategoriesTable
-              data={categories || []}
+              data={filteredCategories}
               isLoading={isLoadingCategories}
               onEdit={handleEditCategory}
               onDelete={handleDeleteCategory}
@@ -306,7 +332,7 @@ const CategoriesPage: React.FC = () => {
               onClick={handleMobileListClick}
               className="block md:hidden space-y-2"
             >
-              {categories?.map((category) => {
+              {filteredCategories.map((category) => {
                 const isSelected = selectedMobileCategoryId === category.id;
                 const cardStateClasses = [
                   "transition-all duration-200",

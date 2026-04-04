@@ -13,7 +13,9 @@ interface UserAttributes {
   pushNotifications: boolean;
   notificationTime: string; // Format HH:mm
   timezone: string;
+  preferredCurrency: string;
   fcmToken?: string | null;
+  isAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
   // Add other user attributes here if needed
@@ -33,6 +35,8 @@ interface UserCreationAttributes
     | "pushNotifications"
     | "notificationTime"
     | "timezone"
+    | "preferredCurrency"
+    | "isAdmin"
   > {}
 
 export interface UserInstance
@@ -103,9 +107,19 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         allowNull: false,
         defaultValue: "UTC",
       },
+      preferredCurrency: {
+        type: dataTypes.STRING(3),
+        allowNull: false,
+        defaultValue: "RUB",
+      },
       fcmToken: {
         type: dataTypes.STRING,
         allowNull: true,
+      },
+      isAdmin: {
+        type: dataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
       createdAt: {
         type: dataTypes.DATE,
@@ -128,15 +142,14 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       as: "payments", // Название ассоциации
       onDelete: "CASCADE",
     });
-    // Добавьте другие ассоциации (например, User hasMany Category)
-    User.hasMany(models.Category, {
-      foreignKey: "userId",
-      as: "categories",
-      onDelete: "CASCADE",
-    });
     User.hasMany(models.RecurringSeries, {
       foreignKey: "userId",
       as: "series",
+      onDelete: "CASCADE",
+    });
+    User.hasMany(models.Tag, {
+      foreignKey: "userId",
+      as: "tags",
       onDelete: "CASCADE",
     });
   };

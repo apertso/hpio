@@ -18,6 +18,28 @@ export const formatDateToLocal = (date: Date): string => {
 };
 
 /**
+ * Форматирует дату для отображения (DD.MM.YYYY)
+ */
+export const formatDateForDisplay = (date: Date): string => {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
+};
+
+/**
+ * Форматирует дату и время для отображения (DD.MM.YYYY, HH:MM:SS)
+ */
+export const formatDateTimeForDisplay = (date: Date): string => {
+  const time = date.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  return `${formatDateForDisplay(date)}, ${time}`;
+};
+
+/**
  * Форматирует дату и час (YYYY-MM-DD HH:00)
  */
 export const formatDateHour = (date: Date): string => {

@@ -13,6 +13,7 @@ interface UpdateProfileData {
   pushNotifications?: boolean;
   notificationTime?: string;
   timezone?: string;
+  preferredCurrency?: string;
 }
 
 const userApi = {

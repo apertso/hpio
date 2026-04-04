@@ -32,11 +32,13 @@ export const getMe = async (req: Request, res: Response) => {
       email: user.email,
       name: user.name,
       isVerified: user.isVerified,
+      isAdmin: (user as { isAdmin?: boolean }).isAdmin ?? false,
       photoPath: user.photoPath ?? null,
       emailNotifications: user.emailNotifications,
       pushNotifications: user.pushNotifications,
       notificationTime: user.notificationTime,
       timezone: (user as any).timezone,
+      preferredCurrency: (user as any).preferredCurrency,
       updatedAt:
         (user as any).updatedAt?.toISOString?.() ?? new Date().toISOString(),
     };
@@ -195,4 +197,3 @@ export const registerFcmToken = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error registering FCM token." });
   }
 };
-

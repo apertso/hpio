@@ -3,7 +3,7 @@ import { Op, Sequelize, WhereAttributeHash, WhereOptions } from "sequelize";
 import logger from "../config/logger";
 import { deleteFileFromFS } from "./fileService";
 import { PaymentInstance, PaymentAttributes } from "../models/Payment";
-import { CategoryInstance } from "../models/Category";
+import { TransactionCategoryInstance } from "../models/TransactionCategory";
 import { RRule } from "rrule";
 import { normalizeDateToUTC } from "../utils/dateUtils";
 import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
@@ -23,8 +23,28 @@ import {
   calculateNextDueDateForSeries,
   processSeriesAfterPaymentCompletion,
 } from "./seriesService";
+import {
+  TagModel,
+  ensureTagsExist,
+  attachPaymentTags,
+  replacePaymentTags,
+} from "./tagService";
 
 const NO_CATEGORY_FILTER_VALUE = "__NO_CATEGORY__";
+
+const normalizeTagIds = (tagIds: unknown): string[] => {
+  if (!Array.isArray(tagIds)) {
+    return [];
+  }
+  const uniqueIds = new Set<string>();
+  tagIds.forEach((tagId) => {
+    if (typeof tagId === "string" && tagId.trim()) {
+      uniqueIds.add(tagId);
+    }
+  });
+  return Array.from(uniqueIds);
+};
+
 
 // Пример интерфейса для данных платежа (опционально, для строгой типизации)
 interface PaymentData {
@@ -32,6 +52,7 @@ interface PaymentData {
   amount: number;
   dueDate: string; // YYYY-MM-DD
   categoryId?: string | null; // Allow null for category
+  tagIds?: string[];
   remind?: boolean;
   // Fields for creating a new recurring series (only used during creation)
   recurrenceRule?: string; // Новое поле для RRULE
@@ -81,11 +102,66 @@ const getWhereWithSearch = (
   return where;
 };
 
+export const updatePaymentsCategoryByMerchant = async (
+  merchantName: string,
+  categoryId: string
+): Promise<number> => {
+  try {
+    const [updatedCount] = await db.Payment.update(
+      { categoryId },
+      { where: { title: merchantName } }
+    );
+    logger.info(
+      `Updated ${updatedCount} payments for merchant ${merchantName} with category ${categoryId}`
+    );
+    return updatedCount;
+  } catch (error) {
+    logger.error(
+      `Error updating payments for merchant ${merchantName}:`,
+      error
+    );
+    throw new Error("Не удалось обновить платежи по мерчанту.");
+  }
+};
+
+export const getUncategorizedAutoCreatedMerchants = async (): Promise<
+  { merchantName: string; count: number }[]
+> => {
+  try {
+    const rows = (await db.Payment.findAll({
+      attributes: [
+        "title",
+        [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+      ],
+      where: {
+        autoCreated: true,
+        categoryId: null,
+      },
+      group: ["title"],
+      order: [[Sequelize.fn("COUNT", Sequelize.col("id")), "DESC"]],
+      raw: true,
+    })) as unknown as Array<{ title: string; count: string | number }>;
+
+    return rows
+      .map((row) => ({
+        merchantName: String(row.title),
+        count: Number(row.count),
+      }))
+      .filter((row) => row.merchantName.trim());
+  } catch (error) {
+    logger.error("Error fetching uncategorized auto-created merchants:", error);
+    throw new Error("Не удалось получить мерчантов без категории.");
+  }
+};
+
 // --- Функции для горизонтальной ленты и полного списка ---
 
 // Получить активные предстоящие платежи для горизонтальной ленты (2.2)
 // Включает upcoming и overdue
-export const getUpcomingPayments = async (userId: string, days: number) => {
+export const getUpcomingPayments = async (
+  userId: string,
+  days: number
+): Promise<PaymentInstance[]> => {
   try {
     const now = new Date();
     // Устанавливаем время на полночь для сравнения только дат
@@ -113,8 +189,8 @@ export const getUpcomingPayments = async (userId: string, days: number) => {
       order: [["dueDate", "ASC"]],
       include: [
         {
-          model: db.Category,
-          as: "category",
+          model: db.TransactionCategory,
+          as: "transactionCategory",
           attributes: ["id", "name", "builtinIconName"],
         },
         {
@@ -303,8 +379,8 @@ export const getFilteredPayments = async (
       order,
       include: [
         {
-          model: db.Category,
-          as: "category",
+          model: db.TransactionCategory,
+          as: "transactionCategory",
           attributes: ["id", "name", "builtinIconName"],
         },
         {
@@ -339,7 +415,7 @@ export const getFilteredPayments = async (
 export const createPayment = async (
   userId: string,
   paymentData: PaymentData
-) => {
+): Promise<PaymentInstance> => {
   // TODO: Add more strict validation for paymentData (e.g., with express-validator or manually)
   // Check required fields: title, amount, dueDate
   if (
@@ -352,6 +428,9 @@ export const createPayment = async (
   // Check date format, amount, etc.
 
   try {
+    const tagIds = normalizeTagIds(paymentData.tagIds);
+    await ensureTagsExist(userId, tagIds);
+
     // Дедупликация для autoCreated платежей: проверяем, не создан ли уже такой платёж
     if (paymentData.autoCreated && paymentData.completedAt) {
       const completedAtDate =
@@ -379,7 +458,11 @@ export const createPayment = async (
         logger.info(
           `Duplicate auto-created payment detected (title: ${paymentData.title}, amount: ${paymentData.amount}), returning existing: ${existingPayment.id}`
         );
-        return await getPaymentById(existingPayment.id, userId);
+        const fetchedPayment = await getPaymentById(existingPayment.id, userId);
+        if (!fetchedPayment) {
+          throw new Error("Не удалось получить существующий платёж.");
+        }
+        return fetchedPayment;
       }
     }
 
@@ -444,6 +527,8 @@ export const createPayment = async (
       builtinIconName: paymentData.builtinIconName || null,
     });
 
+    await attachPaymentTags(payment.id, tagIds);
+
     logger.info(
       `Payment created (ID: ${payment.id}, User: ${userId}, Status: ${payment.status}, Series ID: ${payment.seriesId})`
     );
@@ -461,7 +546,11 @@ export const createPayment = async (
     }
 
     // Return the payment with category and series data after creation
-    return await getPaymentById(payment.id, userId);
+    const createdPayment = await getPaymentById(payment.id, userId);
+    if (!createdPayment) {
+      throw new Error("Не удалось получить созданный платёж.");
+    }
+    return createdPayment;
   } catch (error: any) {
     logger.error(`Error creating payment for user ${userId}:`, error);
     throw new Error(error.message || "Failed to create payment.");
@@ -469,7 +558,10 @@ export const createPayment = async (
 };
 
 // Получение деталей платежа (2.2)
-export const getPaymentById = async (paymentId: string, userId: string) => {
+export const getPaymentById = async (
+  paymentId: string,
+  userId: string
+): Promise<PaymentInstance | null> => {
   try {
     const payment = await db.Payment.findOne({
       where: {
@@ -491,11 +583,12 @@ export const getPaymentById = async (paymentId: string, userId: string) => {
         "builtinIconName",
         "seriesId", // Include seriesId
         "remind",
+        "autoCreated",
       ],
       include: [
         {
-          model: db.Category,
-          as: "category",
+          model: db.TransactionCategory,
+          as: "transactionCategory",
           attributes: ["id", "name", "builtinIconName"],
         }, // Include category
         {
@@ -511,6 +604,12 @@ export const getPaymentById = async (paymentId: string, userId: string) => {
             "isActive",
           ],
         }, // Include recurring series data
+        {
+          model: TagModel,
+          as: "tags",
+          attributes: ["id", "name"],
+          through: { attributes: [] },
+        },
       ],
     });
 
@@ -555,7 +654,7 @@ export const updatePayment = async (
   paymentId: string,
   userId: string,
   paymentData: Partial<PaymentData>
-) => {
+): Promise<PaymentInstance | null> => {
   // TODO: Add validation for paymentData
   if (Object.keys(paymentData).length === 0) {
     throw new Error("No data provided for update.");
@@ -592,6 +691,19 @@ export const updatePayment = async (
         `Payment not found for update or no access (ID: ${paymentId}, User: ${userId})`
       );
       return null; // Payment not found or does not belong to the user
+    }
+
+    if (
+      payment.autoCreated &&
+      Object.prototype.hasOwnProperty.call(paymentData, "categoryId")
+    ) {
+      const nextCategoryId =
+        paymentData.categoryId !== undefined ? paymentData.categoryId : null;
+      if (nextCategoryId !== payment.categoryId) {
+        throw new Error(
+          "Категория для автоматически добавленных платежей изменяется через правила автоматизации."
+        );
+      }
     }
 
     // Prevent changing recurrence for deleted payments
@@ -738,6 +850,16 @@ export const updatePayment = async (
       logger.info(
         `No allowed fields to update for payment (ID: ${payment.id}, User: ${userId})`
       );
+    }
+
+    const shouldUpdateTags = Object.prototype.hasOwnProperty.call(
+      paymentData,
+      "tagIds"
+    );
+    if (shouldUpdateTags) {
+      const nextTagIds = normalizeTagIds(paymentData.tagIds);
+      await ensureTagsExist(userId, nextTagIds);
+      await replacePaymentTags(payment.id, nextTagIds);
     }
 
     // Check if the due date has passed and update the status accordingly
@@ -906,8 +1028,8 @@ export const getArchivedPayments = async (
       order,
       include: [
         {
-          model: db.Category,
-          as: "category",
+          model: db.TransactionCategory,
+          as: "transactionCategory",
           attributes: ["id", "name", "builtinIconName"],
         },
         {
@@ -1411,7 +1533,16 @@ export const getDashboardStats = async (
   userId: string,
   startDate?: string,
   endDate?: string
-) => {
+): Promise<{
+  month: string;
+  totalUpcomingAmount: string;
+  totalCompletedAmount: string;
+  totalIncomeAmount: string;
+  categoriesDistribution: { id?: string; name: string; amount: number }[];
+  incomeCategoriesDistribution: { id?: string; name: string; amount: number }[];
+  dailyPaymentLoad: { date: string; amount: number }[];
+  allPaymentsInMonth: unknown[];
+}> => {
   try {
     const user = await db.User.findByPk(userId, {
       attributes: ["timezone"],
@@ -1442,7 +1573,7 @@ export const getDashboardStats = async (
 
     // Один запрос для получения всех платежей, релевантных для статистики
     const relevantPayments: (PaymentInstance & {
-      category?: CategoryInstance;
+      transactionCategory?: TransactionCategoryInstance | null;
     })[] = await db.Payment.findAll({
       where: {
         userId: userId,
@@ -1467,8 +1598,8 @@ export const getDashboardStats = async (
       },
       include: [
         {
-          model: db.Category,
-          as: "category",
+          model: db.TransactionCategory,
+          as: "transactionCategory",
           attributes: ["id", "name", "builtinIconName"],
         },
       ],
@@ -1483,6 +1614,35 @@ export const getDashboardStats = async (
         "completedAt",
       ],
     });
+    const transactionCategoriesById = new Map<
+      string,
+      TransactionCategoryInstance
+    >();
+    const paymentCategoryIds = Array.from(
+      new Set(
+        relevantPayments
+          .map((payment) => payment.categoryId)
+          .filter(
+            (categoryId): categoryId is string =>
+              typeof categoryId === "string" && categoryId.trim() !== ""
+          )
+      )
+    );
+
+    if (paymentCategoryIds.length > 0) {
+      const transactionCategories = await db.TransactionCategory.findAll({
+        where: {
+          id: {
+            [Op.in]: paymentCategoryIds,
+          },
+        },
+        attributes: ["id", "name", "builtinIconName"],
+      });
+
+      for (const category of transactionCategories) {
+        transactionCategoriesById.set(category.id, category);
+      }
+    }
 
     // Виртуальные платежи для выбранного периода
     const existingDatesBySeries = new Map<string, Set<string>>();
@@ -1561,11 +1721,12 @@ export const getDashboardStats = async (
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isVirtual: true,
-            category: series.category
+            transactionCategory: series.transactionCategory
               ? {
-                  id: series.category.id,
-                  name: series.category.name,
-                  builtinIconName: series.category.builtinIconName,
+                  id: series.transactionCategory.id,
+                  name: series.transactionCategory.name,
+                  builtinIconName:
+                    series.transactionCategory.builtinIconName,
                 }
               : null,
           });
@@ -1611,8 +1772,13 @@ export const getDashboardStats = async (
       }
 
       // Распределение по категориям
-      const categoryId = payment.category?.id || "no-category";
-      const categoryName = payment.category?.name || "Без категории";
+      const resolvedCategory =
+        payment.transactionCategory ||
+        (payment.categoryId
+          ? transactionCategoriesById.get(payment.categoryId) || null
+          : null);
+      const categoryId = resolvedCategory?.id || "no-category";
+      const categoryName = resolvedCategory?.name || "Без категории";
       if (!categoriesStats[categoryId]) {
         categoriesStats[categoryId] = {
           id: categoryId !== "no-category" ? categoryId : undefined,
@@ -1666,8 +1832,13 @@ export const getDashboardStats = async (
         totalUpcomingAmount += amount;
       }
 
-      const categoryId = payment.category?.id || "no-category";
-      const categoryName = payment.category?.name || "Без категории";
+      const resolvedCategory =
+        payment.transactionCategory ||
+        (typeof payment.categoryId === "string"
+          ? transactionCategoriesById.get(payment.categoryId) || null
+          : null);
+      const categoryId = resolvedCategory?.id || "no-category";
+      const categoryName = resolvedCategory?.name || "Без категории";
       if (!categoriesStats[categoryId]) {
         categoriesStats[categoryId] = {
           id: categoryId !== "no-category" ? categoryId : undefined,
@@ -1707,6 +1878,81 @@ export const getDashboardStats = async (
         )
       : dailyPaymentLoad;
 
+    // Add Income Stats Logic
+    const incomes = await db.Income.findAll({
+      where: {
+        userId,
+        date: { [Op.between]: [periodStartString, periodEndString] },
+      },
+      include: [
+        {
+          model: db.TransactionCategory,
+          as: "transactionCategory",
+          attributes: ["id", "name", "builtinIconName"],
+        },
+      ],
+    });
+
+    const incomeCategoryIds = Array.from(
+      new Set(
+        incomes
+          .map((income) => income.categoryId)
+          .filter(
+            (categoryId): categoryId is string =>
+              typeof categoryId === "string" && categoryId.trim() !== ""
+          )
+      )
+    ).filter((categoryId) => !transactionCategoriesById.has(categoryId));
+
+    if (incomeCategoryIds.length > 0) {
+      const transactionCategories = await db.TransactionCategory.findAll({
+        where: {
+          id: {
+            [Op.in]: incomeCategoryIds,
+          },
+        },
+        attributes: ["id", "name", "builtinIconName"],
+      });
+
+      for (const category of transactionCategories) {
+        transactionCategoriesById.set(category.id, category);
+      }
+    }
+
+    const totalIncome = incomes.reduce(
+      (sum: number, inc: any) => sum + Number(inc.amount),
+      0
+    );
+
+    // Calculate income categories distribution
+    const incomeCategoriesStats: {
+      [key: string]: { id?: string; name: string; amount: number };
+    } = {};
+
+    for (const income of incomes as any[]) {
+      const amount = parseFloat(String(income.amount));
+      const resolvedCategory =
+        income.transactionCategory ||
+        (typeof income.categoryId === "string"
+          ? transactionCategoriesById.get(income.categoryId) || null
+          : null);
+      const categoryId = resolvedCategory?.id || "no-category";
+      const categoryName = resolvedCategory?.name || "Без категории";
+
+      if (!incomeCategoriesStats[categoryId]) {
+        incomeCategoriesStats[categoryId] = {
+          id: categoryId !== "no-category" ? categoryId : undefined,
+          name: categoryName,
+          amount: 0,
+        };
+      }
+      incomeCategoriesStats[categoryId].amount += amount;
+    }
+
+    const incomeCategoriesDistribution = Object.values(
+      incomeCategoriesStats
+    ).filter((c) => c.amount > 0);
+
     return {
       month: `${periodStartDate.getFullYear()}-${(
         periodStartDate.getMonth() + 1
@@ -1715,7 +1961,9 @@ export const getDashboardStats = async (
         .padStart(2, "0")}`,
       totalUpcomingAmount: totalUpcomingAmount.toFixed(2),
       totalCompletedAmount: totalCompletedAmount.toFixed(2),
+      totalIncomeAmount: totalIncome.toFixed(2),
       categoriesDistribution,
+      incomeCategoriesDistribution,
       dailyPaymentLoad: paymentLoad,
       allPaymentsInMonth: combinedPayments,
     };

@@ -10,7 +10,7 @@ export interface SelectOption {
 }
 
 interface SelectProps {
-  label?: string;
+  label?: React.ReactNode;
   options: SelectOption[];
   value: string | null;
   onChange: (value: string | null) => void;

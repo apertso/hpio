@@ -32,7 +32,10 @@ router.get("/upcoming", async (req: Request, res: Response) => {
       }
     }
     // req.user.id добавлен middleware protect
-    const payments = await getUpcomingPayments(req.user!.id, days);
+    const payments = await getUpcomingPayments(
+      req.user!.id,
+      days
+    );
     res.json(payments);
   } catch (error: any) {
     logger.error("Error in GET /api/payments/upcoming:", error);
@@ -70,7 +73,10 @@ router.get("/list", async (req: Request, res: Response) => {
         | undefined,
       hasFile: normalizeQueryParam(hasFile) as "true" | "false" | undefined,
     };
-    const payments = await getFilteredPayments(req.user!.id, filterParams);
+    const payments = await getFilteredPayments(
+      req.user!.id,
+      filterParams
+    );
     res.json(payments);
   } catch (error: any) {
     logger.error("Error in GET /api/payments/list:", error);

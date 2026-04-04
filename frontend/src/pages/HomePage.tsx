@@ -62,6 +62,7 @@ const monthNamesGenitive = [
   "ноября",
   "декабря",
 ];
+
 const formatUpcomingDateHeading = (dateString: string): string => {
   const targetDate = new Date(dateString);
   if (Number.isNaN(targetDate.getTime())) {
@@ -121,6 +122,33 @@ const categoryColorsDark = [
   "#ec4899", // pink-500
 ];
 
+// Green color palette for income charts
+const incomeColorsLight = [
+  "#10B981", // Emerald-500
+  "#059669", // Emerald-600
+  "#047857", // Emerald-700
+  "#34D399", // Emerald-400
+  "#6EE7B7", // Emerald-300
+  "#14B8A6", // Teal-500
+  "#0D9488", // Teal-600
+  "#0F766E", // Teal-700
+  "#22C55E", // Green-500
+  "#16A34A", // Green-600
+];
+
+const incomeColorsDark = [
+  "#34D399", // Emerald-400
+  "#10B981", // Emerald-500
+  "#059669", // Emerald-600
+  "#6EE7B7", // Emerald-300
+  "#A7F3D0", // Emerald-200
+  "#2DD4BF", // Teal-400
+  "#14B8A6", // Teal-500
+  "#0D9488", // Teal-600
+  "#4ADE80", // Green-400
+  "#22C55E", // Green-500
+];
+
 const getInitialTimeRange = (): TimeRangeOption => {
   if (typeof window === "undefined") {
     return "1d";
@@ -150,15 +178,23 @@ import CustomDailySpendingChart from "../components/CustomDailySpendingChart";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { usePageTitle } from "../context/PageTitleContext";
+import { isIncomeAndCardsEnabled } from "../utils/featureFlags";
+import TotalFundsWidget from "../components/TotalFundsWidget"; // <-- New
+import FundsTrendWidget from "../components/FundsTrendWidget"; // <-- New
 // Интерфейс для данных статистики, получаемых с бэкенда
 interface DashboardStats {
   month: string; // Например, '2023-11'
   totalUpcomingAmount: string; // Строка, т.к. DECIMAL с бэкенда
   totalCompletedAmount: string; // Строка
+  totalIncomeAmount?: string; // Income total
   categoriesDistribution: { id?: string; name: string; amount: number }[]; // id is optional for "No Category"
+  incomeCategoriesDistribution?: {
+    id?: string;
+    name: string;
+    amount: number;
+  }[]; // Income by category
   dailyPaymentLoad: { date: string; amount: number }[];
   allPaymentsInMonth: PaymentData[]; // Add this field
-  // TODO: Добавить другие поля, если бэкенд их возвращает
 }
 
 // Define the raw API fetch function for upcoming payments
@@ -275,14 +311,14 @@ const calculateStatsFromPayments = (
   filteredPayments.forEach((p) => {
     const amount =
       typeof p.amount === "string" ? parseFloat(p.amount) : p.amount;
-    if (p.category) {
-      const existing = categoryMap.get(p.category.id);
+    if (p.transactionCategory) {
+      const existing = categoryMap.get(p.transactionCategory.id);
       if (existing) {
         existing.amount += amount;
       } else {
-        categoryMap.set(p.category.id, {
-          id: p.category.id,
-          name: p.category.name,
+        categoryMap.set(p.transactionCategory.id, {
+          id: p.transactionCategory.id,
+          name: p.transactionCategory.name,
           amount: amount,
         });
       }
@@ -1312,6 +1348,19 @@ const HomePage: React.FC = () => {
           </>
         )}
 
+        {/* --- New Total Funds and Trend Section --- */}
+        {isIncomeAndCardsEnabled() && (
+          <div className="mt-8 mb-8">
+            <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-6">
+              Обзор финансов
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <TotalFundsWidget />
+              <FundsTrendWidget timeRange={timeRange} />
+            </div>
+          </div>
+        )}
+
         {/* --- Блок Дашборда (из Dashboard.tsx) --- */}
         <div className="mt-8">
           {" "}
@@ -1320,7 +1369,7 @@ const HomePage: React.FC = () => {
             Статистика
           </h2>
           {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
-          <div className="flex flex-wrap items-center gap-2 md:gap-6 mb-6">
+          <div className="flex flex-nowrap items-center gap-2 md:gap-6 mb-6">
             <DatePicker
               mode="range"
               startDate={startDate}
@@ -1332,7 +1381,7 @@ const HomePage: React.FC = () => {
             <SegmentedControl
               className="flex-shrink-0"
               options={dashboardTimeRangeOptions}
-              optionClassName="!px-2 md:!px-4"
+              optionClassName="!px-1.5 md:!px-4"
               selected={timeRange}
               onChange={(option) => {
                 const now = new Date();
@@ -1418,17 +1467,24 @@ const HomePage: React.FC = () => {
           {/* Отображение статистики, если данные загружены */}
           {!isLoadingStats && !errorStats && stats && (
             <div className="space-y-2 md:space-y-6">
-              {/* TODO: Форматировать месяц на русский */}
               {/* Блоки с общими суммами */}
-              <div className="grid grid-cols-2 gap-2 md:gap-6">
-                <div className="card-base p-6">
-                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
-                    <span className="md:hidden">Предстоящие</span>
-                    <span className="hidden md:inline">
-                      Предстоящие платежи
-                    </span>
+              <div
+                className={`grid gap-2 md:gap-6 ${
+                  isIncomeAndCardsEnabled()
+                    ? "grid-cols-2 md:grid-cols-4"
+                    : "grid-cols-2"
+                }`}
+              >
+                {/* Ожидаемые расходы - платежи со статусом upcoming/overdue */}
+                <div className="card-base p-4 md:p-6">
+                  <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
+                    <span className="md:hidden">Ожидается</span>
+                    <span className="hidden md:inline">Ожидаемые расходы</span>
                   </p>
-                  <p className="mt-1 text-xl md:text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
+                    Предстоящие платежи
+                  </p>
+                  <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-orange-600 dark:text-orange-400">
                     {new Intl.NumberFormat("ru-RU", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -1438,14 +1494,19 @@ const HomePage: React.FC = () => {
                     </span>
                   </p>
                 </div>
-                <div className="card-base p-6">
-                  <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
-                    <span className="md:hidden">Выполненные</span>
+
+                {/* Фактические расходы - выполненные платежи */}
+                <div className="card-base p-4 md:p-6">
+                  <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
+                    <span className="md:hidden">Потрачено</span>
                     <span className="hidden md:inline">
-                      Выполненные платежи
+                      Фактические расходы
                     </span>
                   </p>
-                  <p className="mt-1 text-xl md:text-3xl font-bold text-green-600 dark:text-green-400">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
+                    Выполненные платежи
+                  </p>
+                  <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-red-600 dark:text-red-400">
                     {new Intl.NumberFormat("ru-RU", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -1455,14 +1516,87 @@ const HomePage: React.FC = () => {
                     </span>
                   </p>
                 </div>
-                {/* TODO: Добавить другие суммарные показатели, если нужны */}
+
+                {isIncomeAndCardsEnabled() && (
+                  <>
+                    {/* Фактические доходы - полученные доходы за период */}
+                    <div className="card-base p-4 md:p-6">
+                      <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
+                        <span className="md:hidden">Получено</span>
+                        <span className="hidden md:inline">
+                          Фактические доходы
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
+                        Полученные доходы
+                      </p>
+                      <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-green-600 dark:text-green-400">
+                        {new Intl.NumberFormat("ru-RU", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(parseFloat(stats.totalIncomeAmount || "0"))}
+                        <span className="ml-1 text-lg md:text-2xl font-normal">
+                          ₽
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Баланс за период */}
+                    <div className="card-base p-4 md:p-6">
+                      <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
+                        <span className="md:hidden">Баланс</span>
+                        <span className="hidden md:inline">Баланс периода</span>
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
+                        Доходы − Расходы
+                      </p>
+                      {(() => {
+                        const income = parseFloat(
+                          stats.totalIncomeAmount || "0"
+                        );
+                        const expenses = parseFloat(stats.totalCompletedAmount);
+                        const balance = income - expenses;
+                        const isPositive = balance >= 0;
+                        return (
+                          <p
+                            className={`mt-1 md:mt-2 text-xl md:text-3xl font-bold ${
+                              isPositive
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-red-600 dark:text-red-400"
+                            }`}
+                          >
+                            {isPositive ? "+" : ""}
+                            {new Intl.NumberFormat("ru-RU", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }).format(balance)}
+                            <span className="ml-1 text-lg md:text-2xl font-normal">
+                              ₽
+                            </span>
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  </>
+                )}
               </div>
               {/* Блоки с графиками */}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Распределение по категориям */}
-                <div className="lg:col-span-2 card-base p-6 flex flex-col min-h-80">
-                  <p className="text-base font-medium text-gray-900 dark:text-white mb-6">
-                    Распределение по категориям
+                {/* Распределение расходов по категориям */}
+                <div
+                  className={`${
+                    isIncomeAndCardsEnabled()
+                      ? "lg:col-span-2"
+                      : "lg:col-span-2"
+                  } card-base p-6 flex flex-col min-h-80`}
+                >
+                  <p className="text-base font-medium text-gray-900 dark:text-white mb-2">
+                    {isIncomeAndCardsEnabled()
+                      ? "Расходы по категориям"
+                      : "Распределение по категориям"}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    Распределение платежей по категориям
                   </p>
                   <CategoryDistributionBars
                     data={stats.categoriesDistribution}
@@ -1474,8 +1608,41 @@ const HomePage: React.FC = () => {
                   />
                 </div>
 
+                {/* Распределение доходов по категориям (только если включена функция доходов) */}
+                {isIncomeAndCardsEnabled() && (
+                  <div className="lg:col-span-2 card-base p-6 flex flex-col min-h-80">
+                    <p className="text-base font-medium text-gray-900 dark:text-white mb-2">
+                      Доходы по категориям
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                      Распределение доходов по категориям
+                    </p>
+                    {stats.incomeCategoriesDistribution &&
+                    stats.incomeCategoriesDistribution.length > 0 ? (
+                      <CategoryDistributionBars
+                        data={stats.incomeCategoriesDistribution}
+                        colors={
+                          resolvedTheme === "dark"
+                            ? incomeColorsDark
+                            : incomeColorsLight
+                        }
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center flex-1 text-center text-gray-500 dark:text-gray-400 text-sm">
+                        Нет данных о доходах за этот период.
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* График платежной нагрузки по дням/часам */}
-                <div className="lg:col-span-3 card-base p-6 flex flex-col h-full min-h-80 max-h-[360px]">
+                <div
+                  className={`${
+                    isIncomeAndCardsEnabled()
+                      ? "lg:col-span-5"
+                      : "lg:col-span-3"
+                  } card-base p-6 flex flex-col h-full min-h-80 max-h-[360px]`}
+                >
                   <div className="mb-6">
                     <p className="text-base font-medium text-gray-900 dark:text-white">
                       Платежная нагрузка {isHourly ? "по часам" : "по дням"}

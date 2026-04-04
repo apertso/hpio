@@ -11,11 +11,17 @@ import { PaymentData } from "../types/paymentData";
 import logger from "./logger";
 import { AxiosHeaders, AxiosRequestConfig, AxiosResponse, Method } from "axios";
 import { ConnectionStatus } from "../types/connection";
+import { isIncomeAndCardsEnabled } from "./featureFlags";
 
 interface Category {
   id: string;
   name: string;
   builtinIconName?: string | null;
+}
+
+interface Tag {
+  id: string;
+  name: string;
 }
 
 export { ConnectionStatus };
@@ -258,6 +264,7 @@ class SyncService {
       const results = await Promise.allSettled([
         this.syncPayments(),
         this.syncCategories(),
+        this.syncTags(),
         this.syncUser(),
       ]);
 
@@ -324,6 +331,13 @@ class SyncService {
 
   private async syncCategories(): Promise<void> {
     try {
+      if (isIncomeAndCardsEnabled()) {
+        const user = await offlineStorage.getUser();
+        if (!user?.isAdmin) {
+          return;
+        }
+      }
+
       const response = await axiosInstance.get("/categories");
       const categories = response.data;
 
@@ -331,6 +345,19 @@ class SyncService {
       logger.info(`Synced ${categories.length} categories`);
     } catch (error) {
       logger.error("Failed to sync categories:", error);
+      throw error;
+    }
+  }
+
+  private async syncTags(): Promise<void> {
+    try {
+      const response = await axiosInstance.get("/tags");
+      const tags = response.data;
+
+      await offlineStorage.storeTags(tags);
+      logger.info(`Synced ${tags.length} tags`);
+    } catch (error) {
+      logger.error("Failed to sync tags:", error);
       throw error;
     }
   }
@@ -351,15 +378,17 @@ class SyncService {
   public async getOfflineData(): Promise<{
     payments: PaymentData[];
     categories: Category[];
+    tags: Tag[];
     user: unknown;
   }> {
-    const [payments, categories, user] = await Promise.all([
+    const [payments, categories, tags, user] = await Promise.all([
       offlineStorage.getPayments(),
       offlineStorage.getCategories(),
+      offlineStorage.getTags(),
       offlineStorage.getUser(),
     ]);
 
-    return { payments, categories, user };
+    return { payments, categories, tags, user };
   }
 
   private async processQueue(): Promise<void> {
@@ -777,7 +806,7 @@ class SyncService {
         createdAt: nowIso,
         updatedAt: nowIso,
         builtinIconName: payload.builtinIconName || null,
-        category: null,
+        transactionCategory: null,
         seriesId: payload.seriesId || null,
         completedAt: null,
         fileName: null,

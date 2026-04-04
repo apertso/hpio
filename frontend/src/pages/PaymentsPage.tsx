@@ -41,8 +41,9 @@ type PaymentTabType = "all" | "active" | "archive" | "trash";
 
 const paymentFilterOptions: SegmentedControlOption<PaymentTabType>[] = [
   { value: "all", label: "Все" },
-  { value: "active", label: "Активные" },
-  { value: "archive", label: "Архив" },
+  { value: "active", label: "Ожидаемые" },
+  { value: "archive", label: "Выполненные" },
+
   { value: "trash", label: "Корзина" },
 ];
 
@@ -235,7 +236,7 @@ const PaymentsPage: React.FC = () => {
   );
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
-  const { categories } = useCategories();
+  const { categories } = useCategories("expense");
 
   const debouncedSearch = useDebounce(activeFilters.search, 500);
 
@@ -1004,6 +1005,9 @@ const PaymentsPage: React.FC = () => {
                   onPermanentDelete={handlePermanentDeletePayment}
                   onDownloadFile={handleDownloadFile}
                   emptyMessage={getEmptyMessage()}
+                  completedOrDeletedHeader={
+                    activeTab === "trash" ? "Удален" : "Выполнен"
+                  }
                 />
               ) : (
                 <PaymentsTable

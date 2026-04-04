@@ -16,6 +16,7 @@ import logger from "../../utils/logger";
 import ConfirmModal from "../ConfirmModal";
 import userApi from "../../api/userApi";
 import ParticleNotification from "../ParticleNotification";
+import { getFeatureFlags, setFeatureFlag } from "../../utils/featureFlags";
 
 const DeveloperSection: React.FC = () => {
   const { showToast } = useToast();
@@ -35,6 +36,11 @@ const DeveloperSection: React.FC = () => {
   const [showDebugToasts, setShowDebugToasts] = useState<boolean>(() => {
     return localStorage.getItem("dev_show_debug_toasts") === "true";
   });
+  const [incomeAndCardsEnabled, setIncomeAndCardsEnabled] = useState<boolean>(
+    () => getFeatureFlags().incomeAndCardsEnabled
+  );
+  const [tagsAndCategoriesEnabled, setTagsAndCategoriesEnabled] =
+    useState<boolean>(() => getFeatureFlags().tagsAndCategoriesEnabled);
   const [isClearLogsModalOpen, setIsClearLogsModalOpen] = useState(false);
   const [isClearingLogs, setIsClearingLogs] = useState(false);
   const [isCopyingLogs, setIsCopyingLogs] = useState(false);
@@ -71,6 +77,28 @@ const DeveloperSection: React.FC = () => {
     localStorage.setItem("dev_show_debug_toasts", String(enabled));
     showToast(
       `Debug toast уведомлений ${enabled ? "включены" : "выключены"}.`,
+      "info"
+    );
+  };
+
+  const handleIncomeAndCardsToggle = (enabled: boolean) => {
+    setIncomeAndCardsEnabled(enabled);
+    setFeatureFlag("incomeAndCardsEnabled", enabled);
+    showToast(
+      `Доходы и источники ${
+        enabled ? "включены" : "выключены"
+      }. Перезагрузите страницу для применения.`,
+      "info"
+    );
+  };
+
+  const handleTagsAndCategoriesToggle = (enabled: boolean) => {
+    setTagsAndCategoriesEnabled(enabled);
+    setFeatureFlag("tagsAndCategoriesEnabled", enabled);
+    showToast(
+      `Теги и категории ${
+        enabled ? "включены" : "выключены"
+      }. Перезагрузите страницу для применения.`,
       "info"
     );
   };
@@ -273,6 +301,41 @@ const DeveloperSection: React.FC = () => {
               <ToggleSwitch
                 checked={showDebugToasts}
                 onChange={handleDebugToastsToggle}
+              />
+            </div>
+          </div>
+
+          <div className="md:col-span-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Доходы и источники (экспериментально)
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Включает разделы "Доходы" и "Источники", поддержку
+                  мультивалютности и метод оплаты в платежах
+                </p>
+              </div>
+              <ToggleSwitch
+                checked={incomeAndCardsEnabled}
+                onChange={handleIncomeAndCardsToggle}
+              />
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Теги и категории
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Включено для всех по умолчанию
+                </p>
+              </div>
+              <ToggleSwitch
+                checked={tagsAndCategoriesEnabled}
+                onChange={handleTagsAndCategoriesToggle}
+                disabled
               />
             </div>
           </div>

@@ -6,6 +6,7 @@ import {
   parseYandexBankNotification,
   parseOzonNotification,
   parseTBankNotification,
+  parseBankOfGeorgiaNotification,
   parseNotification,
 } from "../notificationParser";
 
@@ -792,6 +793,165 @@ describe("parseNotification - T-Bank", () => {
       "com.idamob.tinkoff.android",
       "Invalid notification text",
       "Магазин"
+    );
+
+    expect(result).toBe(null);
+  });
+});
+
+describe("parseBankOfGeorgiaNotification", () => {
+  it("should parse BOG notification with GEL currency", () => {
+    const title = "Grocery Store";
+    const text = "Purchase: 50.00 GEL at Grocery Store";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Grocery Store",
+      amount: 50.0,
+      currency: "GEL",
+    });
+  });
+
+  it("should parse BOG notification with USD currency", () => {
+    const title = "Online Shop";
+    const text = "Payment: 100.00 USD at Online Shop";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Online Shop",
+      amount: 100.0,
+      currency: "USD",
+    });
+  });
+
+  it("should parse BOG notification with EUR currency", () => {
+    const title = "Restaurant";
+    const text = "Transaction: 25.50 EUR at Restaurant";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Restaurant",
+      amount: 25.5,
+      currency: "EUR",
+    });
+  });
+
+  it("should parse BOG notification with currency symbols", () => {
+    const title = "Shop";
+    const text = "Purchase: 75.00 ₾ at Shop";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Shop",
+      amount: 75.0,
+      currency: "GEL",
+    });
+  });
+
+  it("should parse BOG notification with alternative format (amount - merchant)", () => {
+    const title = "Cafe";
+    const text = "50.00 GEL - Cafe";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Cafe",
+      amount: 50.0,
+      currency: "GEL",
+    });
+  });
+
+  it("should parse BOG notification with large amounts", () => {
+    const title = "Electronics Store";
+    const text = "Purchase: 1,500.00 GEL at Electronics Store";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Electronics Store",
+      amount: 1500.0,
+      currency: "GEL",
+    });
+  });
+
+  it("should use title as merchant when not in text", () => {
+    const title = "Unknown Merchant";
+    const text = "Transaction completed: 30.00 GEL";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toEqual({
+      merchantName: "Unknown Merchant",
+      amount: 30.0,
+      currency: "GEL",
+    });
+  });
+
+  it("should return null for empty title", () => {
+    const title = "";
+    const text = "Purchase: 50.00 GEL";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for invalid text format", () => {
+    const title = "Shop";
+    const text = "Some random notification text";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+
+  it("should return null for zero amount", () => {
+    const title = "Shop";
+    const text = "Purchase: 0.00 GEL at Shop";
+    const result = parseBankOfGeorgiaNotification(text, title);
+
+    expect(result).toBe(null);
+  });
+});
+
+describe("parseNotification - Bank of Georgia", () => {
+  it("should parse BOG notifications correctly", () => {
+    const result = parseNotification(
+      "ge.bog.mobilebank",
+      "Purchase: 50.00 GEL at Grocery Store",
+      "Grocery Store"
+    );
+
+    expect(result).toEqual({
+      merchantName: "Grocery Store",
+      amount: 50.0,
+      currency: "GEL",
+    });
+  });
+
+  it("should parse BOG notifications with different currencies", () => {
+    const resultUSD = parseNotification(
+      "ge.bog.mobilebank",
+      "Payment: 100.00 USD at Shop",
+      "Shop"
+    );
+    expect(resultUSD).toEqual({
+      merchantName: "Shop",
+      amount: 100.0,
+      currency: "USD",
+    });
+
+    const resultEUR = parseNotification(
+      "ge.bog.mobilebank",
+      "Transaction: 75.50 EUR at Store",
+      "Store"
+    );
+    expect(resultEUR).toEqual({
+      merchantName: "Store",
+      amount: 75.5,
+      currency: "EUR",
+    });
+  });
+
+  it("should return null for BOG without title", () => {
+    const result = parseNotification(
+      "ge.bog.mobilebank",
+      "Purchase: 50.00 GEL at Shop"
     );
 
     expect(result).toBe(null);

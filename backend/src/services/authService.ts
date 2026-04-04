@@ -73,7 +73,7 @@ export const registerUser = async (
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  // Обернем создание пользователя и категорий в транзакцию для атомарности
+  // Обернем создание пользователя в транзакцию для атомарности
   const transaction = await db.sequelize.transaction();
   try {
     // Создание пользователя
@@ -87,28 +87,6 @@ export const registerUser = async (
       },
       { transaction }
     );
-
-    // Создание стандартного набора категорий для нового пользователя
-    const defaultCategories = [
-      { name: "Жильё и коммунальные", icon: "home" },
-      { name: "Питание", icon: "shopping-cart" },
-      { name: "Транспорт", icon: "truck" },
-      { name: "Здоровье", icon: "heart" },
-      { name: "Покупки и одежда", icon: "gift" },
-      { name: "Развлечения", icon: "film" },
-      { name: "Образование", icon: "book-open" },
-      { name: "Семья и дети", icon: "sparkles" },
-      { name: "Финансы и кредиты", icon: "credit-card" },
-      { name: "Прочее", icon: "wrench" },
-    ];
-
-    const categoriesToCreate = defaultCategories.map((category) => ({
-      userId: user.id,
-      name: category.name,
-      builtinIconName: category.icon,
-    }));
-
-    await db.Category.bulkCreate(categoriesToCreate, { transaction });
 
     // Генерируем токен верификации
     const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -126,9 +104,7 @@ export const registerUser = async (
       }
     );
 
-    logger.info(
-      `User registered: ${user.email} and default categories created.`
-    );
+    logger.info(`User registered: ${user.email}.`);
     // Возвращаем пользователя и токен
     return {
       id: user.id,
@@ -136,8 +112,10 @@ export const registerUser = async (
       email: user.email,
       token: generateToken(user.id),
       isVerified: user.isVerified,
+      isAdmin: user.isAdmin,
       photoPath: user.photoPath,
       timezone: user.timezone, // <-- ADD THIS LINE
+      preferredCurrency: user.preferredCurrency,
     };
   } catch (error) {
     await transaction.rollback();
@@ -169,11 +147,13 @@ export const loginUser = async (email: string, password: string) => {
       email: user.email,
       token: generateToken(user.id),
       isVerified: user.isVerified,
+      isAdmin: user.isAdmin,
       photoPath: user.photoPath,
       emailNotifications: user.emailNotifications,
       pushNotifications: user.pushNotifications,
       notificationTime: user.notificationTime,
       timezone: user.timezone, // <-- ADD THIS LINE
+      preferredCurrency: user.preferredCurrency,
     };
   } else {
     throw new Error("Неверный Email или пароль.");
@@ -263,10 +243,12 @@ export const getUserProfile = async (userId: string) => {
       "photoPath",
       "createdAt",
       "isVerified",
+      "isAdmin",
       "emailNotifications",
       "pushNotifications",
       "notificationTime",
-      "timezone", // <-- ADD THIS LINE
+      "timezone",
+      "preferredCurrency",
       "fcmToken",
     ],
   });
@@ -275,6 +257,12 @@ export const getUserProfile = async (userId: string) => {
     throw new Error("Пользователь не найден.");
   }
   return user;
+};
+
+export const getAllUsers = async (): Promise<UserInstance[]> => {
+  return await db.User.findAll({
+    attributes: ["id", "timezone", "preferredCurrency"],
+  });
 };
 
 // Обновление профиля пользователя (email, пароль)
@@ -288,7 +276,8 @@ export const updateUserProfile = async (
     emailNotifications?: boolean;
     pushNotifications?: boolean;
     notificationTime?: string;
-    timezone?: string; // <-- ADD THIS LINE
+    timezone?: string;
+    preferredCurrency?: string;
   }
 ) => {
   const user = await db.User.findByPk(userId);
@@ -317,6 +306,9 @@ export const updateUserProfile = async (
     // <-- ADD THIS BLOCK
     // TODO: Optionally validate against a list of IANA timezones
     user.timezone = data.timezone;
+  }
+  if (data.preferredCurrency) {
+    user.preferredCurrency = data.preferredCurrency.toUpperCase();
   }
 
   // Обновление email
@@ -417,9 +409,6 @@ export const deleteUserAccount = async (userId: string) => {
     await db.Payment.destroy({ where: { userId }, transaction });
     // Затем удаляем серии, которые также могут иметь зависимости
     await deleteAllUserSeries(userId, transaction); // <-- REFACTORED
-    // После этого удаляем категории
-    await db.Category.destroy({ where: { userId }, transaction });
-
     // Наконец, удаляем самого пользователя
     await user.destroy({ transaction });
 

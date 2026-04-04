@@ -4,6 +4,7 @@ import PaymentIconDisplay from "./PaymentIconDisplay";
 import { PaymentData } from "../types/paymentData";
 import { getPaymentColorClass } from "../utils/paymentColors";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
+import { formatDateForDisplay } from "../utils/dateUtils";
 import { ArrowPathIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 import {
   PencilIcon,
@@ -80,9 +81,9 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
               <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
               {formatRecurrenceRule(payment.series?.recurrenceRule)}
               {payment.series.recurrenceEndDate &&
-                ` до ${new Date(
-                  payment.series.recurrenceEndDate
-                ).toLocaleDateString("ru-RU")}`}
+                ` до ${formatDateForDisplay(
+                  new Date(payment.series.recurrenceEndDate)
+                )}`}
             </span>
           ) : payment.seriesId && !payment.series?.isActive ? (
             <span className="flex items-center text-gray-400 italic">
@@ -120,7 +121,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
-        <>{new Date(payment.dueDate).toLocaleDateString("ru-RU")}</>
+        <>{formatDateForDisplay(new Date(payment.dueDate))}</>
       ),
     },
     {
@@ -128,7 +129,13 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
       header: "Категория",
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 truncate",
-      cell: (payment) => <>{payment.category ? payment.category.name : "-"}</>,
+      cell: (payment) => (
+        <>
+          {payment.transactionCategory
+            ? payment.transactionCategory.name
+            : "-"}
+        </>
+      ),
     },
     {
       id: "file",

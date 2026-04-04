@@ -7,9 +7,15 @@ interface Category {
   builtinIconName?: string | null;
 }
 
+interface Tag {
+  id: string;
+  name: string;
+}
+
 export interface OfflineData {
   payments: PaymentData[];
   categories: Category[];
+  tags: Tag[];
   user: User;
   lastSync: number;
   version: number;
@@ -59,10 +65,11 @@ export interface QueuedRequest {
 
 class OfflineStorage {
   private dbName = "hochuplachu_offline_db";
-  private dbVersion = 2;
+  private dbVersion = 4;
   private stores = {
     payments: "payments",
     categories: "categories",
+    tags: "tags",
     user: "user",
     metadata: "metadata",
     queue: "requestQueue",
@@ -97,6 +104,10 @@ class OfflineStorage {
 
         if (!db.objectStoreNames.contains(this.stores.categories)) {
           db.createObjectStore(this.stores.categories, { keyPath: "id" });
+        }
+
+        if (!db.objectStoreNames.contains(this.stores.tags)) {
+          db.createObjectStore(this.stores.tags, { keyPath: "id" });
         }
 
         if (!db.objectStoreNames.contains(this.stores.user)) {
@@ -181,6 +192,37 @@ class OfflineStorage {
         "readonly"
       );
       const store = transaction.objectStore(this.stores.categories);
+      const request = store.getAll();
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async storeTags(tags: Tag[]): Promise<void> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.stores.tags], "readwrite");
+      const store = transaction.objectStore(this.stores.tags);
+
+      const clearRequest = store.clear();
+      clearRequest.onsuccess = () => {
+        tags.forEach((tag) => {
+          store.put(tag);
+        });
+        resolve();
+      };
+      clearRequest.onerror = () => reject(clearRequest.error);
+    });
+  }
+
+  async getTags(): Promise<Tag[]> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.stores.tags], "readonly");
+      const store = transaction.objectStore(this.stores.tags);
       const request = store.getAll();
 
       request.onsuccess = () => resolve(request.result);
@@ -359,6 +401,7 @@ class OfflineStorage {
         [
           this.stores.payments,
           this.stores.categories,
+          this.stores.tags,
           this.stores.user,
           this.stores.metadata,
           this.stores.queue,
@@ -382,16 +425,22 @@ class OfflineStorage {
   }
 
   async exportData(): Promise<OfflineData> {
-    const [payments, categories, user, lastSync] = await Promise.all([
+    const [payments, categories, tags, user, lastSync] = await Promise.all([
       this.getPayments(),
       this.getCategories(),
+      this.getTags(),
       this.getUser(),
       this.getLastSync(),
     ]);
 
+    if (!user) {
+      throw new Error("Cannot export data: no user found");
+    }
+
     return {
       payments,
       categories,
+      tags,
       user,
       lastSync: lastSync || Date.now(),
       version: 1,
@@ -402,6 +451,7 @@ class OfflineStorage {
     await Promise.all([
       this.storePayments(data.payments),
       this.storeCategories(data.categories),
+      this.storeTags(data.tags || []),
       data.user ? this.storeUser(data.user) : Promise.resolve(),
       this.updateLastSync(),
     ]);

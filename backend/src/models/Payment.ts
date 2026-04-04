@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Literal } from "sequelize/types/utils";
+import { TransactionCategoryInstance } from "./TransactionCategory";
 // Импортируем типы моделей, если они используются в ассоциациях (для TypeScript)
 // import { UserStatic } from './User'; // Вам может потребоваться создать файл типов для моделей
 // import { CategoryStatic } from './Category';
@@ -27,6 +28,10 @@ export interface PaymentAttributes {
   createdAt: Date;
   updatedAt: Date;
   seriesId?: string | null; // Link to RecurringSeries
+  currency: string;
+  exchangeRate: number;
+  cardId?: string | null;
+  method: "cash" | "card" | "transfer" | "other";
 }
 
 interface PaymentCreationAttributes
@@ -46,11 +51,17 @@ interface PaymentCreationAttributes
     | "createdAt"
     | "updatedAt"
     | "seriesId" // Add seriesId to optional fields
+    | "currency"
+    | "exchangeRate"
+    | "cardId"
+    | "method"
   > {}
 
 export interface PaymentInstance
   extends Model<PaymentAttributes, PaymentCreationAttributes>,
-    PaymentAttributes {}
+    PaymentAttributes {
+  transactionCategory?: TransactionCategoryInstance;
+}
 
 export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
   const Payment = sequelize.define<PaymentInstance, PaymentCreationAttributes>(
@@ -70,11 +81,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         },
       },
       categoryId: {
-        // !!! Новое поле для привязки к категории
         type: dataTypes.UUID,
         allowNull: true, // Платеж может быть без категории
         references: {
-          model: "categories", // Имя таблицы категорий
+          model: "transaction_categories",
           key: "id",
         },
         // При удалении категории, categoryId в платежах станет NULL
@@ -148,6 +158,27 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         },
         onDelete: "SET NULL", // If reccuringSeries is deleted, seriesId in payments becomes NULL
       },
+      currency: {
+        type: dataTypes.STRING(3),
+        allowNull: false,
+        defaultValue: "RUB",
+      },
+      exchangeRate: {
+        type: dataTypes.DECIMAL(10, 6),
+        allowNull: false,
+        defaultValue: 1.0,
+      },
+      cardId: {
+        type: dataTypes.UUID,
+        allowNull: true,
+        references: { model: "cards", key: "id" },
+        onDelete: "SET NULL",
+      },
+      method: {
+        type: dataTypes.ENUM("cash", "card", "transfer", "other"),
+        allowNull: false,
+        defaultValue: "cash",
+      },
       createdAt: {
         type: dataTypes.DATE,
         defaultValue: dataTypes.NOW,
@@ -176,15 +207,21 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       foreignKey: "userId",
       as: "user",
     });
-    // Add association Payment belongs to Category
-    Payment.belongsTo(models.Category, {
+    Payment.belongsTo(models.TransactionCategory, {
       foreignKey: "categoryId",
-      as: "category", // Association name for queries (e.g., Payment.findOne({ include: 'category' }))
+      as: "transactionCategory",
+      constraints: false,
     });
     // Add association Payment belongs to RecurringSeries
     Payment.belongsTo(models.RecurringSeries, {
       foreignKey: "seriesId",
       as: "series", // Association name for queries
+    });
+    Payment.belongsToMany(models.Tag, {
+      through: models.PaymentTag,
+      foreignKey: "paymentId",
+      otherKey: "tagId",
+      as: "tags",
     });
   };
 

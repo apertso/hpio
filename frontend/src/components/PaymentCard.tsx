@@ -14,6 +14,7 @@ import { useDropdown } from "../hooks/useDropdown";
 import Overlay from "./Overlay";
 import PaymentIconDisplay from "./PaymentIconDisplay";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
+import { formatDateForDisplay } from "../utils/dateUtils";
 
 interface PaymentCardProps {
   payment: {
@@ -50,10 +51,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
   onDelete,
   hideDate,
 }) => {
-  const formattedDueDate = new Date(payment.dueDate).toLocaleDateString(
-    "ru-RU",
-    { day: "2-digit", month: "2-digit", year: "numeric" }
-  );
+  const formattedDueDate = formatDateForDisplay(new Date(payment.dueDate));
   const formattedAmount = new Intl.NumberFormat("ru-RU", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

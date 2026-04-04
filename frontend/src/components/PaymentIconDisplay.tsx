@@ -11,7 +11,7 @@ interface PaymentDataForIcon {
   id: string;
   builtinIconName?: BuiltinIcon | null;
   title?: string;
-  category?: {
+  transactionCategory?: {
     builtinIconName?: BuiltinIcon | null;
   } | null;
 }
@@ -25,7 +25,8 @@ const PaymentIconDisplay: React.FC<PaymentIconDisplayProps> = ({
   payment,
   sizeClass = "h-6 w-6",
 }) => {
-  const iconName = payment.builtinIconName || payment.category?.builtinIconName;
+  const iconName =
+    payment.builtinIconName || payment.transactionCategory?.builtinIconName;
   if (!payment || !iconName) {
     return <Icon className={`${sizeClass} text-gray-400`} />;
   }

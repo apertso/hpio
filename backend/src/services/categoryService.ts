@@ -1,7 +1,8 @@
 // backend/src/services/categoryService.ts
-import db from "../models"; // Доступ к моделям Category, Payment
+import db from "../models";
 import { Op } from "sequelize";
 import logger from "../config/logger";
+import { TransactionCategoryInstance } from "../models/TransactionCategory";
 // Импорт типов моделей, если нужно
 
 interface CategoryData {
@@ -12,55 +13,50 @@ interface CategoryData {
 }
 
 // Получить все категории пользователя
-export const getCategories = async (userId: string) => {
+export const getCategories = async (): Promise<
+  TransactionCategoryInstance[]
+> => {
   try {
-    const categories = await db.Category.findAll({
-      where: { userId: userId },
-      order: [["name", "ASC"]], // Сортировка по имени
+    const categories = await db.TransactionCategory.findAll({
+      order: [["name", "ASC"]],
     });
-    logger.info(`Fetched ${categories.length} categories for user ${userId}`);
+
+    logger.info(`Fetched ${categories.length} transaction categories`);
     return categories;
   } catch (error) {
-    logger.error(`Error fetching categories for user ${userId}:`, error);
+    logger.error("Error fetching transaction categories:", error);
     throw new Error("Не удалось получить список категорий.");
   }
 };
 
 // Получить категорию по ID
-export const getCategoryById = async (categoryId: string, userId: string) => {
+export const getCategoryById = async (
+  categoryId: string
+): Promise<TransactionCategoryInstance | null> => {
   try {
-    const category = await db.Category.findOne({
+    const category = await db.TransactionCategory.findOne({
       where: {
         id: categoryId,
-        userId: userId, // Проверка прав собственности
       },
     });
 
     if (!category) {
-      logger.warn(
-        `Category not found or no access (ID: ${categoryId}, User: ${userId})`
-      );
+      logger.warn(`Category not found (ID: ${categoryId})`);
       return null;
     }
 
-    logger.info(
-      `Fetched category details (ID: ${category.id}, User: ${userId})`
-    );
+    logger.info(`Fetched category details (ID: ${category.id})`);
     return category;
   } catch (error) {
-    logger.error(
-      `Error fetching category (ID: ${categoryId}, User: ${userId}):`,
-      error
-    );
+    logger.error(`Error fetching category (ID: ${categoryId}):`, error);
     throw new Error("Не удалось получить детали категории.");
   }
 };
 
 // Создать новую категорию
 export const createCategory = async (
-  userId: string,
   categoryData: CategoryData
-) => {
+): Promise<TransactionCategoryInstance> => {
   // Валидация
   if (!categoryData.name || categoryData.name.trim() === "") {
     throw new Error("Название категории обязательно.");
@@ -68,10 +64,8 @@ export const createCategory = async (
   const categoryName = categoryData.name.trim();
 
   try {
-    // Проверка на уникальность имени категории для данного пользователя (индекс в БД уже есть, но явная проверка улучшает UX)
-    const existingCategory = await db.Category.findOne({
+    const existingCategory = await db.TransactionCategory.findOne({
       where: {
-        userId: userId,
         name: categoryName,
       },
     });
@@ -80,18 +74,16 @@ export const createCategory = async (
         `Категория с названием "${categoryName}" уже существует.`
       );
     }
-
-    const category = await db.Category.create({
-      userId: userId,
+    const category = await db.TransactionCategory.create({
       name: categoryName,
       builtinIconName: categoryData.builtinIconName || null,
       // ... другие поля ...
     });
 
-    logger.info(`Category created (ID: ${category.id}, User: ${userId})`);
+    logger.info(`Category created (ID: ${category.id})`);
     return category;
   } catch (error: any) {
-    logger.error(`Error creating category for user ${userId}:`, error);
+    logger.error("Error creating category:", error);
     // Проверяем, не является ли ошибка уникальности из БД
     if (error.name === "SequelizeUniqueConstraintError") {
       throw new Error(`Категория с таким названием уже существует.`);
@@ -103,9 +95,8 @@ export const createCategory = async (
 // Обновить категорию
 export const updateCategory = async (
   categoryId: string,
-  userId: string,
   categoryData: Partial<CategoryData>
-) => {
+): Promise<TransactionCategoryInstance | null> => {
   // Валидация
   if (!categoryData.name || categoryData.name.trim() === "") {
     throw new Error("Название категории обязательно.");
@@ -113,25 +104,20 @@ export const updateCategory = async (
   const newCategoryName = categoryData.name.trim();
 
   try {
-    // Находим категорию, убеждаемся, что она принадлежит пользователю
-    const category = await db.Category.findOne({
+    const category = await db.TransactionCategory.findOne({
       where: {
         id: categoryId,
-        userId: userId,
       },
     });
 
     if (!category) {
-      logger.warn(
-        `Category not found for update or no access (ID: ${categoryId}, User: ${userId})`
-      );
+      logger.warn(`Category not found for update (ID: ${categoryId})`);
       return null;
     }
 
     // Проверка на уникальность нового имени (исключая текущую категорию)
-    const existingCategory = await db.Category.findOne({
+    const existingCategory = await db.TransactionCategory.findOne({
       where: {
-        userId: userId,
         name: newCategoryName,
         id: { [Op.ne]: categoryId }, // Исключаем текущую категорию
       },
@@ -148,13 +134,10 @@ export const updateCategory = async (
       // ... другие поля ...
     });
 
-    logger.info(`Category updated (ID: ${category.id}, User: ${userId})`);
+    logger.info(`Category updated (ID: ${category.id})`);
     return category;
   } catch (error: any) {
-    logger.error(
-      `Error updating category (ID: ${categoryId}, User: ${userId}):`,
-      error
-    );
+    logger.error(`Error updating category (ID: ${categoryId}):`, error);
     if (error.name === "SequelizeUniqueConstraintError") {
       throw new Error(`Категория с таким названием уже существует.`);
     }
@@ -163,20 +146,18 @@ export const updateCategory = async (
 };
 
 // Удалить категорию
-export const deleteCategory = async (categoryId: string, userId: string) => {
+export const deleteCategory = async (
+  categoryId: string
+): Promise<boolean | null> => {
   try {
-    // Находим категорию, убеждаемся, что она принадлежит пользователю
-    const category = await db.Category.findOne({
+    const category = await db.TransactionCategory.findOne({
       where: {
         id: categoryId,
-        userId: userId,
       },
     });
 
     if (!category) {
-      logger.warn(
-        `Category not found for deletion or no access (ID: ${categoryId}, User: ${userId})`
-      );
+      logger.warn(`Category not found for deletion (ID: ${categoryId})`);
       return null;
     }
 
@@ -195,13 +176,10 @@ export const deleteCategory = async (categoryId: string, userId: string) => {
 
     await category.destroy();
 
-    logger.info(`Category deleted (ID: ${category.id}, User: ${userId})`);
+    logger.info(`Category deleted (ID: ${category.id})`);
     return true; // Возвращаем true при успешном удалении
   } catch (error: any) {
-    logger.error(
-      `Error deleting category (ID: ${categoryId}, User: ${userId}):`,
-      error
-    );
+    logger.error(`Error deleting category (ID: ${categoryId}):`, error);
     // Если ошибка связана с ограничениями (например, если мы запретили удаление при наличии платежей)
     if (error.message.includes("Нельзя удалить категорию")) {
       throw error; // Пробрасываем бизнес-ошибку

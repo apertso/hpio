@@ -8,7 +8,6 @@ import useCategories from "../hooks/useCategories";
 import axiosInstance from "../api/axiosInstance";
 import { suggestionApi } from "../api/suggestionApi";
 import { merchantRuleApi } from "../api/merchantRuleApi";
-import { normalizeMerchantName } from "../utils/merchantNormalizer";
 import { normalizeNotificationTimestamp } from "../utils/dateUtils";
 import logger from "../utils/logger";
 
@@ -37,6 +36,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
   onComplete,
   onSuggestionProcessed,
 }) => {
+  // Компонент временно не используется, оставлен для возможного возврата.
   const { showToast } = useToast();
   const { categories } = useCategories();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -101,12 +101,9 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
       await axiosInstance.post("/payments", payload);
 
       if (createRule && selectedCategoryId) {
-        const normalizedMerchant = normalizeMerchantName(
-          currentSuggestion.merchantName
-        );
         await merchantRuleApi.createMerchantRule({
           categoryId: selectedCategoryId,
-          merchantKeyword: normalizedMerchant,
+          merchantKeyword: currentSuggestion.merchantName,
         });
       }
 

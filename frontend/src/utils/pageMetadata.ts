@@ -124,6 +124,13 @@ export const pageMetadata: Record<string, PageConfig> = {
       "Создавайте и управляйте категориями для эффективной организации ваших расходов.",
   },
 
+  tags: {
+    ...privateConfig,
+    ogTitle: "Теги",
+    ogDescription:
+      "Управляйте тегами для удобного поиска и группировки платежей.",
+  },
+
   archive: {
     ...privateConfig,
     ogTitle: "Архив платежей",
@@ -136,6 +143,26 @@ export const pageMetadata: Record<string, PageConfig> = {
     ogTitle: "Настройки",
     ogDescription:
       "Персонализируйте свой опыт использования сервиса управления финансами.",
+  },
+
+  "automation-rules": {
+    ...privateConfig,
+    ogTitle: "Правила автоматизации",
+    ogDescription:
+      "Управляйте правилами автоматизации платежей и категориями для мерчантов.",
+  },
+
+  cards: {
+    ...privateConfig,
+    ogTitle: "Источники",
+    ogDescription: "Управляйте своими счетами, картами и крипто кошельками.",
+  },
+
+  incomes: {
+    ...privateConfig,
+    ogTitle: "Доходы",
+    ogDescription:
+      "Отслеживайте и управляйте всеми своими доходами и поступлениями.",
   },
 
   account: {

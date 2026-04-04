@@ -19,7 +19,7 @@ function useApi<T>(
     onError?: (error: Error) => void;
     enableOffline?: boolean;
     cacheKey?: string;
-    offlineDataKey?: "payments" | "categories" | "user";
+    offlineDataKey?: "payments" | "categories" | "user" | "tags";
   } = {}
 ): UseApiResult<T> {
   const [data, setData] = useState<T | null>(null);

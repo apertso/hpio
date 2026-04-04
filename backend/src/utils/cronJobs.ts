@@ -13,11 +13,13 @@ import {
   generateNextRecurrentPayments,
   cleanupOrphanedSeries,
 } from "../services/paymentService";
+import { createDailySnapshots } from "../services/fundsService";
 import {
   executeWithTaskLock,
   TASK_UPDATE_OVERDUE,
   TASK_GENERATE_RECURRING,
   TASK_CLEANUP_ORPHANED_SERIES,
+  TASK_CREATE_FUNDS_SNAPSHOTS,
 } from "../services/taskLockService";
 import {
   sendPaymentReminderEmail,
@@ -251,6 +253,29 @@ const setupCronJobs = () => {
       }
     } catch (error) {
       logger.error(`Cron: Error in ${TASK_CLEANUP_ORPHANED_SERIES}`, error);
+    }
+  });
+
+  // ЗАДАЧА 5: Создание ежедневных снимков баланса пользователей.
+  // ЧТО ДЕЛАЕТ: Создает ежедневный снимок баланса пользователей в 00:00.
+  cron.schedule("* * * * *", async () => {
+    logger.info(`Cron: Attempting to run ${TASK_CREATE_FUNDS_SNAPSHOTS}`);
+    try {
+      const createdCount = await executeWithTaskLock(
+        TASK_CREATE_FUNDS_SNAPSHOTS,
+        createDailySnapshots
+      );
+      if (createdCount !== undefined) {
+        logger.info(
+          `Cron: Finished ${TASK_CREATE_FUNDS_SNAPSHOTS}. Created ${createdCount} snapshots.`
+        );
+      } else {
+        logger.info(
+          `Cron: Task ${TASK_CREATE_FUNDS_SNAPSHOTS} was skipped (likely already in progress or interval not met).`
+        );
+      }
+    } catch (error) {
+      logger.error(`Cron: Error in ${TASK_CREATE_FUNDS_SNAPSHOTS}`, error);
     }
   });
 

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { blogApi, BlogPost } from "../api/blogApi";
+import { formatDateForDisplay } from "../utils/dateUtils";
 
 const BlogPage: React.FC = () => {
   const metadata = getPageMetadata("blog");
@@ -70,7 +71,7 @@ const BlogPage: React.FC = () => {
                   </p>
                 )}
                 <div className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-                  {new Date(post.createdAt).toLocaleDateString("ru-RU")}
+                  {formatDateForDisplay(new Date(post.createdAt))}
                 </div>
               </article>
             ))}
@@ -82,5 +83,3 @@ const BlogPage: React.FC = () => {
 };
 
 export default BlogPage;
-
-

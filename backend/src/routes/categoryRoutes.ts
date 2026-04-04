@@ -18,7 +18,7 @@ router.use(protect);
 // GET /api/categories - Получить все категории пользователя
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const categories = await getCategories(req.user!.id);
+    const categories = await getCategories();
     res.json(categories);
   } catch (error: any) {
     logger.error("Error in GET /api/categories:", error);
@@ -29,7 +29,7 @@ router.get("/", async (req: Request, res: Response) => {
 // GET /api/categories/:id - Получить категорию по ID
 router.get("/:id", async (req: Request, res: Response) => {
   try {
-    const category = await getCategoryById(req.params.id, req.user!.id);
+    const category = await getCategoryById(req.params.id);
     if (!category) {
       return res
         .status(404)
@@ -46,7 +46,10 @@ router.get("/:id", async (req: Request, res: Response) => {
 router.post("/", async (req: Request, res: Response) => {
   // TODO: Добавить валидацию req.body (проверка наличия name)
   try {
-    const newCategory = await createCategory(req.user!.id, req.body);
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ message: "Доступ запрещен." });
+    }
+    const newCategory = await createCategory(req.body);
     res.status(201).json(newCategory);
   } catch (error: any) {
     logger.error("Error in POST /api/categories:", error);
@@ -58,11 +61,10 @@ router.post("/", async (req: Request, res: Response) => {
 router.put("/:id", async (req: Request, res: Response) => {
   // TODO: Добавить валидацию req.body (проверка наличия name)
   try {
-    const updatedCategory = await updateCategory(
-      req.params.id,
-      req.user!.id,
-      req.body
-    );
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ message: "Доступ запрещен." });
+    }
+    const updatedCategory = await updateCategory(req.params.id, req.body);
     if (!updatedCategory) {
       return res
         .status(404)
@@ -78,7 +80,10 @@ router.put("/:id", async (req: Request, res: Response) => {
 // DELETE /api/categories/:id - Удалить категорию
 router.delete("/:id", async (req: Request, res: Response) => {
   try {
-    const success = await deleteCategory(req.params.id, req.user!.id);
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ message: "Доступ запрещен." });
+    }
+    const success = await deleteCategory(req.params.id);
     if (!success) {
       return res
         .status(404)

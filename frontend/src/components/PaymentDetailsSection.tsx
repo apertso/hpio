@@ -51,7 +51,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
             onSingleChange={(date: Date | null) => {
               setValue("dueDate", date as Date, { shouldValidate: true });
             }}
-            dateFormat="yyyy-MM-dd"
+            dateFormat="dd.MM.yyyy"
             disabled={isSubmitting}
             placeholder="Выберите дату"
             error={errors.dueDate?.message}

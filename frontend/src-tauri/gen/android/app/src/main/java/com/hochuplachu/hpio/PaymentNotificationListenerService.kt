@@ -309,12 +309,17 @@ class PaymentNotificationListenerService : NotificationListenerService() {
         notificationType: NotificationType,
     ) {
         try {
+            // Re-extract card here or pass it as arg (simplified for minimal changes: re-extract)
+            val cardMatch = Regex("(?s).*(?:\\*|\\.\\.|\\s)(\\d{4})(?:\\D|$)").find(text)
+            val extractedCard = cardMatch?.groupValues?.get(1)
+
             val notificationData = JSONObject().apply {
                 put("packageName", sbn.packageName)
                 put("title", title)
                 put("text", text)
                 put("timestamp", System.currentTimeMillis())
                 put("notificationType", notificationType.name)
+                put("cardLast4", extractedCard)
             }
 
             saveNotification(notificationData)

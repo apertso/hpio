@@ -4,6 +4,10 @@ import PaymentIconDisplay from "./PaymentIconDisplay";
 import { PaymentData } from "../types/paymentData";
 import { getPaymentColorClass } from "../utils/paymentColors";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
+import {
+  formatDateForDisplay,
+  formatDateTimeForDisplay,
+} from "../utils/dateUtils";
 import { PaperClipIcon } from "@heroicons/react/24/outline";
 import {
   PencilIcon,
@@ -19,6 +23,7 @@ interface ArchiveTableProps {
   onPermanentDelete: (id: string) => void;
   onDownloadFile: (id: string, fileName: string) => void;
   emptyMessage?: string;
+  completedOrDeletedHeader?: string;
 }
 
 const ArchiveTable: React.FC<ArchiveTableProps> = ({
@@ -29,6 +34,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
   onPermanentDelete,
   onDownloadFile,
   emptyMessage = "Архив пуст",
+  completedOrDeletedHeader = "Выполнен/Удален",
 }) => {
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
@@ -77,9 +83,9 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
               <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
               {formatRecurrenceRule(payment.series.recurrenceRule)}
               {payment.series.recurrenceEndDate &&
-                ` до ${new Date(
-                  payment.series.recurrenceEndDate
-                ).toLocaleDateString("ru-RU")}`}
+                ` до ${formatDateForDisplay(
+                  new Date(payment.series.recurrenceEndDate)
+                )}`}
             </span>
           ) : (
             "Разовый"
@@ -112,20 +118,20 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
-        <>{new Date(payment.dueDate).toLocaleDateString("ru-RU")}</>
+        <>{formatDateForDisplay(new Date(payment.dueDate))}</>
       ),
     },
     {
       id: "completedOrDeleted",
-      header: "Выполнен/Удален",
+      header: completedOrDeletedHeader,
       thClassName: `${thBaseClassName} w-48`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
         <>
           {payment.completedAt
-            ? new Date(payment.completedAt).toLocaleString("ru-RU")
-            : new Date(payment.updatedAt).toLocaleString("ru-RU")}
+            ? formatDateTimeForDisplay(new Date(payment.completedAt))
+            : formatDateTimeForDisplay(new Date(payment.updatedAt))}
         </>
       ),
     },
@@ -134,7 +140,13 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       header: "Категория",
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 truncate",
-      cell: (payment) => <>{payment.category ? payment.category.name : "-"}</>,
+      cell: (payment) => (
+        <>
+          {payment.transactionCategory
+            ? payment.transactionCategory.name
+            : "-"}
+        </>
+      ),
     },
     {
       id: "file",

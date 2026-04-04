@@ -29,7 +29,7 @@ const protect = async (req: Request, res: Response, next: NextFunction) => {
     // Находим пользователя по ID из токена и добавляем его к объекту запроса
     // Исключаем поле пароля для безопасности
     const user = await db.User.findByPk(decoded.id, {
-      attributes: ["id", "email"], // Выбираем только нужные поля
+      attributes: ["id", "email", "isAdmin"], // Выбираем только нужные поля
     });
 
     if (!user) {
@@ -42,6 +42,7 @@ const protect = async (req: Request, res: Response, next: NextFunction) => {
     req.user = {
       id: user.id,
       email: user.email,
+      isAdmin: user.isAdmin,
     };
     next(); // Переходим к следующему middleware или обработчику маршрута
   } catch (error) {

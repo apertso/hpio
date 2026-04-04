@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../api/axiosInstance";
 import useApi from "./useApi"; // Import the new hook
 import { BuiltinIcon } from "../utils/builtinIcons";
 
-interface Category {
+export interface Category {
   id: string;
   name: string;
+  type?: "expense" | "income";
   builtinIconName?: BuiltinIcon | null;
 }
 
@@ -14,9 +16,11 @@ const fetchCategoriesApi = async (): Promise<Category[]> => {
   return res.data;
 };
 
-const useCategories = () => {
+const useCategories = (filterType?: "expense" | "income") => {
+  const { user } = useAuth();
+
   const {
-    data: categories,
+    data: allCategories,
     isLoading,
     error,
     execute: fetchCategories,
@@ -25,9 +29,18 @@ const useCategories = () => {
   });
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
     fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Removed fetchCategories to prevent infinite loop
+  }, [user]); // Removed fetchCategories to prevent infinite loop
+
+  const categories = useMemo(() => {
+    if (!allCategories) return undefined;
+    if (!filterType) return allCategories;
+    return allCategories.filter((c) => c.type === filterType);
+  }, [allCategories, filterType]);
 
   return { categories, isLoading, error, fetchCategories };
 };

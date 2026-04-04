@@ -11,6 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
+import { formatDateForDisplay } from "../utils/dateUtils";
 
 type PaymentListCardContext = "home" | "payments" | "archive";
 
@@ -45,10 +46,13 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
   }).format(payment.amount);
 
   const isHome = context === "home";
-  const dueDateStr = new Date(payment.dueDate).toLocaleDateString("ru-RU");
+  const dueDateStr = formatDateForDisplay(new Date(payment.dueDate));
   const completedOrDeletedDateStr = new Date(
     payment.completedAt || payment.updatedAt
-  ).toLocaleDateString("ru-RU");
+  );
+  const formattedCompletedOrDeletedDateStr = formatDateForDisplay(
+    completedOrDeletedDateStr
+  );
 
   const showRecurring =
     !!payment.seriesId && (payment.series?.isActive ?? true);
@@ -69,7 +73,7 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
 
   const displayDate =
     payment.status === "completed" || payment.status === "deleted"
-      ? completedOrDeletedDateStr
+      ? formattedCompletedOrDeletedDateStr
       : dueDateStr;
 
   return (
@@ -91,9 +95,9 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
             >
               {payment.title}
             </p>
-            {payment.category?.name && (
+            {payment.transactionCategory?.name && (
               <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">
-                {payment.category.name}
+                {payment.transactionCategory.name}
               </p>
             )}
           </div>

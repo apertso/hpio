@@ -8,6 +8,8 @@ import {
   CreditCardIcon,
   ArchiveBoxIcon,
   Squares2X2Icon,
+  BanknotesIcon,
+  TagIcon,
 } from "@heroicons/react/24/outline";
 import { User } from "../context/AuthContext";
 import { useAvatarCache } from "../hooks/useAvatarCache";
@@ -91,6 +93,12 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
         return <ArchiveBoxIcon className="h-5 w-5" />;
       case "/categories":
         return <Squares2X2Icon className="h-5 w-5" />;
+      case "/incomes":
+        return <BanknotesIcon className="h-5 w-5" />;
+      case "/sources":
+        return <CreditCardIcon className="h-5 w-5" />;
+      case "/tags":
+        return <TagIcon className="h-5 w-5" />;
       default:
         return null;
     }

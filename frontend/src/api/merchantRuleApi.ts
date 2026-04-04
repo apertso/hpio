@@ -2,12 +2,11 @@ import axiosInstance from "./axiosInstance";
 
 export interface MerchantCategoryRule {
   id: string;
-  userId: string;
   categoryId: string;
   merchantKeyword: string;
   createdAt: string;
   updatedAt: string;
-  category?: {
+  transactionCategory?: {
     id: string;
     name: string;
     builtinIconName?: string;
@@ -19,9 +18,19 @@ export interface CreateMerchantRuleData {
   merchantKeyword: string;
 }
 
+export interface UnassignedMerchant {
+  merchantName: string;
+  count: number;
+}
+
 export const merchantRuleApi = {
   async getMerchantRules(): Promise<MerchantCategoryRule[]> {
     const response = await axiosInstance.get("/merchant-rules");
+    return response.data;
+  },
+
+  async getUnassignedMerchants(): Promise<UnassignedMerchant[]> {
+    const response = await axiosInstance.get("/merchant-rules/unassigned");
     return response.data;
   },
 

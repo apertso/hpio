@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { protect } from "../middleware/authMiddleware";
 import {
   getMerchantRules,
@@ -6,18 +6,36 @@ import {
   createMerchantRule,
   deleteMerchantRule,
 } from "../services/merchantRuleService";
+import { getUncategorizedAutoCreatedMerchants } from "../services/paymentService";
 import logger from "../config/logger";
 
 const router = Router();
 
 router.use(protect);
 
-router.get("/", async (req: Request, res: Response) => {
+const ensureAdmin = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user?.isAdmin) {
+    return res.status(403).json({ message: "Доступ запрещен" });
+  }
+  return next();
+};
+
+router.get("/", ensureAdmin, async (req: Request, res: Response) => {
   try {
-    const rules = await getMerchantRules(req.user!.id);
+    const rules = await getMerchantRules();
     res.json(rules);
   } catch (error: any) {
     logger.error("Error in GET /api/merchant-rules:", error);
+    res.status(500).json({ message: "Ошибка сервера", error: error.message });
+  }
+});
+
+router.get("/unassigned", ensureAdmin, async (_req: Request, res: Response) => {
+  try {
+    const merchants = await getUncategorizedAutoCreatedMerchants();
+    res.json(merchants);
+  } catch (error: any) {
+    logger.error("Error in GET /api/merchant-rules/unassigned:", error);
     res.status(500).json({ message: "Ошибка сервера", error: error.message });
   }
 });
@@ -29,7 +47,7 @@ router.get("/find", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Параметр merchant обязателен." });
     }
 
-    const rule = await findRuleByMerchant(req.user!.id, merchant);
+    const rule = await findRuleByMerchant(merchant);
     if (!rule) {
       return res.status(404).json({ message: "Правило не найдено." });
     }
@@ -40,9 +58,9 @@ router.get("/find", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", ensureAdmin, async (req: Request, res: Response) => {
   try {
-    const newRule = await createMerchantRule(req.user!.id, req.body);
+    const newRule = await createMerchantRule(req.body);
     res.status(201).json(newRule);
   } catch (error: any) {
     logger.error("Error in POST /api/merchant-rules:", error);
@@ -50,9 +68,9 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
-router.delete("/:id", async (req: Request, res: Response) => {
+router.delete("/:id", ensureAdmin, async (req: Request, res: Response) => {
   try {
-    const success = await deleteMerchantRule(req.params.id, req.user!.id);
+    const success = await deleteMerchantRule(req.params.id);
     if (!success) {
       return res
         .status(404)

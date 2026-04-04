@@ -26,7 +26,11 @@ router.get("/", async (req: Request, res: Response) => {
         .json({ message: "Параметр endDate должен быть строкой." });
     }
 
-    const stats = await getDashboardStats(req.user!.id, startDate, endDate);
+    const stats = await getDashboardStats(
+      req.user!.id,
+      startDate,
+      endDate
+    );
     res.json(stats);
   } catch (error: any) {
     logger.error("Error in GET /api/stats:", error);

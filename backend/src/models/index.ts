@@ -3,7 +3,6 @@ import { config } from "../config/appConfig";
 import logger from "../config/logger";
 import User from "./User";
 import Payment from "./Payment";
-import Category from "./Category"; // Import Category model
 import RecurringSeries from "./RecurringSeries"; // Import RecurringSeries model
 import SystemTaskLog from "./SystemTaskLog";
 import Feedback from "./Feedback";
@@ -11,6 +10,15 @@ import Suggestion from "./Suggestion";
 import MerchantCategoryRule from "./MerchantCategoryRule";
 import TransactionNotification from "./TransactionNotification";
 import BlogPost from "./BlogPost";
+import Income from "./Income";
+import Card from "./Card";
+import Tag from "./Tag";
+import PaymentTag from "./PaymentTag";
+import TransactionCategory from "./TransactionCategory";
+import CryptoBalance from "./CryptoBalance";
+import CashBalance from "./CashBalance";
+import FundSnapshot from "./FundSnapshot";
+import CardBalance from "./CardBalance";
 
 const sequelizeConfig: Options = {
   host: config.database.host,
@@ -46,7 +54,6 @@ interface Db {
   Sequelize: typeof Sequelize;
   User: Model & Associate; // Assuming User model has an associate method
   Payment: Model & Associate; // Assuming Payment model has an associate method
-  Category: Model & Associate; // Add Category to the Db interface
   RecurringSeries: Model & Associate; // Add RecurringSeries to the Db interface
   SystemTaskLog: Model;
   Feedback: Model & Associate;
@@ -54,6 +61,15 @@ interface Db {
   MerchantCategoryRule: Model & Associate;
   TransactionNotification: Model;
   BlogPost: Model;
+  Income: Model & Associate;
+  Card: Model & Associate;
+  Tag: Model & Associate;
+  PaymentTag: Model;
+  TransactionCategory: Model;
+  CryptoBalance: Model & Associate;
+  CashBalance: Model & Associate;
+  FundSnapshot: Model & Associate;
+  CardBalance: Model & Associate;
   // Add other models here with & Associate if they have an associate method
   [key: string]: any; // Allow indexing with strings for other potential properties
 }
@@ -63,7 +79,6 @@ const db = {
   Sequelize,
   User: User(sequelize, DataTypes), // Pass DataTypes
   Payment: Payment(sequelize, DataTypes), // Pass DataTypes
-  Category: Category(sequelize, DataTypes), // Add Category model to db object
   RecurringSeries: RecurringSeries(sequelize, DataTypes), // Add RecurringSeries model to db object
   SystemTaskLog: SystemTaskLog(sequelize),
   Feedback: Feedback(sequelize, DataTypes),
@@ -71,7 +86,16 @@ const db = {
   MerchantCategoryRule: MerchantCategoryRule(sequelize, DataTypes),
   TransactionNotification: TransactionNotification(sequelize, DataTypes),
   BlogPost: BlogPost(sequelize, DataTypes),
-  // Сюда же можно добавить Category, Notification и другие модели
+  Income: Income(sequelize, DataTypes),
+  Card: Card(sequelize, DataTypes),
+  Tag: Tag(sequelize, DataTypes),
+  PaymentTag: PaymentTag(sequelize, DataTypes),
+  TransactionCategory: TransactionCategory(sequelize, DataTypes),
+  CryptoBalance: CryptoBalance(sequelize, DataTypes),
+  CashBalance: CashBalance(sequelize, DataTypes),
+  FundSnapshot: FundSnapshot(sequelize, DataTypes),
+  CardBalance: CardBalance(sequelize, DataTypes),
+  // Сюда же можно добавить Notification и другие модели
 };
 
 // Устанавливаем ассоциации между моделями

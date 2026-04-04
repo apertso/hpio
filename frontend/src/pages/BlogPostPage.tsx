@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { blogApi, BlogPost } from "../api/blogApi";
+import { formatDateForDisplay } from "../utils/dateUtils";
 
 const BlogPostPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -79,7 +80,7 @@ const BlogPostPage: React.FC = () => {
               {post.title}
             </h1>
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              {new Date(post.createdAt).toLocaleDateString("ru-RU")}
+              {formatDateForDisplay(new Date(post.createdAt))}
             </div>
             <div
               className="prose dark:prose-invert max-w-none"

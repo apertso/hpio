@@ -12,6 +12,7 @@ import { NumberField } from "./Input";
 import ToggleSwitch from "./ToggleSwitch";
 import SegmentedControl, { SegmentedControlOption } from "./SegmentedControl";
 import { CalendarIcon, HashtagIcon } from "@heroicons/react/24/outline";
+import { formatDateForDisplay } from "../utils/dateUtils";
 
 // --- Типы и константы ---
 type Period = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
@@ -357,7 +358,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
     }
 
     if (state.end_type === "UNTIL" && state.until) {
-      summaryStr += `, до ${state.until.toLocaleDateString("ru-RU")}`;
+      summaryStr += `, до ${formatDateForDisplay(state.until)}`;
     } else if (state.end_type === "COUNT") {
       summaryStr += `, ${state.count} раз`;
     }

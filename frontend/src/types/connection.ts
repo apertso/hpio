@@ -3,4 +3,3 @@ export enum ConnectionStatus {
   OFFLINE = "offline",
   SYNCING = "syncing",
 }
-

@@ -20,7 +20,6 @@ import { useToast } from "./context/ToastContext";
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotificationOnboardingModal from "./components/NotificationOnboardingModal";
-import SuggestionModal from "./components/SuggestionModal";
 import Overlay from "./components/Overlay";
 import SyncStatusIndicator from "./components/SyncStatusIndicator";
 import MobileNavigationDrawer from "./components/MobileNavigationDrawer";
@@ -54,16 +53,19 @@ import {
   PendingNotification,
 } from "./api/notificationPermission";
 import { parseNotification } from "./utils/notificationParser";
-import { normalizeMerchantName } from "./utils/merchantNormalizer";
 import { normalizeNotificationTimestamp } from "./utils/dateUtils";
-import { suggestionApi } from "./api/suggestionApi";
 import { merchantRuleApi } from "./api/merchantRuleApi";
 import { notificationApi } from "./api/notificationApi";
+import {
+  isIncomeAndCardsEnabled,
+  isTagsAndCategoriesEnabled,
+} from "./utils/featureFlags";
 
 // Lazy Pages
 const HomePage = React.lazy(() => import("./pages/HomePage"));
 const PaymentsPage = React.lazy(() => import("./pages/PaymentsPage"));
 const CategoriesPage = React.lazy(() => import("./pages/CategoriesPage"));
+const TagsPage = React.lazy(() => import("./pages/TagsPage"));
 const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
 const LoginPage = React.lazy(() => import("./pages/LoginPage"));
 const RegisterPage = React.lazy(() => import("./pages/RegisterPage"));
@@ -73,6 +75,7 @@ const LandingPage = React.lazy(() => import("./pages/LandingPage"));
 const NotFoundPage = React.lazy(() => import("./pages/NotFoundPage"));
 const PaymentEditPage = React.lazy(() => import("./pages/PaymentEditPage"));
 const CategoryEditPage = React.lazy(() => import("./pages/CategoryEditPage"));
+const TagEditPage = React.lazy(() => import("./pages/TagEditPage"));
 const VerifyEmailPage = React.lazy(() => import("./pages/VerifyEmailPage"));
 const TermsPage = React.lazy(() => import("./pages/TermsPage"));
 const PrivacyPage = React.lazy(() => import("./pages/PrivacyPage"));
@@ -80,6 +83,12 @@ const AboutPage = React.lazy(() => import("./pages/AboutPage"));
 const DownloadPage = React.lazy(() => import("./pages/DownloadPage"));
 const BlogPage = React.lazy(() => import("./pages/BlogPage"));
 const BlogPostPage = React.lazy(() => import("./pages/BlogPostPage"));
+const CardsPage = React.lazy(() => import("./pages/CardsPage"));
+const CardEditPage = React.lazy(() => import("./pages/CardEditPage"));
+const IncomesPage = React.lazy(() => import("./pages/IncomesPage"));
+const AutomationRulesPage = React.lazy(() =>
+  import("./pages/AutomationRulesPage")
+);
 
 const NATIVE_NOTIFICATION_EVENT = "hpio-native-notification";
 
@@ -103,14 +112,6 @@ const ThemeSwitcher = () => {
   );
 };
 
-type PendingSuggestionState = {
-  id: string;
-  merchantName: string;
-  amount: number;
-  notificationData: string;
-  notificationTimestamp?: number | null;
-};
-
 const Navigation: React.FC = () => {
   const { isAuthenticated, user, logout, token } = useAuth();
   const location = useLocation();
@@ -120,6 +121,10 @@ const Navigation: React.FC = () => {
     containerRef: popoverRef,
   } = useDropdown();
   const { avatarUrl } = useAvatarCache(user?.photoPath, token);
+  const incomeCardsEnabled = isIncomeAndCardsEnabled();
+  const tagsAndCategoriesEnabled = isTagsAndCategoriesEnabled();
+  const tagsEnabled = tagsAndCategoriesEnabled;
+  const canManageCategories = Boolean(user?.isAdmin);
 
   const authPaths = [
     "/login",
@@ -158,14 +163,54 @@ const Navigation: React.FC = () => {
             >
               Платежи
             </Link>
-            <Link
-              to="/categories"
-              className={navLinkClass(
-                location.pathname.startsWith("/categories")
-              )}
-            >
-              Категории
-            </Link>
+            {canManageCategories && (
+              <Link
+                to="/categories"
+                className={navLinkClass(
+                  location.pathname.startsWith("/categories")
+                )}
+              >
+                Категории
+              </Link>
+            )}
+            {canManageCategories && (
+              <Link
+                to="/automation-rules"
+                className={navLinkClass(
+                  location.pathname.startsWith("/automation-rules")
+                )}
+              >
+                Автоматизация
+              </Link>
+            )}
+            {tagsEnabled && (
+              <Link
+                to="/tags"
+                className={navLinkClass(location.pathname.startsWith("/tags"))}
+              >
+                Теги
+              </Link>
+            )}
+            {incomeCardsEnabled && (
+              <>
+                <Link
+                  to="/incomes"
+                  className={navLinkClass(
+                    location.pathname.startsWith("/incomes")
+                  )}
+                >
+                  Доходы
+                </Link>
+                <Link
+                  to="/sources"
+                  className={navLinkClass(
+                    location.pathname.startsWith("/sources")
+                  )}
+                >
+                  Источники
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="hidden md:flex items-center gap-2 pl-4 border-l border-gray-200 dark:border-gray-700">
@@ -271,21 +316,31 @@ function App() {
   const { pageTitle, headerAction, headerRightAction } = usePageTitle();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
 
+  const incomeCardsEnabled = isIncomeAndCardsEnabled();
+  const tagsAndCategoriesEnabled = isTagsAndCategoriesEnabled();
+  const tagsEnabled = tagsAndCategoriesEnabled;
+  const canManageCategories = Boolean(user?.isAdmin);
+
   const mobileNavItems = [
     { to: "/dashboard", label: "Главная" },
     { to: "/payments", label: "Платежи" },
-    { to: "/categories", label: "Категории" },
+    ...(canManageCategories
+      ? [
+          { to: "/categories", label: "Категории" },
+          { to: "/automation-rules", label: "Автоматизация" },
+        ]
+      : []),
+    ...(tagsEnabled ? [{ to: "/tags", label: "Теги" }] : []),
+    ...(incomeCardsEnabled
+      ? [
+          { to: "/incomes", label: "Доходы" },
+          { to: "/sources", label: "Источники" },
+        ]
+      : []),
   ];
 
   // State
   const [showNotificationOnboarding, setShowNotificationOnboarding] =
-    useState(false);
-  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
-  const [suggestions, setSuggestions] = useState<PendingSuggestionState[]>([]);
-  const [processedSuggestionIds, setProcessedSuggestionIds] = useState<
-    Set<string>
-  >(new Set());
-  const [suggestionModalDismissed, setSuggestionModalDismissed] =
     useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [processedNotificationKeys, setProcessedNotificationKeys] = useState<
@@ -446,51 +501,40 @@ function App() {
               continue;
             }
 
-            const normalizedMerchant = normalizeMerchantName(
+            const existingRule = await merchantRuleApi.findRuleByMerchant(
               parsed.merchantName
             );
-            const existingRule = await merchantRuleApi.findRuleByMerchant(
-              normalizedMerchant
+
+            const today = new Date().toISOString().split("T")[0];
+            const completedAt = normalizeNotificationTimestamp(
+              notification.timestamp
             );
 
-            if (existingRule) {
-              const today = new Date().toISOString().split("T")[0];
-              const completedAt = normalizeNotificationTimestamp(
-                notification.timestamp
-              );
-              try {
-                const payload: Record<string, unknown> = {
-                  title: parsed.merchantName,
-                  amount: parsed.amount,
-                  dueDate: today,
-                  categoryId: existingRule.categoryId,
-                  createAsCompleted: true,
-                  autoCreated: true,
-                  notificationTimestamp: notification.timestamp,
-                };
-                if (completedAt) payload.completedAt = completedAt;
-
-                logger.info(
-                  `Auto-creating payment: ${parsed.merchantName}, ${parsed.amount}, ts=${notification.timestamp}`
-                );
-
-                await axiosInstance.post("/payments", payload);
-                autoCreatedCount += 1;
-              } catch (e) {
-                logger.error("Auto-create failed", e);
-                // We re-throw or handle here. If we want to retry auto-creation,
-                // we should NOT add to successfullyProcessedKeys.
-                // However, if the error is non-transient (e.g. 400 Bad Request), maybe we should mark as processed?
-                // For now, assuming network/server errors are transient -> do not mark as processed.
-                throw e;
-              }
-            } else {
-              await suggestionApi.createSuggestion({
-                merchantName: parsed.merchantName,
+            try {
+              const payload: Record<string, unknown> = {
+                title: parsed.merchantName,
                 amount: parsed.amount,
-                notificationData: notification.text,
+                dueDate: today,
+                categoryId: existingRule ? existingRule.categoryId : null,
+                createAsCompleted: true,
+                autoCreated: true,
                 notificationTimestamp: notification.timestamp,
-              });
+              };
+              if (completedAt) payload.completedAt = completedAt;
+
+              logger.info(
+                `Auto-creating payment: ${parsed.merchantName}, ${parsed.amount}, ts=${notification.timestamp}`
+              );
+
+              await axiosInstance.post("/payments", payload);
+              autoCreatedCount += 1;
+            } catch (e) {
+              logger.error("Auto-create failed", e);
+              // We re-throw or handle here. If we want to retry auto-creation,
+              // we should NOT add to successfullyProcessedKeys.
+              // However, if the error is non-transient (e.g. 400 Bad Request), maybe we should mark as processed?
+              // For now, assuming network/server errors are transient -> do not mark as processed.
+              throw e;
             }
             newKeys.add(notificationKey);
             successfullyProcessedKeys.push(notificationKey);
@@ -522,30 +566,6 @@ function App() {
         }
       }
 
-      const allPending = await suggestionApi.getPendingSuggestions();
-      const newSuggestions = allPending.filter(
-        (s) => !processedSuggestionIds.has(s.id)
-      );
-
-      if (newSuggestions.length > 0) {
-        const currentIds = new Set(suggestions.map((s) => s.id));
-        const hasFresh = newSuggestions.some((s) => !currentIds.has(s.id));
-
-        const mapped = newSuggestions.map((s) => ({
-          id: s.id,
-          merchantName: s.merchantName,
-          amount: s.amount,
-          notificationData: s.notificationData,
-          notificationTimestamp: s.notificationTimestamp ?? null,
-        }));
-
-        setSuggestions(mapped);
-
-        if (!suggestionModalDismissed || hasFresh) {
-          setShowSuggestionModal(true);
-          if (hasFresh) setSuggestionModalDismissed(false);
-        }
-      }
     } catch (error) {
       logger.error("Error in processNotifications:", error);
     } finally {
@@ -554,9 +574,6 @@ function App() {
   }, [
     isAuthenticated,
     processedNotificationKeys,
-    suggestions,
-    processedSuggestionIds,
-    suggestionModalDismissed,
     showToast,
   ]);
 
@@ -616,22 +633,6 @@ function App() {
   }, [isAuthenticated, navigate]);
 
   // --- Logic: Handlers ---
-  const handleSuggestionProcessed = (id: string) => {
-    setProcessedSuggestionIds((prev) => new Set(prev).add(id));
-  };
-
-  const handleSuggestionModalClose = () => {
-    setSuggestionModalDismissed(true);
-    setShowSuggestionModal(false);
-  };
-
-  const handleSuggestionComplete = () => {
-    setSuggestions([]);
-    setProcessedSuggestionIds(new Set());
-    setSuggestionModalDismissed(false);
-    setShowSuggestionModal(false);
-  };
-
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const targetUrl = isAuthenticated ? "/dashboard" : "/";
@@ -660,32 +661,37 @@ function App() {
   let mobileActionAriaLabel: string | null = null;
   let mobileActionDisabled = false;
 
-  if (isAuthenticated) {
-    if (location.pathname === "/dashboard") {
-      mobileAddAction = () => navigate("/payments/new");
-      mobileActionIcon = <PlusIcon className="h-6 w-6" />;
-      mobileActionAriaLabel = "Добавить";
-    } else if (location.pathname === "/payments") {
-      const currentTab = searchParams.get("tab") || "active";
-      if (currentTab === "trash") {
-        mobileAddAction = () =>
-          window.dispatchEvent(new CustomEvent("payments:clear-trash-request"));
-        mobileActionIcon = <TrashIcon className="h-6 w-6" />;
-        mobileActionAriaLabel = "Очистить корзину";
-        mobileActionDisabled = !canClearTrash;
-      } else if (currentTab === "archive") {
-        mobileAddAction = () => navigate("/payments/new?markAsCompleted=true");
-        mobileActionIcon = <PlusIcon className="h-6 w-6" />;
-        mobileActionAriaLabel = "Добавить";
-      } else {
+    if (isAuthenticated) {
+      if (location.pathname === "/dashboard") {
         mobileAddAction = () => navigate("/payments/new");
         mobileActionIcon = <PlusIcon className="h-6 w-6" />;
         mobileActionAriaLabel = "Добавить";
-      }
-    } else if (location.pathname === "/categories") {
-      mobileAddAction = () => navigate("/categories/new");
+      } else if (location.pathname === "/payments") {
+        const currentTab = searchParams.get("tab") || "active";
+        if (currentTab === "trash") {
+          mobileAddAction = () =>
+            window.dispatchEvent(new CustomEvent("payments:clear-trash-request"));
+          mobileActionIcon = <TrashIcon className="h-6 w-6" />;
+          mobileActionAriaLabel = "Очистить корзину";
+          mobileActionDisabled = !canClearTrash;
+        } else if (currentTab === "archive") {
+          mobileAddAction = () => navigate("/payments/new?markAsCompleted=true");
+          mobileActionIcon = <PlusIcon className="h-6 w-6" />;
+          mobileActionAriaLabel = "Добавить";
+        } else {
+          mobileAddAction = () => navigate("/payments/new");
+          mobileActionIcon = <PlusIcon className="h-6 w-6" />;
+          mobileActionAriaLabel = "Добавить";
+        }
+      } else if (location.pathname === "/categories" && canManageCategories) {
+        mobileAddAction = () => navigate("/categories/new");
+        mobileActionIcon = <PlusIcon className="h-6 w-6" />;
+        mobileActionAriaLabel = "Добавить";
+      } else if (location.pathname === "/tags") {
+        mobileAddAction = () =>
+          window.dispatchEvent(new CustomEvent("tags:create-request"));
       mobileActionIcon = <PlusIcon className="h-6 w-6" />;
-      mobileActionAriaLabel = "Добавить";
+      mobileActionAriaLabel = "Тег";
     }
   }
 
@@ -710,7 +716,11 @@ function App() {
     (location.pathname === "/payments/new" ||
       location.pathname.startsWith("/payments/edit/") ||
       location.pathname === "/categories/new" ||
-      location.pathname.startsWith("/categories/edit/"));
+      location.pathname.startsWith("/categories/edit/") ||
+      location.pathname === "/tags/new" ||
+      location.pathname.startsWith("/tags/edit/") ||
+      location.pathname === "/sources/new" ||
+      location.pathname.startsWith("/sources/edit/"));
 
   // --- Render Helpers ---
 
@@ -929,10 +939,33 @@ function App() {
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/payments/new" element={<PaymentEditPage />} />
             <Route path="/payments/edit/:id" element={<PaymentEditPage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/categories/new" element={<CategoryEditPage />} />
-            <Route path="/categories/edit/:id" element={<CategoryEditPage />} />
+            {canManageCategories && (
+              <>
+                <Route path="/categories" element={<CategoriesPage />} />
+                <Route path="/categories/new" element={<CategoryEditPage />} />
+                <Route path="/categories/edit/:id" element={<CategoryEditPage />} />
+                <Route
+                  path="/automation-rules"
+                  element={<AutomationRulesPage />}
+                />
+              </>
+            )}
+            {tagsEnabled && (
+              <>
+                <Route path="/tags" element={<TagsPage />} />
+                <Route path="/tags/new" element={<TagEditPage />} />
+                <Route path="/tags/edit/:id" element={<TagEditPage />} />
+              </>
+            )}
             <Route path="/settings" element={<SettingsPage />} />
+            {incomeCardsEnabled && (
+              <>
+                <Route path="/sources" element={<CardsPage />} />
+                <Route path="/sources/new" element={<CardEditPage />} />
+                <Route path="/sources/edit/:id" element={<CardEditPage />} />
+                <Route path="/incomes" element={<IncomesPage />} />
+              </>
+            )}
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />
@@ -953,13 +986,6 @@ function App() {
         isOpen={showNotificationOnboarding}
         onClose={() => setShowNotificationOnboarding(false)}
         onComplete={handleOnboardingComplete}
-      />
-      <SuggestionModal
-        isOpen={showSuggestionModal}
-        suggestions={suggestions}
-        onClose={handleSuggestionModalClose}
-        onComplete={handleSuggestionComplete}
-        onSuggestionProcessed={handleSuggestionProcessed}
       />
       <MobileNavigationDrawer
         isOpen={isMobileDrawerOpen}

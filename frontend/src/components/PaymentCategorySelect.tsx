@@ -1,7 +1,9 @@
 import { UseFormSetValue, FieldErrors } from "react-hook-form";
 import useCategories from "../hooks/useCategories";
-import Select, { SelectOption } from "./Select"; // Import new component
+import Select, { SelectOption } from "./Select";
 import { PaymentFormInputs } from "./PaymentForm";
+import { Tooltip } from "./Tooltip";
+import { InformationIcon } from "./InformationIcon";
 
 interface PaymentCategorySelectProps {
   errors: FieldErrors<PaymentFormInputs>;
@@ -9,6 +11,9 @@ interface PaymentCategorySelectProps {
   watchCategoryId: string | null | undefined;
   isSubmitting: boolean;
   onUserCategoryChange?: (value: string | null) => void;
+  categoryType?: "expense" | "income";
+  isLocked?: boolean;
+  lockReason?: string;
 }
 
 function PaymentCategorySelect({
@@ -17,8 +22,11 @@ function PaymentCategorySelect({
   watchCategoryId,
   isSubmitting,
   onUserCategoryChange,
+  categoryType,
+  isLocked,
+  lockReason,
 }: PaymentCategorySelectProps) {
-  const { categories, isLoading, error } = useCategories();
+  const { categories, isLoading, error } = useCategories(categoryType);
 
   const options: SelectOption[] = [
     { value: null, label: "-- Без категории --" },
@@ -49,9 +57,30 @@ function PaymentCategorySelect({
     );
   }
 
+  const resolvedLockReason =
+    lockReason ||
+    "Категория для автоматически добавленных платежей изменяется через правила автоматизации.";
+
+  const labelContent = isLocked ? (
+    <span className="flex items-center gap-2">
+      <span>Категория</span>
+      <Tooltip content={resolvedLockReason}>
+        <button
+          type="button"
+          className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+          aria-label="Пояснение к полю категории"
+        >
+          <InformationIcon className="h-[16px] w-[16px]" />
+        </button>
+      </Tooltip>
+    </span>
+  ) : (
+    "Категория"
+  );
+
   return (
     <Select
-      label="Категория"
+      label={labelContent}
       options={options}
       value={watchCategoryId || null}
       onChange={(value) => {
@@ -59,7 +88,7 @@ function PaymentCategorySelect({
         onUserCategoryChange?.(value as string | null);
       }}
       error={errors.categoryId?.message as string}
-      disabled={isSubmitting || categories?.length === 0}
+      disabled={isSubmitting || categories?.length === 0 || isLocked}
       placeholder="-- Без категории --"
     />
   );

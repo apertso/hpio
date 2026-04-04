@@ -11,17 +11,23 @@ export interface PaymentData {
   completedAt?: string | null; // Add completedAt property
   remind: boolean;
   seriesId?: string | null; // Link to RecurringSeries
+  autoCreated?: boolean;
   createdAt: string; // Creation date
   updatedAt: string; // Last update date
   filePath?: string | null; // File path field
   fileName?: string | null; // File name field
+  method?: "cash" | "card" | "transfer" | "other";
   // !!! Icon fields
   builtinIconName?: BuiltinIcon | null; // Use BuiltinIcon type
-  category?: {
+  transactionCategory?: {
     id: string;
     name: string;
     builtinIconName?: BuiltinIcon | null;
-  } | null; // Can be category object or null
+  } | null;
+  tags?: {
+    id: string;
+    name: string;
+  }[];
   // Include series data if joined
   series?: {
     id: string;

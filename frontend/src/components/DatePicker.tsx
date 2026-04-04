@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { CalendarDaysIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import MobilePanel from "./MobilePanel";
 import { Input, TextField } from "./Input";
 import { Button } from "./Button";
@@ -55,14 +55,28 @@ const DEFAULT_DATE_FORMAT = "dd.MM.yyyy";
 const DEFAULT_TIME_FORMAT = "HH:mm";
 const DATE_FORMAT_TIME_TOKEN_REGEX = /(H{1,2}|h{1,2}|m{1,2}|s{1,2})/;
 const RANGE_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
-  day: "2-digit",
+  day: "numeric",
   month: "short",
 });
 const RANGE_DATE_WITH_YEAR_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
-  day: "2-digit",
+  day: "numeric",
   month: "short",
   year: "numeric",
 });
+const RANGE_MONTHS_SHORT = [
+  "янв",
+  "фев",
+  "мар",
+  "апр",
+  "май",
+  "июн",
+  "июл",
+  "авг",
+  "сен",
+  "окт",
+  "ноя",
+  "дек",
+];
 
 const padValue = (value: number, length = 2) =>
   value.toString().padStart(length, "0");
@@ -188,29 +202,43 @@ const formatDateValue = (
   return `${base} ${formatWithTokens(date, timeFormat)}`;
 };
 
-const formatRangePart = (date: Date, includeYear: boolean) =>
-  (includeYear ? RANGE_DATE_WITH_YEAR_FORMATTER : RANGE_DATE_FORMATTER).format(
-    date
-  );
+const formatRangePart = (
+  date: Date,
+  includeYear: boolean,
+  shortMonth = false
+) => {
+  if (shortMonth) {
+    const base = `${date.getDate()} ${RANGE_MONTHS_SHORT[date.getMonth()]}`;
+    return includeYear ? `${base} ${date.getFullYear()}` : base;
+  }
+
+  return (includeYear ? RANGE_DATE_WITH_YEAR_FORMATTER : RANGE_DATE_FORMATTER)
+    .format(date)
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 const formatRangeDisplayValue = (
   start: Date | null,
-  end: Date | null
+  end: Date | null,
+  shortMonth = false
 ): string => {
   if (start && end) {
     const includeYear = start.getFullYear() !== end.getFullYear();
-    return `${formatRangePart(start, includeYear)} - ${formatRangePart(
+    return `${formatRangePart(start, includeYear, shortMonth)} - ${formatRangePart(
       end,
-      includeYear
+      includeYear,
+      shortMonth
     )}`;
   }
 
   if (start) {
-    return `${formatRangePart(start, true)} -`;
+    return `${formatRangePart(start, true, shortMonth)} -`;
   }
 
   if (end) {
-    return `- ${formatRangePart(end, true)}`;
+    return `- ${formatRangePart(end, true, shortMonth)}`;
   }
 
   return "";
@@ -435,7 +463,9 @@ const DatePicker: React.FC<DatePickerProps> = ({
     interactionClasses,
     className,
     inputClassName,
-    isCompactVariant ? "hp-datepicker__trigger--compact !w-auto min-w-[140px] pl-10" : "",
+    isCompactVariant
+      ? "hp-datepicker__trigger--compact !w-auto min-w-0 pl-10 pr-10"
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -806,7 +836,11 @@ const DatePicker: React.FC<DatePickerProps> = ({
 
   const displayValue = useMemo(() => {
     if (mode === "range") {
-      return formatRangeDisplayValue(activeRangeStart, activeRangeEnd);
+      return formatRangeDisplayValue(
+        activeRangeStart,
+        activeRangeEnd,
+        isCompactVariant
+      );
     }
 
     if (activeSingleDate) {
@@ -1042,7 +1076,12 @@ const DatePicker: React.FC<DatePickerProps> = ({
     <div className="relative" ref={triggerWrapperRef}>
       {isCompactVariant && (
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-          <CalendarDaysIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <CalendarDaysIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+        </div>
+      )}
+      {isCompactVariant && (
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none z-10">
+          <ChevronDownIcon className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
         </div>
       )}
       <DatePickerTriggerInput
@@ -1085,16 +1124,28 @@ const DatePicker: React.FC<DatePickerProps> = ({
           <div className="hidden md:block">{renderDesktopTrigger()}</div>
 
           <div className="md:hidden">
-            <DatePickerTriggerInput
-              id={id ? `${id}-mobile-trigger` : undefined}
-              name={name}
-              displayValue={displayValue}
-              placeholder={placeholder}
-              disabled={disabled}
-              onClick={handleInputClick}
-              inputClasses={inputClasses}
-              isInvalid={Boolean(error)}
-            />
+            <div className="relative">
+              {isCompactVariant && (
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                  <CalendarDaysIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </div>
+              )}
+              {isCompactVariant && (
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none z-10">
+                  <ChevronDownIcon className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
+                </div>
+              )}
+              <DatePickerTriggerInput
+                id={id ? `${id}-mobile-trigger` : undefined}
+                name={name}
+                displayValue={displayValue}
+                placeholder={placeholder}
+                disabled={disabled}
+                onClick={handleInputClick}
+                inputClasses={inputClasses}
+                isInvalid={Boolean(error)}
+              />
+            </div>
           </div>
 
           <MobilePanel

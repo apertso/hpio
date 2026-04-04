@@ -25,7 +25,9 @@ export interface User {
   pushNotifications?: boolean;
   notificationTime?: string;
   timezone?: string; // <-- ADD THIS LINE
+  preferredCurrency?: string;
   fcmToken?: string | null;
+  isAdmin?: boolean;
   // Добавьте другие поля пользователя, если они будут возвращаться с бэкенда
 }
 
@@ -282,10 +284,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email: userEmail,
           photoPath,
           isVerified,
-          notificationMethod,
-          notificationTime,
-          timezone,
-        } = res.data;
+          isAdmin,
+        notificationMethod,
+        notificationTime,
+        timezone,
+        preferredCurrency,
+      } = res.data;
 
         localStorage.setItem("jwtToken", token);
         const userData = {
@@ -294,9 +298,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email: userEmail,
           photoPath,
           isVerified,
+          isAdmin,
           notificationMethod,
           notificationTime,
           timezone,
+          preferredCurrency,
         };
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
 
@@ -336,7 +342,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email: regEmail,
           photoPath: regPhotoPath,
           isVerified,
+          isAdmin,
           timezone,
+          preferredCurrency,
         } = res.data;
 
         localStorage.setItem("jwtToken", token);
@@ -346,9 +354,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           email: regEmail,
           photoPath: regPhotoPath,
           isVerified,
+          isAdmin,
           notificationMethod: "email", // default
           notificationTime: "09:30", // default
           timezone,
+          preferredCurrency,
         };
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(regUserData));
 

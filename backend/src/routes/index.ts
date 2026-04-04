@@ -12,13 +12,24 @@ import suggestionRoutes from "./suggestionRoutes";
 import merchantRuleRoutes from "./merchantRuleRoutes";
 import notificationRoutes from "./notificationRoutes";
 import blogRoutes from "./blogRoutes";
-// Импортируйте другие маршруты
+import cardRoutes from "./cardRoutes";
+import incomeRoutes from "./incomeRoutes";
+import cryptoRoutes from "./cryptoRoutes";
+import tagRoutes from "./tagRoutes";
+import cashRoutes from "./cashRoutes";
+import fundsRoutes from "./fundsRoutes";
 
 const router = Router();
 
 router.use("/auth", authRoutes);
+router.use("/cards", cardRoutes);
+router.use("/incomes", incomeRoutes);
+router.use("/crypto", cryptoRoutes);
+router.use("/cash", cashRoutes);
+router.use("/funds", fundsRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/categories", categoryRoutes); // !!! Использование маршрутов категорий
+router.use("/tags", tagRoutes);
 router.use("/files", fileRoutes); // Используйте маршруты файлов
 router.use("/archive", archiveRoutes); // !!! Использование маршрутов архива
 router.use("/stats", statsRoutes); // !!! Использование маршрутов статистики

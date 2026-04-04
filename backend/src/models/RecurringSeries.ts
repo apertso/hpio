@@ -1,6 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { UserInstance } from "./User";
-import { CategoryInstance } from "./Category";
+import { TransactionCategoryInstance } from "./TransactionCategory";
 import { PaymentInstance } from "./Payment";
 
 export interface RecurringSeriesAttributes {
@@ -38,7 +38,7 @@ export interface RecurringSeriesInstance
   extends Model<RecurringSeriesAttributes, RecurringSeriesCreationAttributes>,
     RecurringSeriesAttributes {
   user?: UserInstance;
-  category?: CategoryInstance;
+  transactionCategory?: TransactionCategoryInstance;
   payments?: PaymentInstance[];
 }
 
@@ -72,7 +72,7 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         type: dataTypes.UUID,
         allowNull: true,
         references: {
-          model: "categories",
+          model: "transaction_categories",
           key: "id",
         },
       },
@@ -136,9 +136,10 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
       foreignKey: "userId",
       as: "user",
     });
-    RecurringSeries.belongsTo(models.Category, {
+    RecurringSeries.belongsTo(models.TransactionCategory, {
       foreignKey: "categoryId",
-      as: "category",
+      as: "transactionCategory",
+      constraints: false,
     });
     RecurringSeries.hasMany(models.Payment, {
       foreignKey: "seriesId",

@@ -15,12 +15,17 @@ import PaymentFileUploadSection from "./PaymentFileUploadSection";
 import IconSelector from "./IconSelector";
 import { BuiltinIcon } from "../utils/builtinIcons";
 import useCategories from "../hooks/useCategories";
+import useTags from "../hooks/useTags";
 import ToggleSwitch from "./ToggleSwitch";
 import { PaymentData } from "../types/paymentData";
 import ConfirmModal from "./ConfirmModal";
 import { useToast } from "../context/ToastContext";
 import { formatDateToLocal } from "../utils/dateUtils";
 import { Button } from "./Button";
+import {
+  isIncomeAndCardsEnabled,
+  isTagsAndCategoriesEnabled,
+} from "../utils/featureFlags";
 
 // moved ToggleSwitch to a standalone component
 
@@ -42,6 +47,7 @@ const singlePaymentSchema = z.object({
     .uuid("Неверный формат ID категории")
     .nullable()
     .optional(),
+  tagIds: z.array(z.string().uuid()).optional(),
   completedAt: z.date().nullable().optional(),
 });
 
@@ -70,9 +76,11 @@ const paymentFormSchema = z.object({
     .uuid("Неверный формат ID категории")
     .nullable()
     .optional(),
+  tagIds: z.array(z.string().uuid()).optional(),
   recurrenceRule: z.string().nullable().optional(),
   remind: z.boolean().optional(),
   completedAt: z.date().nullable().optional(),
+  method: z.enum(["cash", "card", "transfer", "other"]).optional(),
 });
 
 export type PaymentFormInputs = z.infer<typeof paymentFormSchema>;
@@ -100,6 +108,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 }) => {
   const isEditMode = !!paymentId;
   const { showToast } = useToast();
+  const isAutoCreated = Boolean(initialData?.autoCreated);
+  const isCategoryLocked = isEditMode && isAutoCreated;
+  const categoryLockReason =
+    "Категория для автоматически добавленных платежей изменяется через правила автоматизации.";
 
   const {
     register,
@@ -122,7 +134,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   } | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
-  const { categories } = useCategories();
+  const { categories } = useCategories("expense");
+  const tagsAndCategoriesEnabled = isTagsAndCategoriesEnabled();
+  const tagsEnabled = tagsAndCategoriesEnabled;
+  const { tags, isLoading: isLoadingTags } = useTags(tagsEnabled);
 
   const [markAsCompleted, setMarkAsCompleted] = useState(
     markAsCompletedInitial
@@ -176,7 +191,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           ).toString()
         ),
         dueDate: dueDateForForm,
-        categoryId: initialData.category?.id || null,
+        categoryId: initialData.transactionCategory?.id || null,
+        tagIds: initialData.tags ? initialData.tags.map((tag) => tag.id) : [],
         recurrenceRule:
           editScope === "series" && initialData.series
             ? initialData.series.recurrenceRule
@@ -185,6 +201,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           ? new Date(initialData.completedAt)
           : null,
         remind: initialData.remind || false,
+        method:
+          (initialData as { method?: PaymentFormInputs["method"] }).method ||
+          "cash",
       };
       reset(dataToSet);
 
@@ -207,8 +226,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         amount: undefined,
         dueDate: new Date(),
         categoryId: null,
+        tagIds: [],
         recurrenceRule: null,
         remind: true,
+        method: "cash",
       });
       setManualIconName(null);
       setAttachedFile(null);
@@ -228,10 +249,19 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     [setValue]
   );
 
+  const handleTagToggle = (tagId: string): void => {
+    const nextTagIds = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter((id) => id !== tagId)
+      : [...selectedTagIds, tagId];
+    setValue("tagIds", nextTagIds, { shouldValidate: true });
+  };
+
   const actualSubmit = async (data: PaymentFormInputs) => {
     // Determine if we're dealing with series based on shouldRepeat toggle
     const wasSeriesPayment = !!initialData?.seriesId;
     const builtinIconForPayload = data.categoryId ? null : manualIconName;
+    const shouldSendTags = tagsEnabled && editScope === "single";
+    const tagIdsForPayload = shouldSendTags ? selectedTagIds : undefined;
 
     try {
       if (isEditMode && paymentId) {
@@ -247,7 +277,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             completedAt: data.completedAt
               ? data.completedAt.toISOString()
               : null,
+            method: data.method || "cash",
           };
+
+          if (shouldSendTags) {
+            payload.tagIds = tagIdsForPayload;
+          }
 
           if (shouldRepeat && !wasSeriesPayment) {
             // Only set recurrenceRule when creating a new series or converting one-time to series
@@ -276,15 +311,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           if (!seriesId) {
             throw new Error("Series ID not found for editing.");
           }
-          const rawSeriesStartDate =
-            initialData?.series?.generatedUntil || initialData?.dueDate || null;
-          let derivedStartDate = data.dueDate;
-          if (rawSeriesStartDate) {
-            const parsed = new Date(rawSeriesStartDate);
-            if (!Number.isNaN(parsed.getTime())) {
-              derivedStartDate = parsed;
-            }
-          }
           const payload = {
             title: data.title,
             amount: Number(data.amount),
@@ -292,7 +318,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             recurrenceRule: data.recurrenceRule,
             builtinIconName: builtinIconForPayload,
             cutOffPaymentId: paymentId,
-            startDate: formatDateToLocal(derivedStartDate),
+            startDate: formatDateToLocal(data.dueDate),
             remind: data.remind ?? false,
           };
           await seriesApi.updateSeries(seriesId, payload);
@@ -310,7 +336,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           recurrenceRule: shouldRepeat ? data.recurrenceRule : null,
           builtinIconName: builtinIconForPayload,
           remind: data.remind || false,
+          method: data.method || "cash",
         };
+
+        if (shouldSendTags) {
+          payload.tagIds = tagIdsForPayload;
+        }
 
         if (markAsCompleted) {
           payload.createAsCompleted = true;
@@ -416,13 +447,16 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
   const watchDueDate = watch("dueDate");
   const watchCategoryId = watch("categoryId");
+  const watchTagIds = watch("tagIds");
   const currentRule = watch("recurrenceRule");
   const watchCompletedAt = watch("completedAt");
+  const selectedTagIds = Array.isArray(watchTagIds) ? watchTagIds : [];
   const categoryIconName = findCategoryIcon(watchCategoryId);
   const iconSelectorReadOnly = !!watchCategoryId;
   const iconSelectorDisplayIcon = iconSelectorReadOnly
     ? categoryIconName || null
     : manualIconName;
+  const showTags = tagsEnabled && editScope === "single";
 
   useEffect(() => {
     if (initialData) {
@@ -514,9 +548,51 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                   setValue={setValue}
                   watchCategoryId={watchCategoryId}
                   isSubmitting={isSubmitting}
+                  categoryType="expense"
+                  isLocked={isCategoryLocked}
+                  lockReason={categoryLockReason}
                 />
               </div>
             </div>
+
+            {showTags && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Теги
+                </label>
+                {isLoadingTags ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Загрузка тегов...
+                  </p>
+                ) : tags && tags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag) => {
+                      const isSelected = selectedTagIds.includes(tag.id);
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => handleTagToggle(tag.id)}
+                          className={`px-3 py-1 rounded-full text-sm border transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                            isSelected
+                              ? "bg-indigo-600 text-white border-indigo-600"
+                              : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          }`}
+                          aria-pressed={isSelected}
+                          disabled={isSubmitting}
+                        >
+                          {tag.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Теги не добавлены.
+                  </p>
+                )}
+              </div>
+            )}
 
             {editScope === "single" && (
               <label className="flex items-center gap-3 cursor-pointer">
@@ -538,6 +614,24 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 currentRule={currentRule}
                 dueDate={watchDueDate}
               />
+            )}
+
+            {isIncomeAndCardsEnabled() && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Способ оплаты
+                </label>
+                <select
+                  {...register("method")}
+                  className="input-base w-full"
+                  disabled={isSubmitting}
+                >
+                  <option value="cash">Наличные</option>
+                  <option value="card">Карта</option>
+                  <option value="transfer">Перевод</option>
+                  <option value="other">Другое</option>
+                </select>
+              </div>
             )}
 
             <label className="flex items-center gap-3 cursor-pointer">

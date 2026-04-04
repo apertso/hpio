@@ -1,22 +1,14 @@
 import React, { useState, useEffect } from "react";
 import {
   SparklesIcon,
-  TrashIcon,
   ShieldCheckIcon,
-  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import SettingsSection from "../SettingsSection";
 import ToggleSwitch from "../ToggleSwitch";
 import Spinner from "../Spinner";
-import ConfirmModal from "../ConfirmModal";
 import { useToast } from "../../context/ToastContext";
 import { Tooltip } from "../Tooltip";
 import { InformationIcon } from "../InformationIcon";
-import {
-  merchantRuleApi,
-  MerchantCategoryRule,
-} from "../../api/merchantRuleApi";
-import getErrorMessage from "../../utils/getErrorMessage";
 import { isTauriMobile } from "../../utils/platform";
 import {
   checkNotificationPermission,
@@ -48,12 +40,6 @@ const AutomationSection: React.FC = () => {
   const [automationEnabled, setAutomationEnabled] = useState<boolean>(() => {
     return localStorage.getItem("automation_enabled") !== "false";
   });
-  const [rules, setRules] = useState<MerchantCategoryRule[]>([]);
-  const [rulesLoading, setRulesLoading] = useState(true);
-  const [ruleToDelete, setRuleToDelete] = useState<MerchantCategoryRule | null>(
-    null
-  );
-  const [isDeletingRule, setIsDeletingRule] = useState(false);
   const [notificationPermissionGranted, setNotificationPermissionGranted] =
     useState(false);
   const [isCheckingPermission, setIsCheckingPermission] = useState(false);
@@ -80,23 +66,6 @@ const AutomationSection: React.FC = () => {
 
   // Проверяем статус разрешения уведомлений и загружаем правила
   useEffect(() => {
-    const fetchRules = async () => {
-      try {
-        setRulesLoading(true);
-        const fetchedRules = await merchantRuleApi.getMerchantRules();
-        setRules(fetchedRules);
-      } catch (error) {
-        showToast(
-          `Не удалось загрузить правила: ${getErrorMessage(error)}`,
-          "error"
-        );
-      } finally {
-        setRulesLoading(false);
-      }
-    };
-
-    fetchRules();
-
     if (isTauriMobile()) {
       const checkPermission = async () => {
         setIsCheckingPermission(true);
@@ -223,31 +192,6 @@ const AutomationSection: React.FC = () => {
       `Автоматизация по уведомлениям ${enabled ? "включена" : "выключена"}.`,
       "info"
     );
-  };
-
-  const handleDeleteRuleClick = (rule: MerchantCategoryRule) => {
-    setRuleToDelete(rule);
-  };
-
-  const handleConfirmDeleteRule = async () => {
-    if (!ruleToDelete) return;
-
-    setIsDeletingRule(true);
-    try {
-      await merchantRuleApi.deleteMerchantRule(ruleToDelete.id);
-      setRules((prevRules) =>
-        prevRules.filter((r) => r.id !== ruleToDelete.id)
-      );
-      showToast("Правило успешно удалено.", "success");
-    } catch (error) {
-      showToast(
-        `Ошибка при удалении правила: ${getErrorMessage(error)}`,
-        "error"
-      );
-    } finally {
-      setIsDeletingRule(false);
-      setRuleToDelete(null);
-    }
   };
 
   const handleOpenNotificationSettings = async () => {
@@ -625,71 +569,6 @@ const AutomationSection: React.FC = () => {
         </SettingsSection>
       )}
 
-      {/* Automation Rules Section */}
-      {automationEnabled && (
-        <SettingsSection className="card-base p-6">
-          <div className="flex items-start gap-4 mb-6">
-            <div className="flex-shrink-0 w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-              <ClipboardDocumentListIcon className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Ваши правила
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Здесь показаны все продавцы, для которых вы настроили
-                автоматическое присвоение категории.
-              </p>
-            </div>
-          </div>
-          <div className="border border-gray-100 dark:border-gray-800 rounded-lg">
-            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-              {rulesLoading ? (
-                <li className="p-4 flex justify-center items-center">
-                  <Spinner size="sm" />
-                </li>
-              ) : rules.length > 0 ? (
-                rules.map((rule) => (
-                  <li
-                    key={rule.id}
-                    className="p-4 flex justify-between items-center"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {rule.merchantKeyword}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {rule.category?.name || "Неизвестная категория"}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteRuleClick(rule)}
-                      className="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/50 dark:hover:text-red-400 transition-colors"
-                      aria-label={`Удалить правило для ${rule.merchantKeyword}`}
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </li>
-                ))
-              ) : (
-                <li className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                  У вас пока нет правил автоматизации.
-                </li>
-              )}
-            </ul>
-          </div>
-        </SettingsSection>
-      )}
-
-      <ConfirmModal
-        isOpen={!!ruleToDelete}
-        onClose={() => setRuleToDelete(null)}
-        onConfirm={handleConfirmDeleteRule}
-        title="Удалить правило?"
-        message={`Вы уверены, что хотите удалить правило для "${ruleToDelete?.merchantKeyword}"? Это действие нельзя будет отменить.`}
-        confirmText="Удалить"
-        isConfirming={isDeletingRule}
-      />
     </div>
   );
 };

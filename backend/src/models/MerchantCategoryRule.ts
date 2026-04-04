@@ -1,8 +1,8 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
+import { TransactionCategoryInstance } from "./TransactionCategory";
 
 interface MerchantCategoryRuleAttributes {
   id: string;
-  userId: string;
   categoryId: string;
   merchantKeyword: string;
   createdAt: Date;
@@ -20,7 +20,9 @@ export interface MerchantCategoryRuleInstance
       MerchantCategoryRuleAttributes,
       MerchantCategoryRuleCreationAttributes
     >,
-    MerchantCategoryRuleAttributes {}
+    MerchantCategoryRuleAttributes {
+  transactionCategory?: TransactionCategoryInstance;
+}
 
 export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
   const MerchantCategoryRule = sequelize.define<
@@ -34,19 +36,11 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
         defaultValue: dataTypes.UUIDV4,
         primaryKey: true,
       },
-      userId: {
-        type: dataTypes.UUID,
-        allowNull: false,
-        references: {
-          model: "users",
-          key: "id",
-        },
-      },
       categoryId: {
         type: dataTypes.UUID,
         allowNull: false,
         references: {
-          model: "categories",
+          model: "transaction_categories",
           key: "id",
         },
       },
@@ -66,26 +60,21 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
     {
       tableName: "merchantCategoryRules",
       indexes: [
-        { fields: ["userId"] },
         { fields: ["categoryId"] },
-        { fields: ["merchantKeyword"] },
         {
           unique: true,
-          fields: ["userId", "merchantKeyword"],
-          name: "userMerchantUnique",
+          fields: ["merchantKeyword"],
+          name: "merchantKeywordUnique",
         },
       ],
     }
   );
 
   (MerchantCategoryRule as any).associate = (models: any) => {
-    MerchantCategoryRule.belongsTo(models.User, {
-      foreignKey: "userId",
-      as: "user",
-    });
-    MerchantCategoryRule.belongsTo(models.Category, {
+    MerchantCategoryRule.belongsTo(models.TransactionCategory, {
       foreignKey: "categoryId",
-      as: "category",
+      as: "transactionCategory",
+      constraints: false,
     });
   };
 

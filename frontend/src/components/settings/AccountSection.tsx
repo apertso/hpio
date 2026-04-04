@@ -27,12 +27,15 @@ import MobilePanel from "../MobilePanel";
 import { compressProfileImage } from "../../utils/imageCompression";
 import { submitFeedback } from "../../api/feedbackApi";
 import DeleteAccount from "../DeleteAccount";
+import { isIncomeAndCardsEnabled } from "../../utils/featureFlags";
+import { CURRENCY_OPTIONS } from "../../utils/currencies"; // Import shared currencies
 
 // Схема для всех настроек профиля
 const settingsSchema = z.object({
   name: z.string().min(1, "Имя обязательно для заполнения."),
   email: z.string().email("Неверный формат email."),
   timezone: z.string().min(1, "Часовой пояс обязателен."),
+  preferredCurrency: z.string().optional(),
 });
 
 const passwordSchema = z
@@ -96,6 +99,7 @@ const AccountSection: React.FC = () => {
         name: user.name || "",
         email: user.email || "",
         timezone: user.timezone || "UTC",
+        preferredCurrency: user.preferredCurrency || "RUB",
       });
     }
   }, [user, resetSettingsForm]);
@@ -361,6 +365,22 @@ const AccountSection: React.FC = () => {
                   />
                 )}
               />
+              {isIncomeAndCardsEnabled() && (
+                <Controller
+                  name="preferredCurrency"
+                  control={settingsControl}
+                  defaultValue={user?.preferredCurrency || "RUB"}
+                  render={({ field }) => (
+                    <Select
+                      label="Основная валюта"
+                      options={CURRENCY_OPTIONS}
+                      value={field.value ?? null}
+                      onChange={field.onChange}
+                      error={settingsErrors.preferredCurrency?.message}
+                    />
+                  )}
+                />
+              )}
             </div>
           </div>
           <div className="text-right mt-6">

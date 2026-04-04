@@ -19,7 +19,11 @@ router.get("/:id", async (req, res) => {
   const userId = req.user!.id; // User ID from protect middleware
 
   try {
-    const series = await getRecurringSeriesById(seriesId, userId);
+    const series = await getRecurringSeriesById(
+      seriesId,
+      userId,
+      undefined
+    );
 
     if (!series) {
       return res

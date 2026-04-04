@@ -22,7 +22,10 @@ export interface BlogPostInstance
     BlogPostAttributes {}
 
 export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
-  const BlogPost = sequelize.define<BlogPostInstance, BlogPostCreationAttributes>(
+  const BlogPost = sequelize.define<
+    BlogPostInstance,
+    BlogPostCreationAttributes
+  >(
     "BlogPost",
     {
       id: {
@@ -77,5 +80,3 @@ export default (sequelize: Sequelize, dataTypes: typeof DataTypes) => {
 
   return BlogPost;
 };
-
-

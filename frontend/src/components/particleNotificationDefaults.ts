@@ -1,0 +1,16 @@
+export const PARTICLE_NOTIFICATION_DEFAULTS = {
+  assembleDuration: 3.0,
+  displayDuration: 2.0,
+  disperseDuration: 3.0,
+  particleBaseSize: 0.5,
+  gridSpacing: 0.0,
+  bgSoftness: 0.0,
+  textSoftness: 0.0,
+  borderSoftness: 0.0,
+  minFeatherBase: 0.01,
+  textThickness: 0.28,
+  borderDensity: 0.01,
+  showRectangle: true,
+  showText: true,
+  showDot: true,
+} as const;

@@ -1,8 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import ParticleNotification, {
-  PARTICLE_NOTIFICATION_DEFAULTS,
-} from "./ParticleNotification";
+import ParticleNotification from "./ParticleNotification";
+import { PARTICLE_NOTIFICATION_DEFAULTS } from "./particleNotificationDefaults";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import ToggleSwitch from "./ToggleSwitch";
 import {
@@ -141,12 +140,12 @@ export const Interactive: Story = {
 
 export const ThreeStates: Story = {
   render: (args, { globals }) => {
-    const selectedTheme =
-      globals && (globals as Record<string, unknown>).theme === "dark"
-        ? "dark"
-        : "light";
-
     const StoryContent = () => {
+      const selectedTheme =
+        globals && (globals as Record<string, unknown>).theme === "dark"
+          ? "dark"
+          : "light";
+
       // 1. Initial State (Assembly Phase) - e.g. 1.0s
       // 2. Middle State (Fully Assembled) - e.g. 4.0s (after assembly, before disperse)
       // 3. Final State (Dispersal Phase) - e.g. 6.0s (after explode start)

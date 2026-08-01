@@ -866,6 +866,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
     showTimePicker,
     dateFormat,
     timeFormat,
+    isCompactVariant,
   ]);
 
   const activeTimeValue = useDraftWorkflow

@@ -268,7 +268,7 @@ const CardsPage: React.FC = () => {
           localStorage.removeItem(CASH_STORAGE_KEY);
         }
       }
-    } catch (error) {
+    } catch {
       showToast("Ошибка загрузки наличных", "error");
       // Fallback to local storage if API fails?
       // For now, let's stick to error reporting, but maybe init from local if available
@@ -320,14 +320,17 @@ const CardsPage: React.FC = () => {
   }, [isMobileViewport]);
 
   // Helper to sync changes to backend
-  const updateCashBalancesBackend = async (newBalances: CashBalance[]) => {
-    setCashBalances(newBalances);
-    try {
-      await cashApi.setBalances(newBalances);
-    } catch (e) {
-      showToast("Не удалось сохранить баланс", "error");
-    }
-  };
+  const updateCashBalancesBackend = useCallback(
+    async (newBalances: CashBalance[]) => {
+      setCashBalances(newBalances);
+      try {
+        await cashApi.setBalances(newBalances);
+      } catch {
+        showToast("Не удалось сохранить баланс", "error");
+      }
+    },
+    [showToast]
+  );
 
   const handleAddCard = () => {
     navigate("/sources/new");
@@ -553,12 +556,12 @@ const CardsPage: React.FC = () => {
     setSelectedCashCurrency(balance.currency);
   };
 
-  const cancelCashEdit = () => {
+  const cancelCashEdit = useCallback(() => {
     setEditingCashCurrency(null);
     setEditingCashAmount("");
-  };
+  }, []);
 
-  const saveCashEdit = () => {
+  const saveCashEdit = useCallback(() => {
     if (!editingCashCurrency) return;
     const normalizedAmount =
       editingCashAmount.trim() === "" ? 0 : parseCashAmount(editingCashAmount);
@@ -571,7 +574,13 @@ const CardsPage: React.FC = () => {
 
     updateCashBalancesBackend(updated);
     cancelCashEdit();
-  };
+  }, [
+    editingCashCurrency,
+    editingCashAmount,
+    cashBalances,
+    cancelCashEdit,
+    updateCashBalancesBackend,
+  ]);
 
   const handleDeleteCashCurrency = (currency: string) => {
     if (currency === BASE_CASH_CURRENCY) return;

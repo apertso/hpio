@@ -25,4 +25,11 @@ export default tseslint.config(
       ],
     },
   },
+  // Context providers naturally export hooks alongside components
+  {
+    files: ['**/context/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 )

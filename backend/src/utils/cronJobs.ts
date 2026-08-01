@@ -27,11 +27,6 @@ import {
 } from "../services/emailService";
 import db from "../models";
 import { Op } from "sequelize";
-import { trace, SpanStatusCode, Span } from "@opentelemetry/api"; // 👈 Import OpenTelemetry
-
-// --- OpenTelemetry Tracer ---
-const tracer = trace.getTracer("cron-job-tracer");
-// ----------------------------
 
 const setupCronJobs = () => {
   // ЗАДАЧА 1: Актуализация статусов просроченных платежей.
@@ -95,14 +90,6 @@ const setupCronJobs = () => {
   // ВРЕМЯ: Каждую минуту (только в продакшене).
   if (process.env.NODE_ENV === "production") {
     cron.schedule("* * * * *", async () => {
-      let span: Span;
-      try {
-        span = tracer.startSpan("notification-sending-job");
-      } catch (e) {
-        logger.error("[OpenTelemetry] Failed to start span:", e);
-        return; // не продолжаем задачу, чтобы не запускать "ослеплённую" логику
-      }
-
       try {
         // 1. Получаем ВСЕХ пользователей, у которых включены уведомления.
         // Проверка времени будет произведена в коде приложения, так как MS SQL не поддерживает IANA-таймзоны (напр., 'Europe/Moscow').
@@ -139,9 +126,7 @@ const setupCronJobs = () => {
           }
         });
 
-        span.setAttribute("users.to_notify.count", usersToNotify.length);
         if (usersToNotify.length === 0) {
-          span.end();
           return;
         }
 
@@ -212,17 +197,8 @@ const setupCronJobs = () => {
             }
           }
         }
-
-        span.setStatus({ code: SpanStatusCode.OK });
       } catch (error) {
         logger.error("Cron: Error in notification sending job", error);
-        span.recordException(error as Error);
-        span.setStatus({
-          code: SpanStatusCode.ERROR,
-          message: (error as Error).message,
-        });
-      } finally {
-        span.end();
       }
     });
   } else {

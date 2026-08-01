@@ -1,19 +1,25 @@
-import React, { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
+  ArrowDownTrayIcon,
   ArrowPathIcon,
+  BellAlertIcon,
   CalendarDaysIcon,
   ChartBarIcon,
   ShieldCheckIcon,
   DevicePhoneMobileIcon,
   GlobeAltIcon,
-} from "@heroicons/react/24/outline";
-import { Button } from "../components/Button";
-import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
-import { DeviceMockup } from "../components/DeviceMockup";
-import PageMeta from "../components/PageMeta";
-import { getPageMetadata } from "../utils/pageMetadata";
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
+import { Button } from '../components/Button';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { DeviceMockup } from '../components/DeviceMockup';
+import { LandingHeroCreditCard } from '../components/LandingHeroCreditCard';
+import { LandingHeroMockup } from '../components/LandingHeroMockup';
+import { LandingTopBar } from '../components/LandingTopBar';
+import PageMeta from '../components/PageMeta';
+import { getPageMetadata } from '../utils/pageMetadata';
 
 const Feature = ({
   icon: Icon,
@@ -30,7 +36,7 @@ const Feature = ({
 }) => (
   <div
     className={`flex flex-col gap-12 items-center md:flex-row ${
-      reverse ? "md:flex-row-reverse" : ""
+      reverse ? 'md:flex-row-reverse' : ''
     } py-12`}
   >
     <div className="flex-1 space-y-6 text-center md:text-left">
@@ -64,11 +70,11 @@ const LandingPage: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
   const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
-  const metadata = getPageMetadata("landing");
+  const metadata = getPageMetadata('landing');
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      navigate("/dashboard", { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [loading, isAuthenticated, navigate]);
 
@@ -77,92 +83,214 @@ const LandingPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="w-full text-gray-900 dark:text-gray-100">
-        {/* Hero Section - Clean & Minimalist */}
-        <section className="relative pt-12 pb-20 md:pt-24 md:pb-32 overflow-hidden bg-[radial-gradient(80vw_50vh_at_50%_-10vh,rgba(79,70,255,0.22),transparent_65%),radial-gradient(60vw_40vh_at_10%_40%,rgba(124,58,237,0.16),transparent_65%),radial-gradient(60vw_40vh_at_90%_30%,rgba(79,70,255,0.14),transparent_65%),linear-gradient(180deg,#eef0ff_0%,#fafbff_60%)] dark:bg-[radial-gradient(80vw_50vh_at_50%_-10vh,rgba(79,70,255,0.35),transparent_65%),radial-gradient(60vw_40vh_at_10%_40%,rgba(124,58,237,0.25),transparent_65%),radial-gradient(60vw_40vh_at_90%_30%,rgba(79,70,255,0.25),transparent_65%),linear-gradient(180deg,#050816_0%,#0b0f1a_60%)]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
-              {/* Text Content */}
-              <div className="text-center lg:text-left">
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-8 leading-tight">
-                  Финансы под <br />
-                  <span className="text-indigo-600 dark:text-indigo-500">
+        <section className="landing-hero-section relative flex min-h-dvh flex-col overflow-hidden border-b border-indigo-100/50 dark:border-gray-800">
+          {/* Декоративные сферы */}
+          <div
+            className="pointer-events-none absolute inset-0 overflow-hidden"
+            aria-hidden="true"
+          >
+            <div className="landing-hero-orb landing-hero-orb-1" />
+            <div className="landing-hero-orb landing-hero-orb-2" />
+            <div className="landing-hero-orb landing-hero-orb-3" />
+            <div className="landing-hero-orb landing-hero-orb-4" />
+          </div>
+
+          <div className="relative mx-auto flex w-full max-w-[1280px] flex-1 flex-col px-4 sm:px-6 lg:px-8">
+            <LandingTopBar />
+
+            <div className="relative grid min-h-0 min-w-0 flex-1 grid-cols-1 items-center gap-8 py-6 sm:gap-10 sm:py-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-6 xl:gap-10">
+              <div className="relative z-10 mx-auto w-full min-w-0 max-w-2xl text-center lg:mx-0 lg:max-w-[560px] lg:-translate-y-24 lg:text-left xl:max-w-[600px]">
+                <h1 className="landing-hero-reveal landing-hero-delay-1 text-[3.25rem] font-extrabold leading-[1.02] tracking-tight text-gray-950 dark:text-white sm:text-[4.5rem] lg:text-[4rem] xl:text-[4.75rem]">
+                  Финансы под
+                  <br />
+                  <span className="bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-500 bg-clip-text text-transparent dark:from-indigo-400 dark:via-sky-400 dark:to-violet-300">
                     полным контролем
                   </span>
                 </h1>
 
-                <p className="max-w-2xl mx-auto lg:mx-0 text-xl text-gray-600 dark:text-gray-400 mb-10 leading-relaxed font-light">
+                <p className="landing-hero-reveal landing-hero-delay-2 mx-auto mt-10 max-w-xl text-base leading-7 text-gray-500 dark:text-gray-300 sm:text-lg sm:leading-8 lg:mx-0">
                   Эстетичный трекер регулярных платежей и подписок.
-                  <br className="hidden md:block" />
-                  <span className="font-medium text-gray-900 dark:text-gray-200">
-                    &nbsp;Без рекламы. Без скрытых комиссий.
-                  </span>
+                </p>
+                <p className="landing-hero-reveal landing-hero-delay-2 mt-3 text-base font-bold text-gray-950 dark:text-white sm:text-lg">
+                  Без рекламы. Без скрытых комиссий.
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mb-12">
-                  <Link to="/register" className="w-full sm:w-auto">
-                    <Button
-                      label="Начать бесплатно"
-                      className="w-full sm:w-auto px-8 py-4 text-lg font-bold bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 shadow-lg transition-transform hover:-translate-y-0.5"
-                    />
+                <div className="landing-hero-reveal landing-hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                  <Link
+                    to="/register"
+                    className="group inline-flex min-h-[66px] w-full min-w-0 items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3.5 text-left text-white shadow-[0_20px_44px_rgba(99,102,241,0.38)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_52px_rgba(99,102,241,0.44)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 sm:w-[272px] cursor-pointer"
+                  >
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-white/15">
+                      <SparklesIcon className="h-6 w-6" />
+                    </span>
+                    <span>
+                      <span className="block text-lg font-bold leading-6">
+                        Начать бесплатно
+                      </span>
+                      <span className="block text-sm text-indigo-100">
+                        Создайте аккаунт за 30 секунд
+                      </span>
+                    </span>
                   </Link>
-                  <Link to="/download" className="w-full sm:w-auto">
-                    <Button
-                      label="Скачать APK"
-                      variant="secondary"
-                      icon={<DevicePhoneMobileIcon className="w-5 h-5" />}
-                      className="w-full sm:w-auto px-8 py-4 text-lg font-bold bg-transparent border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    />
+
+                  <Link
+                    to="/download"
+                    className="inline-flex min-h-[66px] w-full min-w-0 items-center gap-4 rounded-2xl border border-gray-200/90 bg-white px-5 py-3.5 text-left text-gray-900 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:bg-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7638FA] focus-visible:ring-offset-2 dark:border-white/10 dark:bg-white/8 dark:text-white dark:hover:bg-white/12 sm:w-[212px] cursor-pointer"
+                  >
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-200">
+                      <ArrowDownTrayIcon className="h-6 w-6" />
+                    </span>
+                    <span>
+                      <span className="block text-lg font-bold leading-6">
+                        Скачать APK
+                      </span>
+                      <span className="block text-sm text-gray-500 dark:text-gray-400">
+                        Версия 1.2.0
+                      </span>
+                    </span>
                   </Link>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-8 gap-y-4 text-sm font-medium animate-fade-in-up">
-                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                    <GlobeAltIcon className="w-5 h-5" />
-                    <span>Web</span>
+                <div className="landing-hero-reveal landing-hero-delay-4 mt-7 grid w-full grid-cols-1 gap-2.5 text-left text-sm sm:w-[440px] sm:grid-cols-3 sm:justify-items-center">
+                  <div className="flex w-full items-center gap-2.5 rounded-2xl border border-gray-100 bg-white/80 px-3 py-2.5 shadow-[0_4px_16px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-white/10 dark:bg-white/5 sm:max-w-[200px]">
+                    <GlobeAltIcon className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        Web
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Доступно в браузере
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                    <DevicePhoneMobileIcon className="w-5 h-5" />
-                    <span>Android</span>
-                  </div>
-                  <div
-                    className="flex items-center gap-2 text-gray-400 dark:text-gray-600 cursor-not-allowed"
-                    title="В разработке"
-                  >
+                  <div className="flex w-full items-center gap-2.5 rounded-2xl border border-gray-100 bg-white/80 px-3 py-2.5 shadow-[0_4px_16px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-white/10 dark:bg-white/5 sm:max-w-[200px]">
                     <svg
-                      className="w-5 h-5"
+                      className="h-6 w-6 text-gray-500 dark:text-gray-400"
                       viewBox="0 0 24 24"
                       fill="currentColor"
                     >
-                      <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5M13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z" />
+                      <path d="M17.6 9.48l1.84-3.18c.08-.14.03-.33-.12-.41-.14-.08-.33-.03-.41.12l-1.87 3.23c-1.46-.66-3.13-1.04-4.9-1.04s-3.44.38-4.9 1.04l-1.87-3.23c-.08-.14-.27-.19-.41-.12-.14.08-.19.27-.12.41l1.84 3.18C3.76 11.08 1.42 14.15 1 18h22c-.42-3.85-2.76-6.92-5.4-8.52zM7.25 15.5c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm9.5 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
                     </svg>
-                    <span>iOS</span>
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        Android
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        APK для установки
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex w-full items-center gap-2.5 rounded-2xl border border-gray-100 bg-white/80 px-3 py-2.5 shadow-[0_4px_16px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-white/10 dark:bg-white/5 sm:max-w-[200px]">
+                    <svg
+                      className="h-6 w-6 text-gray-500 dark:text-gray-400"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M15.2 5.3c-.6 1.4-2.1 2.3-3.6 2.1.2-1.6 1.1-3.1 2.5-4 1.1-.7 2.4-.9 3.6-.6-.2 1.1-.7 2-1.5 2.5zm1.5 3.3c-1.3-.1-2.7.7-3.4.7-.8 0-2-.7-3.1-.7-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.4 1 8.5.7 1 1.5 2.2 2.6 2.1 1.1-.1 1.5-.7 2.8-.7s1.5.7 2.8.7c1.1.1 1.8-1 2.5-2.1 1-1.3 1.4-2.6 1.4-2.6-.1 0-2.4-1-2.4-3.6 0-2.1 1.8-3.1 1.8-3.2-1.1-1.4-2.7-1.5-3.1-1.6h.6z" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        iOS
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Скоро в App Store
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* App Interface Mockups */}
-              <div className="relative flex justify-center items-center mt-12 lg:mt-0">
-                {/* Desktop Mockup (Visible on Large Screens) */}
-                <div className="hidden lg:block transform transition-transform hover:scale-[1.02] duration-500 relative z-10 w-full">
-                  <DeviceMockup
-                    type="desktop"
-                    src={`/hero/desktop-${
-                      resolvedTheme === "dark" ? "dark" : "light"
-                    }.png`}
-                    alt="Desktop App Interface"
-                    className="w-full max-w-[800px] ml-auto"
-                  />
+              <div className="landing-hero-visual relative mx-auto w-full min-w-0 max-w-[760px] pb-12 pt-2 lg:mr-0 lg:max-w-none xl:-mr-2">
+                {/* Сферы вокруг макета */}
+                <div
+                  className="pointer-events-none absolute inset-0 overflow-visible"
+                  aria-hidden="true"
+                >
+                  <div className="landing-hero-orb landing-hero-orb-mockup-1" />
+                  <div className="landing-hero-orb landing-hero-orb-mockup-2" />
+                  <div className="landing-hero-orb landing-hero-orb-mockup-3" />
+                  <div className="landing-hero-glow" />
                 </div>
 
-                {/* Mobile Mockup (Visible on Small/Medium Screens) */}
-                <div className="block lg:hidden relative z-10 transform transition-transform hover:scale-[1.01] duration-500">
-                  <DeviceMockup
-                    type="mobile"
-                    src={`/hero/mobile-${
-                      resolvedTheme === "dark" ? "dark" : "light"
-                    }.png`}
-                    alt="Mobile App Interface"
-                  />
+                <div className="landing-mockup-intro relative z-10">
+                  <div className="landing-mockup-float">
+                    <div className="relative hidden md:block">
+                      <LandingHeroMockup />
+                    </div>
+
+                    <div className="relative md:hidden">
+                      <DeviceMockup
+                        type="mobile"
+                        src={`/hero/mobile-${
+                          resolvedTheme === 'dark' ? 'dark' : 'light'
+                        }.png`}
+                        alt="Интерфейс Хочу Плачу на телефоне"
+                        className="w-[236px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Netflix — скоро спишется */}
+                <div className="landing-floating-element landing-netflix-alert absolute -left-4 top-[30%] z-30 hidden lg:block xl:-left-8">
+                  <div className="landing-netflix-alert-body">
+                    <div
+                      className="landing-netflix-alert-icon"
+                      aria-hidden="true"
+                    >
+                      <BellAlertIcon className="h-[20px] w-[20px] text-white" />
+                    </div>
+                    <div className="landing-netflix-alert-text">
+                      <p className="landing-netflix-alert-label">
+                        Скоро спишется
+                      </p>
+                      <p className="landing-netflix-alert-name">Netflix</p>
+                      <p className="landing-netflix-alert-amount">599 ₽</p>
+                      <p className="landing-netflix-alert-date">
+                        22 мая • через 2 дня
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Напоминание */}
+                <div className="landing-floating-element landing-floating-delay absolute -right-3 top-[18%] z-30 hidden w-[188px] rounded-2xl border border-white/90 bg-white/97 p-3 shadow-[0_24px_56px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-gray-950/97 lg:block xl:-right-7">
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
+                      <CalendarDaysIcon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-950 dark:text-white">
+                        Напоминание
+                      </p>
+                      <p className="mt-0.5 text-[10px] leading-4 text-gray-500 dark:text-gray-400">
+                        3 платежа на этой неделе
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400"
+                      >
+                        Посмотреть
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <LandingHeroCreditCard />
+
+                {/* Защита данных */}
+                <div className="landing-floating-element landing-floating-delay absolute -bottom-1 right-[2%] z-30 hidden max-w-[240px] items-center gap-2.5 rounded-2xl border border-white/90 bg-white/97 px-3.5 py-2.5 shadow-[0_24px_56px_rgba(79,70,229,0.14)] backdrop-blur-sm dark:border-white/10 dark:bg-gray-950/97 lg:flex">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
+                    <ShieldCheckIcon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold leading-tight text-gray-950 dark:text-white">
+                      Ваши данные под защитой
+                    </p>
+                    <p className="mt-0.5 text-[10px] leading-snug text-gray-500 dark:text-gray-400">
+                      Мы не передаем данные третьим лицам.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -216,8 +344,8 @@ const LandingPage: React.FC = () => {
               icon={CalendarDaysIcon}
               title="Умное отслеживание"
               image={{
-                src: "/landing/notifications.webp",
-                alt: "Скриншот уведомлений",
+                src: '/landing/notifications.webp',
+                alt: 'Скриншот уведомлений',
               }}
             >
               Забудьте о ручном вводе. Приложение автоматически распознает
@@ -230,8 +358,8 @@ const LandingPage: React.FC = () => {
               title="Регулярные платежи"
               reverse
               image={{
-                src: "/landing/payment-tracking.webp",
-                alt: "Скриншот списка платежей",
+                src: '/landing/payment-tracking.webp',
+                alt: 'Скриншот списка платежей',
               }}
             >
               Гибкая настройка повторяющихся операций. Подписки, ЖКХ, кредиты —
@@ -242,8 +370,8 @@ const LandingPage: React.FC = () => {
               icon={ChartBarIcon}
               title="Глубокая аналитика"
               image={{
-                src: "/landing/analytics.webp",
-                alt: "Скриншот аналитики",
+                src: '/landing/analytics.webp',
+                alt: 'Скриншот аналитики',
               }}
             >
               Понимайте, куда уходят деньги. Визуализация расходов по

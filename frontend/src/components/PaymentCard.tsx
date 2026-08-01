@@ -1,20 +1,20 @@
-import React from "react";
+import React from 'react';
 import {
   ArrowPathIcon,
   EllipsisVerticalIcon,
   ExclamationCircleIcon,
   CalendarDaysIcon,
-} from "@heroicons/react/24/outline";
+} from '@heroicons/react/24/outline';
 import {
   TrashIcon,
   CheckCircleIcon,
   PencilIcon,
-} from "@heroicons/react/24/solid";
-import { useDropdown } from "../hooks/useDropdown";
-import Overlay from "./Overlay";
-import PaymentIconDisplay from "./PaymentIconDisplay";
-import { formatRecurrenceRule } from "../utils/formatRecurrence";
-import { formatDateForDisplay } from "../utils/dateUtils";
+} from '@heroicons/react/24/solid';
+import { useDropdown } from '../hooks/useDropdown';
+import Overlay from './Overlay';
+import PaymentIconDisplay from './PaymentIconDisplay';
+import { formatRecurrenceRule } from '../utils/formatRecurrence';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 interface PaymentCardProps {
   payment: {
@@ -22,7 +22,7 @@ interface PaymentCardProps {
     title: string;
     amount: number;
     dueDate: string;
-    status: "upcoming" | "overdue" | "completed" | "deleted";
+    status: 'upcoming' | 'overdue' | 'completed' | 'deleted';
     seriesId?: string | null;
     series?: { id: string; isActive: boolean; recurrenceRule?: string } | null;
     isVirtual?: boolean;
@@ -52,7 +52,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
   hideDate,
 }) => {
   const formattedDueDate = formatDateForDisplay(new Date(payment.dueDate));
-  const formattedAmount = new Intl.NumberFormat("ru-RU", {
+  const formattedAmount = new Intl.NumberFormat('ru-RU', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(payment.amount);
@@ -67,7 +67,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
   } = useDropdown();
 
   // Стили из класса subtle-card
-  const cardClasses = "card-base card-hover p-5 flex flex-col justify-between";
+  const cardClasses = 'card-base card-hover p-5 flex flex-col justify-between';
 
   return (
     <div className={`${cardClasses} text-gray-900 dark:text-gray-100 h-40`}>
@@ -141,7 +141,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
             <p className="text-xs text-[#3F51B5] dark:text-indigo-400 flex items-center font-normal">
               {isEffectivelyRecurring && (
                 <>
-                  <ArrowPathIcon className="h-3 w-3 mr-1 flex-shrink-0" />{" "}
+                  <ArrowPathIcon className="h-3 w-3 mr-1 flex-shrink-0" />{' '}
                   <span className="truncate">
                     {formatRecurrenceRule(payment.series?.recurrenceRule)}
                   </span>
@@ -150,7 +150,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
               {isEffectivelyRecurring && payment.isVirtual && (
                 <span className="mx-1">•</span>
               )}
-              {payment.isVirtual && "Виртуальный"}
+              {payment.isVirtual && 'Виртуальный'}
             </p>
           </div>
         )}
@@ -160,19 +160,19 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
       <div className="mt-2 pt-2">
         <div className="flex items-end justify-between">
           <p className="text-xl font-bold leading-none">
-            {formattedAmount}{" "}
+            {formattedAmount}{' '}
             <span className="text-sm font-normal text-gray-600 dark:text-gray-400">
               ₽
             </span>
           </p>
           <div className="flex items-center gap-2">
-            {payment.status === "overdue" ? (
+            {payment.status === 'overdue' ? (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                 <ExclamationCircleIcon className="h-3.5 w-3.5 mr-1" />
                 Просрочен
               </span>
             ) : !hideDate ? (
-              payment.status === "upcoming" && isToday(payment.dueDate) ? (
+              payment.status === 'upcoming' && isToday(payment.dueDate) ? (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   <CalendarDaysIcon className="h-3.5 w-3.5 mr-1" />
                   Сегодня

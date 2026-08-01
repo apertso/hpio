@@ -1,10 +1,10 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Roboto", "Segoe UI", "Tahoma", "Arial", "Helvetica", sans-serif;
+  --font-sans: 'Roboto', 'Segoe UI', 'Tahoma', 'Arial', 'Helvetica', sans-serif;
   --color-dark-bg: #111827;
   --color-card-bg: #1f2937;
   --color-border-dark: #374151;
@@ -119,6 +119,513 @@ body {
   }
 }
 
+@keyframes landingHeroReveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landingMockupIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes landingMockupFloat {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -5px;
+  }
+}
+
+@keyframes landingGentleFloat {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -4px;
+  }
+}
+
+.landing-hero-section {
+  min-height: 100dvh;
+  background:
+    radial-gradient(
+      48rem 30rem at 18% 12%,
+      rgba(255, 255, 255, 0.95),
+      transparent 72%
+    ),
+    radial-gradient(
+      36rem 24rem at 82% 18%,
+      rgba(147, 197, 253, 0.22),
+      transparent 70%
+    ),
+    radial-gradient(
+      40rem 28rem at 70% 88%,
+      rgba(167, 139, 250, 0.18),
+      transparent 68%
+    ),
+    linear-gradient(180deg, #f8f9ff 0%, #f3f6ff 48%, #fafbff 100%);
+}
+
+.dark .landing-hero-section {
+  background:
+    radial-gradient(
+      48rem 30rem at 18% 12%,
+      rgba(30, 41, 59, 0.55),
+      transparent 72%
+    ),
+    radial-gradient(
+      36rem 24rem at 82% 18%,
+      rgba(99, 102, 241, 0.22),
+      transparent 70%
+    ),
+    radial-gradient(
+      40rem 28rem at 70% 88%,
+      rgba(139, 92, 246, 0.16),
+      transparent 68%
+    ),
+    linear-gradient(180deg, #070b14 0%, #0b1020 54%, #050816 100%);
+}
+
+.landing-hero-orb {
+  position: absolute;
+  border-radius: 9999px;
+  background:
+    radial-gradient(
+      circle at 30% 28%,
+      rgba(255, 255, 255, 0.95),
+      rgba(255, 255, 255, 0) 42%
+    ),
+    radial-gradient(
+      circle at 72% 78%,
+      rgba(199, 210, 254, 0.55),
+      rgba(199, 210, 254, 0) 48%
+    ),
+    linear-gradient(135deg, rgba(224, 231, 255, 0.9), rgba(191, 219, 254, 0.55));
+  box-shadow:
+    inset 0 1px 24px rgba(255, 255, 255, 0.75),
+    0 18px 50px rgba(99, 102, 241, 0.12);
+  opacity: 0.75;
+}
+
+.dark .landing-hero-orb {
+  background:
+    radial-gradient(
+      circle at 30% 28%,
+      rgba(255, 255, 255, 0.18),
+      rgba(255, 255, 255, 0) 42%
+    ),
+    radial-gradient(
+      circle at 72% 78%,
+      rgba(99, 102, 241, 0.35),
+      rgba(99, 102, 241, 0) 48%
+    ),
+    linear-gradient(135deg, rgba(67, 56, 202, 0.35), rgba(30, 64, 175, 0.25));
+  box-shadow:
+    inset 0 1px 24px rgba(255, 255, 255, 0.08),
+    0 18px 50px rgba(0, 0, 0, 0.35);
+  opacity: 0.55;
+}
+
+.landing-hero-orb-1 {
+  top: 8%;
+  left: 4%;
+  width: 7.5rem;
+  height: 7.5rem;
+}
+
+.landing-hero-orb-2 {
+  top: 18%;
+  right: 8%;
+  width: 5.5rem;
+  height: 5.5rem;
+}
+
+.landing-hero-orb-3 {
+  bottom: 12%;
+  left: 38%;
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+.landing-hero-orb-4 {
+  top: 42%;
+  right: 18%;
+  width: 6rem;
+  height: 6rem;
+}
+
+/* Сферы вокруг hero-макета */
+.landing-hero-orb-mockup-1 {
+  top: -4%;
+  right: 6%;
+  width: 5.5rem;
+  height: 5.5rem;
+  opacity: 0.9;
+  animation: landingOrbPulse 8s ease-in-out infinite;
+}
+
+.landing-hero-orb-mockup-2 {
+  bottom: 22%;
+  left: -3%;
+  width: 4.25rem;
+  height: 4.25rem;
+  opacity: 0.75;
+  animation: landingOrbPulse 9.5s ease-in-out 1.2s infinite;
+}
+
+.landing-hero-orb-mockup-3 {
+  bottom: 6%;
+  right: 0%;
+  width: 3.5rem;
+  height: 3.5rem;
+  opacity: 0.7;
+  animation: landingOrbPulse 7.5s ease-in-out 0.6s infinite;
+}
+
+@keyframes landingOrbPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.9;
+  }
+}
+
+.landing-hero-glow {
+  position: absolute;
+  bottom: 4%;
+  left: 50%;
+  width: 14rem;
+  height: 6rem;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(99, 102, 241, 0.28) 0%,
+    rgba(139, 92, 246, 0.12) 45%,
+    transparent 72%
+  );
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.dark .landing-hero-glow {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(99, 102, 241, 0.35) 0%,
+    rgba(139, 92, 246, 0.15) 45%,
+    transparent 72%
+  );
+}
+
+.landing-hero-visual {
+  perspective: 1200px;
+}
+
+/* Плавающая карточка «Скоро спишется» — Netflix */
+.landing-netflix-alert {
+  width: 14rem;
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.03),
+    0 16px 40px rgba(15, 23, 42, 0.08),
+    0 6px 20px rgba(93, 95, 239, 0.07);
+}
+
+.dark .landing-netflix-alert {
+  background: rgba(15, 23, 42, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.12),
+    0 18px 48px rgba(0, 0, 0, 0.35);
+}
+
+.landing-netflix-alert-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.landing-netflix-alert-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  background: linear-gradient(145deg, #6366f1 0%, #5b5fef 48%, #5046e5 100%);
+  box-shadow:
+    0 4px 14px rgba(99, 102, 241, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.landing-netflix-alert-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.landing-netflix-alert-label {
+  margin: 0 0 0.125rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #6b7280;
+}
+
+.dark .landing-netflix-alert-label {
+  color: #9ca3af;
+}
+
+.landing-netflix-alert-name {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.landing-netflix-alert-amount {
+  margin: 0.125rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.dark .landing-netflix-alert-name,
+.dark .landing-netflix-alert-amount {
+  color: #f9fafb;
+}
+
+.landing-netflix-alert-date {
+  margin: 0.25rem 0 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #6366f1;
+}
+
+.dark .landing-netflix-alert-date {
+  color: #818cf8;
+}
+
+.landing-hero-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: landingHeroReveal 720ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.landing-hero-delay-1 {
+  animation-delay: 90ms;
+}
+
+.landing-hero-delay-2 {
+  animation-delay: 180ms;
+}
+
+.landing-hero-delay-3 {
+  animation-delay: 300ms;
+}
+
+.landing-hero-delay-4 {
+  animation-delay: 420ms;
+}
+
+.landing-mockup-intro {
+  opacity: 0;
+  transform: translateY(16px) scale(0.975);
+  animation: landingMockupIn 900ms cubic-bezier(0.22, 1, 0.36, 1) 240ms forwards;
+  will-change: opacity, transform;
+}
+
+.landing-mockup-float {
+  animation: landingMockupFloat 7s ease-in-out 1.15s infinite;
+  will-change: translate;
+}
+
+.landing-floating-element {
+  animation: landingGentleFloat 6.8s ease-in-out 1.2s infinite;
+  will-change: translate;
+}
+
+.landing-floating-delay {
+  animation-delay: 1.65s;
+}
+
+/* Декоративная банковская карта МИР в hero-секции */
+.landing-hero-credit-card {
+  width: 170px;
+  height: 120px;
+  transform: translateX(-50%) rotate(-7deg);
+  transform-origin: center center;
+}
+
+.landing-hero-credit-card > .landing-floating-element {
+  width: 100%;
+  height: 100%;
+}
+
+.landing-hero-credit-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 17px 18px 16px;
+  color: #ffffff;
+  background:
+    radial-gradient(
+      circle at 42% 0%,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(255, 255, 255, 0.018) 34%,
+      rgba(255, 255, 255, 0) 58%
+    ),
+    radial-gradient(
+      circle at 94% 8%,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0) 30%
+    ),
+    linear-gradient(
+      178deg,
+      rgba(255, 255, 255, 0) 78%,
+      rgba(255, 255, 255, 0.07) 96%,
+      rgba(255, 255, 255, 0.11) 100%
+    ),
+    linear-gradient(158deg, #2c2d33 0%, #232329 30%, #1b1c22 62%, #17181d 100%);
+  box-shadow:
+    0 24px 44px rgba(15, 23, 42, 0.34),
+    0 9px 18px rgba(15, 23, 42, 0.26),
+    0 2px 4px rgba(0, 0, 0, 0.14);
+}
+
+.landing-hero-credit-card-sheen {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    128deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.012) 30%,
+    rgba(255, 255, 255, 0) 58%
+  );
+}
+
+.landing-hero-credit-card-top-row {
+  margin-top: 14px;
+}
+
+.landing-hero-credit-card-chip {
+  width: 33px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.landing-hero-credit-card-contactless {
+  margin-top: 7px;
+  width: 18px;
+  height: 21px;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.landing-hero-credit-card-number {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing-hero-credit-card-number-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.landing-hero-credit-card-dot {
+  display: block;
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.landing-hero-credit-card-last4 {
+  margin-left: 1px;
+  font-family:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.landing-hero-credit-card-valid-label {
+  margin: 0;
+  font-size: 5px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.36);
+}
+
+.landing-hero-credit-card-expiry {
+  margin: 0 0 1px;
+  font-family:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.landing-hero-credit-card-mir {
+  width: 52px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-reveal,
+  .landing-mockup-intro,
+  .landing-mockup-float,
+  .landing-floating-element,
+  .landing-hero-orb-mockup-1,
+  .landing-hero-orb-mockup-2,
+  .landing-hero-orb-mockup-3 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    translate: 0 0;
+  }
+}
+
 @keyframes feedbackRipple {
   0% {
     transform: translate(-50%, -50%) scale(0.8);
@@ -141,7 +648,7 @@ body {
 }
 
 .feedback-ripple::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
@@ -163,6 +670,6 @@ input.number-field-input::-webkit-inner-spin-button {
   margin: 0;
 }
 
-input.number-field-input[type="number"] {
+input.number-field-input[type='number'] {
   -moz-appearance: textfield;
 }

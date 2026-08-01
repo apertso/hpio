@@ -1,6 +1,5 @@
 import admin from "firebase-admin";
 import logger from "../config/logger";
-import { trace, SpanStatusCode } from "@opentelemetry/api";
 
 // Initialize Firebase Admin SDK
 // Note: In production, use a service account key file or environment variables
@@ -41,8 +40,6 @@ async function initializeFirebase(): Promise<void> {
   }
 }
 
-const tracer = trace.getTracer("fcm-service-tracer");
-
 export interface PushNotificationPayload {
   title: string;
   body: string;
@@ -57,25 +54,12 @@ export async function sendPushNotification(
   fcmToken: string,
   payload: PushNotificationPayload
 ): Promise<void> {
-  const span = tracer.startSpan("send-push-notification");
-
   try {
-    // Initialize Firebase if not already done
     await initializeFirebase();
 
     if (!firebaseApp) {
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: "Firebase not initialized",
-      });
       return;
     }
-
-    span.setAttribute("notification.title", payload.title);
-    span.setAttribute(
-      "notification.click_action",
-      payload.clickAction || "main"
-    );
 
     const message: admin.messaging.Message = {
       token: fcmToken,
@@ -103,17 +87,9 @@ export async function sendPushNotification(
         20
       )}...`
     );
-    span.setStatus({ code: SpanStatusCode.OK });
   } catch (error) {
     logger.error("Failed to send push notification:", error);
-    span.recordException(error as Error);
-    span.setStatus({
-      code: SpanStatusCode.ERROR,
-      message: (error as Error).message,
-    });
     // Don't throw - we don't want to break the flow if push notification fails
-  } finally {
-    span.end();
   }
 }
 
@@ -124,21 +100,12 @@ export async function sendPushNotificationToMultiple(
   fcmTokens: string[],
   payload: PushNotificationPayload
 ): Promise<void> {
-  const span = tracer.startSpan("send-push-notification-multiple");
-
   try {
-    // Initialize Firebase if not already done
     await initializeFirebase();
 
     if (!firebaseApp) {
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: "Firebase not initialized",
-      });
       return;
     }
-
-    span.setAttribute("notification.recipients", fcmTokens.length);
 
     const message: admin.messaging.MulticastMessage = {
       tokens: fcmTokens,
@@ -175,16 +142,7 @@ export async function sendPushNotificationToMultiple(
         }
       });
     }
-
-    span.setStatus({ code: SpanStatusCode.OK });
   } catch (error) {
     logger.error("Failed to send push notifications:", error);
-    span.recordException(error as Error);
-    span.setStatus({
-      code: SpanStatusCode.ERROR,
-      message: (error as Error).message,
-    });
-  } finally {
-    span.end();
   }
 }

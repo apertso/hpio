@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
-import ReactDOM from "react-dom";
-import { generateParticles } from "../utils/particles/sampling";
-import { useTheme } from "../context/ThemeContext";
+import React, { useEffect, useRef, useState } from 'react';
+import ReactDOM from 'react-dom';
+import { generateParticles } from '../utils/particles/sampling';
+import { useTheme } from '../context/ThemeContext';
 
 export interface ParticleNotificationProps {
   text: string;
@@ -125,7 +125,7 @@ export interface ParticleNotificationProps {
    * For Storybook/Development: Force a specific theme ("light" | "dark")
    * This overrides the system/provider theme.
    */
-  forceTheme?: "light" | "dark";
+  forceTheme?: 'light' | 'dark';
 
   /**
    * Callback to receive the total number of particles generated.
@@ -374,10 +374,10 @@ const ParticleNotification: React.FC<ParticleNotificationProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext("webgl", {
+    const gl = canvas.getContext('webgl', {
       alpha: true,
       antialias: false,
-      powerPreference: "high-performance",
+      powerPreference: 'high-performance',
       premultipliedAlpha: false,
     });
 
@@ -444,7 +444,7 @@ const ParticleNotification: React.FC<ParticleNotificationProps> = ({
         canvas.width / pixelRatio, // Use actual canvas logical width
         canvas.height / pixelRatio, // Use actual canvas logical height
         text,
-        (forceTheme || resolvedTheme || "light") as "light" | "dark",
+        (forceTheme || resolvedTheme || 'light') as 'light' | 'dark',
         {
           particleBaseSize,
           gridSpacing,
@@ -453,7 +453,7 @@ const ParticleNotification: React.FC<ParticleNotificationProps> = ({
           showText,
           showDot,
           layout: layoutOverride,
-        }
+        },
       );
 
     // Report particle count if callback is provided
@@ -465,7 +465,7 @@ const ParticleNotification: React.FC<ParticleNotificationProps> = ({
     const createBuffer = (
       data: Float32Array,
       attribName: string,
-      size: number
+      size: number,
     ) => {
       const buffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -491,43 +491,43 @@ const ParticleNotification: React.FC<ParticleNotificationProps> = ({
         gl.FLOAT,
         false,
         STRIDE,
-        offset * FSIZE
+        offset * FSIZE,
       );
       gl.enableVertexAttribArray(loc);
     };
 
-    bindAttrib("a_target", 2, 0);
-    bindAttrib("a_start", 2, 2);
-    bindAttrib("a_control", 2, 4);
-    bindAttrib("a_velocity", 2, 6);
+    bindAttrib('a_target', 2, 0);
+    bindAttrib('a_start', 2, 2);
+    bindAttrib('a_control', 2, 4);
+    bindAttrib('a_velocity', 2, 6);
 
     // Individual buffers
-    createBuffer(colors, "a_color", 4);
-    createBuffer(sizes, "a_size", 1);
-    createBuffer(delays, "a_delay", 1);
-    createBuffer(types, "a_type", 1);
+    createBuffer(colors, 'a_color', 4);
+    createBuffer(sizes, 'a_size', 1);
+    createBuffer(delays, 'a_delay', 1);
+    createBuffer(types, 'a_type', 1);
 
     // Uniforms
-    const uTime = gl.getUniformLocation(program, "u_time");
-    const uRes = gl.getUniformLocation(program, "u_resolution");
-    const uRatio = gl.getUniformLocation(program, "u_ratio");
-    const uAssembleTime = gl.getUniformLocation(program, "u_assemble_time");
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uRes = gl.getUniformLocation(program, 'u_resolution');
+    const uRatio = gl.getUniformLocation(program, 'u_ratio');
+    const uAssembleTime = gl.getUniformLocation(program, 'u_assemble_time');
     const uExplodeStartTime = gl.getUniformLocation(
       program,
-      "u_explode_start_time"
+      'u_explode_start_time',
     );
 
-    const u_bg_softness = gl.getUniformLocation(program, "u_bg_softness");
-    const u_text_softness = gl.getUniformLocation(program, "u_text_softness");
+    const u_bg_softness = gl.getUniformLocation(program, 'u_bg_softness');
+    const u_text_softness = gl.getUniformLocation(program, 'u_text_softness');
     const u_border_softness = gl.getUniformLocation(
       program,
-      "u_border_softness"
+      'u_border_softness',
     );
     const u_min_feather_base = gl.getUniformLocation(
       program,
-      "u_min_feather_base"
+      'u_min_feather_base',
     );
-    const u_text_thickness = gl.getUniformLocation(program, "u_text_thickness");
+    const u_text_thickness = gl.getUniformLocation(program, 'u_text_thickness');
 
     // Render Loop
     startTimeRef.current = performance.now();
@@ -652,17 +652,17 @@ const ParticleNotification: React.FC<ParticleNotificationProps> = ({
   return ReactDOM.createPortal(
     <div
       className={`inset-0 pointer-events-none z-[9999] ${
-        portalTarget ? "absolute" : "fixed"
+        portalTarget ? 'absolute' : 'fixed'
       }`}
-      style={{ width: "100%", height: "100%" }}
+      style={{ width: '100%', height: '100%' }}
     >
       <canvas
         ref={canvasRef}
         className="inset-0"
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: '100%', height: '100%' }}
       />
     </div>,
-    portalTarget || document.body
+    portalTarget || document.body,
   );
 };
 

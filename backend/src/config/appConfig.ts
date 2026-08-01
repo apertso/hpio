@@ -46,9 +46,5 @@ export const config = {
     fromEmail: process.env.SMTP_FROM_EMAIL,
     tlsServername: process.env.SMTP_TLS_SERVERNAME,
   },
-  fluentBit: {
-    host: process.env.FLUENT_BIT_HOST,
-    port: parseInt(process.env.FLUENT_BIT_PORT || "24224", 10),
-    timeout: 3.0,
-  },
 };
+

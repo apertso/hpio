@@ -1,15 +1,6 @@
 import nodemailer from "nodemailer";
 import { config } from "../config/appConfig";
 import logger from "../config/logger";
-import { metrics, trace } from "@opentelemetry/api"; // 👈 Import OpenTelemetry API
-
-// --- OpenTelemetry Meter and Counter ---
-const meter = metrics.getMeter("email-service-meter");
-const emailSentCounter = meter.createCounter("emails.sent", {
-  description: "Counts the number of emails sent",
-  unit: "1",
-});
-// -----------------------------------------
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) return error.message;
@@ -123,13 +114,6 @@ export const sendPasswordResetEmail = async (
   recipientName: string,
   resetLink: string
 ) => {
-  // Enrich the current trace span with attributes
-  const span = trace.getActiveSpan();
-  span?.setAttributes({
-    "email.recipient": recipientEmail,
-    "email.type": "password_reset",
-  });
-
   if (!config.smtp.host || !config.smtp.user || !config.smtp.pass) {
     logger.error("SMTP server is not configured. Cannot send email.");
     if (process.env.NODE_ENV !== "production") {
@@ -150,18 +134,8 @@ export const sendPasswordResetEmail = async (
   try {
     await transporter.sendMail(mailOptions);
     logger.info(`Password reset email sent to ${recipientEmail}`);
-    // Increment metric counter on success
-    emailSentCounter.add(1, {
-      "email.type": "password_reset",
-      status: "success",
-    });
   } catch (error) {
     logger.error(`Failed to send email to ${recipientEmail}:`, error);
-    // Increment metric counter on failure
-    emailSentCounter.add(1, {
-      "email.type": "password_reset",
-      status: "failure",
-    });
   }
 };
 
@@ -170,13 +144,6 @@ export const sendVerificationEmail = async (
   recipientName: string,
   verificationLink: string
 ) => {
-  // Enrich the current trace span with attributes
-  const span = trace.getActiveSpan();
-  span?.setAttributes({
-    "email.recipient": recipientEmail,
-    "email.type": "verification",
-  });
-
   if (!config.smtp.host || !config.smtp.user || !config.smtp.pass) {
     logger.error("SMTP server is not configured. Cannot send email.");
     if (process.env.NODE_ENV !== "production") {
@@ -197,21 +164,11 @@ export const sendVerificationEmail = async (
   try {
     await transporter.sendMail(mailOptions);
     logger.info(`Verification email sent to ${recipientEmail}`);
-    // Increment metric counter on success
-    emailSentCounter.add(1, {
-      "email.type": "verification",
-      status: "success",
-    });
   } catch (error) {
     logger.error(
       `Failed to send verification email to ${recipientEmail}:`,
       error
     );
-    // Increment metric counter on failure
-    emailSentCounter.add(1, {
-      "email.type": "verification",
-      status: "failure",
-    });
   }
 };
 
@@ -302,14 +259,6 @@ export const sendPaymentReminderEmail = async (
   paymentAmount: number,
   dueDate: string
 ) => {
-  // Enrich the current trace span with attributes
-  const span = trace.getActiveSpan();
-  span?.setAttributes({
-    "email.recipient": recipientEmail,
-    "email.type": "payment_reminder",
-    "payment.title": paymentTitle,
-  });
-
   if (!config.smtp.host) {
     logger.warn(
       `[DEV MODE] Email Reminder for ${recipientEmail}: Payment "${paymentTitle}" is due today.`
@@ -332,18 +281,8 @@ export const sendPaymentReminderEmail = async (
   try {
     await transporter.sendMail(mailOptions);
     logger.info(`Payment reminder email sent to ${recipientEmail}`);
-    // Increment metric counter on success
-    emailSentCounter.add(1, {
-      "email.type": "payment_reminder",
-      status: "success",
-    });
   } catch (error) {
     logger.error(`Failed to send reminder email to ${recipientEmail}:`, error);
-    // Increment metric counter on failure
-    emailSentCounter.add(1, {
-      "email.type": "payment_reminder",
-      status: "failure",
-    });
   }
 };
 
@@ -351,12 +290,6 @@ export const sendDeveloperTestEmail = async (
   recipientEmail: string,
   recipientName: string
 ): Promise<void> => {
-  const span = trace.getActiveSpan();
-  span?.setAttributes({
-    "email.recipient": recipientEmail,
-    "email.type": "developer_test",
-  });
-
   if (!config.smtp.host || !config.smtp.user || !config.smtp.pass) {
     logger.warn("SMTP server is not configured. Cannot send developer test email.");
     if (process.env.NODE_ENV !== "production") {
@@ -375,17 +308,9 @@ export const sendDeveloperTestEmail = async (
   try {
     await transporter.sendMail(mailOptions);
     logger.info(`Developer test email sent to ${recipientEmail}`);
-    emailSentCounter.add(1, {
-      "email.type": "developer_test",
-      status: "success",
-    });
   } catch (error) {
     const errorMessage = getErrorMessage(error);
     logger.error(`Failed to send developer test email to ${recipientEmail}: ${errorMessage}`);
-    emailSentCounter.add(1, {
-      "email.type": "developer_test",
-      status: "failure",
-    });
     throw new Error(errorMessage);
   }
 };

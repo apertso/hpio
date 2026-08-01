@@ -1,8 +1,3 @@
-import { initTracing } from "./config/tracing";
-if (process.env.NODE_ENV === "production") {
-  initTracing(); // 👈 MUST BE THE FIRST LINE
-}
-
 import express from "express";
 import cors from "cors";
 import db from "./models"; // Подключение к БД и инициализация моделей

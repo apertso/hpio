@@ -1,4 +1,4 @@
-import { hexToRgb, isInsideRoundedRect, randomRange, dist } from "./geometry";
+import { hexToRgb, isInsideRoundedRect, randomRange, dist } from './geometry';
 
 export interface ParticleData {
   positions: Float32Array; // [targetX, targetY, startX, startY, controlX, controlY, velocityX, velocityY]
@@ -20,7 +20,7 @@ export interface ParticleData {
 const MIN_NOTIFICATION_W = 280; // Minimum width
 const NOTIFICATION_H = 64;
 const RADIUS = 20;
-const ACCENT_COLOR = "#22c55e"; // Softer green accent
+const ACCENT_COLOR = '#22c55e'; // Softer green accent
 const PADDING_X = 40; // Horizontal padding inside the pill
 
 export interface ParticleOptions {
@@ -42,8 +42,8 @@ export const generateParticles = (
   viewportW: number,
   viewportH: number,
   text: string,
-  theme: "light" | "dark",
-  options: ParticleOptions = {}
+  theme: 'light' | 'dark',
+  options: ParticleOptions = {},
 ): ParticleData => {
   const {
     particleBaseSize = 1.6, // Base size of a particle in logical pixels
@@ -66,9 +66,9 @@ export const generateParticles = (
 
   // Theme configuration
   const themeColors =
-    theme === "dark"
-      ? { bg: "#0f172a", text: "#ffffff", border: "#1f2937" } // darker pill for contrast
-      : { bg: "#f8fafc", text: "#000000", border: "#cbd5e1" }; // light pill with soft border
+    theme === 'dark'
+      ? { bg: '#0f172a', text: '#ffffff', border: '#1f2937' } // darker pill for contrast
+      : { bg: '#f8fafc', text: '#000000', border: '#cbd5e1' }; // light pill with soft border
 
   // Position logic
   let centerX = 0;
@@ -99,7 +99,7 @@ export const generateParticles = (
     color: [number, number, number],
     alpha: number,
     size: number,
-    type: "bg" | "text" | "border"
+    type: 'bg' | 'text' | 'border',
   ) => {
     // Target Position
     particles.push(tx, ty);
@@ -135,13 +135,13 @@ export const generateParticles = (
     // 1.0 = text
     // 2.0 = border
     let typeVal = 0.0;
-    if (type === "text") typeVal = 1.0;
-    else if (type === "border") typeVal = 2.0;
+    if (type === 'text') typeVal = 1.0;
+    else if (type === 'border') typeVal = 2.0;
 
     types.push(typeVal);
 
     // Delay
-    const delayBase = type === "text" ? 0.2 : 0.0;
+    const delayBase = type === 'text' ? 0.2 : 0.0;
     delays.push(delayBase + randomRange(0, 1.2));
   };
 
@@ -162,8 +162,8 @@ export const generateParticles = (
   let bottom = top + NOTIFICATION_H_ACTUAL;
 
   // Setup canvas for text measurement and generation
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
   let iconCenterX = 0;
   let iconCenterY = 0;
@@ -175,8 +175,8 @@ export const generateParticles = (
     ctx.font = `700 ${
       fontPx * scale
     }px "Roboto", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
 
     const textWidth = ctx.measureText(text).width;
     // Green dot sizing: 8.75px diameter (4.375px radius) to mirror HTML dot
@@ -190,7 +190,7 @@ export const generateParticles = (
         (iconVisualSize + spacing + textWidth) / scale;
       const calculatedW = Math.max(
         MIN_NOTIFICATION_W,
-        contentWidthUnscaled + PADDING_X * 2
+        contentWidthUnscaled + PADDING_X * 2,
       );
       NOTIFICATION_W = calculatedW;
     }
@@ -211,8 +211,8 @@ export const generateParticles = (
     ctx.font = `700 ${
       fontPx * scale
     }px "Roboto", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
 
     const totalContentWidth = iconVisualSize + spacing + textWidth;
     // We center the content within the notification pill
@@ -238,12 +238,12 @@ export const generateParticles = (
         dotSolidR, // Start glow from edge of solid dot
         iconX,
         iconY,
-        glowOuterR
+        glowOuterR,
       );
       // Non-linear falloff to simulate Gaussian blur better than linear
-      gradient.addColorStop(0, "rgba(34, 197, 94, 0.12)"); // Further reduced from 0.25
-      gradient.addColorStop(0.4, "rgba(34, 197, 94, 0.03)");
-      gradient.addColorStop(1, "rgba(34, 197, 94, 0.0)");
+      gradient.addColorStop(0, 'rgba(34, 197, 94, 0.12)'); // Further reduced from 0.25
+      gradient.addColorStop(0.4, 'rgba(34, 197, 94, 0.03)');
+      gradient.addColorStop(1, 'rgba(34, 197, 94, 0.0)');
       ctx.fillStyle = gradient;
       ctx.beginPath();
       ctx.arc(iconX, iconY, glowOuterR, 0, Math.PI * 2);
@@ -297,7 +297,7 @@ export const generateParticles = (
     yEnd: number,
     pSize: number,
     step: number,
-    checkBounds: boolean
+    checkBounds: boolean,
   ) => {
     // Fill the specified rectangular region
     for (let y = yStart; y <= yEnd; y += step) {
@@ -316,14 +316,14 @@ export const generateParticles = (
               top + cornerInset,
               NOTIFICATION_W - cornerInset * 2,
               NOTIFICATION_H_ACTUAL - cornerInset * 2,
-              RADIUS - cornerInset // Adjust radius for inset
+              RADIUS - cornerInset, // Adjust radius for inset
             )
           ) {
-            addParticle(px, y, bgRgb, 1.0, pSize, "bg");
+            addParticle(px, y, bgRgb, 1.0, pSize, 'bg');
           }
         } else {
           // Direct add for safe rectangular zones
-          addParticle(px, y, bgRgb, 1.0, pSize, "bg");
+          addParticle(px, y, bgRgb, 1.0, pSize, 'bg');
         }
       }
     }
@@ -339,7 +339,7 @@ export const generateParticles = (
       bottom - bgInset,
       coreParticleSize,
       coreStep,
-      false // Safe zone
+      false, // Safe zone
     );
 
     // ZONE 2: LEFT WING (Vertical Rect between corners)
@@ -350,7 +350,7 @@ export const generateParticles = (
       bottom - RADIUS,
       coreParticleSize,
       coreStep,
-      false // Safe zone
+      false, // Safe zone
     );
 
     // ZONE 3: RIGHT WING (Vertical Rect between corners)
@@ -361,7 +361,7 @@ export const generateParticles = (
       bottom - RADIUS,
       coreParticleSize,
       coreStep,
-      false // Safe zone
+      false, // Safe zone
     );
 
     // ZONE 4: CORNERS (Detailed Sampling)
@@ -373,7 +373,7 @@ export const generateParticles = (
       top + RADIUS,
       cornerParticleSize,
       cornerStep,
-      true
+      true,
     );
 
     // Top-Right
@@ -384,7 +384,7 @@ export const generateParticles = (
       top + RADIUS,
       cornerParticleSize,
       cornerStep,
-      true
+      true,
     );
 
     // Bottom-Left
@@ -395,7 +395,7 @@ export const generateParticles = (
       bottom - cornerInset,
       cornerParticleSize,
       cornerStep,
-      true
+      true,
     );
 
     // Bottom-Right
@@ -406,11 +406,11 @@ export const generateParticles = (
       bottom - cornerInset,
       cornerParticleSize,
       cornerStep,
-      true
+      true,
     );
 
     // 2. VECTOR EDGE INJECTION: Precise Perimeter Tracing
-    const edgeColor = theme === "light" ? borderRgb : bgRgb;
+    const edgeColor = theme === 'light' ? borderRgb : bgRgb;
 
     // Calculate average border particle size to determine inset
     const avgBorderPSize = particleBaseSize * 1.5;
@@ -433,7 +433,7 @@ export const generateParticles = (
           edgeColor,
           1.0,
           particleBaseSize * 1.5 * sizeVariation,
-          "border"
+          'border',
         );
       }
     };
@@ -444,13 +444,13 @@ export const generateParticles = (
       left + RADIUS,
       top + borderInset,
       right - RADIUS,
-      top + borderInset
+      top + borderInset,
     );
     traceLine(
       left + RADIUS,
       bottom - borderInset,
       right - RADIUS,
-      bottom - borderInset
+      bottom - borderInset,
     );
 
     // Left & Right (if height allows)
@@ -459,13 +459,13 @@ export const generateParticles = (
         left + borderInset,
         top + RADIUS,
         left + borderInset,
-        bottom - RADIUS
+        bottom - RADIUS,
       );
       traceLine(
         right - borderInset,
         top + RADIUS,
         right - borderInset,
-        bottom - RADIUS
+        bottom - RADIUS,
       );
     }
 
@@ -474,7 +474,7 @@ export const generateParticles = (
       cx: number,
       cy: number,
       startAngle: number,
-      endAngle: number
+      endAngle: number,
     ) => {
       // Reduce tracing radius so the outer edge of particles touches the original RADIUS
       const traceR = RADIUS - borderInset;
@@ -496,7 +496,7 @@ export const generateParticles = (
           edgeColor,
           1.0,
           particleBaseSize * 1.6 * sizeVariation,
-          "border"
+          'border',
         );
       }
     };
@@ -540,7 +540,7 @@ export const generateParticles = (
           // FORCE WHITE for non-green (text) particles to prevent subpixel AA artifacts (yellow/blue fringes)
           if (!isGreen) {
             const textRgb =
-              theme === "dark" ? [1.0, 1.0, 1.0] : [0.0, 0.0, 0.0];
+              theme === 'dark' ? [1.0, 1.0, 1.0] : [0.0, 0.0, 0.0];
             pColor[0] = textRgb[0];
             pColor[1] = textRgb[1];
             pColor[2] = textRgb[2];
@@ -572,7 +572,7 @@ export const generateParticles = (
             }
           }
 
-          addParticle(finalX, finalY, pColor, finalAlpha, pSize, "text");
+          addParticle(finalX, finalY, pColor, finalAlpha, pSize, 'text');
         }
       }
     }

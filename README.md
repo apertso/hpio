@@ -1,3 +1,5 @@
+
+
 # <img src="frontend/public/icons/favicon.svg" alt="Хочу Плачу" width="32" height="32" style=" margin-right: 10px; vertical-align: top; "> <span style="font-size: 32px;">Хочу Плачу</span>
 
 **Бесплатная система управления финансами с открытым исходным кодом**
@@ -158,7 +160,7 @@ Docker установка в активной разработке и будет
 
    ```bash
    cd ../backend
-   npm run migrate
+   npm run db:migrate
    ```
 
 6. **Запустите приложение:**

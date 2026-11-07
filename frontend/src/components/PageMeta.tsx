@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useLayoutEffect } from "react";
 
 export interface PageMetaProps {
   title?: string;
@@ -29,24 +29,28 @@ const PageMeta: React.FC<PageMetaProps> = ({
 }) => {
   const baseUrl = import.meta.env.VITE_APP_URL || "https://hpio.ru";
   const defaultOgImage = `${baseUrl}/og-image.png`;
-  const ogSiteName = "Хочу Плачу";
+  const siteName = "Хочу Плачу";
 
-  // Title logic: landing page uses title as-is, others use ogTitle + " - " + siteName
   const finalTitle =
     title ?? isLandingPage
-      ? `${ogSiteName} - ${ogTitle}`
-      : `${ogTitle} - ${ogSiteName}`;
+      ? `${siteName} - ${ogTitle}`
+      : `${ogTitle} - ${siteName}`;
   const finalOgTitle = ogTitle || title;
   const finalOgDescription = ogDescription || description;
   const finalOgImage = ogImage || defaultOgImage;
   const finalOgUrl =
     ogUrl || (typeof window !== "undefined" ? window.location.href : baseUrl);
 
+  // Обновляем теги из index.html при переходах между страницами.
+  useLayoutEffect((): void => {
+    document.title = finalTitle;
+    document.head
+      .querySelector('meta[name="description"]')
+      ?.setAttribute("content", description ?? "");
+  }, [description, finalTitle]);
+
   return (
     <>
-      {/* Basic meta tags */}
-      <title>{finalTitle}</title>
-      <meta name="description" content={description} />
       {robots && <meta name="robots" content={robots} />}
       {canonical && <link rel="canonical" href={canonical} />}
 
@@ -56,7 +60,6 @@ const PageMeta: React.FC<PageMetaProps> = ({
       <meta property="og:image" content={finalOgImage} />
       <meta property="og:url" content={finalOgUrl} />
       <meta property="og:type" content={ogType} />
-      <meta property="og:site_name" content={ogSiteName} />
       <meta property="og:locale" content={locale} />
 
       {/* Twitter Card meta tags */}

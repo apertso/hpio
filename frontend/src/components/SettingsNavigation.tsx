@@ -7,6 +7,7 @@ import {
   UserIcon,
 } from "@heroicons/react/24/outline";
 import { isTauriMobile } from "../utils/platform";
+import { useLanguage } from "../context/LanguageContext";
 
 export type SettingsSection =
   | "general"
@@ -65,6 +66,7 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
   onSectionChange,
   isMobile,
 }) => {
+  const { t } = useLanguage();
   if (isMobile) {
     // Мобильные вкладки
     return (
@@ -83,7 +85,7 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
               }`}
             >
               <Icon className="w-5 h-5 mb-1" />
-              {section.label}
+              {t(section.label)}
             </button>
           );
         })}
@@ -102,14 +104,14 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
             <button
               key={section.id}
               onClick={() => onSectionChange(section.id)}
-              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-xl transition-colors ${
+              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-xl transition-colors cursor-pointer ${
                 isActive
                   ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                   : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
               }`}
             >
               <Icon className="w-5 h-5 mr-3" />
-              {section.label}
+              {t(section.label)}
             </button>
           );
         })}

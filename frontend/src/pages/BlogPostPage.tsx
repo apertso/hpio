@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import PageMeta from "../components/PageMeta";
@@ -6,6 +7,7 @@ import { blogApi, BlogPost } from "../api/blogApi";
 import { formatDateForDisplay } from "../utils/dateUtils";
 
 const BlogPostPage: React.FC = () => {
+  const { t, locale } = useLanguage();
   const { slug } = useParams<{ slug: string }>();
   const baseMetadata = getPageMetadata("blogPost");
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -57,30 +59,30 @@ const BlogPostPage: React.FC = () => {
           className="inline-flex items-center gap-2 text-blue-600 hover:opacity-80 transition-opacity cursor-pointer mb-6"
         >
           <span>←</span>
-          <span>Назад к блогу</span>
+          <span>{t("Назад к блогу")}</span>
         </Link>
 
         {isLoading && (
-          <div className="text-gray-600 dark:text-gray-300">Загрузка...</div>
+          <div className="text-gray-600 dark:text-gray-300">{t("Загрузка...")}</div>
         )}
 
         {!isLoading && error && (
-          <div className="text-red-500 text-sm">{error}</div>
+          <div className="text-red-500 text-sm">{t(error)}</div>
         )}
 
         {!isLoading && !error && !post && (
           <div className="text-gray-600 dark:text-gray-300">
-            Статья не найдена.
+            {t("Статья не найдена.")}
           </div>
         )}
 
         {!isLoading && !error && post && (
-          <article className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+          <article lang="ru" className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
               {post.title}
             </h1>
             <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              {formatDateForDisplay(new Date(post.createdAt))}
+              {formatDateForDisplay(new Date(post.createdAt), locale)}
             </div>
             <div
               className="prose dark:prose-invert max-w-none"

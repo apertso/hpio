@@ -1,10 +1,10 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
-import DatePicker, { registerLocale } from "react-datepicker";
+import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 import "./PeriodSelector.css";
 
-registerLocale("ru", ru);
 
 interface PeriodSelectorProps {
   initialDateRange: [Date | null, Date | null];
@@ -17,6 +17,7 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
   onApply,
   onCancel,
 }) => {
+  const { t, language } = useLanguage();
   const [dateRange, setDateRange] =
     useState<[Date | null, Date | null]>(initialDateRange);
   const [startDate, endDate] = dateRange;
@@ -42,8 +43,8 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
           inline
           calendarClassName="w-full"
           className="w-full"
-          dateFormat="dd.MM.yyyy"
-          locale={ru}
+          dateFormat="P"
+          locale={language === "en" ? enUS : ru}
         />
       </div>
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 space-y-3 space-y-reverse sm:space-y-0">
@@ -52,15 +53,15 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
           className="w-full sm:w-auto inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           onClick={onCancel}
         >
-          Отмена
+          {t("Отмена")}
         </button>
         <button
           type="button"
           disabled={!startDate || !endDate}
-          className="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="primary-action cursor-pointer w-full sm:w-auto inline-flex justify-center rounded-md shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleApply}
         >
-          Применить
+          {t("Применить")}
         </button>
       </div>
     </div>

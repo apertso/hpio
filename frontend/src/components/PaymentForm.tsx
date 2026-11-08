@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -20,7 +21,7 @@ import ToggleSwitch from "./ToggleSwitch";
 import { PaymentData } from "../types/paymentData";
 import ConfirmModal from "./ConfirmModal";
 import { useToast } from "../context/ToastContext";
-import { formatDateToLocal } from "../utils/dateUtils";
+import { parseCalendarDate, formatDateToLocal } from "../utils/dateUtils";
 import { Button } from "./Button";
 import {
   isIncomeAndCardsEnabled,
@@ -106,12 +107,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   markAsCompletedInitial = false,
   onRepeatChange,
 }) => {
+  const { t } = useLanguage();
   const isEditMode = !!paymentId;
   const { showToast } = useToast();
   const isAutoCreated = Boolean(initialData?.autoCreated);
   const isCategoryLocked = isEditMode && isAutoCreated;
   const categoryLockReason =
-    "Категория для автоматически добавленных платежей изменяется через правила автоматизации.";
+    t("Категория для автоматически добавленных платежей изменяется через правила автоматизации.");
 
   const {
     register,
@@ -159,7 +161,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   useEffect(() => {
     if (initialData) {
       // В режиме редактирования серии «Срок оплаты» берём из series.generatedUntil (или даты последнего платежа)
-      let dueDateForForm = new Date(initialData.dueDate);
+      let dueDateForForm = parseCalendarDate(initialData.dueDate);
       if (Number.isNaN(dueDateForForm.getTime())) {
         dueDateForForm = new Date();
       }
@@ -297,11 +299,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
           // Show appropriate success message
           if (shouldRepeat && !wasSeriesPayment) {
-            showToast("Серия платежей успешно создана.", "success");
+            showToast(t("Серия платежей успешно создана."), "success");
           } else if (!shouldRepeat && wasSeriesPayment) {
-            showToast("Повторение отключено.", "success");
+            showToast(t("Повторение отключено."), "success");
           } else {
-            showToast("Платеж успешно обновлен.", "success");
+            showToast(t("Платеж успешно обновлен."), "success");
           }
 
           onSuccess(paymentId);
@@ -323,7 +325,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           };
           await seriesApi.updateSeries(seriesId, payload);
           logger.info(`Recurring series updated (ID: ${seriesId})`);
-          showToast("Серия платежей обновлена.", "success");
+          showToast(t("Серия платежей обновлена."), "success");
           onSuccess(paymentId);
         }
       } else {
@@ -364,7 +366,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             );
           } catch {
             setFormError(
-              "Платеж создан, но файл не удалось загрузить. Попробуйте прикрепить файл в режиме редактирования."
+              t("Платеж создан, но файл не удалось загрузить. Попробуйте прикрепить файл в режиме редактирования.")
             );
           } finally {
             setPendingFile(null);
@@ -399,7 +401,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     const validationResult = validationSchema.safeParse(data);
 
     if (!validationResult.success) {
-      setFormError("Пожалуйста, проверьте правильность заполнения полей.");
+      setFormError(t("Пожалуйста, проверьте правильность заполнения полей."));
       return;
     }
 
@@ -412,9 +414,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           action: () => {
             actualSubmit(data);
           },
-          title: "Создать серию платежей",
+          title: t("Создать серию платежей"),
           message:
-            "Вы уверены, что хотите создать серию повторяющихся платежей на основе этого платежа?",
+            t("Вы уверены, что хотите создать серию повторяющихся платежей на основе этого платежа?"),
         });
         return;
       } else if (!shouldRepeat && wasSeriesPayment) {
@@ -424,9 +426,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           action: () => {
             actualSubmit(data);
           },
-          title: "Отключить повторение",
+          title: t("Отключить повторение"),
           message:
-            "Вы уверены, что хотите отключить повторение для этого платежа? Он станет разовым платежом.",
+            t("Вы уверены, что хотите отключить повторение для этого платежа? Он станет разовым платежом."),
         });
         return;
       }
@@ -518,7 +520,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg"
             role="alert"
           >
-            {formError}
+            {t(formError)}
           </div>
         )}
 
@@ -558,11 +560,11 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             {showTags && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  Теги
+                  {t("Теги")}
                 </label>
                 {isLoadingTags ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Загрузка тегов...
+                    {t("Загрузка тегов...")}
                   </p>
                 ) : tags && tags.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
@@ -575,7 +577,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                           onClick={() => handleTagToggle(tag.id)}
                           className={`px-3 py-1 rounded-full text-sm border transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                             isSelected
-                              ? "bg-indigo-600 text-white border-indigo-600"
+                              ? "bg-slate-900 text-white border-violet-500 dark:bg-slate-700 dark:border-violet-400"
                               : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
                           }`}
                           aria-pressed={isSelected}
@@ -588,7 +590,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Теги не добавлены.
+                    {t("Теги не добавлены.")}
                   </p>
                 )}
               </div>
@@ -602,7 +604,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                   disabled={isSubmitting}
                 />
                 <span className="text-gray-700 dark:text-gray-200 font-medium">
-                  Повторять
+                  {t("Повторять")}
                 </span>
               </label>
             )}
@@ -619,17 +621,17 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             {isIncomeAndCardsEnabled() && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  Способ оплаты
+                  {t("Способ оплаты")}
                 </label>
                 <select
                   {...register("method")}
                   className="input-base w-full"
                   disabled={isSubmitting}
                 >
-                  <option value="cash">Наличные</option>
-                  <option value="card">Карта</option>
-                  <option value="transfer">Перевод</option>
-                  <option value="other">Другое</option>
+                  <option value="cash">{t("Наличные")}</option>
+                  <option value="card">{t("Карта")}</option>
+                  <option value="transfer">{t("Перевод")}</option>
+                  <option value="other">{t("Другое")}</option>
                 </select>
               </div>
             )}
@@ -641,7 +643,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 disabled={isSubmitting}
               />
               <span className="text-gray-700 dark:text-gray-200 font-medium">
-                Напоминать
+                {t("Напоминать")}
               </span>
             </label>
 
@@ -653,7 +655,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                   disabled={isSubmitting}
                 />
                 <span className="text-gray-700 dark:text-gray-200 font-medium">
-                  Отметить как выполненный
+                  {t("Отметить как выполненный")}
                 </span>
               </label>
             )}
@@ -678,13 +680,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 onSingleChange={(date: Date | null) => {
                   setValue("completedAt", date, { shouldValidate: true });
                 }}
-                label="Дата выполнения"
+                label={t("Дата выполнения")}
                 error={errors.completedAt?.message}
                 disabled={isSubmitting}
-                placeholder="Выберите дату и время выполнения"
+                placeholder={t("Выберите дату и время выполнения")}
                 showTimeSelect
                 timeFormat="HH:mm"
-                dateFormat="dd.MM.yyyy"
               />
             )}
           </div>
@@ -694,13 +695,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           <Button
             variant="ghost"
             onClick={onCancel}
-            label="Отмена"
+            label={t("Отмена")}
             disabled={isSubmitting}
           />
           <Button
             variant="primary"
             type="submit"
-            label="Сохранить"
+            label={t("Сохранить")}
             disabled={disableForInactiveSeries}
             loading={isSubmitting}
             onClick={handleSubmit(handleFormSubmit)}
@@ -711,7 +712,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             variant="primary"
             size="large"
             type="submit"
-            label="Сохранить"
+            label={t("Сохранить")}
             disabled={disableForInactiveSeries}
             loading={isSubmitting}
             className="w-full"
@@ -719,7 +720,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           />
           <Button
             variant="ghost"
-            label="Отмена"
+            label={t("Отмена")}
             disabled={isSubmitting}
             className="w-full"
             onClick={onCancel}
@@ -743,7 +744,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         }}
         title={confirmModalState.title}
         message={confirmModalState.message}
-        confirmText="Да, подтвердить"
+        confirmText={t("Да, подтвердить")}
         isConfirming={false}
       />
     </>

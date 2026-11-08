@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { XMarkIcon, CheckIcon } from "@heroicons/react/24/outline";
@@ -36,6 +37,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
   onComplete,
   onSuggestionProcessed,
 }) => {
+  const { t } = useLanguage();
   // Компонент временно не используется, оставлен для возможного возврата.
   const { showToast } = useToast();
   const { categories } = useCategories();
@@ -66,7 +68,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
   )?.name;
 
   const categoryOptions = [
-    { value: null, label: "Без категории" },
+    { value: null, label: t("Без категории") },
     ...(categories?.map((cat) => ({
       value: cat.id,
       label: cat.name,
@@ -108,7 +110,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
       }
 
       showToast(
-        `Платёж "${currentSuggestion.merchantName}" успешно добавлен`,
+        t("Платёж \"{1}\" успешно добавлен", currentSuggestion.merchantName),
         "success"
       );
 
@@ -125,7 +127,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
       }
     } catch (error) {
       logger.error("Error accepting suggestion:", error);
-      showToast("Не удалось добавить платёж", "error");
+      showToast(t("Не удалось добавить платёж"), "error");
     } finally {
       setIsProcessing(false);
     }
@@ -150,7 +152,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
       }
     } catch (error) {
       logger.error("Error dismissing suggestion:", error);
-      showToast("Не удалось отклонить предложение", "error");
+      showToast(t("Не удалось отклонить предложение"), "error");
     } finally {
       setIsProcessing(false);
     }
@@ -168,14 +170,14 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
         variant === "mobile" ? "rounded-xl" : "rounded-2xl w-full max-w-md"
       }`}
     >
-      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-6">
+      <div className="border-b border-violet-400/50 bg-slate-900 p-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-white">
-              Новый платёж обнаружен
+              {t("Новый платёж обнаружен")}
             </h2>
-            <p className="text-indigo-100 text-sm mt-1">
-              {currentIndex + 1} из {suggestions.length}
+            <p className="text-slate-200 text-sm mt-1">
+              {currentIndex + 1}{t(" из ")}{suggestions.length}
             </p>
           </div>
           <button
@@ -192,7 +194,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Продавец
+              {t("Продавец")}
             </span>
             <span className="text-lg font-semibold text-gray-900 dark:text-white">
               {currentSuggestion?.merchantName || "—"}
@@ -200,7 +202,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Сумма
+              {t("Сумма")}
             </span>
             <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
               {Math.abs(currentSuggestion?.amount || 0).toFixed(2)} ₽
@@ -210,13 +212,13 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Выберите категорию
+            {t("Выберите категорию")}
           </label>
           <Select
             options={categoryOptions || []}
             value={selectedCategoryId}
             onChange={(value) => setSelectedCategoryId(value || "")}
-            placeholder="Выберите категорию"
+            placeholder={t("Выберите категорию")}
           />
         </div>
 
@@ -231,9 +233,8 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
               htmlFor="createRule"
               className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
             >
-              Всегда относить платежи от "
-              <strong>{currentSuggestion?.merchantName || "—"}</strong>" в
-              категорию "<strong>{selectedCategoryName}</strong>"
+              {t("Всегда относить платежи от \"")}
+              <strong>{currentSuggestion?.merchantName || "—"}</strong>{t("\" в категорию \"")}<strong>{selectedCategoryName}</strong>"
             </label>
           </div>
         )}
@@ -243,17 +244,17 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
         <button
           onClick={handleAccept}
           disabled={isProcessing}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          className="primary-action w-full cursor-pointer font-semibold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
           <CheckIcon className="w-5 h-5" />
-          {isProcessing ? "Обработка..." : "Добавить платёж"}
+          {isProcessing ? t("Обработка...") : t("Добавить платёж")}
         </button>
         <button
           onClick={handleDismiss}
           disabled={isProcessing}
           className="w-full text-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 py-2 transition-colors disabled:opacity-50"
         >
-          Пропустить
+          {t("Пропустить")}
         </button>
       </div>
     </div>

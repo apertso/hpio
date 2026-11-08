@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import Modal from "./Modal";
 import MobilePanel from "./MobilePanel";
@@ -15,13 +16,14 @@ const AdvancedFiltersPanel: React.FC<AdvancedFiltersPanelProps> = ({
   children,
   title = "Расширенные фильтры",
 }) => {
+  const { t } = useLanguage();
   return (
     <>
       {/* Desktop Modal */}
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={title}
+        title={t(title)}
         showCloseButton={false}
         className="hidden md:flex"
       >
@@ -32,7 +34,7 @@ const AdvancedFiltersPanel: React.FC<AdvancedFiltersPanelProps> = ({
       <MobilePanel
         isOpen={isOpen}
         onClose={onClose}
-        title={title}
+        title={t(title)}
       >
         {children}
       </MobilePanel>

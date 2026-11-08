@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
@@ -29,6 +30,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelText = "Отмена",
   isConfirming = false,
 }) => {
+  const { t } = useLanguage();
   if (!isOpen) return null;
 
   const renderContent = ({ showTitleInBody }: ContentOptions) => (
@@ -63,14 +65,14 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 min-w-24"
           onClick={onConfirm}
         >
-          {isConfirming ? <Spinner size="sm" /> : confirmText}
+          {isConfirming ? <Spinner size="sm" /> : t(confirmText)}
         </button>
         <button
           type="button"
           className="mt-3 w-full inline-flex justify-center rounded-md px-4 py-2 bg-transparent text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 sm:mt-0 sm:w-auto sm:text-sm"
           onClick={onClose}
         >
-          {cancelText}
+          {t(cancelText)}
         </button>
       </div>
     </>

@@ -1,4 +1,5 @@
 // src/pages/HomePage.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React, {
   useState,
   useEffect,
@@ -34,37 +35,18 @@ import PeriodSelector from "../components/PeriodSelector";
 // Импорт компонентов и типов из Chart.js и react-chartjs-2
 import { PaymentData } from "../types/paymentData";
 
-interface Category {
-  id: string;
-  name: string;
-  builtinIconName?: string | null;
-}
 import getErrorMessage from "../utils/getErrorMessage";
 import {
   paymentMatchesDateKey,
   formatDateToLocal,
+  parseCalendarDate,
   isHourlyDateString,
 } from "../utils/dateUtils";
 // Icons for list items are handled inside PaymentListCard
 // import { ArrowPathIcon, CalendarDaysIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 
-const monthNamesGenitive = [
-  "января",
-  "февраля",
-  "марта",
-  "апреля",
-  "мая",
-  "июня",
-  "июля",
-  "августа",
-  "сентября",
-  "октября",
-  "ноября",
-  "декабря",
-];
-
-const formatUpcomingDateHeading = (dateString: string): string => {
-  const targetDate = new Date(dateString);
+const formatUpcomingDateHeading = (dateString: string, locale: string): string => {
+  const targetDate = parseCalendarDate(dateString);
   if (Number.isNaN(targetDate.getTime())) {
     return dateString;
   }
@@ -77,19 +59,12 @@ const formatUpcomingDateHeading = (dateString: string): string => {
   const diffInMs = normalizedTarget.getTime() - today.getTime();
   const diffInDays = Math.round(diffInMs / (24 * 60 * 60 * 1000));
 
-  if (diffInDays === 0) {
-    return "Сегодня";
-  }
-  if (diffInDays === 1) {
-    return "Завтра";
-  }
-  if (diffInDays === -1) {
-    return "Вчера";
+  if (Math.abs(diffInDays) <= 1) {
+    const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(diffInDays, "day");
+    return relative.charAt(0).toUpperCase() + relative.slice(1);
   }
 
-  const day = normalizedTarget.getDate().toString();
-  const monthName = monthNamesGenitive[normalizedTarget.getMonth()];
-  return `${day} ${monthName}`;
+  return normalizedTarget.toLocaleDateString(locale, { day: "numeric", month: "long" });
 };
 
 // Define color palettes for charts
@@ -229,16 +204,17 @@ const MobileActionsOverlay: React.FC<{
   onComplete: (payment: PaymentData) => void;
   onDelete: (payment: PaymentData) => void;
 }> = ({ payment, shouldClose, onClose, onEdit, onComplete, onDelete }) => {
+  const { t } = useLanguage();
   if (!payment) return null;
 
   const actions = [
-    { label: "Изменить", icon: PencilIcon, handler: () => onEdit(payment.id) },
+    { label: t("Изменить"), icon: PencilIcon, handler: () => onEdit(payment.id) },
     {
-      label: "Выполнить",
+      label: t("Выполнить"),
       icon: CheckCircleIcon,
       handler: () => onComplete(payment),
     },
-    { label: "Удалить", icon: TrashIcon, handler: () => onDelete(payment) },
+    { label: t("Удалить"), icon: TrashIcon, handler: () => onDelete(payment) },
   ];
 
   return (
@@ -273,7 +249,6 @@ const MobileActionsOverlay: React.FC<{
 // Helper function to calculate stats from offline payments
 const calculateStatsFromPayments = (
   payments: PaymentData[],
-  categories: Category[],
   startDate: Date,
   endDate: Date
 ): DashboardStats => {
@@ -282,7 +257,7 @@ const calculateStatsFromPayments = (
     const paymentDate =
       p.status === "completed" && p.completedAt
         ? new Date(p.completedAt)
-        : new Date(p.dueDate);
+        : parseCalendarDate(p.dueDate);
     return paymentDate >= startDate && paymentDate <= endDate;
   });
 
@@ -365,6 +340,7 @@ const calculateStatsFromPayments = (
 };
 
 const HomePage: React.FC = () => {
+  const { t, locale } = useLanguage();
   const { resolvedTheme } = useTheme(); // Access the theme
   const { showToast } = useToast(); // Import useToast
   const { resetKey } = useReset();
@@ -372,8 +348,8 @@ const HomePage: React.FC = () => {
   const metadata = getPageMetadata("dashboard");
 
   useEffect(() => {
-    setPageTitle("Главная");
-  }, [setPageTitle]);
+    setPageTitle(t("Главная"));
+  }, [setPageTitle, t]);
 
   const [upcomingDays, setUpcomingDays] = useState<3 | 7 | 10 | 14 | 21>(10);
 
@@ -382,9 +358,7 @@ const HomePage: React.FC = () => {
     isLoading: isLoadingPayments,
     error: errorPayments,
     execute: executeFetchUpcomingPayments,
-  } = useApi<PaymentData[]>((...args: unknown[]) =>
-    fetchUpcomingPaymentsApi(args[0] as number)
-  );
+  } = useApi(fetchUpcomingPaymentsApi);
 
   // State for transformed upcoming payments data
   const [upcomingPayments, setUpcomingPayments] = useState<PaymentData[]>([]);
@@ -410,7 +384,7 @@ const HomePage: React.FC = () => {
         if (p.status !== "upcoming" && p.status !== "overdue") {
           return false;
         }
-        const dueDate = new Date(p.dueDate);
+        const dueDate = parseCalendarDate(p.dueDate);
         return dueDate <= futureDate;
       });
 
@@ -517,7 +491,7 @@ const HomePage: React.FC = () => {
         return;
       }
 
-      const label = formatUpcomingDateHeading(dateKey);
+      const label = formatUpcomingDateHeading(dateKey, locale);
       groupIndexMap.set(dateKey, groups.length);
       groups.push({
         key: dateKey,
@@ -527,7 +501,7 @@ const HomePage: React.FC = () => {
     });
 
     return groups;
-  }, [desktopPaymentsToRender]);
+  }, [desktopPaymentsToRender, locale]);
 
   const groupedMobilePayments = useMemo(() => {
     const groups: {
@@ -548,8 +522,8 @@ const HomePage: React.FC = () => {
         return;
       }
 
-      const label = formatUpcomingDateHeading(dateKey);
-      const targetDate = new Date(dateKey);
+      const label = formatUpcomingDateHeading(dateKey, locale);
+      const targetDate = parseCalendarDate(dateKey);
       const year = Number.isNaN(targetDate.getTime())
         ? null
         : targetDate.getFullYear();
@@ -564,7 +538,7 @@ const HomePage: React.FC = () => {
     });
 
     return groups;
-  }, [mobilePaymentsToRender]);
+  }, [mobilePaymentsToRender, locale]);
 
   const hasMultipleYears = useMemo(() => {
     const uniqueYears = new Set<number>();
@@ -728,7 +702,7 @@ const HomePage: React.FC = () => {
           return;
         }
 
-        let errorMessage = "Неизвестная ошибка";
+        let errorMessage = t("Неизвестная ошибка");
         if (error instanceof Error) {
           errorMessage = error.message;
         } else if (typeof error === "string") {
@@ -744,7 +718,6 @@ const HomePage: React.FC = () => {
           if (offlineData.payments && offlineData.payments.length > 0) {
             const calculatedStats = calculateStatsFromPayments(
               offlineData.payments,
-              offlineData.categories || [],
               startDate,
               endDate
             );
@@ -760,7 +733,7 @@ const HomePage: React.FC = () => {
           );
         }
 
-        setErrorStats("Не удалось загрузить статистику.");
+        setErrorStats(t("Не удалось загрузить статистику."));
       } finally {
         if (statsAbortControllerRef.current === controller) {
           statsAbortControllerRef.current = null;
@@ -773,7 +746,7 @@ const HomePage: React.FC = () => {
         }
       }
     },
-    [startDate, endDate]
+    [startDate, endDate, t]
   );
 
   // --- Эффекты для загрузки и сброса статистики ---
@@ -883,7 +856,7 @@ const HomePage: React.FC = () => {
         `Failed to download file for payment ${paymentId}:`,
         errorMessage
       );
-      showToast(`Не удалось скачать файл: ${errorMessage}`, "error");
+      showToast(t("Не удалось скачать файл: {1}", errorMessage), "error");
     }
   };
 
@@ -961,13 +934,13 @@ const HomePage: React.FC = () => {
         ? { completionDate: completionDate.toISOString().split("T")[0] }
         : {};
       await axiosInstance.put(`/payments/${paymentId}/complete`, payload);
-      showToast("Платеж выполнен.", "success");
+      showToast(t("Платеж выполнен."), "success");
       executeFetchUpcomingPayments(upcomingDays);
       fetchDashboardStats({ force: true });
     } catch (error) {
       logger.error(`Failed to complete payment ${paymentId}:`, error);
       showToast(
-        `Не удалось выполнить платеж: ${getErrorMessage(error)}`,
+        t("Не удалось выполнить платеж: {1}", t(getErrorMessage(error))),
         "error"
       );
     } finally {
@@ -978,7 +951,7 @@ const HomePage: React.FC = () => {
 
   const handleCompletePayment = async (payment: PaymentData) => {
     const today = new Date();
-    const dueDate = new Date(payment.dueDate);
+    const dueDate = parseCalendarDate(payment.dueDate);
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
 
@@ -1001,11 +974,11 @@ const HomePage: React.FC = () => {
     const action = async () => {
       try {
         await axiosInstance.delete(`/payments/${payment.id}`);
-        showToast("Платеж перемещен в архив.", "info");
+        showToast(t("Платеж перемещен в архив."), "info");
         executeFetchUpcomingPayments(upcomingDays);
         fetchDashboardStats({ force: true });
       } catch (error: unknown) {
-        showToast(`Ошибка удаления: ${getErrorMessage(error)}`, "error");
+        showToast(t("Ошибка удаления: {1}", t(getErrorMessage(error))), "error");
       } finally {
         // No error toast here, handled by catch in the modal
       }
@@ -1014,9 +987,9 @@ const HomePage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Удалить платеж",
+      title: t("Удалить платеж"),
       message:
-        "Вы уверены, что хотите удалить этот платеж? Он будет перемещен в архив.",
+        t("Вы уверены, что хотите удалить этот платеж? Он будет перемещен в архив."),
     });
   };
 
@@ -1027,11 +1000,11 @@ const HomePage: React.FC = () => {
       await axiosInstance.delete(
         `/payments/${deleteRecurringModalState.payment.id}`
       );
-      showToast("Платеж перемещен в архив.", "info");
+      showToast(t("Платеж перемещен в архив."), "info");
       executeFetchUpcomingPayments(upcomingDays);
       fetchDashboardStats({ force: true });
     } catch (error: unknown) {
-      showToast(`Ошибка удаления: ${getErrorMessage(error)}`, "error");
+      showToast(t("Ошибка удаления: {1}", t(getErrorMessage(error))), "error");
     } finally {
       setIsDeleting(false);
       setDeleteRecurringModalState({ isOpen: false, payment: null });
@@ -1045,11 +1018,11 @@ const HomePage: React.FC = () => {
       await axiosInstance.delete(
         `/series/${deleteRecurringModalState.payment.seriesId}`
       );
-      showToast("Серия платежей была деактивирована.", "success");
+      showToast(t("Серия платежей была деактивирована."), "success");
       executeFetchUpcomingPayments(upcomingDays);
       fetchDashboardStats({ force: true });
     } catch (error: unknown) {
-      showToast(`Ошибка удаления серии: ${getErrorMessage(error)}`, "error");
+      showToast(t("Ошибка удаления серии: {1}", t(getErrorMessage(error))), "error");
     } finally {
       setIsDeleting(false);
       setDeleteRecurringModalState({ isOpen: false, payment: null });
@@ -1100,14 +1073,14 @@ const HomePage: React.FC = () => {
     const labels = stats.dailyPaymentLoad.map((d) => {
       const date = new Date(d.date);
       if (isHourly) {
-        return date.toLocaleString("ru-RU", {
+        return date.toLocaleString(locale, {
           day: "numeric",
           month: "short",
           hour: "2-digit",
           minute: "2-digit",
         });
       } else {
-        return date.toLocaleDateString("ru-RU", {
+        return date.toLocaleDateString(locale, {
           day: "numeric",
           month: "short",
         });
@@ -1121,7 +1094,7 @@ const HomePage: React.FC = () => {
       chartRawDates: rawDates,
       isHourly,
     };
-  }, [stats]);
+  }, [stats, locale]);
 
   const noDailyData = useMemo(() => {
     return (
@@ -1132,11 +1105,11 @@ const HomePage: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const dayOptions = [
-    { label: "3 дня", value: 3 },
-    { label: "7 дней", value: 7 },
-    { label: "10 дней", value: 10 },
-    { label: "14 дней", value: 14 },
-    { label: "21 день", value: 21 },
+    { label: t("3 дня"), value: 3 },
+    { label: t("7 дней"), value: 7 },
+    { label: t("10 дней"), value: 10 },
+    { label: t("14 дней"), value: 14 },
+    { label: t("21 день"), value: 21 },
   ];
 
   let lastRenderedMobileYear: number | null = null;
@@ -1149,7 +1122,7 @@ const HomePage: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
-              Ближайшие платежи
+              {t("Ближайшие платежи")}
             </h2>
             <DropdownButton
               className="text-sm font-medium text-gray-500 dark:text-gray-400"
@@ -1165,7 +1138,7 @@ const HomePage: React.FC = () => {
           </div>
           <Button
             onClick={handleAddPayment}
-            label="Добавить платеж"
+            label={t("Добавить платеж")}
             icon={<PlusIcon className="w-4 h-4" />}
             className="hidden md:inline-flex"
           />
@@ -1255,7 +1228,7 @@ const HomePage: React.FC = () => {
                               }
                               className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full h-full font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer flex items-center justify-center gap-2"
                             >
-                              {showAllUpcoming ? "Свернуть" : "Показать больше"}
+                              {showAllUpcoming ? t("Свернуть") : t("Показать больше")}
                               {showAllUpcoming ? (
                                 <ChevronUpIcon />
                               ) : (
@@ -1327,7 +1300,7 @@ const HomePage: React.FC = () => {
                       onClick={() => setShowAllUpcoming((prev) => !prev)}
                       className="w-full mt-1 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer flex items-center justify-center gap-2"
                     >
-                      {showAllUpcoming ? "Свернуть" : "Показать больше"}
+                      {showAllUpcoming ? t("Свернуть") : t("Показать больше")}
                       {showAllUpcoming ? (
                         <ChevronUpIcon />
                       ) : (
@@ -1341,7 +1314,7 @@ const HomePage: React.FC = () => {
               // Показ "нет данных" только после подтвержденной успешной загрузки
               <div className="w-full h-44 pb-4 text-gray-700 dark:text-gray-300 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-center text-center sm:text-left">
                 <span className="text-lg font-medium sm:mr-6">
-                  Нет предстоящих или просроченных платежей.
+                  {t("Нет предстоящих или просроченных платежей.")}
                 </span>
               </div>
             ) : null}
@@ -1352,7 +1325,7 @@ const HomePage: React.FC = () => {
         {isIncomeAndCardsEnabled() && (
           <div className="mt-8 mb-8">
             <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-6">
-              Обзор финансов
+              {t("Обзор финансов")}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TotalFundsWidget />
@@ -1366,7 +1339,7 @@ const HomePage: React.FC = () => {
           {" "}
           {/* Добавляем отступ сверху */}
           <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-6">
-            Статистика
+            {t("Статистика")}
           </h2>
           {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
           <div className="flex flex-nowrap items-center gap-2 md:gap-6 mb-6">
@@ -1376,11 +1349,11 @@ const HomePage: React.FC = () => {
               endDate={endDate}
               onRangeChange={handleStatsRangeChange}
               variant="compact"
-              label="Период"
+              label={t("Период")}
             />
             <SegmentedControl
               className="flex-shrink-0"
-              options={dashboardTimeRangeOptions}
+              options={dashboardTimeRangeOptions.map((option) => ({ ...option, label: t(option.label) }))}
               optionClassName="!px-1.5 md:!px-4"
               selected={timeRange}
               onChange={(option) => {
@@ -1478,14 +1451,14 @@ const HomePage: React.FC = () => {
                 {/* Ожидаемые расходы - платежи со статусом upcoming/overdue */}
                 <div className="card-base p-4 md:p-6">
                   <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
-                    <span className="md:hidden">Ожидается</span>
-                    <span className="hidden md:inline">Ожидаемые расходы</span>
+                    <span className="md:hidden">{t("Ожидается")}</span>
+                    <span className="hidden md:inline">{t("Ожидаемые расходы")}</span>
                   </p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
-                    Предстоящие платежи
+                    {t("Предстоящие платежи")}
                   </p>
                   <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-orange-600 dark:text-orange-400">
-                    {new Intl.NumberFormat("ru-RU", {
+                    {new Intl.NumberFormat(locale, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }).format(parseFloat(stats.totalUpcomingAmount))}
@@ -1498,16 +1471,16 @@ const HomePage: React.FC = () => {
                 {/* Фактические расходы - выполненные платежи */}
                 <div className="card-base p-4 md:p-6">
                   <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
-                    <span className="md:hidden">Потрачено</span>
+                    <span className="md:hidden">{t("Потрачено")}</span>
                     <span className="hidden md:inline">
-                      Фактические расходы
+                      {t("Фактические расходы")}
                     </span>
                   </p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
-                    Выполненные платежи
+                    {t("Выполненные платежи")}
                   </p>
                   <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-red-600 dark:text-red-400">
-                    {new Intl.NumberFormat("ru-RU", {
+                    {new Intl.NumberFormat(locale, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }).format(parseFloat(stats.totalCompletedAmount))}
@@ -1522,16 +1495,16 @@ const HomePage: React.FC = () => {
                     {/* Фактические доходы - полученные доходы за период */}
                     <div className="card-base p-4 md:p-6">
                       <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
-                        <span className="md:hidden">Получено</span>
+                        <span className="md:hidden">{t("Получено")}</span>
                         <span className="hidden md:inline">
-                          Фактические доходы
+                          {t("Фактические доходы")}
                         </span>
                       </p>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
-                        Полученные доходы
+                        {t("Полученные доходы")}
                       </p>
                       <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-green-600 dark:text-green-400">
-                        {new Intl.NumberFormat("ru-RU", {
+                        {new Intl.NumberFormat(locale, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         }).format(parseFloat(stats.totalIncomeAmount || "0"))}
@@ -1544,11 +1517,11 @@ const HomePage: React.FC = () => {
                     {/* Баланс за период */}
                     <div className="card-base p-4 md:p-6">
                       <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
-                        <span className="md:hidden">Баланс</span>
-                        <span className="hidden md:inline">Баланс периода</span>
+                        <span className="md:hidden">{t("Баланс")}</span>
+                        <span className="hidden md:inline">{t("Баланс периода")}</span>
                       </p>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
-                        Доходы − Расходы
+                        {t("Доходы − Расходы")}
                       </p>
                       {(() => {
                         const income = parseFloat(
@@ -1566,7 +1539,7 @@ const HomePage: React.FC = () => {
                             }`}
                           >
                             {isPositive ? "+" : ""}
-                            {new Intl.NumberFormat("ru-RU", {
+                            {new Intl.NumberFormat(locale, {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             }).format(balance)}
@@ -1592,11 +1565,11 @@ const HomePage: React.FC = () => {
                 >
                   <p className="text-base font-medium text-gray-900 dark:text-white mb-2">
                     {isIncomeAndCardsEnabled()
-                      ? "Расходы по категориям"
-                      : "Распределение по категориям"}
+                      ? t("Расходы по категориям")
+                      : t("Распределение по категориям")}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                    Распределение платежей по категориям
+                    {t("Распределение платежей по категориям")}
                   </p>
                   <CategoryDistributionBars
                     data={stats.categoriesDistribution}
@@ -1612,10 +1585,10 @@ const HomePage: React.FC = () => {
                 {isIncomeAndCardsEnabled() && (
                   <div className="lg:col-span-2 card-base p-6 flex flex-col min-h-80">
                     <p className="text-base font-medium text-gray-900 dark:text-white mb-2">
-                      Доходы по категориям
+                      {t("Доходы по категориям")}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                      Распределение доходов по категориям
+                      {t("Распределение доходов по категориям")}
                     </p>
                     {stats.incomeCategoriesDistribution &&
                     stats.incomeCategoriesDistribution.length > 0 ? (
@@ -1629,7 +1602,7 @@ const HomePage: React.FC = () => {
                       />
                     ) : (
                       <div className="flex items-center justify-center flex-1 text-center text-gray-500 dark:text-gray-400 text-sm">
-                        Нет данных о доходах за этот период.
+                        {t("Нет данных о доходах за этот период.")}
                       </div>
                     )}
                   </div>
@@ -1645,15 +1618,15 @@ const HomePage: React.FC = () => {
                 >
                   <div className="mb-6">
                     <p className="text-base font-medium text-gray-900 dark:text-white">
-                      Платежная нагрузка {isHourly ? "по часам" : "по дням"}
+                      {t("Платежная нагрузка ")}{isHourly ? t("по часам") : t("по дням")}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Кликните на точку на графике, чтобы увидеть детали
+                      {t("Кликните на точку на графике, чтобы увидеть детали")}
                     </p>
                   </div>
                   {noDailyData ? (
                     <div className="flex items-center justify-center flex-1 text-center text-gray-500 dark:text-gray-400 text-sm">
-                      Нет данных о платежной нагрузке за этот период.
+                      {t("Нет данных о платежной нагрузке за этот период.")}
                     </div>
                   ) : (
                     <div className="relative flex-1 w-full min-h-[200px] max-h-[360px] min-h-0">
@@ -1676,7 +1649,7 @@ const HomePage: React.FC = () => {
           {/* Сообщение, если данных нет после загрузки */}
           {!isLoadingStats && !errorStats && !stats && (
             <div className="text-center text-gray-700 dark:text-gray-300">
-              Нет данных статистики для отображения.
+              {t("Нет данных статистики для отображения.")}
             </div>
           )}
         </div>
@@ -1693,7 +1666,7 @@ const HomePage: React.FC = () => {
         }}
         dueDate={
           completionDateModalState.payment
-            ? new Date(completionDateModalState.payment.dueDate)
+            ? parseCalendarDate(completionDateModalState.payment.dueDate)
             : new Date()
         }
         isConfirming={isCompleting}
@@ -1719,10 +1692,9 @@ const HomePage: React.FC = () => {
           <Modal
             isOpen
             onClose={() => setDailyPaymentsModal(null)}
-            title={`Платежи за ${
-              dailyPaymentsModal?.date
+            title={t("Платежи за {1}", dailyPaymentsModal?.date
                 ? new Date(dailyPaymentsModal.date).toLocaleString(
-                    "ru-RU",
+                    locale,
                     isHourly
                       ? {
                           day: "numeric",
@@ -1737,8 +1709,7 @@ const HomePage: React.FC = () => {
                           year: "numeric",
                         }
                   )
-                : ""
-            }`}
+                : "")}
             className="hidden md:flex"
           >
             {dailyPaymentsModal.payments.length > 0 ? (
@@ -1755,7 +1726,7 @@ const HomePage: React.FC = () => {
                       </span>
                     </div>
                     <span className="font-bold text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat("ru-RU", {
+                      {new Intl.NumberFormat(locale, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       }).format(p.amount)}
@@ -1768,17 +1739,16 @@ const HomePage: React.FC = () => {
               </ul>
             ) : (
               <p className="text-gray-600 dark:text-gray-400">
-                Нет платежей на эту дату.
+                {t("Нет платежей на эту дату.")}
               </p>
             )}
           </Modal>
           <MobilePanel
             isOpen
             onClose={() => setDailyPaymentsModal(null)}
-            title={`Платежи за ${
-              dailyPaymentsModal?.date
+            title={t("Платежи за {1}", dailyPaymentsModal?.date
                 ? new Date(dailyPaymentsModal.date).toLocaleString(
-                    "ru-RU",
+                    locale,
                     isHourly
                       ? {
                           day: "numeric",
@@ -1793,8 +1763,7 @@ const HomePage: React.FC = () => {
                           year: "numeric",
                         }
                   )
-                : ""
-            }`}
+                : "")}
           >
             {dailyPaymentsModal.payments.length > 0 ? (
               <ul className="space-y-3">
@@ -1810,7 +1779,7 @@ const HomePage: React.FC = () => {
                       </span>
                     </div>
                     <span className="font-bold text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat("ru-RU", {
+                      {new Intl.NumberFormat(locale, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       }).format(p.amount)}
@@ -1823,7 +1792,7 @@ const HomePage: React.FC = () => {
               </ul>
             ) : (
               <p className="text-gray-600 dark:text-gray-400">
-                Нет платежей на эту дату.
+                {t("Нет платежей на эту дату.")}
               </p>
             )}
           </MobilePanel>
@@ -1849,7 +1818,7 @@ const HomePage: React.FC = () => {
       <AdvancedFiltersPanel
         isOpen={isAdvancedFiltersOpen}
         onClose={() => setIsAdvancedFiltersOpen(false)}
-        title="Выбрать период"
+        title={t("Выбрать период")}
       >
         <PeriodSelector
           initialDateRange={[customDateFrom, customDateTo]}

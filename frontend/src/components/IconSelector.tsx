@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useMemo, useEffect } from "react";
 import { BuiltinIcon, builtinIcons } from "../utils/builtinIcons";
 import {
@@ -74,6 +75,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
   isDisabled,
   isReadOnly,
 }) => {
+  const { t } = useLanguage();
   const { isOpen, setIsOpen, containerRef } = useDropdown();
   const [searchTerm, setSearchTerm] = useState("");
   useEffect(() => {
@@ -89,10 +91,10 @@ const IconSelector: React.FC<IconSelectorProps> = ({
     if (!searchTerm) return builtinIcons;
     const lowerTerm = searchTerm.toLowerCase();
     return builtinIcons.filter((icon) => {
-      const translation = iconTranslations[icon]?.toLowerCase() || "";
+      const translation = t(iconTranslations[icon] ?? "").toLowerCase();
       return icon.includes(lowerTerm) || translation.includes(lowerTerm);
     });
-  }, [searchTerm]);
+  }, [searchTerm, t]);
 
   const handleSelectBuiltinIcon = (iconName: BuiltinIcon) => {
     if (isSelectionLocked) return;
@@ -134,7 +136,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
   return (
     <div className="flex flex-col gap-2">
       <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
-        Иконка
+        {t("Иконка")}
       </label>
 
       <div ref={containerRef} className="relative">
@@ -170,8 +172,8 @@ const IconSelector: React.FC<IconSelectorProps> = ({
               }`}
             >
               {selectedIconName
-                ? iconTranslations[selectedIconName] || selectedIconName
-                : "Выбрать иконку"}
+                ? t(iconTranslations[selectedIconName] || selectedIconName)
+                : t("Выбрать иконку")}
             </span>
           </span>
         </button>
@@ -181,7 +183,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
             onClick={handleClearIcon}
             disabled={isSelectionLocked}
             className="absolute right-11 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 bg-white dark:bg-gray-900"
-            title="Удалить иконку"
+            title={t("Удалить иконку")}
           >
             <XCircleIcon className="h-5 w-5" />
           </button>
@@ -209,7 +211,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
             <input
               type="text"
               className="block w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg leading-5 bg-white dark:bg-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-gray-900 dark:text-gray-100"
-              placeholder="Поиск иконки..."
+              placeholder={t("Поиск иконки...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onClick={(e) => e.stopPropagation()} // Prevent closing on click
@@ -217,7 +219,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
           </div>
 
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
-            Доступные иконки ({filteredIcons.length})
+            {t("Доступные иконки (")}{filteredIcons.length})
           </p>
 
           <div className="grid grid-cols-6 gap-2 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
@@ -230,17 +232,17 @@ const IconSelector: React.FC<IconSelectorProps> = ({
                 className={`aspect-square flex items-center justify-center rounded-xl transition-all duration-200 disabled:opacity-50 outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800
                   ${
                     selectedIconName === iconName
-                      ? "bg-indigo-50 border-2 border-indigo-500 text-indigo-600 dark:bg-indigo-900/30 dark:border-indigo-400 dark:text-indigo-300 shadow-sm"
+                      ? "bg-slate-100 border-2 border-indigo-500 text-indigo-600 dark:bg-slate-800 dark:border-indigo-400 dark:text-indigo-300 shadow-sm"
                       : "border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
                   }`}
-                title={iconTranslations[iconName] || iconName}
+                title={t(iconTranslations[iconName] || iconName)}
               >
                 <IconDisplay iconName={iconName} sizeClass="h-5 w-5" />
               </button>
             ))}
             {filteredIcons.length === 0 && (
               <p className="col-span-full text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                Ничего не найдено
+                {t("Ничего не найдено")}
               </p>
             )}
           </div>

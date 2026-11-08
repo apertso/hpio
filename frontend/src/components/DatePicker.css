@@ -122,7 +122,7 @@
 }
 
 .hp-datepicker__nav-button:hover {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgb(241 245 249);
   border-color: rgba(99, 102, 241, 0.35);
 }
 
@@ -131,7 +131,7 @@
 }
 
 .dark .hp-datepicker__nav-button:hover {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgb(51 65 85);
   border-color: rgba(99, 102, 241, 0.4);
 }
 
@@ -176,11 +176,11 @@
 }
 
 .hp-datepicker__day:hover {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgb(241 245 249);
 }
 
 .dark .hp-datepicker__day:hover {
-  background: rgba(99, 102, 241, 0.25);
+  background: rgb(51 65 85);
 }
 
 .hp-datepicker__day--muted {
@@ -197,27 +197,14 @@
   cursor: not-allowed !important;
 }
 
-.hp-datepicker__day--selected,
-.hp-datepicker__day--range-start,
-.hp-datepicker__day--range-end {
-  background: rgb(99 102 241);
-  color: rgb(255 255 255);
-}
-
-.hp-datepicker__day--selected:hover,
-.hp-datepicker__day--range-start:hover,
-.hp-datepicker__day--range-end:hover {
-  background: #4338ca; /* darker hover state keeps text contrast */
-}
-
 .hp-datepicker__day--in-range {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgb(226 232 240);
   color: rgb(15 23 42);
 }
 
 .dark .hp-datepicker__day--in-range {
   color: rgb(226 232 240);
-  background: rgba(99, 102, 241, 0.35);
+  background: rgb(51 65 85);
 }
 
 .hp-datepicker__day--range-start,
@@ -291,16 +278,23 @@
 }
 
 .hp-datepicker__time-item:not(:disabled):hover {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgb(241 245 249);
 }
 
 .dark .hp-datepicker__time-item:not(:disabled):hover {
-  background: rgba(99, 102, 241, 0.25);
+  background: rgb(51 65 85);
 }
 
-.hp-datepicker__time-item--selected {
-  background: rgb(99 102 241);
+.hp-datepicker__day:is(.hp-datepicker__day--selected, .hp-datepicker__day--range-start, .hp-datepicker__day--range-end),
+.hp-datepicker__time-item.hp-datepicker__time-item--selected:not(:disabled) {
+  background: rgb(30 41 59);
+  box-shadow: inset 0 0 0 1px var(--color-violet-400);
   color: rgb(255 255 255);
+}
+
+.hp-datepicker__day:is(.hp-datepicker__day--selected, .hp-datepicker__day--range-start, .hp-datepicker__day--range-end):hover,
+.hp-datepicker__time-item.hp-datepicker__time-item--selected:not(:disabled):hover {
+  background: rgb(51 65 85);
 }
 
 .hp-datepicker__time-item:disabled {

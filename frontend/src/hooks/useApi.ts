@@ -3,17 +3,17 @@ import { syncService, ConnectionStatus } from "../utils/syncService";
 import logger from "../utils/logger";
 import { useOffline } from "../context/OfflineContext";
 
-interface UseApiResult<T> {
+interface UseApiResult<T, Args extends unknown[]> {
   data: T | null;
   isLoading: boolean;
   error: Error | null;
-  execute: (...args: unknown[]) => Promise<T | void>;
+  execute: (...args: Args) => Promise<T | void>;
   connectionStatus: ConnectionStatus;
   isOffline: boolean;
 }
 
-function useApi<T>(
-  apiCall: (...args: unknown[]) => Promise<T>,
+function useApi<T, Args extends unknown[]>(
+  apiCall: (...args: Args) => Promise<T>,
   options: {
     onSuccess?: (data: T) => void;
     onError?: (error: Error) => void;
@@ -21,7 +21,7 @@ function useApi<T>(
     cacheKey?: string;
     offlineDataKey?: "payments" | "categories" | "user" | "tags";
   } = {}
-): UseApiResult<T> {
+): UseApiResult<T, Args> {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -40,7 +40,7 @@ function useApi<T>(
   const isOffline = connectionStatus === ConnectionStatus.OFFLINE;
 
   const execute = useCallback(
-    async (...args: unknown[]): Promise<T | void> => {
+    async (...args: Args): Promise<T | void> => {
       setIsLoading(true);
       setError(null);
 

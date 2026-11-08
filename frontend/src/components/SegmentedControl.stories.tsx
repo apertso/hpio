@@ -5,7 +5,7 @@ import SegmentedControl, {
   type TimeRangeOption,
 } from "./SegmentedControl";
 
-const meta: Meta<typeof SegmentedControl> = {
+const meta: Meta<typeof SegmentedControl<TimeRangeOption>> = {
   title: "Components/SegmentedControl",
   component: SegmentedControl,
   tags: ["autodocs"],
@@ -16,7 +16,7 @@ const meta: Meta<typeof SegmentedControl> = {
 
 export default meta;
 
-type Story = StoryObj<typeof SegmentedControl>;
+type Story = StoryObj<typeof SegmentedControl<TimeRangeOption>>;
 
 const defaultOptions: SegmentedControlOption<TimeRangeOption>[] = [
   { value: "1d", label: "1 день" },

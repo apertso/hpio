@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import Overlay from "./Overlay";
 import { useDropdown } from "../hooks/useDropdown";
@@ -24,6 +25,7 @@ interface TableProps<T> {
 }
 
 function RowActions({ options }: { options: DropdownOption[] }) {
+  const { t } = useLanguage();
   const { isOpen, setIsOpen, containerRef } = useDropdown();
 
   if (!options || options.length === 0) {
@@ -35,7 +37,7 @@ function RowActions({ options }: { options: DropdownOption[] }) {
         type="button"
         className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
         onClick={() => setIsOpen((o) => !o)}
-        aria-label="Открыть меню действий"
+        aria-label={t("Открыть меню действий")}
       >
         <EllipsisVerticalIcon className="h-5 w-5" />
       </button>
@@ -66,12 +68,13 @@ function RowActions({ options }: { options: DropdownOption[] }) {
 }
 
 function Table<T>(props: TableProps<T>) {
+  const { t } = useLanguage();
   const {
     data,
     columns,
     getRowKey,
     rowActions,
-    emptyMessage = "Список пуст",
+    emptyMessage = t("Список пуст"),
     isLoading = false,
     skeletonRows = 6,
   } = props;
@@ -96,7 +99,7 @@ function Table<T>(props: TableProps<T>) {
           ))}
           {rowActions && (
             <th scope="col" className="relative pr-6 py-4 w-8">
-              <span className="sr-only">Действия</span>
+              <span className="sr-only">{t("Действия")}</span>
             </th>
           )}
         </tr>

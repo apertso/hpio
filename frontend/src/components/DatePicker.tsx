@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, {
   forwardRef,
   useCallback,
@@ -54,15 +55,6 @@ const TIME_STEP_MINUTES = 30;
 const DEFAULT_DATE_FORMAT = "dd.MM.yyyy";
 const DEFAULT_TIME_FORMAT = "HH:mm";
 const DATE_FORMAT_TIME_TOKEN_REGEX = /(H{1,2}|h{1,2}|m{1,2}|s{1,2})/;
-const RANGE_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
-  day: "numeric",
-  month: "short",
-});
-const RANGE_DATE_WITH_YEAR_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
 const RANGE_MONTHS_SHORT = [
   "янв",
   "фев",
@@ -144,8 +136,8 @@ const buildCalendarDays = (viewDate: Date) => {
   });
 };
 
-const formatMonthTitle = (date: Date) => {
-  const raw = new Intl.DateTimeFormat("ru-RU", {
+const formatMonthTitle = (date: Date, locale: string): string => {
+  const raw = new Intl.DateTimeFormat(locale, {
     month: "long",
     year: "numeric",
   }).format(date);
@@ -205,14 +197,19 @@ const formatDateValue = (
 const formatRangePart = (
   date: Date,
   includeYear: boolean,
-  shortMonth = false
-) => {
-  if (shortMonth) {
+  shortMonth: boolean,
+  locale: string
+): string => {
+  if (shortMonth && locale === "ru-RU") {
     const base = `${date.getDate()} ${RANGE_MONTHS_SHORT[date.getMonth()]}`;
     return includeYear ? `${base} ${date.getFullYear()}` : base;
   }
 
-  return (includeYear ? RANGE_DATE_WITH_YEAR_FORMATTER : RANGE_DATE_FORMATTER)
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: includeYear ? "numeric" : undefined,
+  })
     .format(date)
     .replace(/\./g, "")
     .replace(/\s+/g, " ")
@@ -222,23 +219,25 @@ const formatRangePart = (
 const formatRangeDisplayValue = (
   start: Date | null,
   end: Date | null,
-  shortMonth = false
+  shortMonth: boolean,
+  locale: string
 ): string => {
   if (start && end) {
     const includeYear = start.getFullYear() !== end.getFullYear();
-    return `${formatRangePart(start, includeYear, shortMonth)} - ${formatRangePart(
+    return `${formatRangePart(start, includeYear, shortMonth, locale)} - ${formatRangePart(
       end,
       includeYear,
-      shortMonth
+      shortMonth,
+      locale
     )}`;
   }
 
   if (start) {
-    return `${formatRangePart(start, true, shortMonth)} -`;
+    return `${formatRangePart(start, true, shortMonth, locale)} -`;
   }
 
   if (end) {
-    return `- ${formatRangePart(end, true, shortMonth)}`;
+    return `- ${formatRangePart(end, true, shortMonth, locale)}`;
   }
 
   return "";
@@ -320,11 +319,13 @@ const DatePicker: React.FC<DatePickerProps> = ({
   applyLabel = "Применить",
   cancelLabel = "Отмена",
   timeFormat = DEFAULT_TIME_FORMAT,
-  dateFormat = DEFAULT_DATE_FORMAT,
+  dateFormat: customDateFormat,
   minDate,
   maxDate,
   variant = "default",
 }) => {
+  const { t, language, locale } = useLanguage();
+  const dateFormat = customDateFormat ?? (language === "en" ? "MM/dd/yyyy" : DEFAULT_DATE_FORMAT);
   const showTimePicker = mode === "datetime" || showTimeSelect;
   const useDraftWorkflow = showActionButtons;
 
@@ -839,7 +840,8 @@ const DatePicker: React.FC<DatePickerProps> = ({
       return formatRangeDisplayValue(
         activeRangeStart,
         activeRangeEnd,
-        isCompactVariant
+        isCompactVariant,
+        locale
       );
     }
 
@@ -867,6 +869,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
     dateFormat,
     timeFormat,
     isCompactVariant,
+    locale,
   ]);
 
   const activeTimeValue = useDraftWorkflow
@@ -888,13 +891,13 @@ const DatePicker: React.FC<DatePickerProps> = ({
           <Button
             type="button"
             variant="ghost"
-            label={cancelLabel}
+            label={t(cancelLabel)}
             onClick={handleCancelAction}
           />
           <Button
             type="button"
             variant="primary"
-            label={applyLabel}
+            label={t(applyLabel)}
             onClick={handleApplyAction}
             disabled={isApplyDisabled}
           />
@@ -904,7 +907,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
             type="button"
             variant="primary"
             size="large"
-            label={applyLabel}
+            label={t(applyLabel)}
             onClick={handleApplyAction}
             disabled={isApplyDisabled}
             className="w-full"
@@ -912,7 +915,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
           <Button
             type="button"
             variant="ghost"
-            label={cancelLabel}
+            label={t(cancelLabel)}
             onClick={handleCancelAction}
             className="w-full"
           />
@@ -928,18 +931,18 @@ const DatePicker: React.FC<DatePickerProps> = ({
           type="button"
           className="hp-datepicker__nav-button cursor-pointer"
           onClick={() => handleMonthChange(-1)}
-          aria-label="Предыдущий месяц"
+          aria-label={t("Предыдущий месяц")}
         >
           <span aria-hidden="true">‹</span>
         </button>
         <div className="hp-datepicker__month-title">
-          {formatMonthTitle(viewDate)}
+          {formatMonthTitle(viewDate, locale)}
         </div>
         <button
           type="button"
           className="hp-datepicker__nav-button cursor-pointer"
           onClick={() => handleMonthChange(1)}
-          aria-label="Следующий месяц"
+          aria-label={t("Следующий месяц")}
         >
           <span aria-hidden="true">›</span>
         </button>
@@ -947,7 +950,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
       <div className="hp-datepicker__week-row">
         {WEEK_DAYS.map((day) => (
           <span key={day} className="hp-datepicker__weekday">
-            {day}
+            {t(day)}
           </span>
         ))}
       </div>
@@ -1030,7 +1033,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
 
     return (
       <div className="hp-datepicker__time-section">
-        <p className="hp-datepicker__time-title">Время</p>
+        <p className="hp-datepicker__time-title">{t("Время")}</p>
         <div className="hp-datepicker__time-list">
           {timeOptions.map((option) => {
             const isSelected = activeTimeValue === option.value;
@@ -1089,7 +1092,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
         id={id}
         name={name}
         displayValue={displayValue}
-        placeholder={placeholder}
+        placeholder={t(placeholder)}
         disabled={disabled}
         onClick={handleDesktopTriggerClick}
         onKeyDown={handleDesktopTriggerKeyDown}
@@ -1140,7 +1143,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
                 id={id ? `${id}-mobile-trigger` : undefined}
                 name={name}
                 displayValue={displayValue}
-                placeholder={placeholder}
+                placeholder={t(placeholder)}
                 disabled={disabled}
                 onClick={handleInputClick}
                 inputClasses={inputClasses}
@@ -1152,7 +1155,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
           <MobilePanel
             isOpen={isMobilePanelOpen}
             onClose={() => setIsMobilePanelOpen(false)}
-            title={label || "Выбор даты"}
+            title={label || t("Выбор даты")}
           >
             {renderPickerSurface(true)}
           </MobilePanel>

@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import { UseFormRegister, UseFormSetValue, FieldErrors } from "react-hook-form";
 import DatePicker from "./DatePicker";
@@ -21,11 +22,12 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   isSubmitting,
   showSeriesStartHint,
 }) => {
+  const { t } = useLanguage();
   return (
     <>
       {/* Поля: Название, Сумма, Срок оплаты */}
       <TextInputField
-        label="Название"
+        label={t("Название")}
         inputId="title"
         error={errors.title?.message}
         required
@@ -34,7 +36,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <NumberField
-          label="Сумма"
+          label={t("Сумма")}
           inputId="amount"
           step="0.01"
           {...register("amount", { valueAsNumber: true })}
@@ -46,19 +48,18 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
           <DatePicker
             id="dueDate"
             mode="single"
-            label="Срок оплаты"
+            label={t("Срок оплаты")}
             selected={watchDueDate || null}
             onSingleChange={(date: Date | null) => {
               setValue("dueDate", date as Date, { shouldValidate: true });
             }}
-            dateFormat="dd.MM.yyyy"
             disabled={isSubmitting}
-            placeholder="Выберите дату"
+            placeholder={t("Выберите дату")}
             error={errors.dueDate?.message}
           />
           {showSeriesStartHint && (
             <p className="text-xs text-gray-500 dark:text-gray-400 hidden md:block">
-              Эта дата станет датой начала для измененной серии.
+              {t("Эта дата станет датой начала для измененной серии.")}
             </p>
           )}
         </div>

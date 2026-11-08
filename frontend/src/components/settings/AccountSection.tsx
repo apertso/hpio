@@ -1,3 +1,4 @@
+import { useLanguage } from "../../context/LanguageContext";
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
@@ -62,6 +63,7 @@ type SettingsInputs = z.infer<typeof settingsSchema>;
 type PasswordInputs = z.infer<typeof passwordSchema>;
 
 const AccountSection: React.FC = () => {
+  const { t } = useLanguage();
   const { user, refreshUser, logout, token } = useAuth();
   const { showToast } = useToast();
   const { avatarUrl, refreshAvatar } = useAvatarCache(user?.photoPath, token);
@@ -111,9 +113,7 @@ const AccountSection: React.FC = () => {
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ (до сжатия)
     if (file.size > MAX_FILE_SIZE) {
       showToast(
-        `Размер файла превышает ${
-          MAX_FILE_SIZE / 1024 / 1024
-        } МБ. Пожалуйста, выберите файл меньшего размера.`,
+        t("Размер файла превышает {1} МБ. Пожалуйста, выберите файл меньшего размера.", MAX_FILE_SIZE / 1024 / 1024),
         "error"
       );
       return;
@@ -132,9 +132,9 @@ const AccountSection: React.FC = () => {
       await userApi.uploadPhoto(formData);
       await refreshUser();
       await refreshAvatar();
-      showToast("Фото профиля обновлено.", "success");
+      showToast(t("Фото профиля обновлено."), "success");
     } catch (error) {
-      showToast(`Ошибка загрузки фото: ${getErrorMessage(error)}`, "error");
+      showToast(t("Ошибка загрузки фото: {1}", t(getErrorMessage(error))), "error");
     } finally {
       setIsCompressing(false);
       setIsUploading(false);
@@ -150,15 +150,15 @@ const AccountSection: React.FC = () => {
     for (const error of errors) {
       if (error.code === "file-invalid-type") {
         showToast(
-          "Пожалуйста, выберите изображение (JPEG, PNG или WEBP).",
+          t("Пожалуйста, выберите изображение (JPEG, PNG или WEBP)."),
           "error"
         );
         break;
       } else if (error.code === "file-too-large") {
-        showToast("Размер файла превышает 10 МБ.", "error");
+        showToast(t("Размер файла превышает 10 МБ."), "error");
         break;
       } else {
-        showToast(`Ошибка при выборе файла: ${error.message}`, "error");
+        showToast(t("Ошибка при выборе файла: {1}", error.message), "error");
         break;
       }
     }
@@ -180,11 +180,11 @@ const AccountSection: React.FC = () => {
       await refreshUser();
       if (emailChanged) {
         showToast(
-          "Настройки сохранены. Мы отправили ссылку для подтверждения на ваш новый email.",
+          t("Настройки сохранены. Мы отправили ссылку для подтверждения на ваш новый email."),
           "success"
         );
       } else {
-        showToast("Настройки успешно сохранены.", "success");
+        showToast(t("Настройки успешно сохранены."), "success");
       }
     } catch (error) {
       const message = getErrorMessage(error);
@@ -199,7 +199,7 @@ const AccountSection: React.FC = () => {
         currentPassword: data.currentPassword,
       });
       resetPasswordForm();
-      showToast("Пароль успешно изменен.", "success");
+      showToast(t("Пароль успешно изменен."), "success");
     } catch (error) {
       const message = getErrorMessage(error);
       showToast(message, "error");
@@ -229,13 +229,13 @@ const AccountSection: React.FC = () => {
         }
       }
       await userApi.deleteAccount();
-      showToast("Ваш аккаунт был успешно удалён.", "success");
+      showToast(t("Ваш аккаунт был успешно удалён."), "success");
       setIsDeleteModalOpen(false);
       setExpandedSection(null);
       logout();
     } catch (error) {
       showToast(
-        `Ошибка при удалении аккаунта: ${getErrorMessage(error)}`,
+        t("Ошибка при удалении аккаунта: {1}", t(getErrorMessage(error))),
         "error"
       );
     } finally {
@@ -254,11 +254,10 @@ const AccountSection: React.FC = () => {
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Профиль и уведомления
+                {t("Профиль и уведомления")}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Управляйте своей личной информацией, настройками уведомлений и
-                часовым поясом
+                {t("Управляйте своей личной информацией, настройками уведомлений и часовым поясом")}
               </p>
             </div>
           </div>
@@ -311,7 +310,7 @@ const AccountSection: React.FC = () => {
               </div>
 
               <TextInputField
-                label="Имя"
+                label={t("Имя")}
                 inputId="name"
                 error={settingsErrors.name?.message}
                 required
@@ -333,12 +332,12 @@ const AccountSection: React.FC = () => {
                       {user?.isVerified ? (
                         <span className="text-xs flex items-center text-green-600 dark:text-green-400">
                           <CheckBadgeIcon className="h-4 w-4 mr-1" />
-                          Подтвержден
+                          {t("Подтвержден")}
                         </span>
                       ) : (
                         <span className="text-xs flex items-center text-yellow-600 dark:text-yellow-400">
                           <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                          Не подтвержден
+                          {t("Не подтвержден")}
                         </span>
                       )}
                     </div>
@@ -357,8 +356,8 @@ const AccountSection: React.FC = () => {
                 defaultValue={user?.timezone || "UTC"}
                 render={({ field }) => (
                   <Select
-                    label="Часовой пояс"
-                    options={timezones}
+                    label={t("Часовой пояс")}
+                    options={timezones.map((option) => ({ ...option, label: t(option.label) }))}
                     value={field.value}
                     onChange={field.onChange}
                     error={settingsErrors.timezone?.message}
@@ -372,8 +371,8 @@ const AccountSection: React.FC = () => {
                   defaultValue={user?.preferredCurrency || "RUB"}
                   render={({ field }) => (
                     <Select
-                      label="Основная валюта"
-                      options={CURRENCY_OPTIONS}
+                      label={t("Основная валюта")}
+                      options={CURRENCY_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))}
                       value={field.value ?? null}
                       onChange={field.onChange}
                       error={settingsErrors.preferredCurrency?.message}
@@ -389,7 +388,7 @@ const AccountSection: React.FC = () => {
               disabled={isSettingsSubmitting}
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
             >
-              {isSettingsSubmitting ? "Сохранение..." : "Сохранить"}
+              {isSettingsSubmitting ? t("Сохранение...") : t("Сохранить")}
             </button>
           </div>
         </SettingsSection>
@@ -403,10 +402,10 @@ const AccountSection: React.FC = () => {
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Безопасность
+              {t("Безопасность")}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Управляйте паролем и настройками безопасности вашего аккаунта
+              {t("Управляйте паролем и настройками безопасности вашего аккаунта")}
             </p>
           </div>
         </div>
@@ -422,7 +421,7 @@ const AccountSection: React.FC = () => {
             className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-500"
           >
             <LockClosedIcon className="w-5 h-5" />
-            <span>Сменить пароль</span>
+            <span>{t("Сменить пароль")}</span>
           </button>
         </div>
         {/* Desktop Inline Form */}
@@ -437,7 +436,7 @@ const AccountSection: React.FC = () => {
               className="space-y-4"
             >
               <PasswordField
-                label="Текущий пароль"
+                label={t("Текущий пароль")}
                 inputId="currentPassword"
                 autoComplete="current-password"
                 {...registerPassword("currentPassword")}
@@ -446,7 +445,7 @@ const AccountSection: React.FC = () => {
                 required
               />
               <PasswordField
-                label="Новый пароль"
+                label={t("Новый пароль")}
                 inputId="newPassword"
                 autoComplete="new-password"
                 {...registerPassword("newPassword")}
@@ -455,7 +454,7 @@ const AccountSection: React.FC = () => {
                 required
               />
               <PasswordField
-                label="Подтвердите новый пароль"
+                label={t("Подтвердите новый пароль")}
                 inputId="confirmPassword"
                 autoComplete="new-password"
                 {...registerPassword("confirmPassword")}
@@ -469,7 +468,7 @@ const AccountSection: React.FC = () => {
                   disabled={isPasswordSubmitting}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
                 >
-                  {isPasswordSubmitting ? "Сохранение..." : "Сменить пароль"}
+                  {isPasswordSubmitting ? t("Сохранение...") : t("Сменить пароль")}
                 </button>
               </div>
             </form>
@@ -484,11 +483,10 @@ const AccountSection: React.FC = () => {
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Опасная зона
+              {t("Опасная зона")}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Действия, которые могут привести к потере доступа к аккаунту или
-              удалению данных
+              {t("Действия, которые могут привести к потере доступа к аккаунту или удалению данных")}
             </p>
           </div>
         </div>
@@ -500,7 +498,7 @@ const AccountSection: React.FC = () => {
             className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-500"
           >
             <TrashIcon className="w-5 h-5" />
-            <span>Удалить аккаунт</span>
+            <span>{t("Удалить аккаунт")}</span>
           </button>
         </div>
       </SettingsSection>
@@ -509,14 +507,14 @@ const AccountSection: React.FC = () => {
       <MobilePanel
         isOpen={expandedSection === "password"}
         onClose={() => setExpandedSection(null)}
-        title="Сменить пароль"
+        title={t("Сменить пароль")}
       >
         <form
           onSubmit={handlePasswordSubmit(onPasswordSubmit)}
           className="space-y-4"
         >
           <PasswordField
-            label="Текущий пароль"
+            label={t("Текущий пароль")}
             inputId="currentPasswordMobile"
             autoComplete="current-password"
             {...registerPassword("currentPassword")}
@@ -525,7 +523,7 @@ const AccountSection: React.FC = () => {
             required
           />
           <PasswordField
-            label="Новый пароль"
+            label={t("Новый пароль")}
             inputId="newPasswordMobile"
             autoComplete="new-password"
             {...registerPassword("newPassword")}
@@ -534,7 +532,7 @@ const AccountSection: React.FC = () => {
             required
           />
           <PasswordField
-            label="Подтвердите новый пароль"
+            label={t("Подтвердите новый пароль")}
             inputId="confirmPasswordMobile"
             autoComplete="new-password"
             {...registerPassword("confirmPassword")}
@@ -548,7 +546,7 @@ const AccountSection: React.FC = () => {
               disabled={isPasswordSubmitting}
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
             >
-              {isPasswordSubmitting ? "Сохранение..." : "Сменить пароль"}
+              {isPasswordSubmitting ? t("Сохранение...") : t("Сменить пароль")}
             </button>
           </div>
         </form>

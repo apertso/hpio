@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Input } from "./Input";
@@ -19,6 +20,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
   placeholder = "Ваш отзыв...",
   maxFileSize = 5 * 1024 * 1024, // 5MB
 }) => {
+  const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [highlighted, setHighlighted] = useState(false);
 
@@ -27,9 +29,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
       const uploadedFile = acceptedFiles[0];
       if (uploadedFile.size > maxFileSize) {
         alert(
-          `Файл слишком большой. Максимальный размер: ${
-            maxFileSize / 1024 / 1024
-          }MB`
+          t("Файл слишком большой. Максимальный размер: {1}MB", maxFileSize / 1024 / 1024)
         );
         return;
       }
@@ -49,9 +49,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
     if (uploadedFile) {
       if (uploadedFile.size > maxFileSize) {
         alert(
-          `Файл слишком большой. Максимальный размер: ${
-            maxFileSize / 1024 / 1024
-          }MB`
+          t("Файл слишком большой. Максимальный размер: {1}MB", maxFileSize / 1024 / 1024)
         );
         return;
       }
@@ -68,10 +66,10 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
 
   React.useEffect(() => {
     const keywords = [
-      "скриншот",
-      "изображение",
-      "файл",
-      "прикрепить",
+      t("скриншот"),
+      t("изображение"),
+      t("файл"),
+      t("прикрепить"),
       "screenshot",
       "image",
       "file",
@@ -81,7 +79,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
       value.toLowerCase().includes(keyword)
     );
     setHighlighted(hasKeyword);
-  }, [value]);
+  }, [value, t]);
 
   return (
     <div {...getRootProps()} className="relative">
@@ -95,7 +93,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
         <textarea
           className="block w-full bg-white dark:bg-gray-900 rounded-lg p-3 pr-12 text-sm text-gray-900 dark:text-gray-100 focus:outline-none transition duration-150 ease-in-out resize-none border-0"
           rows={6}
-          placeholder={placeholder}
+          placeholder={t(placeholder)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -108,7 +106,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
                 ? "text-blue-600 dark:text-blue-400 animate-pulse"
                 : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             }`}
-            title="Прикрепить файл"
+            title={t("Прикрепить файл")}
           >
             <svg
               className="w-5 h-5"
@@ -141,7 +139,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
       {isDragActive && (
         <div className="absolute inset-0 flex items-center justify-center bg-blue-50/90 dark:bg-blue-900/30 rounded-lg pointer-events-none">
           <p className="text-blue-600 dark:text-blue-400 font-medium">
-            Перетащите файл сюда...
+            {t("Перетащите файл сюда...")}
           </p>
         </div>
       )}
@@ -170,7 +168,7 @@ const FeedbackTextarea: React.FC<FeedbackTextareaProps> = ({
             type="button"
             onClick={handleRemoveFile}
             className="p-1 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex-shrink-0"
-            title="Удалить файл"
+            title={t("Удалить файл")}
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path

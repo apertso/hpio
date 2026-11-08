@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from 'react';
 import {
   ArrowPathIcon,
@@ -14,7 +15,7 @@ import { useDropdown } from '../hooks/useDropdown';
 import Overlay from './Overlay';
 import PaymentIconDisplay from './PaymentIconDisplay';
 import { formatRecurrenceRule } from '../utils/formatRecurrence';
-import { formatDateForDisplay } from '../utils/dateUtils';
+import { parseCalendarDate, formatDateForDisplay } from '../utils/dateUtils';
 
 interface PaymentCardProps {
   payment: {
@@ -35,7 +36,7 @@ interface PaymentCardProps {
 
 // Helper to check if a date is today
 function isToday(dateString: string) {
-  const date = new Date(dateString);
+  const date = parseCalendarDate(dateString);
   const now = new Date();
   return (
     date.getDate() === now.getDate() &&
@@ -51,8 +52,9 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
   onDelete,
   hideDate,
 }) => {
-  const formattedDueDate = formatDateForDisplay(new Date(payment.dueDate));
-  const formattedAmount = new Intl.NumberFormat('ru-RU', {
+  const { t, locale } = useLanguage();
+  const formattedDueDate = formatDateForDisplay(parseCalendarDate(payment.dueDate), locale);
+  const formattedAmount = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(payment.amount);
@@ -109,7 +111,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
                     }}
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
                   >
-                    <PencilIcon className="w-4 h-4 mr-2" /> Редактировать
+                    <PencilIcon className="w-4 h-4 mr-2" />{t(" Редактировать")}
                   </button>
                   <button
                     onClick={() => {
@@ -118,7 +120,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
                     }}
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
                   >
-                    <CheckCircleIcon className="w-4 h-4 mr-2" /> Выполнить
+                    <CheckCircleIcon className="w-4 h-4 mr-2" />{t(" Выполнить")}
                   </button>
                   <button
                     onClick={() => {
@@ -127,7 +129,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
                     }}
                     className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
                   >
-                    <TrashIcon className="w-4 h-4 mr-2" /> Удалить
+                    <TrashIcon className="w-4 h-4 mr-2" />{t(" Удалить")}
                   </button>
                 </div>
               </Overlay>
@@ -143,14 +145,14 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
                 <>
                   <ArrowPathIcon className="h-3 w-3 mr-1 flex-shrink-0" />{' '}
                   <span className="truncate">
-                    {formatRecurrenceRule(payment.series?.recurrenceRule)}
+                    {t(formatRecurrenceRule(payment.series?.recurrenceRule))}
                   </span>
                 </>
               )}
               {isEffectivelyRecurring && payment.isVirtual && (
                 <span className="mx-1">•</span>
               )}
-              {payment.isVirtual && 'Виртуальный'}
+              {payment.isVirtual && t("Виртуальный")}
             </p>
           </div>
         )}
@@ -169,13 +171,13 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
             {payment.status === 'overdue' ? (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                 <ExclamationCircleIcon className="h-3.5 w-3.5 mr-1" />
-                Просрочен
+                {t("Просрочен")}
               </span>
             ) : !hideDate ? (
               payment.status === 'upcoming' && isToday(payment.dueDate) ? (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   <CalendarDaysIcon className="h-3.5 w-3.5 mr-1" />
-                  Сегодня
+                  {t("Сегодня")}
                 </span>
               ) : (
                 <p className="text-xs text-gray-600 dark:text-gray-500">

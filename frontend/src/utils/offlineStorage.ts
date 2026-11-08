@@ -43,10 +43,12 @@ export type SerializedFormDataEntry =
       blob: Blob;
     };
 
-export interface RequestReservation {
-  type: string;
-  data?: unknown;
-}
+export type RequestReservation =
+  | { type: "payment:create"; data: { payment: PaymentData; offlineId: string } }
+  | { type: "payment:update"; data: { id: string; changes: Partial<PaymentData> } }
+  | { type: "payment:complete"; data: { id: string; completedAt: string } }
+  | { type: "payment:delete"; data: { id: string } }
+  | { type: "payment:fileUpload"; data: { id: string; fileName: string } };
 
 export interface QueuedRequest {
   id: string;

@@ -24,7 +24,7 @@ const UPCOMING_PAYMENTS = [
     date: '25 мая',
     amount: '299 ₽',
     icon: (
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-500 via-purple-500 to-yellow-500 text-xs font-black text-white">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-orange-700 text-xs font-black text-white">
         Я
       </span>
     ),
@@ -192,7 +192,7 @@ export const LandingHeroMockup: React.FC = () => (
           </button>
           <button
             type="button"
-            className="flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-sm hover:bg-indigo-700"
+            className="primary-action flex cursor-pointer items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold shadow-sm"
           >
             <PlusIcon className="h-3 w-3" />
             Добавить платёж

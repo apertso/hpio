@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "../context/ThemeContext";
@@ -7,6 +8,7 @@ export const ThemeSwitcher = ({
 }: {
   variant?: "default" | "landing";
 }): React.ReactElement => {
+  const { t } = useLanguage();
   const { setTheme, resolvedTheme } = useTheme();
 
   if (variant === "landing") {
@@ -19,8 +21,8 @@ export const ThemeSwitcher = ({
               ? "bg-gray-100 text-gray-900 shadow-sm"
               : "text-gray-400 hover:text-gray-600"
           }`}
-          aria-label="Светлая тема"
-          title="Светлая тема"
+          aria-label={t("Светлая тема")}
+          title={t("Светлая тема")}
         >
           <SunIcon className="h-4 w-4" />
         </button>
@@ -31,8 +33,8 @@ export const ThemeSwitcher = ({
               ? "bg-gray-800 text-white shadow-sm"
               : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           }`}
-          aria-label="Тёмная тема"
-          title="Тёмная тема"
+          aria-label={t("Тёмная тема")}
+          title={t("Тёмная тема")}
         >
           <MoonIcon className="h-4 w-4" />
         </button>
@@ -44,8 +46,8 @@ export const ThemeSwitcher = ({
     <button
       onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
       className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer focus:outline-none"
-      aria-label="Переключить тему"
-      title="Переключить тему"
+      aria-label={t("Переключить тему")}
+      title={t("Переключить тему")}
     >
       {resolvedTheme === "light" ? (
         <MoonIcon className="h-5 w-5" />

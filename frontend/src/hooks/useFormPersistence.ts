@@ -1,13 +1,13 @@
 // src/hooks/useFormPersistence.ts
 import { useEffect, useCallback } from "react";
-import type { UseFormReturn } from "react-hook-form";
+import type { FieldValues, UseFormReturn } from "react-hook-form";
 import logger from "../utils/logger";
 
 interface UseFormPersistenceResult {
   clearPersistedData: () => void;
 }
 
-const useFormPersistence = <T>(
+const useFormPersistence = <T extends FieldValues>(
   form: UseFormReturn<T>,
   storageKey: string
 ): UseFormPersistenceResult => {

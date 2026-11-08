@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
@@ -21,6 +22,7 @@ const formatCardPan = (value: string): string => {
 };
 
 const CardEditPage: React.FC = () => {
+  const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
@@ -48,9 +50,9 @@ const CardEditPage: React.FC = () => {
 
   // Set page title
   useEffect(() => {
-    const headerText = isEditMode ? "Редактировать карту" : "Новая карта";
+    const headerText = isEditMode ? t("Редактировать карту") : t("Новая карта");
     setPageTitle(headerText);
-  }, [isEditMode, setPageTitle]);
+  }, [isEditMode, setPageTitle, t]);
 
   // Load card data when editing
   useEffect(() => {
@@ -125,7 +127,7 @@ const CardEditPage: React.FC = () => {
 
     const cleanedPan = pan.replace(/\s/g, "");
     if (!cleanedPan || cleanedPan.length < 6) {
-      setFormError("Введите минимум первые 6 цифр номера карты");
+      setFormError(t("Введите минимум первые 6 цифр номера карты"));
       return;
     }
 
@@ -156,8 +158,8 @@ const CardEditPage: React.FC = () => {
     } catch {
       setFormError(
         isEditMode
-          ? "Ошибка при обновлении карты"
-          : "Ошибка при добавлении карты"
+          ? t("Ошибка при обновлении карты")
+          : t("Ошибка при добавлении карты")
       );
     } finally {
       setIsSubmitting(false);
@@ -191,12 +193,12 @@ const CardEditPage: React.FC = () => {
           <Link
             to="/sources"
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"
-            aria-label="Назад к источникам"
+            aria-label={t("Назад к источникам")}
           >
             <ArrowLeftIcon className="h-6 w-6" />
           </Link>
           <h2 className="text-xl md:text-2xl font-bold ml-4 text-gray-900 dark:text-white">
-            {isEditMode ? "Редактировать карту" : "Новая карта"}
+            {isEditMode ? t("Редактировать карту") : t("Новая карта")}
           </h2>
         </div>
 
@@ -215,13 +217,13 @@ const CardEditPage: React.FC = () => {
                       className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6"
                       role="alert"
                     >
-                      {formError}
+                      {t(formError)}
                     </div>
                   )}
 
                   <div className="mb-6">
                     <TextInputField
-                      label="Номер карты"
+                      label={t("Номер карты")}
                       value={pan}
                       onChange={(e) => setPan(formatCardPan(e.target.value))}
                       placeholder="0000 0000 0000 0000"
@@ -234,12 +236,12 @@ const CardEditPage: React.FC = () => {
                   {(bankName || vendor || type || level) && (
                     <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-2">
                       <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Определено автоматически:
+                        {t("Определено автоматически:")}
                       </div>
                       {bankName && (
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500 dark:text-gray-400">
-                            Банк:
+                            {t("Банк:")}
                           </span>
                           <span className="text-gray-900 dark:text-gray-100">
                             {bankName}
@@ -249,7 +251,7 @@ const CardEditPage: React.FC = () => {
                       {displayVendor && (
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500 dark:text-gray-400">
-                            Платёжная система:
+                            {t("Платёжная система:")}
                           </span>
                           <span className="text-gray-900 dark:text-gray-100">
                             {displayVendor}
@@ -259,7 +261,7 @@ const CardEditPage: React.FC = () => {
                       {type && (
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500 dark:text-gray-400">
-                            Тип:
+                            {t("Тип:")}
                           </span>
                           <span className="text-gray-900 dark:text-gray-100 capitalize">
                             {type}
@@ -269,7 +271,7 @@ const CardEditPage: React.FC = () => {
                       {level && (
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500 dark:text-gray-400">
-                            Уровень:
+                            {t("Уровень:")}
                           </span>
                           <span className="text-gray-900 dark:text-gray-100 capitalize">
                             {level}
@@ -279,7 +281,7 @@ const CardEditPage: React.FC = () => {
                       {country && (
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500 dark:text-gray-400">
-                            Страна:
+                            {t("Страна:")}
                           </span>
                           <span className="text-gray-900 dark:text-gray-100">
                             {country}
@@ -292,7 +294,7 @@ const CardEditPage: React.FC = () => {
                   {shouldShowNameField && (
                     <div className="mb-6">
                       <TextInputField
-                        label="Название карты"
+                        label={t("Название карты")}
                         value={cardName}
                         onChange={(e) => setCardName(e.target.value)}
                         placeholder={getCardFallbackName(pan)}
@@ -307,14 +309,14 @@ const CardEditPage: React.FC = () => {
                       variant="ghost"
                       onClick={() => navigate("/sources")}
                       disabled={combinedIsLoading}
-                      label="Отмена"
+                      label={t("Отмена")}
                     />
                     <Button
                       variant="primary"
                       type="submit"
                       loading={combinedIsLoading}
                       disabled={combinedIsLoading}
-                      label="Сохранить"
+                      label={t("Сохранить")}
                     />
                   </div>
 
@@ -326,14 +328,14 @@ const CardEditPage: React.FC = () => {
                       type="submit"
                       loading={combinedIsLoading}
                       disabled={combinedIsLoading}
-                      label="Сохранить"
+                      label={t("Сохранить")}
                       className="w-full"
                     />
                     <Button
                       variant="ghost"
                       onClick={() => navigate("/sources")}
                       disabled={combinedIsLoading}
-                      label="Отмена"
+                      label={t("Отмена")}
                       className="w-full"
                     />
                   </div>

@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
 import ReactDOM from "react-dom";
 import {
@@ -29,6 +30,7 @@ type OnboardingStep = 1 | 2;
 const NotificationOnboardingModal: React.FC<
   NotificationOnboardingModalProps
 > = ({ isOpen, onClose, onComplete }) => {
+  const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(1);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
@@ -45,7 +47,7 @@ const NotificationOnboardingModal: React.FC<
       }, 1000);
     } catch (error) {
       logger.error("Failed to open settings:", error);
-      showToast("Не удалось открыть настройки", "error");
+      showToast(t("Не удалось открыть настройки"), "error");
       setIsLoading(false);
     }
   };
@@ -67,7 +69,7 @@ const NotificationOnboardingModal: React.FC<
       }
     } catch (error) {
       logger.error("Failed to request app notification permission:", error);
-      showToast("Не удалось запросить разрешение", "error");
+      showToast(t("Не удалось запросить разрешение"), "error");
     } finally {
       setIsLoading(false);
     }
@@ -90,15 +92,15 @@ const NotificationOnboardingModal: React.FC<
 
   const renderStep1Content = () => (
     <>
-      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-center">
+      <div className="border-b border-violet-400/50 bg-slate-900 p-8 text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
           <SparklesIcon className="w-10 h-10 text-white" />
         </div>
         <h2 className="text-2xl font-bold text-white mb-2">
-          Автоматизация платежей
+          {t("Автоматизация платежей")}
         </h2>
-        <p className="text-indigo-100 text-sm">
-          Экономьте время на записи повторяющихся платежей
+        <p className="text-slate-200 text-sm">
+          {t("Экономьте время на записи повторяющихся платежей")}
         </p>
       </div>
 
@@ -106,25 +108,24 @@ const NotificationOnboardingModal: React.FC<
         <div className="flex items-center justify-center gap-2 mb-2">
           <div className="flex items-center gap-1">
             <div className="w-8 h-1 bg-indigo-600 rounded-full"></div>
-            <span className="text-xs font-medium text-indigo-600">Шаг 1</span>
+            <span className="text-xs font-medium text-indigo-600">{t("Шаг 1")}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-8 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
-            <span className="text-xs font-medium text-gray-400">Шаг 2</span>
+            <span className="text-xs font-medium text-gray-400">{t("Шаг 2")}</span>
           </div>
         </div>
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
-            <DevicePhoneMobileIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+          <div className="flex-shrink-0 w-12 h-12 accent-icon rounded-full flex items-center justify-center">
+            <DevicePhoneMobileIcon className="w-6 h-6" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              Умное распознавание
+              {t("Умное распознавание")}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Приложение анализирует уведомления от банковских приложений и
-              автоматически создаёт записи о платежах
+              {t("Приложение анализирует уведомления от банковских приложений и автоматически создаёт записи о платежах")}
             </p>
           </div>
         </div>
@@ -135,19 +136,17 @@ const NotificationOnboardingModal: React.FC<
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              Конфиденциальность
+              {t("Конфиденциальность")}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Анализ происходит <strong>только на вашем устройстве</strong>.
-              Текст уведомлений никогда не отправляется на сервер
+              {t("Анализ происходит ")}<strong>{t("только на вашем устройстве")}</strong>{t(". Текст уведомлений никогда не отправляется на сервер")}
             </p>
           </div>
         </div>
 
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            <strong>Требуется разрешение:</strong> Для работы функции необходимо
-            предоставить доступ к уведомлениям в системных настройках Android.
+            <strong>{t("Требуется разрешение:")}</strong>{t(" Для работы функции необходимо предоставить доступ к уведомлениям в системных настройках Android.")}
           </p>
         </div>
       </div>
@@ -159,13 +158,13 @@ const NotificationOnboardingModal: React.FC<
           className="w-full"
           onClick={handleStep1Continue}
           loading={isLoading}
-          label="Открыть настройки"
+          label={t("Открыть настройки")}
         ></Button>
         <Button
           variant="ghost"
           className="w-full"
           onClick={handleSkip}
-          label="Пропустить"
+          label={t("Пропустить")}
           loading={isLoading}
         ></Button>
       </div>
@@ -174,15 +173,15 @@ const NotificationOnboardingModal: React.FC<
 
   const renderStep2Content = () => (
     <>
-      <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-8 text-center">
+      <div className="border-b border-violet-400/50 bg-slate-900 p-8 text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
           <BellIcon className="w-10 h-10 text-white" />
         </div>
         <h2 className="text-2xl font-bold text-white mb-2">
-          Уведомления приложения
+          {t("Уведомления приложения")}
         </h2>
-        <p className="text-blue-100 text-sm">
-          Получайте важные напоминания вовремя
+        <p className="text-slate-200 text-sm">
+          {t("Получайте важные напоминания вовремя")}
         </p>
       </div>
 
@@ -190,11 +189,11 @@ const NotificationOnboardingModal: React.FC<
         <div className="flex items-center justify-center gap-2 mb-2">
           <div className="flex items-center gap-1">
             <div className="w-8 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
-            <span className="text-xs font-medium text-gray-400">Шаг 1</span>
+            <span className="text-xs font-medium text-gray-400">{t("Шаг 1")}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-8 h-1 bg-indigo-600 rounded-full"></div>
-            <span className="text-xs font-medium text-indigo-600">Шаг 2</span>
+            <span className="text-xs font-medium text-indigo-600">{t("Шаг 2")}</span>
           </div>
         </div>
 
@@ -204,34 +203,31 @@ const NotificationOnboardingModal: React.FC<
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              Напоминания о платежах
+              {t("Напоминания о платежах")}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Мы напомним вам о предстоящих платежах, чтобы вы ничего не
-              пропустили
+              {t("Мы напомним вам о предстоящих платежах, чтобы вы ничего не пропустили")}
             </p>
           </div>
         </div>
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
-            <SparklesIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          <div className="flex-shrink-0 w-12 h-12 accent-icon rounded-full flex items-center justify-center">
+            <SparklesIcon className="w-6 h-6" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              Предложения автоплатежей
+              {t("Предложения автоплатежей")}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Получайте уведомления, когда мы обнаружим новые повторяющиеся
-              платежи
+              {t("Получайте уведомления, когда мы обнаружим новые повторяющиеся платежи")}
             </p>
           </div>
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>Важно:</strong> Без этого разрешения вы не будете получать
-            напоминания и уведомления от приложения.
+            <strong>{t("Важно:")}</strong>{t(" Без этого разрешения вы не будете получать напоминания и уведомления от приложения.")}
           </p>
         </div>
       </div>
@@ -243,7 +239,7 @@ const NotificationOnboardingModal: React.FC<
           className="w-full"
           onClick={handleStep2Continue}
           loading={isLoading}
-          label="Разрешить уведомления"
+          label={t("Разрешить уведомления")}
         ></Button>
         <div className="flex gap-2">
           <Button
@@ -251,14 +247,14 @@ const NotificationOnboardingModal: React.FC<
             className="flex-1"
             onClick={handleBack}
             loading={isLoading}
-            label="Назад"
+            label={t("Назад")}
           ></Button>
           <Button
             variant="ghost"
             className="flex-1"
             onClick={handleSkip}
             loading={isLoading}
-            label="Пропустить"
+            label={t("Пропустить")}
           ></Button>
         </div>
       </div>

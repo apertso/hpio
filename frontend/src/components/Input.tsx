@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, {
   InputHTMLAttributes,
   forwardRef,
@@ -132,6 +133,7 @@ export interface TextFieldProps
 }
 
 const TextFieldRoot: React.FC<TextFieldProps> = (props) => {
+  const { t } = useLanguage();
   const {
     label,
     hint,
@@ -191,7 +193,7 @@ const TextFieldRoot: React.FC<TextFieldProps> = (props) => {
         )}
         {error && (
           <p id={errorId} className="text-sm text-red-500">
-            {error}
+            {typeof error === "string" ? t(error) : error}
           </p>
         )}
       </div>
@@ -462,8 +464,9 @@ interface PasswordFieldProps extends BaseFieldProps {
 
 const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
   (props, ref) => {
+  const { t } = useLanguage();
     const {
-      label = "Пароль",
+      label = t("Пароль"),
       hint,
       error,
       description,
@@ -472,8 +475,8 @@ const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
       className = "",
       inputId,
       revealToggleAriaLabel = {
-        show: "Показать пароль",
-        hide: "Скрыть пароль",
+        show: t("Показать пароль"),
+        hide: t("Скрыть пароль"),
       },
       ...rest
     } = props;

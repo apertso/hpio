@@ -1,4 +1,5 @@
 // src/pages/VerifyEmailPage.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { authApi } from "../api/axiosInstance";
@@ -9,6 +10,7 @@ import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 
 const VerifyEmailPage: React.FC = () => {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
@@ -54,33 +56,33 @@ const VerifyEmailPage: React.FC = () => {
           <>
             <Spinner size="lg" />
             <h1 className="text-xl md:text-2xl font-bold mt-4 text-gray-900 dark:text-gray-100">
-              Подтверждаем ваш email...
+              {t("Подтверждаем ваш email...")}
             </h1>
           </>
         )}
         {status === "success" && (
           <>
             <h1 className="text-3xl font-bold text-green-600 mb-4">
-              Верификация прошла успешно!
+              {t("Верификация прошла успешно!")}
             </h1>
             <p className="text-lg text-gray-900 dark:text-gray-100">
-              {message}
+              {t(message)}
             </p>
             <p className="mt-2 text-gray-500 dark:text-gray-400">
-              Вы будете перенаправлены на главную страницу через 3 секунды.
+              {t("Вы будете перенаправлены на главную страницу через 3 секунды.")}
             </p>
           </>
         )}
         {status === "error" && (
           <>
             <h1 className="text-3xl font-bold text-red-600 mb-4">
-              Ошибка верификации
+              {t("Ошибка верификации")}
             </h1>
             <p className="text-lg text-gray-900 dark:text-gray-100">
-              {message}
+              {t(message)}
             </p>
             <Link to="/dashboard" className="mt-4 text-blue-500">
-              Вернуться на главную
+              {t("Вернуться на главную")}
             </Link>
           </>
         )}

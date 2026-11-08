@@ -9,8 +9,14 @@ import {
 } from "./offlineStorage";
 import { PaymentData } from "../types/paymentData";
 import logger from "./logger";
-import { AxiosHeaders, AxiosRequestConfig, AxiosResponse, Method } from "axios";
+import {
+  AxiosHeaders,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+  type Method,
+} from "axios";
 import { ConnectionStatus } from "../types/connection";
+import { fileUploadResponseSchema, paymentChangesSchema } from "./offlinePaymentSchemas";
 import { isIncomeAndCardsEnabled } from "./featureFlags";
 
 interface Category {
@@ -34,7 +40,7 @@ export interface QueueStats {
 
 interface ReservationBuildResult {
   reservation: RequestReservation | null;
-  response: AxiosResponse;
+  response: AxiosResponse<unknown>;
 }
 
 const MAX_QUEUE_ATTEMPTS = 5;
@@ -178,11 +184,11 @@ class SyncService {
   }
 
   public async enqueueOfflineRequest(
-    config: AxiosRequestConfig
-  ): Promise<AxiosResponse> {
+    config: InternalAxiosRequestConfig<unknown>
+  ): Promise<AxiosResponse<unknown>> {
     const serializedBody = this.serializeBody(config.data);
     const headers = this.extractHeaders(config.headers);
-    const { reservation, response } = await this.buildReservation(
+    const { reservation, response } = this.buildReservation(
       config,
       serializedBody
     );
@@ -479,14 +485,14 @@ class SyncService {
 
   private async sendQueuedRequest(
     request: QueuedRequest
-  ): Promise<AxiosResponse> {
+  ): Promise<AxiosResponse<unknown>> {
     const data = this.deserializeBody(request.body);
     const headers = {
       ...(request.headers || {}),
       "X-Offline-Replay": "1",
     };
 
-    return axiosInstance.request({
+    return axiosInstance.request<unknown>({
       method: request.method as Method,
       url: request.url,
       data,
@@ -504,7 +510,7 @@ class SyncService {
     try {
       switch (reservation.type) {
         case "payment:create": {
-          const payment = reservation.data?.payment as PaymentData | undefined;
+          const payment = reservation.data?.payment;
           if (payment) {
             await this.upsertPayment(payment);
           }
@@ -554,7 +560,7 @@ class SyncService {
 
   private async applyReservationResolution(
     request: QueuedRequest,
-    response: AxiosResponse
+    response: AxiosResponse<unknown>
   ): Promise<void> {
     const reservation = request.reservation;
     if (!reservation) {
@@ -564,9 +570,9 @@ class SyncService {
     try {
       switch (reservation.type) {
         case "payment:create": {
-          const offlineId = reservation.data?.offlineId as string | undefined;
+          const offlineId = reservation.data?.offlineId;
           const payment = response.data as PaymentData | undefined;
-          if (offlineId && payment) {
+          if (offlineId && payment?.id) {
             await this.replacePaymentId(offlineId, payment);
             await this.updateQueuedReferences(offlineId, payment.id);
           }
@@ -588,10 +594,12 @@ class SyncService {
         }
         case "payment:fileUpload": {
           const { id } = reservation.data || {};
-          if (id && response.data?.fileName) {
+          const result = fileUploadResponseSchema.safeParse(response.data);
+          if (id && result.success) {
+            const { fileName, filePath } = result.data.file;
             await this.updatePayment(id, {
-              fileName: response.data.fileName,
-              filePath: response.data.filePath ?? null,
+              fileName,
+              filePath: filePath ?? null,
               updatedAt: new Date().toISOString(),
             });
           }
@@ -624,11 +632,20 @@ class SyncService {
     await Promise.all(
       queue
         .filter((item) => item.id && item.url.includes(offlineId))
-        .map((item) =>
-          offlineStorage.updateQueuedRequest(item.id, {
+        .map((item) => {
+          const reservation = item.reservation;
+          if (
+            reservation &&
+            reservation.type !== "payment:create" &&
+            reservation.data?.id === offlineId
+          ) {
+            reservation.data.id = realId;
+          }
+          return offlineStorage.updateQueuedRequest(item.id, {
             url: item.url.replace(offlineId, realId),
-          })
-        )
+            reservation,
+          });
+        })
     );
   }
 
@@ -664,7 +681,7 @@ class SyncService {
       ...payments[index],
       ...changes,
       updatedAt: new Date().toISOString(),
-    } as PaymentData;
+    };
     await offlineStorage.storePayments(payments);
   }
 
@@ -775,16 +792,16 @@ class SyncService {
     return result;
   }
 
-  private async buildReservation(
-    config: AxiosRequestConfig,
+  private buildReservation(
+    config: InternalAxiosRequestConfig<unknown>,
     body: SerializedRequestBody
-  ): Promise<ReservationBuildResult> {
+  ): ReservationBuildResult {
     const method = ((config.method || "get") as Method).toLowerCase();
     const url = config.url || "";
     const path = this.getPathname(url);
 
-    const baseResponse: AxiosResponse = {
-      data: null,
+    const baseResponse: AxiosResponse<unknown> = {
+      data: body.type === "json" ? body.value : null,
       status: 202,
       statusText: "Accepted (offline)",
       headers: { "x-offline": "true" },
@@ -792,14 +809,23 @@ class SyncService {
     };
 
     if (method === "post" && path === "/payments" && body.type === "json") {
-      const payload = (body.value as Record<string, unknown>) || {};
+      const result = paymentChangesSchema.safeParse(body.value);
+      const payload = result.success ? result.data : null;
+      if (
+        !payload ||
+        payload.title === undefined ||
+        payload.amount === undefined ||
+        payload.dueDate === undefined
+      ) {
+        return { reservation: null, response: baseResponse };
+      }
       const offlineId = this.generateOfflineId("payment");
       const nowIso = new Date().toISOString();
 
       const payment: PaymentData = {
         id: offlineId,
         title: payload.title,
-        amount: Number(payload.amount),
+        amount: payload.amount,
         dueDate: payload.dueDate,
         status: "upcoming",
         remind: !!payload.remind,
@@ -831,7 +857,11 @@ class SyncService {
     const matchPaymentId = path.match(/^\/payments\/(?<id>[^/]+)$/);
     if (method === "put" && matchPaymentId && body.type === "json") {
       const { id } = matchPaymentId.groups as { id: string };
-      const changes = body.value as Record<string, unknown>;
+      const result = paymentChangesSchema.safeParse(body.value);
+      if (!result.success) {
+        return { reservation: null, response: baseResponse };
+      }
+      const changes = result.data;
       baseResponse.data = {
         id,
         ...changes,
@@ -850,8 +880,8 @@ class SyncService {
     );
     if (method === "put" && matchPaymentComplete && body.type === "json") {
       const { id } = matchPaymentComplete.groups as { id: string };
-      const payload = body.value as Record<string, unknown>;
-      const completedAt = payload.completedAt || new Date().toISOString();
+      const result = paymentChangesSchema.pick({ completedAt: true }).safeParse(body.value);
+      const completedAt = (result.success && result.data.completedAt) || new Date().toISOString();
       baseResponse.data = {
         id,
         status: "completed",
@@ -868,7 +898,7 @@ class SyncService {
 
     if (method === "delete" && matchPaymentId) {
       const { id } = matchPaymentId.groups as { id: string };
-      const response: AxiosResponse = {
+      const response: AxiosResponse<unknown> = {
         ...baseResponse,
         status: 204,
         statusText: "No Content (offline)",
@@ -888,11 +918,8 @@ class SyncService {
     );
     if (method === "post" && matchFileUpload && body.type === "formData") {
       const { id } = matchFileUpload.groups as { id: string };
-      const fileEntry = body.entries.find((entry) => entry.type === "file") as
-        | SerializedFormDataEntry
-        | undefined;
-      const fileName =
-        fileEntry && fileEntry.type === "file" ? fileEntry.fileName : "";
+      const fileEntry = body.entries.find((entry) => entry.type === "file");
+      const fileName = fileEntry?.fileName ?? "";
       baseResponse.data = { success: true, fileName };
       return {
         reservation: {
@@ -900,16 +927,6 @@ class SyncService {
           data: { id, fileName },
         },
         response: baseResponse,
-      };
-    }
-
-    if (body.type === "json") {
-      return {
-        reservation: null,
-        response: {
-          ...baseResponse,
-          data: body.value,
-        },
       };
     }
 

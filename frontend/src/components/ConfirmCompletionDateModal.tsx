@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
 import Modal from "./Modal";
 import DatePicker from "./DatePicker";
@@ -32,6 +33,7 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
   dueDate,
   isConfirming,
 }) => {
+  const { t } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<Date | null>(
     () => new Date()
   );
@@ -43,10 +45,10 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
   const normalizedSelected = selectedDate ? normalizeDate(selectedDate) : null;
 
   const segmentOptions: SegmentedControlOption<SegmentValue>[] = [
-    { value: "today", label: "Сегодня" },
+    { value: "today", label: t("Сегодня") },
     {
       value: "due",
-      label: "По дате платежа",
+      label: t("По дате платежа"),
     },
   ];
 
@@ -85,8 +87,7 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
       }`}
     >
       <p>
-        Дата выполнения платежа отличается от сегодняшней. Пожалуйста, выберите,
-        какой датой отметить платеж как выполненный.
+        {t("Дата выполнения платежа отличается от сегодняшней. Пожалуйста, выберите, какой датой отметить платеж как выполненный.")}
       </p>
 
       <div className="flex flex-row items-center gap-4">
@@ -94,8 +95,8 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
           mode="single"
           selected={selectedDate}
           onSingleChange={handleDateChange}
-          placeholder="Выберите дату"
-          label="Дата выполнения"
+          placeholder={t("Выберите дату")}
+          label={t("Дата выполнения")}
           variant="compact"
         />
         <SegmentedControl
@@ -111,13 +112,13 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
         <Button
           variant="ghost"
           onClick={onClose}
-          label="Отмена"
+          label={t("Отмена")}
           disabled={isConfirming}
         />
         <Button
           variant="primary"
           onClick={handleConfirm}
-          label="Подтвердить"
+          label={t("Подтвердить")}
           loading={isConfirming}
           disabled={isConfirmDisabled}
         />
@@ -126,7 +127,7 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
         <Button
           variant="primary"
           size="large"
-          label="Подтвердить"
+          label={t("Подтвердить")}
           className="w-full"
           onClick={handleConfirm}
           loading={isConfirming}
@@ -134,7 +135,7 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
         />
         <Button
           variant="ghost"
-          label="Отмена"
+          label={t("Отмена")}
           className="w-full"
           onClick={onClose}
           disabled={isConfirming}
@@ -148,7 +149,7 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title="Выберите дату выполнения"
+        title={t("Выберите дату выполнения")}
         className="hidden md:flex"
       >
         {renderContent({ showHeadingSpacing: true })}
@@ -156,7 +157,7 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
       <MobilePanel
         isOpen={isOpen}
         onClose={onClose}
-        title="Выберите дату выполнения"
+        title={t("Выберите дату выполнения")}
       >
         {renderContent({ showHeadingSpacing: false })}
       </MobilePanel>

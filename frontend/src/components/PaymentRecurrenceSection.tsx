@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, {
   useState,
   useEffect,
@@ -183,6 +184,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
   currentRule,
   dueDate,
 }) => {
+  const { t, locale } = useLanguage();
   const shouldNotifyRef = useRef(false);
   const [state, setState] = useState<RecurrenceState>(() => {
     const parsed = parseRrule(currentRule);
@@ -301,70 +303,46 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
   );
 
   const summary = useMemo(() => {
-    let summaryStr = "Каждые ";
-    if (state.interval > 1) {
-      summaryStr += `${state.interval} `;
-      switch (state.freq) {
-        case "DAILY":
-          summaryStr += "дня";
-          break;
-        case "WEEKLY":
-          summaryStr += "недели";
-          break;
-        case "MONTHLY":
-          summaryStr += "месяца";
-          break;
-        case "YEARLY":
-          summaryStr += "года";
-          break;
-      }
-    } else {
-      switch (state.freq) {
-        case "DAILY":
-          summaryStr += "день";
-          break;
-        case "WEEKLY":
-          summaryStr += "неделю";
-          break;
-        case "MONTHLY":
-          summaryStr += "месяц";
-          break;
-        case "YEARLY":
-          summaryStr += "год";
-          break;
-      }
-    }
+    const summaryByFrequency = {
+      DAILY: ["Каждый день", "Раз в {1} дн."],
+      WEEKLY: ["Каждую неделю", "Раз в {1} нед."],
+      MONTHLY: ["Каждый месяц", "Раз в {1} мес."],
+      YEARLY: ["Каждый год", "Раз в {1} г."],
+    };
+    const [singular, plural] = summaryByFrequency[state.freq];
+    let summaryStr = state.interval === 1 ? t(singular) : t(plural, state.interval);
 
     if (state.freq === "WEEKLY" && state.byday.length > 0) {
-      summaryStr += ` по: ${state.byday
-        .map((d) => weekDays.find((wd) => wd.value === d)?.label)
-        .join(", ")}`;
+      summaryStr += t(" по: {1}", state.byday
+        .map((d) => weekDays.find((wd) => wd.value === d)?.label ?? "")
+        .map((label) => t(label))
+        .join(", "));
     }
 
     if (state.freq === "MONTHLY") {
       if (state.monthday_type === "BYMONTHDAY") {
-        summaryStr += `, ${state.bymonthday}-го числа`;
+        summaryStr += t(", {1}-го числа", state.bymonthday);
       } else {
-        const posLabel = nthWeekOptions
-          .find((o) => o.value === String(state.bysetpos))
-          ?.label.toLowerCase();
-        const dayLabel = weekDayOptions
-          .find((o) => o.value === state.byday_pos)
-          ?.label.toLowerCase()
-          .replace(/а$/, "у")
-          .replace(/е$/, "е");
-        summaryStr += `, в ${posLabel} ${dayLabel}`;
+        const pos = nthWeekOptions.find((option) => option.value === String(state.bysetpos));
+        const day = weekDayOptions.find((option) => option.value === state.byday_pos);
+        if (pos && day) {
+          const posLabel = t(pos.label).toLowerCase();
+          const dayLabel = locale === "ru-RU"
+            ? day.label.toLowerCase().replace(/а$/, "у")
+            : t(day.label);
+          summaryStr += t(", в {1} {2}", posLabel, dayLabel);
+        }
       }
     }
 
     if (state.end_type === "UNTIL" && state.until) {
-      summaryStr += `, до ${formatDateForDisplay(state.until)}`;
+      summaryStr += t(", до {1}", formatDateForDisplay(state.until, locale));
     } else if (state.end_type === "COUNT") {
-      summaryStr += `, ${state.count} раз`;
+      summaryStr += t(", {1} раз", state.count);
     }
 
     return summaryStr + ".";
-  }, [state]);
+  }, [state, t, locale]);
 
   // Handle frequency change using SegmentedControl (returns T)
   const handleFreqChange = (newFreq: Period) => {
@@ -391,7 +369,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
           {/* Interval Input */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
-              Повторять
+              {t("Повторять")}
             </label>
             <NumberField
               value={state.interval}
@@ -407,17 +385,17 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
               wrapperClassName="w-full"
               disabled={isSubmitting}
               min={1}
-              suffix={state.interval === 1 ? "раз в" : "раза в"}
+              suffix={state.interval === 1 ? t("раз в") : t("раза в")}
             />
           </div>
 
           {/* Frequency Selector */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
-              Периодичность
+              {t("Периодичность")}
             </label>
             <SegmentedControl
-              options={frequencyOptions}
+              options={frequencyOptions.map((option) => ({ ...option, label: t(option.label) }))}
               selected={state.freq}
               onChange={handleFreqChange}
               className="w-full p-1.5 bg-gray-100 dark:bg-gray-900"
@@ -430,7 +408,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
         {state.freq === "WEEKLY" && (
           <div className="animate-fade-in-up">
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">
-              Дни недели
+              {t("Дни недели")}
             </label>
             <div className="flex justify-between gap-2 max-w-md">
               {weekDays.map((day) => {
@@ -446,7 +424,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                       w-10 h-10 rounded-full text-sm font-bold transition-all duration-200 flex items-center justify-center
                       ${
                         isSelected
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
+                          ? "border border-violet-500 bg-slate-900 text-white dark:border-violet-400 dark:bg-slate-700"
                           : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500"
                       }
                       ${
@@ -456,7 +434,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                       }
                     `}
                   >
-                    {day.label}
+                    {t(day.label)}
                   </button>
                 );
               })}
@@ -469,7 +447,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
           <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-5 border border-gray-100 dark:border-gray-700/50 animate-fade-in-up">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-gray-900 dark:text-gray-200">
-                В определенный день недели
+                {t("В определенный день недели")}
               </span>
               <ToggleSwitch
                 checked={state.monthday_type === "BYSETPOS"}
@@ -485,14 +463,14 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
             {state.monthday_type === "BYSETPOS" ? (
               <div className="grid grid-cols-2 gap-4">
                 <Select
-                  options={nthWeekOptions}
+                  options={nthWeekOptions.map((option) => ({ ...option, label: t(option.label) }))}
                   value={String(state.bysetpos)}
                   onChange={(v) => updateState({ bysetpos: Number(v) }, true)}
                   disabled={isSubmitting}
                   wrapperClassName="w-full"
                 />
                 <Select
-                  options={weekDayOptions}
+                  options={weekDayOptions.map((option) => ({ ...option, label: t(option.label) }))}
                   value={state.byday_pos}
                   onChange={(v) =>
                     updateState({ byday_pos: v as string }, true)
@@ -505,7 +483,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
                 <CalendarIcon className="w-5 h-5 text-gray-400" />
                 <span>
-                  Повтор каждое <strong>{state.bymonthday}-е</strong> число
+                  {t("Повтор каждое {1}-е число", state.bymonthday)}
                 </span>
               </div>
             )}
@@ -515,11 +493,11 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
         {/* End Condition */}
         <div>
           <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">
-            Завершение
+            {t("Завершение")}
           </label>
           <div className="flex flex-col gap-4">
             <SegmentedControl
-              options={endTypeOptions}
+              options={endTypeOptions.map((option) => ({ ...option, label: t(option.label) }))}
               selected={state.end_type}
               onChange={(v) => updateState({ end_type: v }, true)}
               className="w-full p-1.5 bg-gray-100 dark:bg-gray-900"
@@ -529,7 +507,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
               {state.end_type === "NEVER" && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                  Платежи будут создаваться бесконечно
+                  {t("Платежи будут создаваться бесконечно")}
                 </p>
               )}
               {state.end_type === "UNTIL" && (
@@ -540,11 +518,10 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                     onSingleChange={(date) =>
                       updateState({ until: date }, true)
                     }
-                    dateFormat="dd.MM.yyyy"
                     wrapperClassName="w-full"
                     disabled={isSubmitting}
                     inline={false}
-                    placeholder="Выберите дату окончания"
+                    placeholder={t("Выберите дату окончания")}
                     inputClassName="!bg-white dark:!bg-gray-900"
                   />
                 </div>
@@ -568,7 +545,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                       <>
                         <HashtagIcon className="h-4 w-4 text-gray-400" />
                         <span className="ml-1 text-sm text-gray-600 dark:text-gray-400">
-                          платежей всего
+                          {t("платежей всего")}
                         </span>
                       </>
                     }
@@ -580,7 +557,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
         </div>
 
         {/* Summary Footer */}
-        <div className="bg-indigo-50 dark:bg-indigo-500/10 rounded-xl p-4 border border-indigo-100 dark:border-indigo-500/20 flex items-start gap-3">
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-violet-200 dark:border-violet-400/40 flex items-start gap-3">
           <div className="mt-0.5 text-indigo-600 dark:text-indigo-400">
             <svg
               className="w-5 h-5"
@@ -598,7 +575,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
           </div>
           <div>
             <span className="block text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wide mb-0.5">
-              Итоговое правило
+              {t("Итоговое правило")}
             </span>
             <p className="text-sm text-indigo-900 dark:text-indigo-100 leading-relaxed">
               {summary}

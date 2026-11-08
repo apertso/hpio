@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
+import { useLanguage } from "../context/LanguageContext";
 import { logStructuredError } from "../utils/fileLogger";
 import logger from "../utils/logger";
 
@@ -46,29 +47,33 @@ class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-white dark:bg-dark-bg">
-          <div className="max-w-md p-6 bg-white dark:bg-card-bg rounded-lg shadow-lg border border-gray-200 dark:border-border-dark">
-            <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">
-              Произошла ошибка
-            </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
-              Приложение столкнулось с неожиданной ошибкой. Пожалуйста,
-              перезапустите приложение.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-            >
-              Перезагрузить приложение
-            </button>
-          </div>
-        </div>
-      );
+      return <ErrorFallback />;
     }
 
     return this.props.children;
   }
+}
+
+function ErrorFallback(): ReactNode {
+  const { t } = useLanguage();
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-white dark:bg-dark-bg">
+      <div className="max-w-md p-6 bg-white dark:bg-card-bg rounded-lg shadow-lg border border-gray-200 dark:border-border-dark">
+        <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4">
+          {t("Произошла ошибка")}
+        </h2>
+        <p className="text-gray-700 dark:text-gray-300 mb-4">
+          {t("Приложение столкнулось с неожиданной ошибкой. Пожалуйста, перезапустите приложение.")}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="primary-action cursor-pointer w-full px-4 py-2 rounded-md transition-colors"
+        >
+          {t("Перезагрузить приложение")}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default ErrorBoundary;

@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowPathIcon,
@@ -34,6 +35,7 @@ interface TreeGroup {
 }
 
 const AutomationRulesPage: React.FC = () => {
+  const { t } = useLanguage();
   const { setPageTitle } = usePageTitle();
   const { showToast } = useToast();
   const metadata = getPageMetadata("automation-rules");
@@ -70,8 +72,8 @@ const AutomationRulesPage: React.FC = () => {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
-    setPageTitle("Правила автоматизации");
-  }, [setPageTitle]);
+    setPageTitle(t("Правила автоматизации"));
+  }, [setPageTitle, t]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -86,7 +88,7 @@ const AutomationRulesPage: React.FC = () => {
       setMerchantCategoryEdits({});
     } catch (error) {
       showToast(
-        `Не удалось загрузить правила: ${getErrorMessage(error)}`,
+        getErrorMessage(error),
         "error"
       );
     } finally {
@@ -100,13 +102,13 @@ const AutomationRulesPage: React.FC = () => {
 
   const categoryOptions = useMemo(() => {
     return [
-      { value: null, label: "Все категории" },
+      { value: null, label: t("Все категории") },
       ...(categories?.map((category) => ({
         value: category.id,
         label: category.name,
       })) || []),
     ];
-  }, [categories]);
+  }, [categories, t]);
 
   const editOptions = useMemo(() => {
     return (
@@ -166,7 +168,7 @@ const AutomationRulesPage: React.FC = () => {
     if (!hasActiveFilters || uncategorizedNodes.length > 0) {
       groups.push({
         id: uncategorizedGroupId,
-        label: "Без категории",
+        label: t("Без категории"),
         nodes: uncategorizedNodes,
         isUncategorized: true,
       });
@@ -207,7 +209,7 @@ const AutomationRulesPage: React.FC = () => {
       if (missingCategoryNodes.length > 0) {
         groups.push({
           id: "missing-category",
-          label: "Категория удалена",
+          label: t("Категория удалена"),
           nodes: missingCategoryNodes,
           isUncategorized: false,
         });
@@ -220,7 +222,7 @@ const AutomationRulesPage: React.FC = () => {
     filteredUnassigned,
     groupedRules,
     hasActiveFilters,
-    uncategorizedGroupId,
+    uncategorizedGroupId, t,
   ]);
 
   useEffect(() => {
@@ -259,14 +261,14 @@ const AutomationRulesPage: React.FC = () => {
         merchantKeyword: rule.merchantKeyword,
         categoryId: nextCategoryId,
       });
-      showToast("Правило успешно обновлено", "success");
+      showToast(t("Правило успешно обновлено"), "success");
     } catch (error) {
       setRuleCategoryEdits((prev) => ({
         ...prev,
         [rule.id]: rule.categoryId,
       }));
       showToast(
-        `Не удалось обновить правило: ${getErrorMessage(error)}`,
+        t("Не удалось обновить правило: {1}", t(getErrorMessage(error))),
         "error"
       );
     } finally {
@@ -287,7 +289,7 @@ const AutomationRulesPage: React.FC = () => {
         ...prev,
         [merchantName]: "",
       }));
-      showToast("Выберите категорию", "error");
+      showToast(t("Выберите категорию"), "error");
       return;
     }
     setMerchantCategoryEdits((prev) => ({
@@ -303,14 +305,14 @@ const AutomationRulesPage: React.FC = () => {
         merchantKeyword: merchantName,
         categoryId,
       });
-      showToast("Категория назначена", "success");
+      showToast(t("Категория назначена"), "success");
     } catch (error) {
       setMerchantCategoryEdits((prev) => ({
         ...prev,
         [merchantName]: "",
       }));
       showToast(
-        `Не удалось назначить категорию: ${getErrorMessage(error)}`,
+        t("Не удалось назначить категорию: {1}", t(getErrorMessage(error))),
         "error"
       );
     } finally {
@@ -334,10 +336,10 @@ const AutomationRulesPage: React.FC = () => {
         delete next[rule.id];
         return next;
       });
-      showToast("Правило успешно удалено.", "success");
+      showToast(t("Правило успешно удалено."), "success");
     } catch (error) {
       showToast(
-        `Ошибка при удалении правила: ${getErrorMessage(error)}`,
+        t("Ошибка при удалении правила: {1}", t(getErrorMessage(error))),
         "error"
       );
     } finally {
@@ -374,8 +376,8 @@ const AutomationRulesPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action: () => handleDeleteRule(rule),
-      title: "Удалить правило",
-      message: `Вы уверены, что хотите удалить правило для "${rule.merchantKeyword}"?`,
+      title: t("Удалить правило"),
+      message: t("Вы уверены, что хотите удалить правило для \"{1}\"?", rule.merchantKeyword),
     });
   };
 
@@ -389,27 +391,27 @@ const AutomationRulesPage: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-4 md:items-end">
             <div className="flex-1">
               <TextInputField
-                label="Поиск по мерчанту"
-                placeholder="Введите мерчанта"
+                label={t("Поиск по мерчанту")}
+                placeholder={t("Введите мерчанта")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
             </div>
             <div className="w-full md:w-72">
               <Select
-                label="Фильтр по категории"
+                label={t("Фильтр по категории")}
                 options={categoryOptions}
                 value={categoryFilter}
                 onChange={(value) => setCategoryFilter(value)}
                 disabled={isLoadingCategories || categoryOptions.length === 0}
-                placeholder="Все категории"
+                placeholder={t("Все категории")}
               />
             </div>
             <Button
               variant="secondary"
               size="small"
               icon={<ArrowPathIcon className="w-4 h-4" />}
-              label="Обновить"
+              label={t("Обновить")}
               onClick={loadData}
               disabled={isPageLoading}
             />
@@ -420,7 +422,7 @@ const AutomationRulesPage: React.FC = () => {
           <section className="card-base p-6">
             <div className="flex items-center justify-between gap-3 mb-4">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Правила автоматизации
+                {t("Правила автоматизации")}
               </h2>
             </div>
             {isPageLoading ? (
@@ -478,7 +480,7 @@ const AutomationRulesPage: React.FC = () => {
                                   >
                                     <div className="flex-1">
                                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        Мерчант
+                                        {t("Мерчант")}
                                       </p>
                                       <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
                                         {node.rule.merchantKeyword}
@@ -486,7 +488,7 @@ const AutomationRulesPage: React.FC = () => {
                                     </div>
                                     <div className="w-full md:w-64">
                                       <Select
-                                        label="Категория"
+                                        label={t("Категория")}
                                         options={editOptions}
                                         value={selectedCategoryId}
                                         onChange={(value) =>
@@ -498,7 +500,7 @@ const AutomationRulesPage: React.FC = () => {
                                         disabled={
                                           editOptions.length === 0 || isSaving
                                         }
-                                        placeholder="Выберите категорию"
+                                        placeholder={t("Выберите категорию")}
                                       />
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -507,7 +509,7 @@ const AutomationRulesPage: React.FC = () => {
                                           requestRuleDelete(node.rule)
                                         }
                                         className="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-900/50 dark:hover:text-red-400 transition-all cursor-pointer"
-                                        aria-label={`Удалить правило для ${node.rule.merchantKeyword}`}
+                                        aria-label={t("Удалить правило для {1}", node.rule.merchantKeyword)}
                                         disabled={isSaving}
                                       >
                                         <TrashIcon className="w-5 h-5" />
@@ -531,18 +533,18 @@ const AutomationRulesPage: React.FC = () => {
                                 >
                                   <div className="flex-1">
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                                      Мерчант
+                                      {t("Мерчант")}
                                     </p>
                                     <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
                                       {node.merchant.merchantName}
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                      Упоминаний в истории: {node.merchant.count}
+                                      {t("Упоминаний в истории: ")}{node.merchant.count}
                                     </p>
                                   </div>
                                   <div className="w-full md:w-64">
                                     <Select
-                                      label="Категория"
+                                      label={t("Категория")}
                                       options={editOptions}
                                       value={selectedCategoryId}
                                       onChange={(value) =>
@@ -554,7 +556,7 @@ const AutomationRulesPage: React.FC = () => {
                                       disabled={
                                         editOptions.length === 0 || isSaving
                                       }
-                                      placeholder="Выберите категорию"
+                                      placeholder={t("Выберите категорию")}
                                     />
                                   </div>
                                 </div>
@@ -562,7 +564,7 @@ const AutomationRulesPage: React.FC = () => {
                             })
                           ) : (
                             <div className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                              Нет правил для этой категории.
+                              {t("Нет правил для этой категории.")}
                             </div>
                           )}
                         </div>
@@ -573,7 +575,7 @@ const AutomationRulesPage: React.FC = () => {
               </div>
             ) : (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Правила не найдены.
+                {t("Правила не найдены.")}
               </p>
             )}
           </section>
@@ -592,7 +594,7 @@ const AutomationRulesPage: React.FC = () => {
         onConfirm={onConfirmAction}
         title={confirmModalState.title}
         message={confirmModalState.message}
-        confirmText="Да, удалить"
+        confirmText={t("Да, удалить")}
         isConfirming={isConfirming}
       />
     </>

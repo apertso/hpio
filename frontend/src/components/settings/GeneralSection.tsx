@@ -1,11 +1,23 @@
+import { useLanguage } from "../../context/LanguageContext";
 import React from "react";
 import Select from "../Select";
 import SettingsSection from "../SettingsSection";
 import { CogIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "../../context/ThemeContext";
+import { isLanguage } from "../../i18n/translate";
 
 const GeneralSection: React.FC = () => {
+  const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
+
+  const handleLanguageChange = (value: string | null): void => {
+    if (isLanguage(value)) setLanguage(value);
+  };
+
+  const languageOptions = [
+    { label: "Русский", value: "ru" },
+    { label: "English", value: "en" },
+  ];
 
   const handleThemeChange = (value: string | null) => {
     if (value === "system" || value === "light" || value === "dark") {
@@ -14,9 +26,9 @@ const GeneralSection: React.FC = () => {
   };
 
   const themeOptions = [
-    { label: "Системная", value: "system" },
-    { label: "Светлая", value: "light" },
-    { label: "Тёмная", value: "dark" },
+    { label: t("Системная"), value: "system" },
+    { label: t("Светлая"), value: "light" },
+    { label: t("Тёмная"), value: "dark" },
   ];
 
   return (
@@ -28,11 +40,10 @@ const GeneralSection: React.FC = () => {
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Общие настройки
+              {t("Общие настройки")}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Настройте внешний вид приложения и основные параметры отображения
-              данных
+              {t("Настройте внешний вид приложения и основные параметры отображения данных")}
             </p>
           </div>
         </div>
@@ -40,7 +51,17 @@ const GeneralSection: React.FC = () => {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Тема приложения
+              {t("Язык интерфейса")}
+            </label>
+            <Select
+              options={languageOptions}
+              value={language}
+              onChange={handleLanguageChange}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t("Тема приложения")}
             </label>
             <Select
               options={themeOptions}
@@ -52,7 +73,7 @@ const GeneralSection: React.FC = () => {
       </SettingsSection>
 
       <p className="mt-4 text-center text-xs text-gray-400 dark:text-gray-600">
-        Версия приложения: {import.meta.env.VITE_APP_VERSION}
+        {t("Версия приложения: ")}{import.meta.env.VITE_APP_VERSION}
       </p>
     </div>
   );

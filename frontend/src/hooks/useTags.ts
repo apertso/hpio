@@ -11,7 +11,7 @@ interface UseTagsResult {
   tags: Tag[] | undefined;
   isLoading: boolean;
   error: Error | null;
-  fetchTags: (...args: unknown[]) => Promise<Tag[] | void>;
+  fetchTags: () => Promise<Tag[] | void>;
 }
 
 const fetchTagsApi = async (): Promise<Tag[]> => {
@@ -25,7 +25,7 @@ const useTags = (enabled = true): UseTagsResult => {
     isLoading,
     error,
     execute: fetchTags,
-  } = useApi<Tag[]>(fetchTagsApi, {
+  } = useApi(fetchTagsApi, {
     offlineDataKey: "tags",
   });
 

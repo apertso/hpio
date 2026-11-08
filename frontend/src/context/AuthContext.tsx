@@ -43,6 +43,8 @@ interface AuthContextProps {
   revalidateMe: (reason?: string) => Promise<void>; // Легкая пере-валидация /user/me
 }
 
+type AuthResponse = User & { token: string };
+
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 const USER_STORAGE_KEY = "user";
@@ -270,40 +272,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Функция входа
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string): Promise<void> => {
       setLoading(true);
       try {
-        const res = await axiosInstance.post("/auth/login", {
+        const res = await axiosInstance.post<AuthResponse>("/auth/login", {
           email,
           password,
         });
-        const {
-          token,
-          id,
-          name,
-          email: userEmail,
-          photoPath,
-          isVerified,
-          isAdmin,
-        notificationMethod,
-        notificationTime,
-        timezone,
-        preferredCurrency,
-      } = res.data;
+        const { token, ...userData } = res.data;
 
         localStorage.setItem("jwtToken", token);
-        const userData = {
-          id,
-          name,
-          email: userEmail,
-          photoPath,
-          isVerified,
-          isAdmin,
-          notificationMethod,
-          notificationTime,
-          timezone,
-          preferredCurrency,
-        };
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
 
         setToken(token);
@@ -327,38 +305,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Функция регистрации
   const register = useCallback(
-    async (name: string, email: string, password: string) => {
+    async (name: string, email: string, password: string): Promise<void> => {
       setLoading(true);
       try {
-        const res = await axiosInstance.post("/auth/register", {
+        const res = await axiosInstance.post<AuthResponse>("/auth/register", {
           name,
           email,
           password,
         });
-        const {
-          token,
-          id: regId,
-          name: regName,
-          email: regEmail,
-          photoPath: regPhotoPath,
-          isVerified,
-          isAdmin,
-          timezone,
-          preferredCurrency,
-        } = res.data;
+        const { token, ...registeredUser } = res.data;
 
         localStorage.setItem("jwtToken", token);
         const regUserData: User = {
-          id: regId,
-          name: regName,
-          email: regEmail,
-          photoPath: regPhotoPath,
-          isVerified,
-          isAdmin,
-          notificationMethod: "email", // default
-          notificationTime: "09:30", // default
-          timezone,
-          preferredCurrency,
+          emailNotifications: true,
+          pushNotifications: false,
+          notificationTime: "09:30",
+          ...registeredUser,
         };
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(regUserData));
 

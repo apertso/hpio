@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PageMeta from "../components/PageMeta";
@@ -55,16 +56,17 @@ const MobileActionsOverlay: React.FC<{
   onEdit: (card: CardData) => void;
   onDelete: (card: CardData) => void;
 }> = ({ card, shouldClose, onClose, onEdit, onDelete }) => {
+  const { t } = useLanguage();
   if (!card) return null;
 
   const actions = [
     {
-      label: "Изменить",
+      label: t("Изменить"),
       icon: PencilSolidIcon,
       handler: () => onEdit(card),
     },
     {
-      label: "Удалить",
+      label: t("Удалить"),
       icon: TrashSolidIcon,
       handler: () => onDelete(card),
     },
@@ -98,6 +100,7 @@ const MobileActionsOverlay: React.FC<{
 };
 
 const CardsPage: React.FC = () => {
+  const { t, locale } = useLanguage();
   const metadata = getPageMetadata("cards");
   const navigate = useNavigate();
   const [cards, setCards] = useState<CardData[]>([]);
@@ -187,8 +190,8 @@ const CardsPage: React.FC = () => {
 
   // Set page title
   useEffect(() => {
-    setPageTitle("Источники");
-  }, [setPageTitle]);
+    setPageTitle(t("Источники"));
+  }, [setPageTitle, t]);
 
   const fetchCards = useCallback(async () => {
     setIsLoading(true);
@@ -422,8 +425,8 @@ const CardsPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Удалить актив",
-      message: `Вы уверены, что хотите удалить ${name}?`,
+      title: t("Удалить актив"),
+      message: t("Вы уверены, что хотите удалить {1}?", name),
     });
   };
 
@@ -521,14 +524,14 @@ const CardsPage: React.FC = () => {
   };
 
   const formatCashAmountValue = (amount: number) => {
-    return new Intl.NumberFormat("ru-RU", {
+    return new Intl.NumberFormat(locale, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
   };
 
   const formatCardBalanceAmount = (amount: number) => {
-    return new Intl.NumberFormat("ru-RU", {
+    return new Intl.NumberFormat(locale, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
@@ -600,8 +603,8 @@ const CardsPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action: () => handleDeleteCashCurrency(currency),
-      title: "Удалить валюту",
-      message: `Вы уверены, что хотите удалить валюту ${currency}?`,
+      title: t("Удалить валюту"),
+      message: t("Вы уверены, что хотите удалить валюту {1}?", currency),
     });
   };
 
@@ -745,8 +748,8 @@ const CardsPage: React.FC = () => {
         );
         return updateCardBalancesBackend(card.id, updatedBalances);
       },
-      title: "Удалить баланс",
-      message: `Вы уверены, что хотите удалить баланс ${currency}?`,
+      title: t("Удалить баланс"),
+      message: t("Вы уверены, что хотите удалить баланс {1}?", currency),
     });
   };
 
@@ -770,8 +773,8 @@ const CardsPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Удалить карту",
-      message: `Вы уверены, что хотите удалить ${cardName}?`,
+      title: t("Удалить карту"),
+      message: t("Вы уверены, что хотите удалить {1}?", cardName),
     });
   };
 
@@ -854,8 +857,8 @@ const CardsPage: React.FC = () => {
   const activeCardBalanceCurrency = watchCardBalance("currency");
   const isCardBalanceEditMode = Boolean(editingCardBalance);
   const cardBalanceTitle = isCardBalanceEditMode
-    ? "Редактировать баланс"
-    : "Добавить баланс";
+    ? t("Редактировать баланс")
+    : t("Добавить баланс");
   const cardBalanceAmountRegister = registerCardBalance("amount", {
     valueAsNumber: true,
   });
@@ -872,11 +875,11 @@ const CardsPage: React.FC = () => {
 
   return (
     <>
-      <PageMeta {...metadata} title="Источники" />
+      <PageMeta {...metadata} title={t("Источники")} />
       <div className="max-w-5xl mx-auto pb-20 dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Источники
+            {t("Источники")}
           </h2>
         </div>
 
@@ -889,14 +892,14 @@ const CardsPage: React.FC = () => {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Наличные
+                    {t("Наличные")}
                   </h3>
                 </div>
               </div>
               <Button
                 variant="secondary"
                 icon={<PlusIcon className="w-4 h-4" />}
-                label="Добавить валюту"
+                label={t("Добавить валюту")}
                 onClick={openCashModal}
                 disabled={!canAddCashCurrency}
               />
@@ -915,7 +918,7 @@ const CardsPage: React.FC = () => {
                   const amountClassName =
                     "text-2xl font-semibold text-gray-900 dark:text-gray-100";
                   const amountValue = formatCashAmountValue(balance.amount);
-                  const currencySymbol = getCurrencySymbol(balance.currency);
+                  const currencySymbol = getCurrencySymbol(balance.currency, locale);
 
                   return (
                     <div
@@ -958,7 +961,7 @@ const CardsPage: React.FC = () => {
                               startCashEdit(balance);
                             }}
                             className="p-1.5 rounded-full bg-white/80 text-gray-500 hover:text-gray-700 hover:bg-white shadow-sm dark:bg-gray-900/70 dark:text-gray-300 dark:hover:text-gray-100"
-                            aria-label={`Изменить сумму ${balance.currency}`}
+                            aria-label={t("Изменить сумму {1}", balance.currency)}
                           >
                             <PencilSolidIcon
                               className={`w-4 h-4 ${
@@ -978,7 +981,7 @@ const CardsPage: React.FC = () => {
                                 );
                               }}
                               className="p-1.5 rounded-full bg-white/80 text-gray-500 hover:text-red-600 hover:bg-white shadow-sm dark:bg-gray-900/70 dark:text-gray-300 dark:hover:text-red-400"
-                              aria-label={`Удалить ${balance.currency}`}
+                              aria-label={t("Удалить {1}", balance.currency)}
                             >
                               <TrashSolidIcon className="w-4 h-4" />
                             </button>
@@ -995,19 +998,19 @@ const CardsPage: React.FC = () => {
           <section className="card-base p-6">
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
-                  <CreditCardIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                <div className="flex-shrink-0 w-12 h-12 accent-icon rounded-full flex items-center justify-center">
+                  <CreditCardIcon className="w-6 h-6" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Карты
+                    {t("Карты")}
                   </h3>
                 </div>
               </div>
               <Button
                 variant="secondary"
                 icon={<PlusIcon className="w-4 h-4" />}
-                label="Добавить карту"
+                label={t("Добавить карту")}
                 onClick={handleAddCard}
               />
             </div>
@@ -1018,7 +1021,7 @@ const CardsPage: React.FC = () => {
               </div>
             ) : cards.length === 0 ? (
               <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                Нет добавленных карт
+                {t("Нет добавленных карт")}
               </div>
             ) : (
               <>
@@ -1045,7 +1048,7 @@ const CardsPage: React.FC = () => {
                               handleDeleteCard(card);
                             }}
                             className="absolute top-2 right-2 p-2 bg-black/30 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                            title="Удалить"
+                            title={t("Удалить")}
                           >
                             <TrashSolidIcon className="w-4 h-4" />
                           </button>
@@ -1054,13 +1057,13 @@ const CardsPage: React.FC = () => {
                         <div className="flex-1 min-w-[12rem]">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              Балансы
+                              {t("Балансы")}
                             </span>
                             <Button
                               variant="ghost"
                               size="small"
                               icon={<PlusIcon className="w-4 h-4" />}
-                              label="Добавить"
+                              label={t("Добавить")}
                               onClick={() => handleOpenAddCardBalance(card)}
                               disabled={!canAddCardBalance}
                             />
@@ -1068,13 +1071,13 @@ const CardsPage: React.FC = () => {
 
                           {balances.length === 0 ? (
                             <div className="text-sm text-gray-400">
-                              Баланс не задан
+                              {t("Баланс не задан")}
                             </div>
                           ) : (
                             <div className="space-y-2">
                               {balances.map((balance) => {
                                 const currencySymbol = getCurrencySymbol(
-                                  balance.currency
+                                  balance.currency, locale
                                 );
 
                                 return (
@@ -1133,26 +1136,26 @@ const CardsPage: React.FC = () => {
                         <div className="mt-3 w-full px-2">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              Балансы
+                              {t("Балансы")}
                             </span>
                             <Button
                               variant="ghost"
                               size="small"
                               icon={<PlusIcon className="w-4 h-4" />}
-                              label="Добавить"
+                              label={t("Добавить")}
                               onClick={() => handleOpenAddCardBalance(card)}
                               disabled={!canAddCardBalance}
                             />
                           </div>
                           {balances.length === 0 ? (
                             <div className="text-sm text-gray-400">
-                              Баланс не задан
+                              {t("Баланс не задан")}
                             </div>
                           ) : (
                             <div className="space-y-2">
                               {balances.map((balance) => {
                                 const currencySymbol = getCurrencySymbol(
-                                  balance.currency
+                                  balance.currency, locale
                                 );
 
                                 return (
@@ -1192,14 +1195,14 @@ const CardsPage: React.FC = () => {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Криптовалюты
+                    {t("Криптовалюты")}
                   </h3>
                 </div>
               </div>
               <Button
                 variant="secondary"
                 icon={<PlusIcon className="w-4 h-4" />}
-                label="Добавить"
+                label={t("Добавить")}
                 onClick={() => setIsCryptoModalOpen(true)}
               />
             </div>
@@ -1210,7 +1213,7 @@ const CardsPage: React.FC = () => {
               </div>
             ) : cryptoBalances.length === 0 ? (
               <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                Нет добавленных активов
+                {t("Нет добавленных активов")}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1254,7 +1257,7 @@ const CardsPage: React.FC = () => {
                             </span>
                           </div>
                           <div className="text-xs text-gray-400 mt-0.5">
-                            {new Intl.NumberFormat("ru-RU", {
+                            {new Intl.NumberFormat(locale, {
                               style: "currency",
                               currency: balance.currency.toUpperCase(),
                             }).format(balance.currentPrice)}
@@ -1263,7 +1266,7 @@ const CardsPage: React.FC = () => {
 
                         <div className="text-right">
                           <div className="font-bold text-gray-900 dark:text-gray-100 text-lg leading-tight">
-                            {new Intl.NumberFormat("ru-RU", {
+                            {new Intl.NumberFormat(locale, {
                               style: "currency",
                               currency: balance.currency.toUpperCase(),
                             }).format(balance.totalValue)}
@@ -1279,7 +1282,7 @@ const CardsPage: React.FC = () => {
                               e.stopPropagation();
                               startCryptoEdit(balance);
                             }}
-                            className="p-1.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-gray-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-900/30 transition-colors"
+                            className="p-1.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-colors"
                           >
                             <PencilSolidIcon className="w-4 h-4" />
                           </button>
@@ -1310,12 +1313,12 @@ const CardsPage: React.FC = () => {
             setNewCryptoQuantity("");
             setNewCryptoWallet("");
           }}
-          title="Добавить криптовалюту"
+          title={t("Добавить криптовалюту")}
         >
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Актив
+                {t("Актив")}
               </label>
               {selectedCryptoAsset ? (
                 <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -1338,7 +1341,7 @@ const CardsPage: React.FC = () => {
                     onClick={() => setSelectedCryptoAsset(null)}
                     className="text-indigo-600 dark:text-indigo-400 text-sm hover:underline"
                   >
-                    Изменить
+                    {t("Изменить")}
                   </button>
                 </div>
               ) : (
@@ -1349,7 +1352,7 @@ const CardsPage: React.FC = () => {
             {selectedCryptoAsset && (
               <>
                 <TextInputField
-                  label="Количество"
+                  label={t("Количество")}
                   value={newCryptoQuantity}
                   onChange={(e) => setNewCryptoQuantity(e.target.value)}
                   placeholder="0.00"
@@ -1358,10 +1361,10 @@ const CardsPage: React.FC = () => {
                   autoFocus
                 />
                 <TextInputField
-                  label="Кошелек / Заметка (необязательно)"
+                  label={t("Кошелек / Заметка (необязательно)")}
                   value={newCryptoWallet}
                   onChange={(e) => setNewCryptoWallet(e.target.value)}
-                  placeholder="Название или адрес"
+                  placeholder={t("Название или адрес")}
                 />
               </>
             )}
@@ -1369,12 +1372,12 @@ const CardsPage: React.FC = () => {
             <div className="flex justify-end gap-3 pt-2">
               <Button
                 variant="ghost"
-                label="Отмена"
+                label={t("Отмена")}
                 onClick={() => setIsCryptoModalOpen(false)}
               />
               <Button
                 variant="primary"
-                label="Добавить"
+                label={t("Добавить")}
                 onClick={handleAddCrypto}
                 disabled={!selectedCryptoAsset || !newCryptoQuantity}
               />
@@ -1385,20 +1388,20 @@ const CardsPage: React.FC = () => {
         <Modal
           isOpen={isCashModalOpen}
           onClose={closeCashModal}
-          title="Добавить валюту"
+          title={t("Добавить валюту")}
         >
           <div className="space-y-5">
             <Select
-              label="Валюта"
-              options={availableCashCurrencies}
+              label={t("Валюта")}
+              options={availableCashCurrencies.map((option) => ({ ...option, label: t(option.label) }))}
               value={newCashCurrency}
               onChange={setNewCashCurrency}
             />
             <div className="flex justify-end gap-3">
-              <Button variant="ghost" label="Отмена" onClick={closeCashModal} />
+              <Button variant="ghost" label={t("Отмена")} onClick={closeCashModal} />
               <Button
                 variant="primary"
-                label="Добавить"
+                label={t("Добавить")}
                 onClick={handleAddCashCurrency}
                 disabled={!newCashCurrency}
               />
@@ -1417,8 +1420,8 @@ const CardsPage: React.FC = () => {
             noValidate
           >
             <Select
-              label="Валюта"
-              options={activeCardBalanceOptions}
+              label={t("Валюта")}
+              options={activeCardBalanceOptions.map((option) => ({ ...option, label: t(option.label) }))}
               value={activeCardBalanceCurrency || null}
               onChange={(value) => {
                 clearCardBalanceErrors("currency");
@@ -1430,7 +1433,7 @@ const CardsPage: React.FC = () => {
               disabled={isCardBalanceEditMode}
             />
             <TextInputField
-              label="Сумма"
+              label={t("Сумма")}
               type="number"
               inputMode="decimal"
               step={0.01}
@@ -1450,7 +1453,7 @@ const CardsPage: React.FC = () => {
                 editingCardBalance && (
                   <Button
                     variant="destructive"
-                    label="Удалить"
+                    label={t("Удалить")}
                     onClick={() =>
                       handleRequestDeleteCardBalance(
                         activeCardBalanceCard,
@@ -1462,13 +1465,13 @@ const CardsPage: React.FC = () => {
               <div className="ml-auto flex gap-3">
                 <Button
                   variant="ghost"
-                  label="Отмена"
+                  label={t("Отмена")}
                   onClick={closeCardBalanceModal}
                 />
                 <Button
                   variant="primary"
                   type="submit"
-                  label={isCardBalanceEditMode ? "Сохранить" : "Добавить"}
+                  label={isCardBalanceEditMode ? t("Сохранить") : t("Добавить")}
                   loading={isCardBalanceSubmitting}
                   disabled={!activeCardBalanceCurrency}
                 />
@@ -1488,8 +1491,8 @@ const CardsPage: React.FC = () => {
             noValidate
           >
             <Select
-              label="Валюта"
-              options={activeCardBalanceOptions}
+              label={t("Валюта")}
+              options={activeCardBalanceOptions.map((option) => ({ ...option, label: t(option.label) }))}
               value={activeCardBalanceCurrency || null}
               onChange={(value) => {
                 clearCardBalanceErrors("currency");
@@ -1501,7 +1504,7 @@ const CardsPage: React.FC = () => {
               disabled={isCardBalanceEditMode}
             />
             <TextInputField
-              label="Сумма"
+              label={t("Сумма")}
               type="number"
               inputMode="decimal"
               step={0.01}
@@ -1521,7 +1524,7 @@ const CardsPage: React.FC = () => {
                 editingCardBalance && (
                   <Button
                     variant="destructive"
-                    label="Удалить"
+                    label={t("Удалить")}
                     onClick={() =>
                       handleRequestDeleteCardBalance(
                         activeCardBalanceCard,
@@ -1533,13 +1536,13 @@ const CardsPage: React.FC = () => {
               <div className="ml-auto flex gap-3">
                 <Button
                   variant="ghost"
-                  label="Отмена"
+                  label={t("Отмена")}
                   onClick={closeCardBalanceModal}
                 />
                 <Button
                   variant="primary"
                   type="submit"
-                  label={isCardBalanceEditMode ? "Сохранить" : "Добавить"}
+                  label={isCardBalanceEditMode ? t("Сохранить") : t("Добавить")}
                   loading={isCardBalanceSubmitting}
                   disabled={!activeCardBalanceCurrency}
                 />
@@ -1565,7 +1568,7 @@ const CardsPage: React.FC = () => {
                 className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
               >
                 <PencilSolidIcon className="h-6 w-6" />
-                <span className="text-sm">Изменить</span>
+                <span className="text-sm">{t("Изменить")}</span>
               </button>
               {activeCashBalance.currency !== BASE_CASH_CURRENCY && (
                 <button
@@ -1576,7 +1579,7 @@ const CardsPage: React.FC = () => {
                   className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
                 >
                   <TrashSolidIcon className="h-6 w-6" />
-                  <span className="text-sm">Удалить</span>
+                  <span className="text-sm">{t("Удалить")}</span>
                 </button>
               )}
             </div>
@@ -1600,7 +1603,7 @@ const CardsPage: React.FC = () => {
                 className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
               >
                 <PencilSolidIcon className="h-6 w-6" />
-                <span className="text-sm">Изменить</span>
+                <span className="text-sm">{t("Изменить")}</span>
               </button>
               <button
                 onClick={() => {
@@ -1613,7 +1616,7 @@ const CardsPage: React.FC = () => {
                 className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
               >
                 <TrashSolidIcon className="h-6 w-6" />
-                <span className="text-sm">Удалить</span>
+                <span className="text-sm">{t("Удалить")}</span>
               </button>
             </div>
           )}
@@ -1626,7 +1629,7 @@ const CardsPage: React.FC = () => {
             setIsCryptoEditModalOpen(false);
             setEditingCryptoBalance(null);
           }}
-          title="Редактировать криптовалюту"
+          title={t("Редактировать криптовалюту")}
         >
           <div className="space-y-5">
             {editingCryptoBalance && (
@@ -1641,7 +1644,7 @@ const CardsPage: React.FC = () => {
             )}
 
             <TextInputField
-              label="Количество"
+              label={t("Количество")}
               value={editingCryptoQuantity}
               onChange={(e) => setEditingCryptoQuantity(e.target.value)}
               placeholder="0.00"
@@ -1650,16 +1653,16 @@ const CardsPage: React.FC = () => {
               autoFocus
             />
             <TextInputField
-              label="Кошелек / Заметка (необязательно)"
+              label={t("Кошелек / Заметка (необязательно)")}
               value={editingCryptoWallet}
               onChange={(e) => setEditingCryptoWallet(e.target.value)}
-              placeholder="Название или адрес"
+              placeholder={t("Название или адрес")}
             />
 
             <div className="flex justify-end gap-3 pt-2">
               <Button
                 variant="ghost"
-                label="Отмена"
+                label={t("Отмена")}
                 onClick={() => {
                   setIsCryptoEditModalOpen(false);
                   setEditingCryptoBalance(null);
@@ -1667,7 +1670,7 @@ const CardsPage: React.FC = () => {
               />
               <Button
                 variant="primary"
-                label="Сохранить"
+                label={t("Сохранить")}
                 onClick={handleSaveCryptoEdit}
               />
             </div>
@@ -1681,7 +1684,7 @@ const CardsPage: React.FC = () => {
             setIsCryptoEditModalOpen(false);
             setEditingCryptoBalance(null);
           }}
-          title="Редактировать криптовалюту"
+          title={t("Редактировать криптовалюту")}
         >
           <div className="space-y-5">
             {editingCryptoBalance && (
@@ -1696,7 +1699,7 @@ const CardsPage: React.FC = () => {
             )}
 
             <TextInputField
-              label="Количество"
+              label={t("Количество")}
               value={editingCryptoQuantity}
               onChange={(e) => setEditingCryptoQuantity(e.target.value)}
               placeholder="0.00"
@@ -1705,16 +1708,16 @@ const CardsPage: React.FC = () => {
               autoFocus
             />
             <TextInputField
-              label="Кошелек / Заметка (необязательно)"
+              label={t("Кошелек / Заметка (необязательно)")}
               value={editingCryptoWallet}
               onChange={(e) => setEditingCryptoWallet(e.target.value)}
-              placeholder="Название или адрес"
+              placeholder={t("Название или адрес")}
             />
 
             <div className="flex justify-end gap-3 pt-2">
               <Button
                 variant="ghost"
-                label="Отмена"
+                label={t("Отмена")}
                 onClick={() => {
                   setIsCryptoEditModalOpen(false);
                   setEditingCryptoBalance(null);
@@ -1722,7 +1725,7 @@ const CardsPage: React.FC = () => {
               />
               <Button
                 variant="primary"
-                label="Сохранить"
+                label={t("Сохранить")}
                 onClick={handleSaveCryptoEdit}
               />
             </div>
@@ -1742,7 +1745,7 @@ const CardsPage: React.FC = () => {
           onConfirm={onConfirmAction}
           title={confirmModalState.title}
           message={confirmModalState.message}
-          confirmText="Да, удалить"
+          confirmText={t("Да, удалить")}
           isConfirming={isConfirming}
         />
 

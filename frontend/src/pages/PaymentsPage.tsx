@@ -1,4 +1,6 @@
+import { parseCalendarDate } from "../utils/dateUtils";
 // src/pages/PaymentsPage.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
@@ -140,6 +142,7 @@ const MobileActionsOverlay = ({
   onPermanentDelete,
   activeTab,
 }: MobileActionsOverlayProps) => {
+  const { t } = useLanguage();
   if (!payment) return null;
 
   const isArchiveOrTrash = activeTab === "archive" || activeTab === "trash";
@@ -147,34 +150,34 @@ const MobileActionsOverlay = ({
   const actions = isArchiveOrTrash
     ? [
         {
-          label: "Изменить",
+          label: t("Изменить"),
           icon: PencilSolidIcon,
           handler: () => onEdit(payment.id),
         },
         {
-          label: "Восстановить",
+          label: t("Восстановить"),
           icon: ArrowPathSolidIcon,
           handler: () => onRestore(payment),
         },
         {
-          label: "Удалить",
+          label: t("Удалить"),
           icon: TrashSolidIcon,
           handler: () => onPermanentDelete(payment.id),
         },
       ]
     : [
         {
-          label: "Изменить",
+          label: t("Изменить"),
           icon: PencilSolidIcon,
           handler: () => onEdit(payment.id),
         },
         {
-          label: "Выполнить",
+          label: t("Выполнить"),
           icon: CheckSolidIcon,
           handler: () => onComplete(payment),
         },
         {
-          label: "Удалить",
+          label: t("Удалить"),
           icon: TrashSolidIcon,
           handler: () => onDelete(payment),
         },
@@ -221,6 +224,7 @@ const fetchArchivedPaymentsApi = async (
 };
 
 const PaymentsPage: React.FC = () => {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const { setPageTitle, setHeaderRightAction } = usePageTitle();
   const metadata = getPageMetadata("payments");
@@ -249,8 +253,8 @@ const PaymentsPage: React.FC = () => {
   }, [activeFilters]);
 
   useEffect(() => {
-    setPageTitle("Платежи");
-  }, [setPageTitle]);
+    setPageTitle(t("Платежи"));
+  }, [setPageTitle, t]);
 
   useEffect(() => {
     const filterIndicatorCount = [
@@ -328,18 +332,14 @@ const PaymentsPage: React.FC = () => {
     isLoading: isLoadingActive,
     error: errorActive,
     execute: executeFetchActivePayments,
-  } = useApi<PaymentData[]>((params) =>
-    fetchAllPaymentsApi(params as Record<string, unknown>)
-  );
+  } = useApi(fetchAllPaymentsApi);
 
   const {
     data: rawArchivedPayments,
     isLoading: isLoadingArchived,
     error: errorArchived,
     execute: executeFetchArchivedPayments,
-  } = useApi<PaymentData[]>((params) =>
-    fetchArchivedPaymentsApi(params as Record<string, unknown>)
-  );
+  } = useApi(fetchArchivedPaymentsApi);
 
   const [activePayments, setActivePayments] = useState<PaymentData[]>([]);
   const [archivedPayments, setArchivedPayments] = useState<PaymentData[]>([]);
@@ -537,12 +537,12 @@ const PaymentsPage: React.FC = () => {
         ? { completionDate: completionDate.toISOString().split("T")[0] }
         : {};
       await axiosInstance.put(`/payments/${paymentId}/complete`, payload);
-      showToast("Платеж выполнен.", "success");
+      showToast(t("Платеж выполнен."), "success");
       refetchData();
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error);
       logger.error(`Failed to complete payment ${paymentId}:`, errorMessage);
-      showToast(`Не удалось выполнить платеж: ${errorMessage}`, "error");
+      showToast(t("Не удалось выполнить платеж: {1}", errorMessage), "error");
     } finally {
       setIsCompleting(false);
       setCompletionDateModalState({ isOpen: false, payment: null });
@@ -565,7 +565,7 @@ const PaymentsPage: React.FC = () => {
 
   const handleCompletePayment = async (payment: PaymentData) => {
     const today = new Date();
-    const dueDate = new Date(payment.dueDate);
+    const dueDate = parseCalendarDate(payment.dueDate);
     today.setHours(0, 0, 0, 0);
     dueDate.setHours(0, 0, 0, 0);
 
@@ -589,7 +589,7 @@ const PaymentsPage: React.FC = () => {
       try {
         await axiosInstance.delete(`/payments/${payment.id}`);
         logger.info(`Payment soft-deleted: ${payment.id}`);
-        showToast("Платеж перемещен в корзину.", "info");
+        showToast(t("Платеж перемещен в корзину."), "info");
         refetchData();
       } catch (error: unknown) {
         const errorMessage = getErrorMessage(error);
@@ -597,15 +597,15 @@ const PaymentsPage: React.FC = () => {
           `Failed to soft-delete payment ${payment.id}:`,
           errorMessage
         );
-        showToast(`Не удалось удалить платеж: ${errorMessage}`, "error");
+        showToast(t("Не удалось удалить платеж: {1}", errorMessage), "error");
       }
     };
 
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Удалить платеж",
-      message: "Вы уверены, что хотите удалить платеж (переместить в корзину)?",
+      title: t("Удалить платеж"),
+      message: t("Вы уверены, что хотите удалить платеж (переместить в корзину)?"),
     });
   };
 
@@ -619,10 +619,10 @@ const PaymentsPage: React.FC = () => {
       logger.info(
         `Payment instance soft-deleted: ${deleteRecurringModalState.payment.id}`
       );
-      showToast("Платеж перемещен в корзину.", "info");
+      showToast(t("Платеж перемещен в корзину."), "info");
       refetchData();
     } catch (error: unknown) {
-      showToast(`Ошибка удаления: ${getErrorMessage(error)}`, "error");
+      showToast(t("Ошибка удаления: {1}", t(getErrorMessage(error))), "error");
     } finally {
       setIsDeleting(false);
       setDeleteRecurringModalState({ isOpen: false, payment: null });
@@ -639,10 +639,10 @@ const PaymentsPage: React.FC = () => {
       logger.info(
         `Series deactivated: ${deleteRecurringModalState.payment.seriesId}`
       );
-      showToast("Серия платежей была деактивирована.", "success");
+      showToast(t("Серия платежей была деактивирована."), "success");
       refetchData();
     } catch (error: unknown) {
-      showToast(`Ошибка удаления серии: ${getErrorMessage(error)}`, "error");
+      showToast(t("Ошибка удаления серии: {1}", t(getErrorMessage(error))), "error");
     } finally {
       setIsDeleting(false);
       setDeleteRecurringModalState({ isOpen: false, payment: null });
@@ -659,11 +659,11 @@ const PaymentsPage: React.FC = () => {
       });
       logger.info(`Payment restored: ${paymentId}`);
       refetchData();
-      showToast("Платеж успешно восстановлен.", "success");
+      showToast(t("Платеж успешно восстановлен."), "success");
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error);
       logger.error(`Failed to restore payment ${paymentId}:`, errorMessage);
-      showToast(`Не удалось восстановить платеж: ${errorMessage}`, "error");
+      showToast(t("Не удалось восстановить платеж: {1}", errorMessage), "error");
     }
   };
 
@@ -673,9 +673,9 @@ const PaymentsPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Восстановить платеж",
+      title: t("Восстановить платеж"),
       message:
-        "Вы уверены, что хотите восстановить этот платеж? Он вернется в список активных.",
+        t("Вы уверены, что хотите восстановить этот платеж? Он вернется в список активных."),
     });
   };
 
@@ -685,7 +685,7 @@ const PaymentsPage: React.FC = () => {
         await axiosInstance.delete(`/archive/${paymentId}/permanent`);
         logger.info(`Payment permanently deleted: ${paymentId}`);
         refetchData();
-        showToast("Платеж полностью удален.", "info");
+        showToast(t("Платеж полностью удален."), "info");
       } catch (error: unknown) {
         const errorMessage = getErrorMessage(error);
         logger.error(
@@ -693,7 +693,7 @@ const PaymentsPage: React.FC = () => {
           errorMessage
         );
         showToast(
-          `Не удалось полностью удалить платеж: ${errorMessage}`,
+          t("Не удалось полностью удалить платеж: {1}", errorMessage),
           "error"
         );
       }
@@ -702,9 +702,9 @@ const PaymentsPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Полностью удалить платеж",
+      title: t("Полностью удалить платеж"),
       message:
-        "Внимание! Это действие необратимо и удалит все связанные файлы.",
+        t("Внимание! Это действие необратимо и удалит все связанные файлы."),
     });
   };
 
@@ -712,16 +712,16 @@ const PaymentsPage: React.FC = () => {
     setIsClearingTrash(true);
     try {
       await axiosInstance.delete("/archive/trash");
-      showToast("Корзина была очищена.", "success");
+      showToast(t("Корзина была очищена."), "success");
       refetchData();
     } catch (error: unknown) {
       const errorMessage = getErrorMessage(error);
       logger.error("Failed to clear trash:", errorMessage);
-      showToast(`Не удалось очистить корзину: ${errorMessage}`, "error");
+      showToast(t("Не удалось очистить корзину: {1}", errorMessage), "error");
     } finally {
       setIsClearingTrash(false);
     }
-  }, [refetchData, showToast]);
+  }, [refetchData, showToast, t]);
 
   const handleClearTrashRequest = React.useCallback(() => {
     if (trashCount === 0) {
@@ -730,11 +730,11 @@ const PaymentsPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action: performClearTrash,
-      title: "Очистить корзину",
+      title: t("Очистить корзину"),
       message:
-        "Вы уверены, что хотите удалить все платежи из корзины? Это действие необратимо.",
+        t("Вы уверены, что хотите удалить все платежи из корзины? Это действие необратимо."),
     });
-  }, [trashCount, performClearTrash]);
+  }, [trashCount, performClearTrash, t]);
 
   useEffect(() => {
     if (typeof window === "undefined" || activeTab !== "trash") {
@@ -848,7 +848,7 @@ const PaymentsPage: React.FC = () => {
         `Failed to download file for payment ${paymentId}:`,
         errorMessage
       );
-      showToast(`Не удалось скачать файл: ${errorMessage}`, "error");
+      showToast(t("Не удалось скачать файл: {1}", errorMessage), "error");
     }
   };
 
@@ -861,15 +861,15 @@ const PaymentsPage: React.FC = () => {
   const getEmptyMessage = () => {
     switch (activeTab) {
       case "all":
-        return "Нет платежей";
+        return t("Нет платежей");
       case "active":
-        return "Нет активных платежей";
+        return t("Нет активных платежей");
       case "archive":
-        return "Архив пуст";
+        return t("Архив пуст");
       case "trash":
-        return "Корзина пуста";
+        return t("Корзина пуста");
       default:
-        return "Нет платежей";
+        return t("Нет платежей");
     }
   };
 
@@ -881,7 +881,7 @@ const PaymentsPage: React.FC = () => {
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex items-center justify-between">
             <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Платежи
+              {t("Платежи")}
             </h2>
             <div className="hidden md:flex items-center gap-4 flex-1 justify-end">
               <div className="relative max-w-xs w-full">
@@ -889,7 +889,7 @@ const PaymentsPage: React.FC = () => {
                   <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
                 </div>
                 <Input
-                  placeholder="Поиск..."
+                  placeholder={t("Поиск...")}
                   className="pl-9 py-2 text-sm w-full"
                   value={activeFilters.search}
                   onChange={(e) =>
@@ -919,17 +919,17 @@ const PaymentsPage: React.FC = () => {
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors cursor-pointer ${
                   activeFilterCount > 0
-                    ? "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-300"
+                    ? "border-violet-300 bg-slate-100 text-indigo-700 dark:border-violet-400/50 dark:bg-slate-800 dark:text-indigo-300"
                     : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 }`}
               >
                 <FunnelIcon className="w-4 h-4" />
-                Фильтры
+                {t("Фильтры")}
               </button>
               {activeTab === "trash" ? (
                 <Button
                   onClick={handleClearTrashRequest}
-                  label="Очистить корзину"
+                  label={t("Очистить корзину")}
                   icon={<TrashSolidIcon className="w-4 h-4" />}
                   variant="destructive"
                   disabled={isClearingTrash || trashCount === 0}
@@ -937,7 +937,7 @@ const PaymentsPage: React.FC = () => {
               ) : (
                 <Button
                   onClick={handleAddPayment}
-                  label="Добавить платеж"
+                  label={t("Добавить платеж")}
                   icon={<PlusIcon className="w-4 h-4" />}
                 />
               )}
@@ -950,7 +950,7 @@ const PaymentsPage: React.FC = () => {
               </div>
               <Input
                 autoFocus
-                placeholder="Поиск по названию..."
+                placeholder={t("Поиск по названию...")}
                 className="pl-9 py-2 text-sm w-full"
                 value={activeFilters.search}
                 onChange={(e) =>
@@ -975,7 +975,7 @@ const PaymentsPage: React.FC = () => {
           )}
           <div className="flex justify-center md:justify-start">
             <SegmentedControl
-              options={paymentFilterOptions}
+              options={paymentFilterOptions.map((option) => ({ ...option, label: t(option.label) }))}
               selected={activeTab}
               onChange={handleTabChange}
               className="w-full md:w-auto"
@@ -1006,7 +1006,7 @@ const PaymentsPage: React.FC = () => {
                   onDownloadFile={handleDownloadFile}
                   emptyMessage={getEmptyMessage()}
                   completedOrDeletedHeader={
-                    activeTab === "trash" ? "Удален" : "Выполнен"
+                    activeTab === "trash" ? t("Удален") : t("Выполнен")
                   }
                 />
               ) : (
@@ -1070,7 +1070,7 @@ const PaymentsPage: React.FC = () => {
         }}
         dueDate={
           completionDateModalState.payment
-            ? new Date(completionDateModalState.payment.dueDate)
+            ? parseCalendarDate(completionDateModalState.payment.dueDate)
             : new Date()
         }
         isConfirming={isCompleting}
@@ -1088,7 +1088,7 @@ const PaymentsPage: React.FC = () => {
         onConfirm={onConfirmAction}
         title={confirmModalState.title}
         message={confirmModalState.message}
-        confirmText="Да, подтвердить"
+        confirmText={t("Да, подтвердить")}
         isConfirming={isConfirming}
       />
       <DeleteRecurringPaymentModal
@@ -1114,17 +1114,17 @@ const PaymentsPage: React.FC = () => {
       <AdvancedFiltersPanel
         isOpen={isFilterPanelOpen}
         onClose={cancelDraftFilters}
-        title="Фильтрация"
+        title={t("Фильтрация")}
       >
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Категория
+              {t("Категория")}
             </label>
             <Select
               options={[
-                { value: null, label: "Все категории" },
-                { value: NO_CATEGORY_FILTER_VALUE, label: "Без категории" },
+                { value: null, label: t("Все категории") },
+                { value: NO_CATEGORY_FILTER_VALUE, label: t("Без категории") },
                 ...(categories?.map((c) => ({ value: c.id, label: c.name })) ||
                   []),
               ]}
@@ -1132,18 +1132,18 @@ const PaymentsPage: React.FC = () => {
               onChange={(val) =>
                 setDraftFilters((prev) => ({ ...prev, categoryId: val }))
               }
-              placeholder="Выберите категорию"
+              placeholder={t("Выберите категорию")}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Повторение
+              {t("Повторение")}
             </label>
             <SegmentedControl
               options={[
-                { value: "all", label: "Все" },
-                { value: "true", label: "Повторяющиеся" },
-                { value: "false", label: "Разовые" },
+                { value: "all", label: t("Все") },
+                { value: "true", label: t("Повторяющиеся") },
+                { value: "false", label: t("Разовые") },
               ]}
               selected={draftFilters.isRecurring}
               onChange={(val) =>
@@ -1158,13 +1158,13 @@ const PaymentsPage: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Наличие файла
+              {t("Наличие файла")}
             </label>
             <SegmentedControl
               options={[
-                { value: "all", label: "Все" },
-                { value: "true", label: "С файлом" },
-                { value: "false", label: "Без файла" },
+                { value: "all", label: t("Все") },
+                { value: "true", label: t("С файлом") },
+                { value: "false", label: t("Без файла") },
               ]}
               selected={draftFilters.hasFile}
               onChange={(val) =>
@@ -1182,13 +1182,13 @@ const PaymentsPage: React.FC = () => {
               variant="primary"
               size="large"
               onClick={applyDraftFilters}
-              label="Применить"
+              label={t("Применить")}
               className="w-full"
             />
             <Button
               variant="ghost"
               onClick={cancelDraftFilters}
-              label="Отмена"
+              label={t("Отмена")}
               className="w-full"
             />
             <button
@@ -1196,7 +1196,7 @@ const PaymentsPage: React.FC = () => {
               onClick={resetDraftFilters}
               className="mt-2 text-sm text-red-500 font-medium py-2 text-left"
             >
-              Сбросить все фильтры
+              {t("Сбросить все фильтры")}
             </button>
           </div>
           <div className="hidden md:flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-800">
@@ -1205,18 +1205,18 @@ const PaymentsPage: React.FC = () => {
               onClick={resetDraftFilters}
               className="text-sm text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
             >
-              Сбросить
+              {t("Сбросить")}
             </button>
             <div className="flex gap-3">
               <Button
                 variant="ghost"
                 onClick={cancelDraftFilters}
-                label="Отмена"
+                label={t("Отмена")}
               />
               <Button
                 variant="primary"
                 onClick={applyDraftFilters}
-                label="Применить"
+                label={t("Применить")}
               />
             </div>
           </div>

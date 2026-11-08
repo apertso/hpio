@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState, useMemo } from "react";
 import {
   ArrowUpRightIcon,
@@ -14,6 +15,7 @@ interface FundsTrendWidgetProps {
 }
 
 const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
+  const { t, locale } = useLanguage();
   const { resolvedTheme } = useTheme();
   const [history, setHistory] = useState<FundsHistoryPoint[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -64,14 +66,14 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
   const { chartData, chartLabels, chartDates } = useMemo(() => {
     const data = history.map((p) => p.totalAmount);
     const labels = history.map((p) =>
-      new Date(p.date).toLocaleDateString("ru-RU", {
+      new Date(p.date).toLocaleDateString(locale, {
         day: "numeric",
         month: "short",
       })
     );
     const dates = history.map((p) => p.date);
     return { chartData: data, chartLabels: labels, chartDates: dates };
-  }, [history]);
+  }, [history, locale]);
 
   const hasData = chartData.length > 1;
 
@@ -97,7 +99,7 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
         />
       ) : (
         <div className="flex items-center justify-center h-full text-sm text-gray-400">
-          Недостаточно данных для графика
+          {t("Недостаточно данных для графика")}
         </div>
       )}
     </div>
@@ -109,13 +111,13 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Динамика средств
+              {t("Динамика средств")}
             </h3>
             {hasData && (
               <div className="flex items-center gap-1 mt-1">
                 {trendIcon}
                 <span className={`text-xs font-medium ${trendColor}`}>
-                  {isUp ? "Рост" : "Снижение"} за период
+                  {isUp ? t("Рост") : t("Снижение")}{t(" за период")}
                 </span>
               </div>
             )}
@@ -139,7 +141,7 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
           <Modal
             isOpen={isExpanded}
             onClose={() => setIsExpanded(false)}
-            title="История баланса"
+            title={t("История баланса")}
             className="hidden md:flex w-full max-w-4xl"
           >
             <div className="p-4">
@@ -150,7 +152,7 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
           <MobilePanel
             isOpen={isExpanded}
             onClose={() => setIsExpanded(false)}
-            title="История баланса"
+            title={t("История баланса")}
           >
             <div className="p-4 pb-10">
               <ChartContent heightClass="h-64" />

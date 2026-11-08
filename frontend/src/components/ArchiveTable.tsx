@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import Table, { TableColumn } from "./Table";
 import PaymentIconDisplay from "./PaymentIconDisplay";
@@ -7,6 +8,7 @@ import { formatRecurrenceRule } from "../utils/formatRecurrence";
 import {
   formatDateForDisplay,
   formatDateTimeForDisplay,
+  parseCalendarDate,
 } from "../utils/dateUtils";
 import { PaperClipIcon } from "@heroicons/react/24/outline";
 import {
@@ -36,12 +38,13 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
   emptyMessage = "Архив пуст",
   completedOrDeletedHeader = "Выполнен/Удален",
 }) => {
+  const { t, locale } = useLanguage();
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
   const columns: TableColumn<PaymentData>[] = [
     {
       id: "icon",
-      header: "Иконка",
+      header: t("Иконка"),
       thClassName: `${thBaseClassName} w-20`,
       cell: (payment) => (
         <PaymentIconDisplay payment={payment} sizeClass="h-6 w-6" />
@@ -49,7 +52,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
     },
     {
       id: "status",
-      header: "Статус",
+      header: t("Статус"),
       thClassName: `${thBaseClassName} w-28`,
       cell: (payment) => (
         <div className="text-sm text-gray-900 dark:text-gray-100">
@@ -58,21 +61,21 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
               payment
             )}`}
           ></span>
-          {payment.status === "completed" && "Выполнен"}
-          {payment.status === "deleted" && "Удален"}
+          {payment.status === "completed" && t("Выполнен")}
+          {payment.status === "deleted" && t("Удален")}
         </div>
       ),
     },
     {
       id: "title",
-      header: "Название",
+      header: t("Название"),
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs",
       cell: (payment) => <>{payment.title}</>,
     },
     {
       id: "recurrence",
-      header: "Повторение",
+      header: t("Повторение"),
       thClassName: `${thBaseClassName} w-48`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
@@ -81,27 +84,27 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
           {payment.seriesId && payment.series ? (
             <span className="flex items-center">
               <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
-              {formatRecurrenceRule(payment.series.recurrenceRule)}
+              {t(formatRecurrenceRule(payment.series.recurrenceRule))}
               {payment.series.recurrenceEndDate &&
-                ` до ${formatDateForDisplay(
-                  new Date(payment.series.recurrenceEndDate)
-                )}`}
+                t(" до {1}", formatDateForDisplay(
+                  parseCalendarDate(payment.series.recurrenceEndDate), locale
+                ))}
             </span>
           ) : (
-            "Разовый"
+            t("Разовый")
           )}
         </>
       ),
     },
     {
       id: "amount",
-      header: "Сумма",
+      header: t("Сумма"),
       thClassName: `${thBaseClassName} w-32`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
         <>
-          {new Intl.NumberFormat("ru-RU", {
+          {new Intl.NumberFormat(locale, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           }).format(payment.amount)}
@@ -113,31 +116,31 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
     },
     {
       id: "dueDate",
-      header: "Срок оплаты",
+      header: t("Срок оплаты"),
       thClassName: `${thBaseClassName} w-36`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
-        <>{formatDateForDisplay(new Date(payment.dueDate))}</>
+        <>{formatDateForDisplay(parseCalendarDate(payment.dueDate), locale)}</>
       ),
     },
     {
       id: "completedOrDeleted",
-      header: completedOrDeletedHeader,
+      header: t(completedOrDeletedHeader),
       thClassName: `${thBaseClassName} w-48`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
         <>
           {payment.completedAt
-            ? formatDateTimeForDisplay(new Date(payment.completedAt))
-            : formatDateTimeForDisplay(new Date(payment.updatedAt))}
+            ? formatDateTimeForDisplay(new Date(payment.completedAt), locale)
+            : formatDateTimeForDisplay(new Date(payment.updatedAt), locale)}
         </>
       ),
     },
     {
       id: "category",
-      header: "Категория",
+      header: t("Категория"),
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 truncate",
       cell: (payment) => (
@@ -150,7 +153,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
     },
     {
       id: "file",
-      header: "Файл",
+      header: t("Файл"),
       thClassName: `${thBaseClassName} w-16`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
@@ -160,7 +163,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
             <button
               onClick={() => onDownloadFile(payment.id, payment.fileName!)}
               className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 cursor-pointer"
-              title={`Скачать ${payment.fileName}`}
+              title={t("Скачать {1}", payment.fileName)}
             >
               <PaperClipIcon className="h-5 w-5 inline-block mr-1" />
             </button>
@@ -178,20 +181,20 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       columns={columns}
       getRowKey={(p) => p.id}
       isLoading={isLoading}
-      emptyMessage={emptyMessage}
+      emptyMessage={t(emptyMessage)}
       rowActions={(payment) => [
         {
-          label: "Редактировать",
+          label: t("Редактировать"),
           onClick: () => onEdit(payment.id),
           icon: <PencilIcon className="h-4 w-4" />,
         },
         {
-          label: "Восстановить",
+          label: t("Восстановить"),
           onClick: () => onRestore(payment),
           icon: <ArrowPathIcon className="h-4 w-4" />,
         },
         {
-          label: "Удалить полностью",
+          label: t("Удалить полностью"),
           onClick: () => onPermanentDelete(payment.id),
           icon: <TrashIcon className="h-4 w-4" />,
         },

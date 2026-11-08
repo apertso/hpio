@@ -3,7 +3,7 @@ import axiosInstance from "./axiosInstance";
 export const submitFeedback = async (
   description: string,
   file?: File | null
-) => {
+): Promise<boolean> => {
   const formData = new FormData();
   formData.append("description", description);
   if (file) {
@@ -11,5 +11,5 @@ export const submitFeedback = async (
   }
 
   const response = await axiosInstance.post("/feedback", formData);
-  return response.data as { id: string };
+  return response.headers["x-offline"] !== "true";
 };

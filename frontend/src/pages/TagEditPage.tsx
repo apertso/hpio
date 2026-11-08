@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
@@ -25,6 +26,7 @@ const tagFormSchema = z.object({
 type TagFormInputs = z.infer<typeof tagFormSchema>;
 
 const TagEditPage: React.FC = () => {
+  const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
@@ -69,9 +71,9 @@ const TagEditPage: React.FC = () => {
   }, [id, isEditMode, setValue, reset]);
 
   useEffect(() => {
-    const headerText = isEditMode ? "Редактировать тег" : "Новый тег";
+    const headerText = isEditMode ? t("Редактировать тег") : t("Новый тег");
     setPageTitle(headerText);
-  }, [isEditMode, setPageTitle]);
+  }, [isEditMode, setPageTitle, t]);
 
   const onSubmit: SubmitHandler<TagFormInputs> = async (data) => {
     setFormError(null);
@@ -100,12 +102,12 @@ const TagEditPage: React.FC = () => {
           <Link
             to="/tags"
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hover:opacity-80 transition-all text-gray-800 dark:text-gray-200 cursor-pointer"
-            aria-label="Назад к тегам"
+            aria-label={t("Назад к тегам")}
           >
             <ArrowLeftIcon className="h-6 w-6" />
           </Link>
           <h2 className="text-xl md:text-2xl font-bold ml-4 text-gray-900 dark:text-white">
-            {isEditMode ? "Редактировать тег" : "Новый тег"}
+            {isEditMode ? t("Редактировать тег") : t("Новый тег")}
           </h2>
         </div>
 
@@ -123,17 +125,17 @@ const TagEditPage: React.FC = () => {
                       className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-6"
                       role="alert"
                     >
-                      <span className="block sm:inline">{formError}</span>
+                      <span className="block sm:inline">{t(formError)}</span>
                     </div>
                   )}
                   <div className="mb-6">
                     <TextInputField
-                      label="Название тега"
+                      label={t("Название тега")}
                       inputId="tag-name"
                       error={errors.name?.message}
                       required
                       type="text"
-                      placeholder="Например, отпуск"
+                      placeholder={t("Например, отпуск")}
                       disabled={combinedIsLoading}
                       {...nameRegister}
                       onChange={(event) => {
@@ -148,14 +150,14 @@ const TagEditPage: React.FC = () => {
                       variant="ghost"
                       onClick={() => navigate("/tags")}
                       disabled={combinedIsLoading}
-                      label="Отмена"
+                      label={t("Отмена")}
                     />
                     <Button
                       variant="primary"
                       type="submit"
                       loading={combinedIsLoading}
                       disabled={combinedIsLoading}
-                      label="Сохранить"
+                      label={t("Сохранить")}
                     />
                   </div>
                   <div className="flex flex-col md:hidden mt-6 space-y-3">
@@ -165,14 +167,14 @@ const TagEditPage: React.FC = () => {
                       type="submit"
                       loading={combinedIsLoading}
                       disabled={combinedIsLoading}
-                      label="Сохранить"
+                      label={t("Сохранить")}
                       className="w-full"
                     />
                     <Button
                       variant="ghost"
                       onClick={() => navigate("/tags")}
                       disabled={combinedIsLoading}
-                      label="Отмена"
+                      label={t("Отмена")}
                       className="w-full"
                     />
                   </div>

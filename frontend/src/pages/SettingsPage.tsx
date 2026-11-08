@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -12,6 +13,7 @@ import NotificationsSection from "../components/settings/NotificationsSection";
 import DeveloperSection from "../components/settings/DeveloperSection";
 
 const SettingsPage: React.FC = () => {
+  const { t } = useLanguage();
   const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("settings");
 
@@ -37,8 +39,8 @@ const SettingsPage: React.FC = () => {
     useState<SettingsSection>(getInitialSection);
 
   React.useEffect(() => {
-    setPageTitle("Настройки");
-  }, [setPageTitle]);
+    setPageTitle(t("Настройки"));
+  }, [setPageTitle, t]);
 
   // Update URL hash when active section changes
   React.useEffect(() => {
@@ -75,7 +77,7 @@ const SettingsPage: React.FC = () => {
         <div className="w-full max-w-7xl mx-auto">
           <div className="flex justify-between items-center md:mb-6 px-4 md:px-0">
             <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Настройки
+              {t("Настройки")}
             </h2>
           </div>
 

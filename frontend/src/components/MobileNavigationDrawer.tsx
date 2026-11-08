@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -10,6 +11,7 @@ import {
   Squares2X2Icon,
   BanknotesIcon,
   TagIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { User } from "../context/AuthContext";
 import { useAvatarCache } from "../hooks/useAvatarCache";
@@ -66,6 +68,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   onLogout,
   gesturesEnabled = true,
 }) => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
@@ -367,11 +370,11 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
             {avatarUrl ? (
               <img
                 src={avatarUrl}
-                alt="Аватар пользователя"
+                alt={t("Аватар пользователя")}
                 className="size-12 rounded-full object-cover bg-gray-300 dark:bg-gray-800"
               />
             ) : (
-              <div className="flex items-center justify-center size-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+              <div className="flex items-center justify-center size-12 rounded-full border border-violet-400/70 bg-slate-700 text-white">
                 <UserIcon className="w-6 h-6" />
               </div>
             )}
@@ -391,7 +394,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
         </button>
 
         {/* Элементы навигации */}
-        <nav className="flex-1 px-4 py-4 space-y-1">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 py-4">
           {navItems.map((item) => {
             const isActive = currentPath === item.to;
             const icon = getNavIcon(item.to);
@@ -437,12 +440,21 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
                   : "text-gray-500 dark:text-gray-400"
               }`}
             />
-            Настройки
+            {t("Настройки")}
+          </Link>
+          <Link
+            to="/about"
+            onClick={onClose}
+            aria-current={currentPath === "/about" ? "page" : undefined}
+            className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 transition-opacity hover:opacity-80 aria-[current=page]:bg-gray-100 dark:text-gray-100 dark:aria-[current=page]:bg-gray-700"
+          >
+            <InformationCircleIcon aria-hidden="true" className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            {t("О сервисе")}
           </Link>
         </nav>
 
         {/* Кнопка выхода в нижней части */}
-        <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="shrink-0 border-t border-gray-200 px-4 py-4 dark:border-gray-800">
           <button
             onClick={() => {
               onClose();
@@ -451,7 +463,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
             className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
           >
             <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            Выйти
+            {t("Выйти")}
           </button>
         </div>
       </aside>

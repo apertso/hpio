@@ -1,3 +1,4 @@
+import { useLanguage } from "../../context/LanguageContext";
 import React, { useState } from "react";
 import ToggleSwitch from "../ToggleSwitch";
 import Select from "../Select";
@@ -19,6 +20,7 @@ import ParticleNotification from "../ParticleNotification";
 import { getFeatureFlags, setFeatureFlag } from "../../utils/featureFlags";
 
 const DeveloperSection: React.FC = () => {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [showParticleNotification, setShowParticleNotification] =
     useState(false);
@@ -76,7 +78,7 @@ const DeveloperSection: React.FC = () => {
     setShowDebugToasts(enabled);
     localStorage.setItem("dev_show_debug_toasts", String(enabled));
     showToast(
-      `Debug toast уведомлений ${enabled ? "включены" : "выключены"}.`,
+      t("Debug toast уведомлений {1}.", t(enabled ? "включены" : "выключены")),
       "info"
     );
   };
@@ -85,9 +87,7 @@ const DeveloperSection: React.FC = () => {
     setIncomeAndCardsEnabled(enabled);
     setFeatureFlag("incomeAndCardsEnabled", enabled);
     showToast(
-      `Доходы и источники ${
-        enabled ? "включены" : "выключены"
-      }. Перезагрузите страницу для применения.`,
+      t("Доходы и источники {1}. Перезагрузите страницу для применения.", t(enabled ? "включены" : "выключены")),
       "info"
     );
   };
@@ -96,16 +96,14 @@ const DeveloperSection: React.FC = () => {
     setTagsAndCategoriesEnabled(enabled);
     setFeatureFlag("tagsAndCategoriesEnabled", enabled);
     showToast(
-      `Теги и категории ${
-        enabled ? "включены" : "выключены"
-      }. Перезагрузите страницу для применения.`,
+      t("Теги и категории {1}. Перезагрузите страницу для применения.", t(enabled ? "включены" : "выключены")),
       "info"
     );
   };
 
   const handleSimulateNotification = async () => {
     if (!isTauriMobile()) {
-      showToast("Симуляция доступна только в мобильном приложении", "error");
+      showToast(t("Симуляция доступна только в мобильном приложении"), "error");
       return;
     }
 
@@ -115,10 +113,10 @@ const DeveloperSection: React.FC = () => {
         title: "Заплатили картой *9012",
         body: "− 689.68 ₽ в Пятерочка. Теперь на карте 34 574.90 ₽",
       });
-      showToast("Тестовое уведомление отправлено", "success");
+      showToast(t("Тестовое уведомление отправлено"), "success");
     } catch (error) {
       logger.error("Failed to simulate payment notification:", error);
-      showToast("Не удалось отправить тестовое уведомление", "error");
+      showToast(t("Не удалось отправить тестовое уведомление"), "error");
     }
   };
 
@@ -126,10 +124,10 @@ const DeveloperSection: React.FC = () => {
     setIsSendingTestEmail(true);
     try {
       await userApi.sendTestEmailNotification();
-      showToast("Тестовое email-уведомление отправлено", "success");
+      showToast(t("Тестовое email-уведомление отправлено"), "success");
     } catch (error) {
       logger.error("Failed to send developer test email:", error);
-      showToast("Не удалось отправить тестовое письмо", "error");
+      showToast(t("Не удалось отправить тестовое письмо"), "error");
     } finally {
       setIsSendingTestEmail(false);
     }
@@ -137,7 +135,7 @@ const DeveloperSection: React.FC = () => {
 
   const handleDownloadLogs = async () => {
     if (!isTauriMobile()) {
-      showToast("Эта функция доступна только в мобильном приложении", "error");
+      showToast(t("Эта функция доступна только в мобильном приложении"), "error");
       return;
     }
 
@@ -145,7 +143,7 @@ const DeveloperSection: React.FC = () => {
       const logContent = await readLogFile();
 
       if (!logContent) {
-        showToast("Файл логов пуст или не существует", "info");
+        showToast(t("Файл логов пуст или не существует"), "info");
         return;
       }
 
@@ -162,17 +160,17 @@ const DeveloperSection: React.FC = () => {
 
       if (filePath) {
         await writeTextFile(filePath, logContent);
-        showToast("Логи успешно сохранены", "success");
+        showToast(t("Логи успешно сохранены"), "success");
       }
     } catch (error) {
       logger.error("Error downloading logs:", error);
-      showToast("Не удалось скачать логи", "error");
+      showToast(t("Не удалось скачать логи"), "error");
     }
   };
 
   const handleClearLogs = async () => {
     if (!isTauriMobile()) {
-      showToast("Эта функция доступна только в мобильном приложении", "error");
+      showToast(t("Эта функция доступна только в мобильном приложении"), "error");
       return;
     }
 
@@ -180,14 +178,14 @@ const DeveloperSection: React.FC = () => {
     try {
       const success = await clearLogFile();
       if (success) {
-        showToast("Логи успешно очищены", "success");
+        showToast(t("Логи успешно очищены"), "success");
         setIsClearLogsModalOpen(false);
       } else {
-        showToast("Не удалось очистить логи", "error");
+        showToast(t("Не удалось очистить логи"), "error");
       }
     } catch (error) {
       logger.error("Error clearing logs:", error);
-      showToast("Не удалось очистить логи", "error");
+      showToast(t("Не удалось очистить логи"), "error");
     } finally {
       setIsClearingLogs(false);
     }
@@ -203,7 +201,7 @@ const DeveloperSection: React.FC = () => {
       } else if (navigator.clipboard && window.isSecureContext) {
         // Для веб-версии мы могли бы собирать логи консоли, но пока просто показываем сообщение
         showToast(
-          "Функция копирования логов доступна только в мобильном приложении",
+          t("Функция копирования логов доступна только в мобильном приложении"),
           "error"
         );
         setIsCopyingLogs(false);
@@ -211,20 +209,20 @@ const DeveloperSection: React.FC = () => {
       }
 
       if (!logContent) {
-        showToast("Файл логов пуст или не существует", "info");
+        showToast(t("Файл логов пуст или не существует"), "info");
         setIsCopyingLogs(false);
         return;
       }
 
       const success = await writeToClipboard(logContent);
       if (success) {
-        showToast("Логи скопированы в буфер обмена", "success");
+        showToast(t("Логи скопированы в буфер обмена"), "success");
       } else {
-        showToast("Не удалось скопировать логи", "error");
+        showToast(t("Не удалось скопировать логи"), "error");
       }
     } catch (error) {
       logger.error("Error copying logs:", error);
-      showToast("Не удалось скопировать логи", "error");
+      showToast(t("Не удалось скопировать логи"), "error");
     } finally {
       setIsCopyingLogs(false);
     }
@@ -239,11 +237,10 @@ const DeveloperSection: React.FC = () => {
           </div>
           <div className="flex-1">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Разработка
+              {t("Разработка")}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Инструменты для разработчиков и тестирования функциональности
-              приложения
+              {t("Инструменты для разработчиков и тестирования функциональности приложения")}
             </p>
           </div>
         </div>
@@ -251,39 +248,37 @@ const DeveloperSection: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Мобильный режим
+              {t("Мобильный режим")}
             </label>
             <Select
               options={[
                 { label: "-", value: "-" },
-                { label: "Включен", value: "on" },
-                { label: "Выключен", value: "off" },
+                { label: t("Включен"), value: "on" },
+                { label: t("Выключен"), value: "off" },
               ]}
               value={mobileOverride}
               onChange={handleMobileOverrideChange}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Принудительно включает/выключает мобильный интерфейс для
-              тестирования
+              {t("Принудительно включает/выключает мобильный интерфейс для тестирования")}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Показать onboarding уведомлений
+              {t("Показать onboarding уведомлений")}
             </label>
             <Select
               options={[
                 { label: "-", value: "-" },
-                { label: "Показать", value: "on" },
-                { label: "Скрыть", value: "off" },
+                { label: t("Показать"), value: "on" },
+                { label: t("Скрыть"), value: "off" },
               ]}
               value={notificationOnboardingOverride}
               onChange={handleNotificationOnboardingOverride}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Принудительно показывает/скрывает onboarding автоматизации
-              уведомлений
+              {t("Принудительно показывает/скрывает onboarding автоматизации уведомлений")}
             </p>
           </div>
 
@@ -291,11 +286,10 @@ const DeveloperSection: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Показать отладочные уведомления
+                  {t("Показать отладочные уведомления")}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Показывает техническую информацию о обработке уведомлений
-                  платежей
+                  {t("Показывает техническую информацию о обработке уведомлений платежей")}
                 </p>
               </div>
               <ToggleSwitch
@@ -309,11 +303,10 @@ const DeveloperSection: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Доходы и источники (экспериментально)
+                  {t("Доходы и источники (экспериментально)")}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Включает разделы "Доходы" и "Источники", поддержку
-                  мультивалютности и метод оплаты в платежах
+                  {t("Включает разделы \"Доходы\" и \"Источники\", поддержку мультивалютности и метод оплаты в платежах")}
                 </p>
               </div>
               <ToggleSwitch
@@ -326,10 +319,10 @@ const DeveloperSection: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Теги и категории
+                  {t("Теги и категории")}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Включено для всех по умолчанию
+                  {t("Включено для всех по умолчанию")}
                 </p>
               </div>
               <ToggleSwitch
@@ -343,22 +336,20 @@ const DeveloperSection: React.FC = () => {
 
         <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
           <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-            Тестовое email-уведомление
+            {t("Тестовое email-уведомление")}
           </h4>
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              Отправляет письмо с контрольной фразой "email notifications
-              functionality check" на ваш текущий email. Используйте для
-              проверки SMTP-настроек.
+              {t("Отправляет письмо с контрольной фразой \"email notifications functionality check\" на ваш текущий email. Используйте для проверки SMTP-настроек.")}
             </p>
             <button
               onClick={handleSendTestEmail}
               disabled={isSendingTestEmail}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
+              className="primary-action cursor-pointer px-4 py-2 text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSendingTestEmail
-                ? "Отправка..."
-                : "Отправить тестовое email-уведомление"}
+                ? t("Отправка...")
+                : t("Отправить тестовое email-уведомление")}
             </button>
           </div>
         </div>
@@ -367,21 +358,19 @@ const DeveloperSection: React.FC = () => {
         {isTauriMobile() && (
           <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
             <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Симуляция уведомлений
+              {t("Симуляция уведомлений")}
             </h4>
             <div className="space-y-4">
               <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-900/30 rounded-lg">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>Тестирование:</strong> Симулирует получение
-                  уведомления от Райффайзен банка для проверки автоматической
-                  обработки платежей.
+                  <strong>{t("Тестирование:")}</strong>{t(" Симулирует получение уведомления от Райффайзен банка для проверки автоматической обработки платежей.")}
                 </p>
               </div>
               <button
                 onClick={handleSimulateNotification}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                className="primary-action cursor-pointer px-4 py-2 text-sm font-medium rounded-md transition-colors"
               >
-                Симулировать уведомление Райффайзен
+                {t("Симулировать уведомление Райффайзен")}
               </button>
             </div>
           </div>
@@ -391,14 +380,12 @@ const DeveloperSection: React.FC = () => {
         {isTauriMobile() && (
           <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
             <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Логи приложения
+              {t("Логи приложения")}
             </h4>
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Файл логов:</strong> Все логи приложения за сегодня
-                  сохраняются в файл logs.txt. Вы можете скачать, скопировать
-                  или очистить этот файл.
+                  <strong>{t("Файл логов:")}</strong>{t(" Все логи приложения за сегодня сохраняются в файл logs.txt. Вы можете скачать, скопировать или очистить этот файл.")}
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -406,20 +393,20 @@ const DeveloperSection: React.FC = () => {
                   onClick={handleDownloadLogs}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
                 >
-                  Скачать логи
+                  {t("Скачать логи")}
                 </button>
                 <button
                   onClick={handleCopyLogs}
                   disabled={isCopyingLogs}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isCopyingLogs ? "Копирование..." : "Копировать в буфер"}
+                  {isCopyingLogs ? t("Копирование...") : t("Копировать в буфер")}
                 </button>
                 <button
                   onClick={() => setIsClearLogsModalOpen(true)}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
                 >
-                  Очистить логи
+                  {t("Очистить логи")}
                 </button>
               </div>
             </div>
@@ -429,15 +416,15 @@ const DeveloperSection: React.FC = () => {
         <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-start gap-3 mb-4">
             <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-              Демонстрация Particle Notification
+              {t("Демонстрация Particle Notification")}
             </h4>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => setShowParticleNotification(true)}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+              className="primary-action cursor-pointer px-4 py-2 text-sm font-medium rounded-md transition-colors"
             >
-              Показать тестовое уведомление
+              {t("Показать тестовое уведомление")}
             </button>
           </div>
         </div>
@@ -447,14 +434,14 @@ const DeveloperSection: React.FC = () => {
         isOpen={isClearLogsModalOpen}
         onClose={() => setIsClearLogsModalOpen(false)}
         onConfirm={handleClearLogs}
-        title="Очистить логи?"
-        message="Вы уверены, что хотите очистить все логи? Это действие нельзя будет отменить."
-        confirmText="Очистить"
+        title={t("Очистить логи?")}
+        message={t("Вы уверены, что хотите очистить все логи? Это действие нельзя будет отменить.")}
+        confirmText={t("Очистить")}
         isConfirming={isClearingLogs}
       />
 
       <ParticleNotification
-        text="Тестовое уведомление"
+        text={t("Тестовое уведомление")}
         isOpen={showParticleNotification}
         onClose={() => setShowParticleNotification(false)}
       />

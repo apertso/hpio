@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useCallback, useEffect } from "react";
 import FileUpload from "./FileUpload"; // Import the FileUpload component
 
@@ -16,6 +17,7 @@ const PaymentFileUploadSection: React.FC<PaymentFileUploadSectionProps> = ({
   initialFile, // Optional initial file prop
   onPendingFileChange,
 }) => {
+  const { t } = useLanguage();
   // State for attached file
   const [attachedFile, setAttachedFile] = useState<{
     filePath: string;
@@ -44,9 +46,9 @@ const PaymentFileUploadSection: React.FC<PaymentFileUploadSectionProps> = ({
 
   const handleFileUploadError = useCallback(
     (message: string) => {
-      setFormError(`Ошибка: ${message}`); // Use setFormError prop
+      setFormError(t("Ошибка: {1}", message)); // Use setFormError prop
     },
-    [setFormError]
+    [setFormError, t]
   ); // Dependency on setFormError prop
 
   return (

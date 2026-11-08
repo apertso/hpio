@@ -1,4 +1,5 @@
 import React from "react";
+import { useGradientStroke } from "../hooks/useGradientStroke";
 import Spinner from "./Spinner";
 
 export interface ButtonProps
@@ -9,6 +10,7 @@ export interface ButtonProps
   size?: "default" | "small" | "large";
   layout?: "default" | "icon-only" | "text-only";
   loading?: boolean;
+  animatedStroke?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -18,11 +20,14 @@ export const Button: React.FC<ButtonProps> = ({
   size = "default",
   layout = "default",
   loading = false,
+  animatedStroke = false,
   className = "",
   children,
   type = "button",
   ...rest
 }) => {
+  const strokeRef = useGradientStroke();
+
   // Base styles that apply to all buttons
   const base =
     "transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium rounded-xl active:scale-[0.98]";
@@ -50,7 +55,7 @@ export const Button: React.FC<ButtonProps> = ({
   // Variant (color) styles
   const variants: Record<string, string> = {
     primary:
-      "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 border border-transparent",
+      "primary-action shadow-sm focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 dark:focus:ring-offset-gray-900",
     secondary:
       "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-800 dark:hover:bg-gray-800 dark:hover:border-gray-700 dark:focus:ring-offset-gray-900 shadow-sm",
     destructive:
@@ -66,7 +71,7 @@ export const Button: React.FC<ButtonProps> = ({
       : "";
 
   const classes =
-    `${base} ${sizes[size]} ${paddings} ${layouts[layout]} ${variants[variant]} ${className}`.trim();
+    `${base} ${sizes[size]} ${paddings} ${layouts[layout]} ${variants[variant]} ${animatedStroke ? "gradient-stroke" : ""} ${className}`.trim();
 
   const renderContent = () => {
     if (layout === "icon-only") {
@@ -100,12 +105,14 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      ref={animatedStroke ? strokeRef : undefined}
       type={type}
       className={classes}
       disabled={loading || rest.disabled}
       {...rest}
     >
       {renderContent()}
+      {animatedStroke && <span className="gradient-stroke-edge" aria-hidden="true" />}
     </button>
   );
 };

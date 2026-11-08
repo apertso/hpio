@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState } from "react";
 import Modal from "./Modal";
 import { Button } from "./Button";
@@ -11,6 +12,7 @@ const DeleteRecurringPaymentModal: React.FC<{
   onDeleteSeries: () => void;
   isProcessing: boolean;
 }> = ({ isOpen, onClose, onDeleteInstance, onDeleteSeries, isProcessing }) => {
+  const { t } = useLanguage();
   const [shouldDeleteSeries, setShouldDeleteSeries] = useState(false);
 
   useEffect(() => {
@@ -32,8 +34,7 @@ const DeleteRecurringPaymentModal: React.FC<{
   const renderContent = (): React.ReactNode => (
     <div className="flex flex-col gap-4">
       <p className="text-gray-700 dark:text-gray-300">
-        Это повторяющийся платёж. По умолчанию удаляется только текущий
-        экземпляр серии.
+        {t("Это повторяющийся платёж. По умолчанию удаляется только текущий экземпляр серии.")}
       </p>
       <Checkbox
         id="delete-series-checkbox"
@@ -42,10 +43,10 @@ const DeleteRecurringPaymentModal: React.FC<{
         label={
           <div>
             <p className="text-gray-900 dark:text-gray-100 font-medium">
-              Удалить всю серию
+              {t("Удалить всю серию")}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 font-normal">
-              Отменит все будущие платежи и деактивирует серию.
+              {t("Отменит все будущие платежи и деактивирует серию.")}
             </p>
           </div>
         }
@@ -56,13 +57,13 @@ const DeleteRecurringPaymentModal: React.FC<{
             variant="ghost"
             onClick={onClose}
             disabled={isProcessing}
-            label="Отмена"
+            label={t("Отмена")}
           />
           <Button
             variant="destructive"
             onClick={handleDelete}
             loading={isProcessing}
-            label={shouldDeleteSeries ? "Удалить серию" : "Удалить только этот"}
+            label={shouldDeleteSeries ? t("Удалить серию") : t("Удалить только этот")}
           />
         </div>
         <div className="flex flex-col md:hidden pt-6 space-y-3">
@@ -72,14 +73,14 @@ const DeleteRecurringPaymentModal: React.FC<{
             className="w-full"
             onClick={handleDelete}
             loading={isProcessing}
-            label={shouldDeleteSeries ? "Удалить серию" : "Удалить только этот"}
+            label={shouldDeleteSeries ? t("Удалить серию") : t("Удалить только этот")}
           />
           <Button
             variant="ghost"
             className="w-full"
             onClick={onClose}
             disabled={isProcessing}
-            label="Отмена"
+            label={t("Отмена")}
           />
         </div>
       </div>
@@ -91,7 +92,7 @@ const DeleteRecurringPaymentModal: React.FC<{
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title="Удаление повторяющегося платежа"
+        title={t("Удаление повторяющегося платежа")}
         className="hidden md:flex"
       >
         {renderContent()}
@@ -99,7 +100,7 @@ const DeleteRecurringPaymentModal: React.FC<{
       <MobilePanel
         isOpen={isOpen}
         onClose={onClose}
-        title="Удаление повторяющегося платежа"
+        title={t("Удаление повторяющегося платежа")}
       >
         {renderContent()}
       </MobilePanel>

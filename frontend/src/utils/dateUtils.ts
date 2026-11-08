@@ -7,6 +7,10 @@ export const isHourlyDateString = (dateString: string): boolean => {
   return dateString.includes(" ");
 };
 
+/** Дата без времени относится к календарному дню в локальном часовом поясе. */
+export const parseCalendarDate = (value: string): Date =>
+  new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? value + "T00:00:00" : value);
+
 /**
  * Форматирует дату в локальном часовом поясе (YYYY-MM-DD)
  */
@@ -18,25 +22,25 @@ export const formatDateToLocal = (date: Date): string => {
 };
 
 /**
- * Форматирует дату для отображения (DD.MM.YYYY)
+ * Форматирует дату для отображения в выбранной локали
  */
-export const formatDateForDisplay = (date: Date): string => {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day}.${month}.${year}`;
-};
+export const formatDateForDisplay = (date: Date, locale = "ru-RU"): string =>
+  date.toLocaleDateString(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 
 /**
- * Форматирует дату и время для отображения (DD.MM.YYYY, HH:MM:SS)
+ * Форматирует дату и время для отображения в выбранной локали
  */
-export const formatDateTimeForDisplay = (date: Date): string => {
-  const time = date.toLocaleTimeString("ru-RU", {
+export const formatDateTimeForDisplay = (date: Date, locale = "ru-RU"): string => {
+  const time = date.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
-  return `${formatDateForDisplay(date)}, ${time}`;
+  return `${formatDateForDisplay(date, locale)}, ${time}`;
 };
 
 /**

@@ -15,9 +15,9 @@ export const CURRENCY_OPTIONS: CurrencyOption[] = [
   { value: "CNY", label: "Китайский юань" },
 ];
 
-export const getCurrencySymbol = (currency: string): string => {
+export const getCurrencySymbol = (currency: string, locale = "ru-RU"): string => {
   try {
-    const parts = new Intl.NumberFormat("ru-RU", {
+    const parts = new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",

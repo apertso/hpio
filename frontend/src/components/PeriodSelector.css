@@ -88,13 +88,14 @@
 
 .react-datepicker__day--selected,
 .react-datepicker__day--in-range {
-  background: rgb(99 102 241);
+  background: rgb(51 65 85);
   color: white;
 }
 
 .react-datepicker__day--range-start,
 .react-datepicker__day--range-end {
-  background: rgb(79 70 229);
+  background: rgb(30 41 59);
+  box-shadow: inset 0 0 0 1px var(--color-violet-400);
   color: white;
 }
 

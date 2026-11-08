@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect } from "react";
 import { cryptoApi, CryptoAsset } from "../api/cryptoApi";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
@@ -9,6 +10,7 @@ interface CryptoSelectorProps {
 }
 
 const CryptoSelector: React.FC<CryptoSelectorProps> = ({ onSelect }) => {
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [assets, setAssets] = useState<CryptoAsset[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,7 +42,7 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({ onSelect }) => {
         <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Поиск криптовалюты..."
+          placeholder={t("Поиск криптовалюты...")}
           className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -49,7 +51,7 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({ onSelect }) => {
       <div className="max-h-48 overflow-y-auto space-y-1">
         {loading ? (
           <div className="text-center py-2 text-sm text-gray-500 dark:text-gray-400">
-            Загрузка...
+            {t("Загрузка...")}
           </div>
         ) : assets.length > 0 ? (
           assets.map((asset) => (
@@ -75,7 +77,7 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({ onSelect }) => {
           ))
         ) : (
           <div className="text-center py-2 text-sm text-gray-500 dark:text-gray-400">
-            Ничего не найдено
+            {t("Ничего не найдено")}
           </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import Table, { TableColumn } from "./Table";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
@@ -20,12 +21,13 @@ const TagsTable: React.FC<TagsTableProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { t } = useLanguage();
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
   const columns: TableColumn<Tag>[] = [
     {
       id: "name",
-      header: "Название",
+      header: t("Название"),
       thClassName: thBaseClassName,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate",
@@ -39,15 +41,15 @@ const TagsTable: React.FC<TagsTableProps> = ({
       columns={columns}
       getRowKey={(tag) => tag.id}
       isLoading={isLoading}
-      emptyMessage="Нет тегов."
+      emptyMessage={t("Нет тегов.")}
       rowActions={(tag) => [
         {
-          label: "Редактировать",
+          label: t("Редактировать"),
           onClick: () => onEdit(tag.id),
           icon: <PencilIcon className="h-4 w-4" />,
         },
         {
-          label: "Удалить",
+          label: t("Удалить"),
           onClick: () => onDelete(tag.id, tag.name),
           icon: <TrashIcon className="h-4 w-4" />,
         },

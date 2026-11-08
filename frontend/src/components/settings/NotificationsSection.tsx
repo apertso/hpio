@@ -1,3 +1,4 @@
+import { useLanguage } from "../../context/LanguageContext";
 import React, { useState, useEffect } from "react";
 import { BellAlertIcon } from "@heroicons/react/24/outline";
 import SettingsSection from "../SettingsSection";
@@ -15,6 +16,7 @@ import getErrorMessage from "../../utils/getErrorMessage";
 import logger from "../../utils/logger";
 
 const NotificationsSection: React.FC = () => {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const { user, refreshUser } = useAuth();
   const [
@@ -55,23 +57,23 @@ const NotificationsSection: React.FC = () => {
 
   const handleOpenAppNotificationSettings = async () => {
     if (!isTauriMobile()) {
-      showToast("Эта функция доступна только в мобильном приложении", "error");
+      showToast(t("Эта функция доступна только в мобильном приложении"), "error");
       return;
     }
 
     try {
       await openAppNotificationSettings();
-      showToast("Откройте настройки и разрешите уведомления", "info");
+      showToast(t("Откройте настройки и разрешите уведомления"), "info");
       // Перепроверяем разрешение через 2 секунды
       setTimeout(async () => {
         const status = await checkAppNotificationPermission();
         setAppNotificationPermissionGranted(status.granted);
         if (status.granted) {
-          showToast("Уведомления приложения разрешены!", "success");
+          showToast(t("Уведомления приложения разрешены!"), "success");
         }
       }, 2000);
     } catch {
-      showToast("Не удалось открыть настройки", "error");
+      showToast(t("Не удалось открыть настройки"), "error");
     }
   };
 
@@ -86,10 +88,10 @@ const NotificationsSection: React.FC = () => {
       });
       setEmailNotifications(enabled);
       await refreshUser();
-      showToast("Предпочтения уведомлений обновлены", "success");
+      showToast(t("Предпочтения уведомлений обновлены"), "success");
     } catch (error) {
       showToast(
-        `Не удалось обновить предпочтения: ${getErrorMessage(error)}`,
+        t("Не удалось обновить предпочтения: {1}", t(getErrorMessage(error))),
         "error"
       );
     } finally {
@@ -108,10 +110,10 @@ const NotificationsSection: React.FC = () => {
       });
       setPushNotifications(enabled);
       await refreshUser();
-      showToast("Предпочтения уведомлений обновлены", "success");
+      showToast(t("Предпочтения уведомлений обновлены"), "success");
     } catch (error) {
       showToast(
-        `Не удалось обновить предпочтения: ${getErrorMessage(error)}`,
+        t("Не удалось обновить предпочтения: {1}", t(getErrorMessage(error))),
         "error"
       );
     } finally {
@@ -130,10 +132,10 @@ const NotificationsSection: React.FC = () => {
       });
       setNotificationTime(time);
       await refreshUser();
-      showToast("Время уведомлений обновлено", "success");
+      showToast(t("Время уведомлений обновлено"), "success");
     } catch (error) {
       showToast(
-        `Не удалось обновить время: ${getErrorMessage(error)}`,
+        t("Не удалось обновить время: {1}", t(getErrorMessage(error))),
         "error"
       );
     } finally {
@@ -152,11 +154,10 @@ const NotificationsSection: React.FC = () => {
           </div>
           <div className="flex-1">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Уведомления приложения
+              {t("Уведомления приложения")}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Получайте напоминания о предстоящих платежах и уведомления о новых
-              предложениях автоплатежей
+              {t("Получайте напоминания о предстоящих платежах и уведомления о новых предложениях автоплатежей")}
             </p>
           </div>
         </div>
@@ -166,14 +167,14 @@ const NotificationsSection: React.FC = () => {
             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Отображение уведомлений
+                  {t("Отображение уведомлений")}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {isCheckingAppPermission
-                    ? "Проверка..."
+                    ? t("Проверка...")
                     : appNotificationPermissionGranted
-                    ? "Разрешено"
-                    : "Не разрешено"}
+                    ? t("Разрешено")
+                    : t("Не разрешено")}
                 </p>
               </div>
               {!appNotificationPermissionGranted &&
@@ -182,7 +183,7 @@ const NotificationsSection: React.FC = () => {
                     onClick={handleOpenAppNotificationSettings}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                   >
-                    Настроить
+                    {t("Настроить")}
                   </button>
                 )}
               {appNotificationPermissionGranted && (
@@ -205,10 +206,10 @@ const NotificationsSection: React.FC = () => {
           <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Email уведомления
+                {t("Email уведомления")}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Получать напоминания о платежах по email
+                {t("Получать напоминания о платежах по email")}
               </p>
             </div>
             <ToggleSwitch
@@ -221,10 +222,10 @@ const NotificationsSection: React.FC = () => {
           <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Push уведомления
+                {t("Push уведомления")}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Получать push-уведомления в приложении
+                {t("Получать push-уведомления в приложении")}
               </p>
             </div>
             <ToggleSwitch
@@ -237,7 +238,7 @@ const NotificationsSection: React.FC = () => {
           {(emailNotifications || pushNotifications) && (
             <div>
               <TextInputField
-                label="Напоминать в"
+                label={t("Напоминать в")}
                 inputId="notificationTime"
                 type="time"
                 value={notificationTime}

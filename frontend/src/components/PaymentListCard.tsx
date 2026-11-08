@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import PaymentIconDisplay from "./PaymentIconDisplay";
 import { PaymentData } from "../types/paymentData";
@@ -11,7 +12,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
-import { formatDateForDisplay } from "../utils/dateUtils";
+import { parseCalendarDate, formatDateForDisplay } from "../utils/dateUtils";
 
 type PaymentListCardContext = "home" | "payments" | "archive";
 
@@ -24,7 +25,7 @@ export interface PaymentListCardProps {
 }
 
 const isToday = (dateString: string) => {
-  const date = new Date(dateString);
+  const date = parseCalendarDate(dateString);
   const now = new Date();
   return (
     date.getDate() === now.getDate() &&
@@ -40,18 +41,19 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
   className,
   hideDate = false,
 }) => {
-  const amount = new Intl.NumberFormat("ru-RU", {
+  const { t, locale } = useLanguage();
+  const amount = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(payment.amount);
 
   const isHome = context === "home";
-  const dueDateStr = formatDateForDisplay(new Date(payment.dueDate));
+  const dueDateStr = formatDateForDisplay(parseCalendarDate(payment.dueDate), locale);
   const completedOrDeletedDateStr = new Date(
     payment.completedAt || payment.updatedAt
   );
   const formattedCompletedOrDeletedDateStr = formatDateForDisplay(
-    completedOrDeletedDateStr
+    completedOrDeletedDateStr, locale
   );
 
   const showRecurring =
@@ -122,10 +124,10 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
           {showRecurring && payment.series?.recurrenceRule && (
             <span
               className="inline-flex items-center text-xs text-gray-500 dark:text-gray-400"
-              title="Повторяющийся платеж"
+              title={t("Повторяющийся платеж")}
             >
               <ArrowPathIcon className="h-3.5 w-3.5 mr-1.5" />
-              {formatRecurrenceRule(payment.series.recurrenceRule)}
+              {t(formatRecurrenceRule(payment.series.recurrenceRule))}
             </span>
           )}
         </div>
@@ -134,38 +136,38 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
           {showUpcomingBadge && (
             <span className="badge bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
               <ClockIcon className="h-3 w-3 mr-1" />
-              Предстоящий
+              {t("Предстоящий")}
             </span>
           )}
           {showTodayBadge && (
             <span className="badge bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-800/30">
               <CalendarDaysIcon className="h-3 w-3 mr-1" />
-              Сегодня
+              {t("Сегодня")}
             </span>
           )}
           {showOverdueBadge && (
             <span className="badge bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800/30">
               <ExclamationCircleIcon className="h-3 w-3 mr-1" />
-              Просрочен
+              {t("Просрочен")}
             </span>
           )}
           {showCompletedBadge && (
             <span className="badge bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
               <CheckCircleIcon className="h-3 w-3 mr-1 text-green-500 dark:text-green-600/80" />
-              Выполнен
+              {t("Выполнен")}
             </span>
           )}
           {showDeletedBadge && (
             <span className="badge bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
               <TrashIcon className="h-3 w-3 mr-1 text-gray-400" />
-              Удален
+              {t("Удален")}
             </span>
           )}
 
           {payment.isVirtual && (
             <span
               className="text-blue-400 dark:text-blue-500/80"
-              title="Виртуальный платеж"
+              title={t("Виртуальный платеж")}
             >
               <SparklesIcon className="h-4 w-4" />
             </span>

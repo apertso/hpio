@@ -42,16 +42,16 @@ const getCardColors = (
     case "premium":
     case "world":
       return {
-        bg: "bg-gradient-to-br from-purple-700 via-purple-600 to-indigo-700",
+        bg: "bg-gradient-to-br from-slate-800 via-blue-900 to-slate-900 ring-1 ring-inset ring-violet-400/70",
         text: "text-white",
-        accent: "text-purple-200",
+        accent: "text-blue-200",
       };
     default:
       // Standard/Classic - blue gradient
       return {
-        bg: "bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700",
+        bg: "bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800",
         text: "text-white",
-        accent: "text-indigo-200",
+        accent: "text-blue-100",
       };
   }
 };

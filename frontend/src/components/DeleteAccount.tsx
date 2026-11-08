@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
 import Modal from "./Modal";
 import MobilePanel from "./MobilePanel";
@@ -37,22 +38,26 @@ const reasonOptions: { value: DeletionReason; label: string }[] = [
   { value: "other", label: "Другое" },
 ];
 
-const WarningMessage: React.FC = () => (
+const WarningMessage: React.FC = () => {
+  const { t } = useLanguage();
+  return (
   <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
     <p className="text-sm text-red-800 dark:text-red-200">
-      <strong>Внимание:</strong> Это действие необратимо. Все ваши данные будут
-      безвозвратно удалены.
+      <strong>{t("Внимание:")}</strong>{t(" Это действие необратимо. Все ваши данные будут безвозвратно удалены.")}
     </p>
   </div>
 );
+};
 
 const ReasonSelection: React.FC<{
   reason: DeletionReason;
   onReasonChange: (reason: DeletionReason) => void;
-}> = ({ reason, onReasonChange }) => (
+}> = ({ reason, onReasonChange }) => {
+  const { t } = useLanguage();
+  return (
   <div>
     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-      Почему вы хотите удалить свой аккаунт?
+      {t("Почему вы хотите удалить свой аккаунт?")}
     </label>
     <div className="space-y-3">
       {reasonOptions.map((option) => (
@@ -78,7 +83,7 @@ const ReasonSelection: React.FC<{
                     : ""
                 }
               >
-                {option.label}
+                {t(option.label)}
               </span>
             }
           />
@@ -87,6 +92,7 @@ const ReasonSelection: React.FC<{
     </div>
   </div>
 );
+};
 
 const FeedbackSection: React.FC<{
   reason: DeletionReason;
@@ -95,23 +101,28 @@ const FeedbackSection: React.FC<{
   onFeedbackChange: (feedback: string) => void;
   onFileChange: (file: File | null) => void;
 }> = ({ reason, feedback, file, onFeedbackChange, onFileChange }) =>
-  reason === "other" ? (
+  {
+  const { t } = useLanguage();
+  return reason === "other" ? (
     <div className="mt-6">
       <FeedbackTextarea
         value={feedback}
         onChange={onFeedbackChange}
         file={file}
         onFileChange={onFileChange}
-        placeholder="Пожалуйста, укажите причину подробнее (необязательно)"
+        placeholder={t("Пожалуйста, укажите причину подробнее (необязательно)")}
       />
     </div>
   ) : null;
+};
 
 const AgreementSection: React.FC<{
   agreed: boolean;
   onAgreedChange: (agreed: boolean) => void;
   isDeleting: boolean;
-}> = ({ agreed, onAgreedChange, isDeleting }) => (
+}> = ({ agreed, onAgreedChange, isDeleting }) => {
+  const { t } = useLanguage();
+  return (
   <div className="flex items-center gap-3 mb-4">
     <ToggleSwitch
       checked={agreed}
@@ -119,10 +130,11 @@ const AgreementSection: React.FC<{
       disabled={isDeleting}
     />
     <span className="text-sm text-gray-900 dark:text-gray-100">
-      Я понимаю, и всё равно хочу удалить аккаунт.
+      {t("Я понимаю, и всё равно хочу удалить аккаунт.")}
     </span>
   </div>
 );
+};
 
 const ActionButtons: React.FC<{
   onConfirm: () => void;
@@ -130,7 +142,9 @@ const ActionButtons: React.FC<{
   agreed: boolean;
   showBackButton?: boolean;
   onBack?: () => void;
-}> = ({ onConfirm, isDeleting, agreed, showBackButton = false, onBack }) => (
+}> = ({ onConfirm, isDeleting, agreed, showBackButton = false, onBack }) => {
+  const { t } = useLanguage();
+  return (
   <div
     className={`flex ${
       showBackButton ? "justify-between" : "justify-end"
@@ -144,7 +158,7 @@ const ActionButtons: React.FC<{
         className="text-gray-500 dark:text-gray-400 font-bold py-2 px-5 rounded-lg hover:text-gray-700 dark:hover:text-gray-200 transition-colors duration-150 ease-in-out text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         <ArrowLeftIcon className="w-4 h-4" />
-        Назад
+        {t("Назад")}
       </button>
     )}
     <div className="flex gap-3">
@@ -155,11 +169,12 @@ const ActionButtons: React.FC<{
         className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 transition-all duration-150 ease-in-out text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
       >
         <TrashIcon className="w-4 h-4" />
-        {isDeleting ? "Удаление..." : "Удалить мой аккаунт"}
+        {isDeleting ? t("Удаление...") : t("Удалить мой аккаунт")}
       </button>
     </div>
   </div>
 );
+};
 
 // Shared content component
 const DeleteAccountContent: React.FC<{
@@ -192,12 +207,14 @@ const DeleteAccountContent: React.FC<{
   handleClose,
   handleSubmit,
   showHeader = true,
-}) => (
+}) => {
+  const { t } = useLanguage();
+  return (
   <>
     {showHeader && (
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900 dark:text-white text-2xl">
-          Удалить аккаунт
+          {t("Удалить аккаунт")}
         </h3>
         <button
           onClick={handleClose}
@@ -248,7 +265,7 @@ const DeleteAccountContent: React.FC<{
                 disabled={!reason}
                 className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 transition-all duration-150 ease-in-out text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
               >
-                Далее
+                {t("Далее")}
                 <ArrowRightIcon className="w-4 h-4" />
               </button>
             </div>
@@ -278,6 +295,7 @@ const DeleteAccountContent: React.FC<{
     </div>
   </>
 );
+};
 
 const DeleteAccount: React.FC<DeleteAccountProps> = ({
   isOpen,
@@ -285,6 +303,7 @@ const DeleteAccount: React.FC<DeleteAccountProps> = ({
   onConfirm,
   isDeleting,
 }) => {
+  const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [reason, setReason] = useState<DeletionReason>("no_answer");
   const [feedback, setFeedback] = useState("");
@@ -345,7 +364,7 @@ const DeleteAccount: React.FC<DeleteAccountProps> = ({
       <MobilePanel
         isOpen={isOpen}
         onClose={handleClose}
-        title="Удалить аккаунт"
+        title={t("Удалить аккаунт")}
       >
         <DeleteAccountContent {...sharedProps} showHeader={false} />
       </MobilePanel>

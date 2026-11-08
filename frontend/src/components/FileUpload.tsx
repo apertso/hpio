@@ -1,4 +1,5 @@
 // src/components/FileUpload.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   PaperClipIcon,
@@ -36,6 +37,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   isSubmitting,
   onPendingFileChange,
 }) => {
+  const { t } = useLanguage();
   const [file, setFile] = useState<{
     filePath: string;
     fileName: string;
@@ -95,7 +97,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-        Прикрепить файл
+        {t("Прикрепить файл")}
       </label>
 
       {/* File Preview Card */}
@@ -110,8 +112,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 {file.fileName}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {!paymentId && "Ожидает загрузки"}
-                {paymentId && "Файл загружен"}
+                {!paymentId && t("Ожидает загрузки")}
+                {paymentId && t("Файл загружен")}
               </span>
             </div>
           </div>
@@ -129,7 +131,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             }}
             disabled={isDeleting || isSubmitting}
             className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-            title={isDeleting ? "Удаление..." : "Удалить файл"}
+            title={isDeleting ? t("Удаление...") : t("Удалить файл")}
           >
             {isDeleting ? (
               <Spinner size="sm" />
@@ -150,7 +152,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             }
             ${
               isDragActive
-                ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                ? "border-indigo-500 bg-slate-50 dark:bg-slate-800"
                 : "hover:bg-gray-50 dark:hover:bg-gray-800"
             }
           `}
@@ -169,11 +171,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
               <div className="flex flex-col items-center justify-center py-2">
                 <Spinner />
                 <p className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Загрузка файла...
+                  {t("Загрузка файла...")}
                 </p>
                 <div className="w-full max-w-xs bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 mt-3 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-indigo-600 transition-all duration-300 ease-out"
+                    className="h-full rounded-full bg-slate-700 dark:bg-slate-400 transition-all duration-300 ease-out"
                     style={{ width: `${uploadProgress}%` }}
                   ></div>
                 </div>
@@ -185,7 +187,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               <div className="md:hidden w-full flex items-center justify-center gap-2 p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm active:bg-gray-50 dark:active:bg-gray-700">
                 <ArrowUpTrayIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Загрузить файл
+                  {t("Загрузить файл")}
                 </span>
               </div>
 
@@ -196,11 +198,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 </div>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {isDragActive
-                    ? "Отпустите файл"
-                    : "Нажмите или перетащите файл"}
+                    ? t("Отпустите файл")
+                    : t("Нажмите или перетащите файл")}
                 </p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
-                  JPG, PNG, PDF, DOCX до {maxFileSize / 1024 / 1024} МБ
+                  {t("JPG, PNG, PDF, DOCX до ")}{maxFileSize / 1024 / 1024}{t(" МБ")}
                 </p>
               </div>
             </>

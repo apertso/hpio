@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
@@ -27,6 +28,7 @@ const categoryFormSchema = z.object({
 type CategoryFormInputs = z.infer<typeof categoryFormSchema>;
 
 const CategoryEditPage: React.FC = () => {
+  const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
@@ -72,10 +74,10 @@ const CategoryEditPage: React.FC = () => {
   // Устанавливаем заголовок страницы для мобильного заголовка
   useEffect(() => {
     const headerText = isEditMode
-      ? "Редактировать категорию"
-      : "Новая категория";
+      ? t("Редактировать категорию")
+      : t("Новая категория");
     setPageTitle(headerText);
-  }, [isEditMode, setPageTitle]);
+  }, [isEditMode, setPageTitle, t]);
 
   const onSubmit: SubmitHandler<CategoryFormInputs> = async (data) => {
     setFormError(null);
@@ -108,12 +110,12 @@ const CategoryEditPage: React.FC = () => {
           <Link
             to="/categories"
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"
-            aria-label="Назад к категориям"
+            aria-label={t("Назад к категориям")}
           >
             <ArrowLeftIcon className="h-6 w-6" />
           </Link>
           <h2 className="text-xl md:text-2xl font-bold ml-4 text-gray-900 dark:text-white">
-            {isEditMode ? "Редактировать категорию" : "Новая категория"}
+            {isEditMode ? t("Редактировать категорию") : t("Новая категория")}
           </h2>
         </div>
 
@@ -131,17 +133,17 @@ const CategoryEditPage: React.FC = () => {
                       className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-6"
                       role="alert"
                     >
-                      <span className="block sm:inline">{formError}</span>
+                      <span className="block sm:inline">{t(formError)}</span>
                     </div>
                   )}
                   <div className="mb-6">
                     <TextInputField
-                      label="Название категории"
+                      label={t("Название категории")}
                       inputId="category-name"
                       error={errors.name?.message}
                       required
                       type="text"
-                      placeholder="Например, Продукты"
+                      placeholder={t("Например, Продукты")}
                       disabled={combinedIsLoading}
                       {...register("name")}
                     />
@@ -159,14 +161,14 @@ const CategoryEditPage: React.FC = () => {
                       variant="ghost"
                       onClick={() => navigate("/categories")}
                       disabled={combinedIsLoading}
-                      label="Отмена"
+                      label={t("Отмена")}
                     />
                     <Button
                       variant="primary"
                       type="submit"
                       loading={combinedIsLoading}
                       disabled={combinedIsLoading}
-                      label="Сохранить"
+                      label={t("Сохранить")}
                     />
                   </div>
                   <div className="flex flex-col md:hidden mt-6 space-y-3">
@@ -176,14 +178,14 @@ const CategoryEditPage: React.FC = () => {
                       type="submit"
                       loading={combinedIsLoading}
                       disabled={combinedIsLoading}
-                      label="Сохранить"
+                      label={t("Сохранить")}
                       className="w-full"
                     />
                     <Button
                       variant="ghost"
                       onClick={() => navigate("/categories")}
                       disabled={combinedIsLoading}
-                      label="Отмена"
+                      label={t("Отмена")}
                       className="w-full"
                     />
                   </div>

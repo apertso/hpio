@@ -9,6 +9,7 @@ import { ToastProvider } from "./context/ToastContext.tsx";
 import { ResetProvider } from "./context/ResetContext";
 import { OfflineProvider } from "./context/OfflineContext.tsx";
 import { PageTitleProvider } from "./context/PageTitleContext.tsx";
+import { LanguageProvider } from "./context/LanguageContext";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import { initializeErrorHandlers } from "./utils/errorHandlers";
 import { initializeFreezeDetector } from "./utils/freezeDetector";
@@ -20,22 +21,24 @@ logger.info("Application initialized");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ErrorBoundary>
-      <ThemeProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <ToastProvider>
-              <ResetProvider>
-                <OfflineProvider>
-                  <PageTitleProvider>
-                    <App />
-                  </PageTitleProvider>
-                </OfflineProvider>
-              </ResetProvider>
-            </ToastProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <LanguageProvider>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <ToastProvider>
+                <ResetProvider>
+                  <OfflineProvider>
+                    <PageTitleProvider>
+                      <App />
+                    </PageTitleProvider>
+                  </OfflineProvider>
+                </ResetProvider>
+              </ToastProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </LanguageProvider>
   </React.StrictMode>
 );

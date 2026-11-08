@@ -1,4 +1,5 @@
 // src/App.tsx
+import { useLanguage } from "./context/LanguageContext";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Routes,
@@ -22,7 +23,6 @@ import NotificationOnboardingModal from './components/NotificationOnboardingModa
 import Overlay from './components/Overlay';
 import SyncStatusIndicator from './components/SyncStatusIndicator';
 import MobileNavigationDrawer from './components/MobileNavigationDrawer';
-import FeedbackWidget from './components/FeedbackWidget';
 import VerificationBanner from './components/VerificationBanner';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 
@@ -93,6 +93,7 @@ const NATIVE_NOTIFICATION_EVENT = 'hpio-native-notification';
 // --- Helper Components ---
 
 const Navigation: React.FC = () => {
+  const { t } = useLanguage();
   const { isAuthenticated, user, logout, token } = useAuth();
   const location = useLocation();
   const {
@@ -133,7 +134,7 @@ const Navigation: React.FC = () => {
               to="/dashboard"
               className={navLinkClass(location.pathname === '/dashboard')}
             >
-              Главная
+              {t("Главная")}
             </Link>
             <Link
               to="/payments"
@@ -141,7 +142,7 @@ const Navigation: React.FC = () => {
                 location.pathname.startsWith('/payments'),
               )}
             >
-              Платежи
+              {t("Платежи")}
             </Link>
             {canManageCategories && (
               <Link
@@ -150,7 +151,7 @@ const Navigation: React.FC = () => {
                   location.pathname.startsWith('/categories'),
                 )}
               >
-                Категории
+                {t("Категории")}
               </Link>
             )}
             {canManageCategories && (
@@ -160,7 +161,7 @@ const Navigation: React.FC = () => {
                   location.pathname.startsWith('/automation-rules'),
                 )}
               >
-                Автоматизация
+                {t("Автоматизация")}
               </Link>
             )}
             {tagsEnabled && (
@@ -168,7 +169,7 @@ const Navigation: React.FC = () => {
                 to="/tags"
                 className={navLinkClass(location.pathname.startsWith('/tags'))}
               >
-                Теги
+                {t("Теги")}
               </Link>
             )}
             {incomeCardsEnabled && (
@@ -179,7 +180,7 @@ const Navigation: React.FC = () => {
                     location.pathname.startsWith('/incomes'),
                   )}
                 >
-                  Доходы
+                  {t("Доходы")}
                 </Link>
                 <Link
                   to="/sources"
@@ -187,7 +188,7 @@ const Navigation: React.FC = () => {
                     location.pathname.startsWith('/sources'),
                   )}
                 >
-                  Источники
+                  {t("Источники")}
                 </Link>
               </>
             )}
@@ -195,7 +196,6 @@ const Navigation: React.FC = () => {
 
           <div className="hidden md:flex items-center gap-2 pl-4 border-l border-gray-200 dark:border-gray-700">
             <ThemeSwitcher />
-            <FeedbackWidget />
           </div>
 
           <div className="hidden md:flex items-center pl-2">
@@ -203,7 +203,7 @@ const Navigation: React.FC = () => {
               <button
                 onClick={() => setIsUserPopoverOpen(!isUserPopoverOpen)}
                 className="flex items-center justify-center rounded-full hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
-                aria-label="Меню пользователя"
+                aria-label={t("Меню пользователя")}
                 aria-expanded={isUserPopoverOpen}
               >
                 {avatarUrl ? (
@@ -213,7 +213,7 @@ const Navigation: React.FC = () => {
                     className="size-9 rounded-full object-cover bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-gray-700"
                   />
                 ) : (
-                  <div className="flex items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 size-9 shadow-sm">
+                  <div className="flex items-center justify-center rounded-full border border-violet-400/70 bg-slate-700 size-9 shadow-sm">
                     <UserIcon className="w-5 h-5 text-white" />
                   </div>
                 )}
@@ -248,7 +248,7 @@ const Navigation: React.FC = () => {
                       role="menuitem"
                     >
                       <Cog6ToothIcon className="mr-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                      Настройки
+                      {t("Настройки")}
                     </Link>
                     <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
                     <button
@@ -260,7 +260,7 @@ const Navigation: React.FC = () => {
                       role="menuitem"
                     >
                       <ArrowRightOnRectangleIcon className="mr-3 h-4 w-4 opacity-70" />
-                      Выйти
+                      {t("Выйти")}
                     </button>
                   </div>
                 </div>
@@ -275,7 +275,7 @@ const Navigation: React.FC = () => {
             className="flex items-center gap-2 text-sm font-medium text-gray-800 transition-opacity hover:opacity-80 dark:text-gray-200"
           >
             <ArrowRightOnRectangleIcon className="h-4 w-4" />
-            <span>Войти</span>
+            <span>{t("Войти")}</span>
           </Link>
           <ThemeSwitcher />
         </div>
@@ -287,6 +287,7 @@ const Navigation: React.FC = () => {
 // --- Main App Component ---
 
 function App() {
+  const { t } = useLanguage();
   const { isAuthenticated, user, logout, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -302,19 +303,19 @@ function App() {
   const canManageCategories = Boolean(user?.isAdmin);
 
   const mobileNavItems = [
-    { to: '/dashboard', label: 'Главная' },
-    { to: '/payments', label: 'Платежи' },
+    { to: '/dashboard', label: t("Главная") },
+    { to: '/payments', label: t("Платежи") },
     ...(canManageCategories
       ? [
-          { to: '/categories', label: 'Категории' },
-          { to: '/automation-rules', label: 'Автоматизация' },
+          { to: '/categories', label: t("Категории") },
+          { to: '/automation-rules', label: t("Автоматизация") },
         ]
       : []),
-    ...(tagsEnabled ? [{ to: '/tags', label: 'Теги' }] : []),
+    ...(tagsEnabled ? [{ to: '/tags', label: t("Теги") }] : []),
     ...(incomeCardsEnabled
       ? [
-          { to: '/incomes', label: 'Доходы' },
-          { to: '/sources', label: 'Источники' },
+          { to: '/incomes', label: t("Доходы") },
+          { to: '/sources', label: t("Источники") },
         ]
       : []),
   ];
@@ -529,7 +530,7 @@ function App() {
 
         if (autoCreatedCount > 0) {
           showToast(
-            `Автоматически добавлено ${autoCreatedCount} платежей.`,
+            t("Автоматически добавлено {1} платежей.", autoCreatedCount),
             'success',
           );
         }
@@ -550,7 +551,7 @@ function App() {
     } finally {
       isProcessingNotificationsRef.current = false;
     }
-  }, [isAuthenticated, processedNotificationKeys, showToast]);
+  }, [isAuthenticated, processedNotificationKeys, showToast, t]);
 
   // Храним актуальную версию processNotifications в ref для использования в useEffect
   processNotificationsRef.current = processNotifications;
@@ -711,7 +712,7 @@ function App() {
             <button
               onClick={() => navigate(-1)}
               className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              aria-label="Назад"
+              aria-label={t("Назад")}
             >
               <ArrowLeftIcon className="h-6 w-6" />
             </button>
@@ -729,7 +730,7 @@ function App() {
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
               className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              aria-label="Меню"
+              aria-label={t("Меню")}
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
@@ -767,7 +768,7 @@ function App() {
             </svg>
           </div>
           <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight transition-opacity group-hover:opacity-80">
-            Хочу Плачу
+            {t("Хочу Плачу")}
           </span>
         </a>
       </div>
@@ -783,7 +784,7 @@ function App() {
               onClick={mobileAddAction}
               disabled={mobileActionDisabled}
               className="p-2 rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none disabled:opacity-50"
-              aria-label={mobileActionAriaLabel || 'Действие'}
+              aria-label={mobileActionAriaLabel || t("Действие")}
             >
               {mobileActionIcon}
             </button>
@@ -798,7 +799,7 @@ function App() {
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-center md:text-left">
           <p>
-            Создано{' '}
+            {t("Создано")}{' '}
             <a
               href="https://linkedin.com/in/artur-pertsev/"
               target="_blank"
@@ -815,25 +816,25 @@ function App() {
             to="/terms"
             className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
           >
-            Соглашение
+            {t("Соглашение")}
           </Link>
           <Link
             to="/privacy"
             className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
           >
-            Приватность
+            {t("Приватность")}
           </Link>
           <Link
             to="/blog"
             className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
           >
-            Блог
+            {t("Блог")}
           </Link>
           <Link
             to="/about"
             className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
           >
-            О нас
+            {t("О нас")}
           </Link>
         </nav>
 
@@ -851,12 +852,7 @@ function App() {
               </svg>
             </a>
           )}
-          {!isAuthenticated && (
-            <>
-              <ThemeSwitcher />
-              <FeedbackWidget />
-            </>
-          )}
+          {!isAuthenticated && <ThemeSwitcher />}
         </div>
       </div>
     </footer>

@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import { useState, useCallback } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
 import axiosInstance from "../api/axiosInstance";
@@ -57,12 +58,13 @@ const useFileUploadLogic = ({
   isSubmitting,
   onPendingFileSelected,
 }: UseFileUploadLogicProps) => {
+  const { t } = useLanguage();
   const [uploadProgress, setUploadProgress] = useState(0);
   const {
     isLoading: isUploading,
     error: uploadError,
     execute: executeUpload,
-  } = useApi<UploadResponse>(uploadFileApi, {
+  } = useApi(uploadFileApi, {
     onSuccess: (result) => {
       if (result?.file) {
         onFileUploadSuccess?.(result.file);
@@ -84,10 +86,10 @@ const useFileUploadLogic = ({
         const code = fileRejections[0].errors[0]?.code;
         const msg =
           code === "file-too-large"
-            ? `Размер файла превышает ${maxFileSize / 1024 / 1024} МБ.`
+            ? t("Размер файла превышает {1} МБ.", maxFileSize / 1024 / 1024)
             : code === "file-invalid-type"
-            ? "Недопустимый тип файла."
-            : "Неверный файл.";
+            ? t("Недопустимый тип файла.")
+            : t("Неверный файл.");
         onError?.(msg);
         return;
       }
@@ -112,7 +114,7 @@ const useFileUploadLogic = ({
 
       setUploadProgress(0);
     },
-    [paymentId, executeUpload, onError, onPendingFileSelected]
+    [paymentId, executeUpload, onError, onPendingFileSelected, t]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

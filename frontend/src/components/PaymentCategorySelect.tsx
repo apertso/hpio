@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import { UseFormSetValue, FieldErrors } from "react-hook-form";
 import useCategories from "../hooks/useCategories";
 import Select, { SelectOption } from "./Select";
@@ -26,10 +27,11 @@ function PaymentCategorySelect({
   isLocked,
   lockReason,
 }: PaymentCategorySelectProps) {
+  const { t } = useLanguage();
   const { categories, isLoading, error } = useCategories(categoryType);
 
   const options: SelectOption[] = [
-    { value: null, label: "-- Без категории --" },
+    { value: null, label: t("-- Без категории --") },
     ...(categories?.map((cat) => ({ value: cat.id, label: cat.name })) || []),
   ];
 
@@ -37,10 +39,10 @@ function PaymentCategorySelect({
     return (
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-          Категория
+          {t("Категория")}
         </label>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Загрузка категорий...
+          {t("Загрузка категорий...")}
         </p>
       </div>
     );
@@ -50,7 +52,7 @@ function PaymentCategorySelect({
     return (
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-          Категория
+          {t("Категория")}
         </label>
         <p className="mt-1 text-sm text-red-600">{error.message}</p>
       </div>
@@ -59,23 +61,23 @@ function PaymentCategorySelect({
 
   const resolvedLockReason =
     lockReason ||
-    "Категория для автоматически добавленных платежей изменяется через правила автоматизации.";
+    t("Категория для автоматически добавленных платежей изменяется через правила автоматизации.");
 
   const labelContent = isLocked ? (
     <span className="flex items-center gap-2">
-      <span>Категория</span>
+      <span>{t("Категория")}</span>
       <Tooltip content={resolvedLockReason}>
         <button
           type="button"
           className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
-          aria-label="Пояснение к полю категории"
+          aria-label={t("Пояснение к полю категории")}
         >
           <InformationIcon className="h-[16px] w-[16px]" />
         </button>
       </Tooltip>
     </span>
   ) : (
-    "Категория"
+    t("Категория")
   );
 
   return (
@@ -89,7 +91,7 @@ function PaymentCategorySelect({
       }}
       error={errors.categoryId?.message as string}
       disabled={isSubmitting || categories?.length === 0 || isLocked}
-      placeholder="-- Без категории --"
+      placeholder={t("-- Без категории --")}
     />
   );
 }

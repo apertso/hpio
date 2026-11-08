@@ -1,4 +1,5 @@
 // src/components/RegisterForm.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
@@ -47,6 +48,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onRegister,
   onShowToast,
 }) => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const registerForm = useForm<RegisterFormInputs>({
     resolver: zodResolver(registerSchema),
@@ -67,7 +69,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       // Очищаем сохраненные данные формы после успешной регистрации
       clearPersistedData();
     } catch (err: unknown) {
-      let message = "Ошибка регистрации";
+      let message = t("Ошибка регистрации");
       if (
         typeof err === "object" &&
         err !== null &&
@@ -88,18 +90,18 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   return (
     <div className="flex flex-col flex-1 justify-center self-center min-w-90 w-full max-w-140">
       <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
-        Создать аккаунт
+        {t("Создать аккаунт")}
       </h2>
       <form
         onSubmit={registerForm.handleSubmit(handleRegisterSubmit)}
         className="space-y-6"
       >
         <TextInputField
-          label="Имя"
+          label={t("Имя")}
           inputId="register-name"
           error={registerForm.formState.errors.name?.message}
           required
-          placeholder="Ваше имя"
+          placeholder={t("Ваше имя")}
           disabled={registerForm.formState.isSubmitting}
           className="text-base py-3"
           {...registerForm.register("name")}
@@ -115,7 +117,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           required
         />
         <PasswordField
-          label="Пароль"
+          label={t("Пароль")}
           inputId="register-password"
           placeholder="********"
           autoComplete="new-password"
@@ -126,7 +128,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           required
         />
         <PasswordField
-          label="Подтвердите пароль"
+          label={t("Подтвердите пароль")}
           inputId="register-confirm-password"
           placeholder="********"
           autoComplete="new-password"
@@ -147,7 +149,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             htmlFor="accept-terms"
             className="text-sm text-gray-700 dark:text-gray-300"
           >
-            Я принимаю{" "}
+            {t("Я принимаю")}{" "}
             <Button
               variant="link"
               size="small"
@@ -156,9 +158,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                 navigate("/terms");
               }}
             >
-              Условия использования
+              {t("Условия использования")}
             </Button>{" "}
-            и{" "}
+            {t("и")}{" "}
             <Button
               variant="link"
               size="small"
@@ -167,12 +169,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                 navigate("/privacy");
               }}
             >
-              Политику конфиденциальности
+              {t("Политику конфиденциальности")}
             </Button>
           </label>
         </div>
 
         <Button
+          animatedStroke
           variant="primary"
           size="large"
           className="w-full mt-4 md:w-auto md:min-w-[24em] md:mx-auto"
@@ -183,7 +186,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           }
           loading={registerForm.formState.isSubmitting}
         >
-          Зарегистрироваться
+          {t("Зарегистрироваться")}
         </Button>
       </form>
     </div>

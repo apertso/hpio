@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,16 +49,17 @@ const MobileActionsOverlay: React.FC<{
   onEdit: (id: string) => void;
   onDelete: (id: string, name: string) => void;
 }> = ({ tag, onClose, onEdit, onDelete }) => {
+  const { t } = useLanguage();
   if (!tag) return null;
 
   const actions = [
     {
-      label: "Редактировать",
+      label: t("Редактировать"),
       icon: PencilSolidIcon,
       handler: () => onEdit(tag.id),
     },
     {
-      label: "Удалить",
+      label: t("Удалить"),
       icon: TrashSolidIcon,
       handler: () => onDelete(tag.id, tag.name),
     },
@@ -90,17 +92,18 @@ const MobileActionsOverlay: React.FC<{
 };
 
 const TagsPage: React.FC = () => {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const { setPageTitle, setHeaderAction } = usePageTitle();
   const metadata = getPageMetadata("tags");
 
   useEffect(() => {
-    setPageTitle("Теги");
-  }, [setPageTitle]);
+    setPageTitle(t("Теги"));
+  }, [setPageTitle, t]);
 
   useEffect(() => {
     setHeaderAction(
-      <Tooltip content="Используйте теги, чтобы отмечать похожие платежи. Это упрощает поиск и помогает собирать статистику по отдельным группам платежей.">
+      <Tooltip content={t("Используйте теги, чтобы отмечать похожие платежи. Это упрощает поиск и помогает собирать статистику по отдельным группам платежей.")}>
         <button className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
           <InformationIcon className="h-[16px] w-[16px]" />
         </button>
@@ -108,13 +111,13 @@ const TagsPage: React.FC = () => {
     );
 
     return () => setHeaderAction(null);
-  }, [setHeaderAction]);
+  }, [setHeaderAction, t]);
 
   const {
     data: tags,
     isLoading: isLoadingTags,
     execute: executeFetchTags,
-  } = useApi<Tag[]>(fetchTagsApi, {
+  } = useApi(fetchTagsApi, {
     offlineDataKey: "tags",
   });
 
@@ -187,7 +190,7 @@ const TagsPage: React.FC = () => {
   const handleEditTag = (id: string): void => {
     const targetTag = tags?.find((tag) => tag.id === id) || null;
     if (!targetTag) {
-      showToast("Тег не найден.", "error");
+      showToast(t("Тег не найден."), "error");
       return;
     }
     openTagForm(targetTag);
@@ -269,17 +272,17 @@ const TagsPage: React.FC = () => {
       try {
         await axiosInstance.delete(`/tags/${tagId}`);
         executeFetchTags();
-        showToast("Тег удален.", "success");
+        showToast(t("Тег удален."), "success");
       } catch {
-        showToast("Не удалось удалить тег. Попробуйте позже.", "error");
+        showToast(t("Не удалось удалить тег. Попробуйте позже."), "error");
       }
     };
 
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Удалить тег",
-      message: `Вы уверены, что хотите удалить тег "${tagName}"? Это действие нельзя отменить.`,
+      title: t("Удалить тег"),
+      message: t("Вы уверены, что хотите удалить тег \"{1}\"? Это действие нельзя отменить.", tagName),
     });
   };
 
@@ -288,10 +291,10 @@ const TagsPage: React.FC = () => {
     try {
       if (editingTag) {
         await axiosInstance.put(`/tags/${editingTag.id}`, data);
-        showToast("Тег обновлен.", "success");
+        showToast(t("Тег обновлен."), "success");
       } else {
         await axiosInstance.post("/tags", data);
-        showToast("Тег добавлен.", "success");
+        showToast(t("Тег добавлен."), "success");
       }
       await executeFetchTags();
       closeTagForm();
@@ -301,8 +304,8 @@ const TagsPage: React.FC = () => {
   };
 
   const nameRegister = register("name");
-  const tagFormTitle = editingTag ? "Редактировать тег" : "Новый тег";
-  const tagFormSubmitLabel = editingTag ? "Сохранить" : "Добавить";
+  const tagFormTitle = editingTag ? t("Редактировать тег") : t("Новый тег");
+  const tagFormSubmitLabel = editingTag ? t("Сохранить") : t("Добавить");
 
   const renderTagForm = (): React.ReactNode => (
     <form onSubmit={handleSubmit(onSubmitTagForm)} noValidate>
@@ -315,12 +318,12 @@ const TagsPage: React.FC = () => {
         </div>
       )}
       <TextInputField
-        label="Название тега"
+        label={t("Название тега")}
         inputId="tag-name"
         error={errors.name?.message}
         required
         type="text"
-        placeholder="Например, Коммуналка"
+        placeholder={t("Например, Коммуналка")}
         disabled={isSubmitting}
         {...nameRegister}
         onChange={(event) => {
@@ -334,7 +337,7 @@ const TagsPage: React.FC = () => {
           type="button"
           onClick={closeTagForm}
           disabled={isSubmitting}
-          label="Отмена"
+          label={t("Отмена")}
         />
         <Button
           variant="primary"
@@ -355,9 +358,9 @@ const TagsPage: React.FC = () => {
         <div className="flex justify-between items-center md:mb-6">
           <div className="flex items-center gap-2">
             <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Управление тегами
+              {t("Управление тегами")}
             </h2>
-            <Tooltip content="Используйте теги, чтобы отмечать похожие платежи. Это упрощает поиск и помогает собирать статистику по отдельным группам платежей.">
+            <Tooltip content={t("Используйте теги, чтобы отмечать похожие платежи. Это упрощает поиск и помогает собирать статистику по отдельным группам платежей.")}>
               <div className="hidden md:block p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
                 <InformationIcon className="h-[16px] w-[16px]" />
               </div>
@@ -365,7 +368,7 @@ const TagsPage: React.FC = () => {
           </div>
           <Button
             onClick={handleAddTag}
-            label="Добавить тег"
+            label={t("Добавить тег")}
             icon={<PlusIcon className="w-4 h-4" />}
             className="hidden md:inline-flex"
           />
@@ -395,8 +398,8 @@ const TagsPage: React.FC = () => {
                     className="px-3 py-1 text-sm text-gray-700 dark:text-gray-200 hover:opacity-80 transition-opacity cursor-pointer"
                     aria-label={
                       isMobileViewport
-                        ? `Открыть действия для тега ${tag.name}`
-                        : `Редактировать тег ${tag.name}`
+                        ? t("Открыть действия для тега {1}", tag.name)
+                        : t("Редактировать тег {1}", tag.name)
                     }
                   >
                     {tag.name}
@@ -407,7 +410,7 @@ const TagsPage: React.FC = () => {
                         type="button"
                         onClick={() => handleEditTag(tag.id)}
                         className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
-                        aria-label={`Редактировать тег ${tag.name}`}
+                        aria-label={t("Редактировать тег {1}", tag.name)}
                       >
                         <PencilSolidIcon className="h-4 w-4" />
                       </button>
@@ -415,7 +418,7 @@ const TagsPage: React.FC = () => {
                         type="button"
                         onClick={() => handleDeleteTag(tag.id, tag.name)}
                         className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
-                        aria-label={`Удалить тег ${tag.name}`}
+                        aria-label={t("Удалить тег {1}", tag.name)}
                       >
                         <TrashSolidIcon className="h-4 w-4" />
                       </button>
@@ -427,7 +430,7 @@ const TagsPage: React.FC = () => {
           </div>
         ) : (
           <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-            Нет тегов.
+            {t("Нет тегов.")}
           </div>
         )}
       </div>
@@ -461,7 +464,7 @@ const TagsPage: React.FC = () => {
         onConfirm={onConfirmAction}
         title={confirmModalState.title}
         message={confirmModalState.message}
-        confirmText="Да, удалить"
+        confirmText={t("Да, удалить")}
         isConfirming={isConfirming}
       />
       <MobileActionsOverlay

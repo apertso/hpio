@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import {
   ArrowDownTrayIcon,
@@ -29,7 +30,9 @@ const DownloadCard = ({
   downloadUrl: string;
   recommended?: boolean;
   icon: React.ElementType;
-}) => (
+}) => {
+  const { t } = useLanguage();
+  return (
   <div
     className={`relative flex flex-col p-6 rounded-2xl transition-all duration-300 ${
       recommended
@@ -38,8 +41,8 @@ const DownloadCard = ({
     }`}
   >
     {recommended && (
-      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-indigo-600 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
-        Рекомендуется
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 border border-violet-500 bg-slate-900 text-white dark:border-violet-400 dark:bg-slate-800 text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
+        {t("Рекомендуется")}
       </div>
     )}
 
@@ -47,7 +50,7 @@ const DownloadCard = ({
       <div
         className={`p-3 rounded-xl ${
           recommended
-            ? "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
+            ? "accent-icon"
             : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
         }`}
       >
@@ -79,7 +82,7 @@ const DownloadCard = ({
       rel="noopener noreferrer"
     >
       <Button
-        label="Скачать APK"
+        label={t("Скачать APK")}
         icon={<ArrowDownTrayIcon className="w-5 h-5" />}
         variant={recommended ? "primary" : "secondary"}
         className={`w-full justify-center py-3 ${
@@ -91,6 +94,7 @@ const DownloadCard = ({
     </a>
   </div>
 );
+};
 
 const Step = ({
   number,
@@ -102,7 +106,7 @@ const Step = ({
   children: React.ReactNode;
 }) => (
   <div className="flex gap-4">
-    <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+    <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full accent-icon font-bold text-sm">
       {number}
     </div>
     <div>
@@ -117,6 +121,7 @@ const Step = ({
 );
 
 const DownloadPage: React.FC = () => {
+  const { t } = useLanguage();
   const metadata = getPageMetadata("download");
   const { resolvedTheme } = useTheme();
 
@@ -128,7 +133,7 @@ const DownloadPage: React.FC = () => {
       <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 pb-20">
         {/* Hero Header */}
         <section className="relative py-20 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-indigo-50/50 to-transparent dark:from-indigo-950/10 dark:to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-100/50 to-transparent dark:from-slate-950/10 dark:to-transparent pointer-events-none" />
           <div className="max-w-6xl mx-auto px-6 relative z-10">
             <div className="flex flex-col md:flex-row items-center gap-12">
               <div className="flex-1 text-center md:text-left">
@@ -139,15 +144,15 @@ const DownloadPage: React.FC = () => {
                   </span>
                 </div>
                 <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6">
-                  Установите{" "}
+                  {t("Установите")}{" "}
                   <span className="text-indigo-600 dark:text-indigo-400">
-                    Хочу Плачу
+                    {t("Хочу Плачу")}
                   </span>
                 </h1>
                 <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
-                  Полный контроль над финансами без интернета.{" "}
+                  {t("Полный контроль над финансами без интернета.")}{" "}
                   <br className="hidden sm:inline" />
-                  Официальные сборки для Android устройств.
+                  {t("Официальные сборки для Android устройств.")}
                 </p>
               </div>
 
@@ -172,8 +177,8 @@ const DownloadPage: React.FC = () => {
             {/* ARM64 Version */}
             <DownloadCard
               title="Android ARM64"
-              subtitle="Для современных смартфонов"
-              description="Оптимизированная 64-битная версия. Лучшая производительность и меньший размер файла. Подходит для большинства устройств, выпущенных после 2016 года."
+              subtitle={t("Для современных смартфонов")}
+              description={t("Оптимизированная 64-битная версия. Лучшая производительность и меньший размер файла. Подходит для большинства устройств, выпущенных после 2016 года.")}
               downloadUrl={`https://cdn.hpio.ru/releases/${APP_VERSION}/app-arm64-release.apk`}
               icon={CpuChipIcon}
               recommended={true}
@@ -182,8 +187,8 @@ const DownloadPage: React.FC = () => {
             {/* Universal Version */}
             <DownloadCard
               title="Android Universal"
-              subtitle="Для старых устройств"
-              description="Включает библиотеки для всех архитектур процессоров. Используйте эту версию, если ARM64 не устанавливается или работает некорректно."
+              subtitle={t("Для старых устройств")}
+              description={t("Включает библиотеки для всех архитектур процессоров. Используйте эту версию, если ARM64 не устанавливается или работает некорректно.")}
               downloadUrl={`https://cdn.hpio.ru/releases/${APP_VERSION}/app-universal-release.apk`}
               icon={ArchiveBoxIcon}
             />
@@ -195,23 +200,17 @@ const DownloadPage: React.FC = () => {
             <div>
               <h3 className="text-2xl font-bold mb-8 flex items-center">
                 <CheckBadgeIcon className="w-7 h-7 mr-3 text-indigo-600" />
-                Как установить
+                {t("Как установить")}
               </h3>
               <div className="space-y-8">
-                <Step number="1" title="Скачайте файл">
-                  Нажмите кнопку «Скачать» выше. Браузер может предупредить, что
-                  файл может быть опасным — это стандартное предупреждение для
-                  всех APK не из Google Play.
+                <Step number="1" title={t("Скачайте файл")}>
+                  {t("Нажмите кнопку «Скачать» выше. Браузер может предупредить, что файл может быть опасным — это стандартное предупреждение для всех APK не из Google Play.")}
                 </Step>
-                <Step number="2" title="Разрешите установку">
-                  Откройте скачанный файл. Если система попросит разрешение на
-                  установку из неизвестных источников, перейдите в настройки и
-                  включите его для вашего браузера или файлового менеджера.
+                <Step number="2" title={t("Разрешите установку")}>
+                  {t("Откройте скачанный файл. Если система попросит разрешение на установку из неизвестных источников, перейдите в настройки и включите его для вашего браузера или файлового менеджера.")}
                 </Step>
-                <Step number="3" title="Готово">
-                  После установки иконка появится на главном экране. При первом
-                  запуске разрешите приложению отправлять уведомления для
-                  корректной работы напоминаний.
+                <Step number="3" title={t("Готово")}>
+                  {t("После установки иконка появится на главном экране. При первом запуске разрешите приложению отправлять уведомления для корректной работы напоминаний.")}
                 </Step>
               </div>
             </div>
@@ -220,25 +219,21 @@ const DownloadPage: React.FC = () => {
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-8 border border-gray-100 dark:border-gray-700">
               <div className="flex items-center gap-3 mb-4">
                 <ShieldCheckIcon className="w-8 h-8 text-green-600 dark:text-green-500" />
-                <h3 className="text-xl font-bold">Безопасность</h3>
+                <h3 className="text-xl font-bold">{t("Безопасность")}</h3>
               </div>
               <div className="prose prose-sm dark:prose-invert text-gray-600 dark:text-gray-300">
                 <p>
-                  Мы распространяем приложение напрямую (APK), так как
-                  российские финансовые приложения часто удаляются из сторов.
+                  {t("Мы распространяем приложение напрямую (APK), так как российские финансовые приложения часто удаляются из сторов.")}
                 </p>
                 <ul className="mt-4 space-y-2">
                   <li>
-                    ✅ <strong>Без вирусов:</strong> Код открыт и доступен на
-                    GitHub.
+                    ✅ <strong>{t("Без вирусов:")}</strong>{t(" Код открыт и доступен на GitHub.")}
                   </li>
                   <li>
-                    ✅ <strong>Без слежки:</strong> Приложение не отправляет
-                    ваши банковские SMS на сервер.
+                    ✅ <strong>{t("Без слежки:")}</strong>{t(" Приложение не отправляет ваши банковские SMS на сервер.")}
                   </li>
                   <li>
-                    ✅ <strong>Без рекламы:</strong> Мы не монетизируем ваши
-                    данные.
+                    ✅ <strong>{t("Без рекламы:")}</strong>{t(" Мы не монетизируем ваши данные.")}
                   </li>
                 </ul>
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
@@ -256,7 +251,7 @@ const DownloadPage: React.FC = () => {
           {/* Coming Soon */}
           <div className="mt-24 pt-12 border-t border-gray-200 dark:border-gray-800 text-center">
             <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-6">
-              Скоро на других платформах
+              {t("Скоро на других платформах")}
             </p>
             <div className="flex justify-center gap-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
               <div className="flex flex-col items-center gap-2">

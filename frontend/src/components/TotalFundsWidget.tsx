@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState } from "react";
 import { fundsApi, FundsSummary } from "../api/fundsApi";
 import {
@@ -11,6 +12,7 @@ import { getCurrencySymbol } from "../utils/currencies";
 import Spinner from "./Spinner";
 
 const TotalFundsWidget: React.FC = () => {
+  const { t, locale } = useLanguage();
   const [summary, setSummary] = useState<FundsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(true);
@@ -41,17 +43,17 @@ const TotalFundsWidget: React.FC = () => {
   if (!summary) return null;
 
   const { totalAmount, currency, changeAmount } = summary;
-  const currencySymbol = getCurrencySymbol(currency);
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const isPositive = (changeAmount || 0) > 0;
   const isNegative = (changeAmount || 0) < 0;
 
-  const formattedTotal = new Intl.NumberFormat("ru-RU", {
+  const formattedTotal = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(totalAmount);
 
   const formattedChange = changeAmount
-    ? new Intl.NumberFormat("ru-RU", {
+    ? new Intl.NumberFormat(locale, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
         signDisplay: "always",
@@ -62,7 +64,7 @@ const TotalFundsWidget: React.FC = () => {
     <div className="card-base p-6 flex flex-col gap-2">
       <div className="flex justify-between items-start">
         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-          Общий баланс
+          {t("Общий баланс")}
         </span>
         <button
           onClick={() => setIsVisible(!isVisible)}
@@ -106,7 +108,7 @@ const TotalFundsWidget: React.FC = () => {
             {formattedChange} {currencySymbol}
           </span>
           <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
-            за сегодня
+            {t("за сегодня")}
           </span>
         </div>
       )}

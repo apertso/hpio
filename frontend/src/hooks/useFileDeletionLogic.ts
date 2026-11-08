@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import { useCallback } from "react";
 import axiosInstance from "../api/axiosInstance";
 import useApi from "./useApi"; // Import the new hook
@@ -17,12 +18,15 @@ const useFileDeletionLogic = ({
   onFileDeleteSuccess,
   onError,
 }: UseFileDeletionLogicProps) => {
+  const { t } = useLanguage();
   const {
     isLoading: isDeleting,
     error: deleteError,
     execute: executeDelete,
-  } = useApi<void>(
-    (paymentId: string) => axiosInstance.delete(`/files/payment/${paymentId}`),
+  } = useApi(
+    async (paymentId: string): Promise<void> => {
+      await axiosInstance.delete(`/files/payment/${paymentId}`);
+    },
     {
       onSuccess: () => {
         onFileDeleteSuccess?.();
@@ -44,11 +48,11 @@ const useFileDeletionLogic = ({
     async (event?: React.MouseEvent<HTMLButtonElement>) => {
       event?.preventDefault();
       if (!paymentId || !initialFile?.filePath) return;
-      if (!window.confirm("Вы уверены, что хотите удалить прикрепленный файл?"))
+      if (!window.confirm(t("Вы уверены, что хотите удалить прикрепленный файл?")))
         return;
       await executeDelete(paymentId);
     },
-    [paymentId, initialFile, executeDelete]
+    [paymentId, initialFile, executeDelete, t]
   );
 
   return { isDeleting, deleteError, handleDeleteFile };

@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 
 interface CategoryStat {
@@ -15,10 +16,11 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
   data,
   colors,
 }) => {
+  const { t } = useLanguage();
   if (!data || data.length === 0 || data.every((cat) => cat.amount === 0)) {
     return (
       <div className="text-center text-gray-700 dark:text-gray-300 py-10">
-        Нет данных по категориям за этот период.
+        {t("Нет данных по категориям за этот период.")}
       </div>
     );
   }

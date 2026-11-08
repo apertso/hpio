@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import axiosInstance from "./axiosInstance";
 
 export interface MerchantCategoryRule {
@@ -43,7 +44,7 @@ export const merchantRuleApi = {
       });
       return response.data;
     } catch (error: unknown) {
-      if (error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         return null;
       }
       throw error;

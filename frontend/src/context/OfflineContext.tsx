@@ -1,3 +1,4 @@
+import { useLanguage } from "./LanguageContext";
 import React, {
   createContext,
   useContext,
@@ -50,6 +51,7 @@ interface OfflineProviderProps {
 export const OfflineProvider: React.FC<OfflineProviderProps> = ({
   children,
 }) => {
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const { isAuthenticated } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(
@@ -150,7 +152,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
         message: `Sync failed: ${error}`,
       });
       logger.error("Data sync failed:", error);
-      showToast(`Ошибка синхронизации: ${error}`, "error");
+      showToast(t("Ошибка синхронизации: {1}", error), "error");
     };
 
     // Subscribe to sync service events
@@ -162,13 +164,6 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
     syncService.onQueueUpdate = (stats) => {
       setQueueStats(stats);
     };
-
-    // Initial sync if online and authenticated
-    if (syncService.isOnline() && isAuthenticated) {
-      syncService.syncAllData().catch((error) => {
-        logger.error("Initial sync failed:", error);
-      });
-    }
 
     const handleOfflineApiRequest = () => {
       showOfflineToast();
@@ -189,7 +184,15 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
         handleOfflineApiRequest
       );
     };
-  }, [isAuthenticated, showOfflineToast, showToast]);
+  }, [showOfflineToast, showToast, t]);
+
+  useEffect((): void => {
+    if (syncService.isOnline() && isAuthenticated) {
+      syncService.syncAllData().catch((error: unknown) => {
+        logger.error("Initial sync failed:", error);
+      });
+    }
+  }, [isAuthenticated]);
 
   const syncData = async () => {
     try {
@@ -208,7 +211,7 @@ export const OfflineProvider: React.FC<OfflineProviderProps> = ({
         progress: 0,
         message: `Sync failed: ${errorMessage}`,
       });
-      showToast(`Ошибка синхронизации: ${errorMessage}`, "error");
+      showToast(t("Ошибка синхронизации: {1}", errorMessage), "error");
       throw error;
     }
   };

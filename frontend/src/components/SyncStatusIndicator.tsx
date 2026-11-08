@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState } from "react";
 import {
   CloudArrowUpIcon,
@@ -18,6 +19,7 @@ type SyncState = "idle" | "syncing" | "success" | "error" | "offline";
 const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
   className = "",
 }) => {
+  const { t } = useLanguage();
   const { syncStatus, isOffline, queueStats } = useOffline();
   const { isAuthenticated } = useAuth();
 
@@ -45,12 +47,12 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
     if (displayState === "syncing") {
       if (syncStatus.message && syncStatus.message.includes("failed")) {
         setDisplayState("error");
-        setResultMessage("Ошибка");
+        setResultMessage(t("Ошибка"));
         const timer = setTimeout(() => setDisplayState("idle"), 3000);
         return () => clearTimeout(timer);
       } else {
         setDisplayState("success");
-        setResultMessage("Готово");
+        setResultMessage(t("Готово"));
         const timer = setTimeout(() => setDisplayState("idle"), 3000);
         return () => clearTimeout(timer);
       }
@@ -67,7 +69,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
     queueStats.inProgress,
     syncStatus.message,
     queueStats.total,
-    displayState,
+    displayState, t,
   ]);
 
   if (!isAuthenticated || displayState === "idle") {
@@ -76,7 +78,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
        return (
         <div
           className={`flex items-center gap-1.5 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ${className}`}
-          title="Ожидание синхронизации"
+          title={t("Ожидание синхронизации")}
         >
            <CloudIcon className="h-4 w-4 text-gray-500" />
            <span className="text-[10px] font-medium text-gray-500">
@@ -93,28 +95,28 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
       case "offline":
         return {
           icon: CloudSlashIcon, // Using Solid Cloud as base, realistically would want a slash icon but this suffices for "solid" look or distinct
-          text: "Офлайн",
+          text: t("Офлайн"),
           style: "text-gray-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700",
           iconStyle: "text-gray-400",
         };
       case "syncing":
         return {
           icon: CloudArrowUpIcon,
-          text: "Обновление",
+          text: t("Обновление"),
           style: "text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800",
           iconStyle: "animate-bounce text-blue-500",
         };
       case "success":
         return {
           icon: CheckCircleIcon,
-          text: resultMessage || "Готово",
+          text: resultMessage || t("Готово"),
           style: "text-green-600 bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800",
           iconStyle: "text-green-500",
         };
       case "error":
         return {
           icon: XCircleIcon,
-          text: resultMessage || "Ошибка",
+          text: resultMessage || t("Ошибка"),
           style: "text-red-600 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800",
           iconStyle: "text-red-500",
         };

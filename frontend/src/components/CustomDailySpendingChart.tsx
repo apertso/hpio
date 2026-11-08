@@ -1,4 +1,5 @@
 // frontend/src/components/CustomDailySpendingChart.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React, {
   useMemo,
   useState,
@@ -55,6 +56,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
   startDate,
   endDate,
 }) => {
+  const { t, locale } = useLanguage();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
@@ -167,11 +169,11 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         calculatedXAxisTicks.push({
           x: getX(tickDate),
           label: hasHourlyData
-            ? tickDate.toLocaleString("ru-RU", {
+            ? tickDate.toLocaleString(locale, {
                 hour: "2-digit",
                 minute: "2-digit",
               })
-            : tickDate.toLocaleDateString("ru-RU", {
+            : tickDate.toLocaleDateString(locale, {
                 day: "numeric",
                 month: "short",
               }),
@@ -205,7 +207,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
     padding.top,
     padding.right,
     padding.bottom,
-    padding.left,
+    padding.left, locale,
   ]);
 
   // Strict hit radius for pointer and touch
@@ -384,9 +386,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         onTouchCancel={handleTouchCancel}
         style={{ cursor: cursorStyle, touchAction: "none" }}
         role="img"
-        aria-label={`График платежной нагрузки ${
-          rawDates.some((d) => d.includes(" ")) ? "по часам" : "по дням"
-        }`}
+        aria-label={t("График платежной нагрузки {1}", t(rawDates.some((d) => d.includes(" ")) ? "по часам" : "по дням"))}
       >
         <defs>
           <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
@@ -482,7 +482,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
                 fill="transparent"
                 stroke="transparent"
                 tabIndex={-1}
-                aria-label={`${labels[idx]}: ${new Intl.NumberFormat("ru-RU", {
+                aria-label={`${labels[idx]}: ${new Intl.NumberFormat(locale, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 }).format(data[idx])} ₽`}
@@ -538,7 +538,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
           }}
         >
           {labels[tooltip.index]}:{" "}
-          {new Intl.NumberFormat("ru-RU", {
+          {new Intl.NumberFormat(locale, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           }).format(data[tooltip.index])}

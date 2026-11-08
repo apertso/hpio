@@ -1,4 +1,5 @@
 // src/components/PasswordResetForm.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +25,7 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
   onSubmit,
   onShowToast,
 }) => {
+  const { t } = useLanguage();
   const form = useForm<PasswordResetFormInputs>({
     resolver: zodResolver(passwordResetSchema),
     mode: "onChange",
@@ -39,11 +41,11 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
     try {
       await onSubmit(data.email);
       clearPersistedData();
-      onShowToast("Инструкции по сбросу пароля отправлены.", "success");
+      onShowToast(t("Инструкции по сбросу пароля отправлены."), "success");
     } catch {
       // Для безопасности показываем универсальное сообщение даже при ошибке
       onShowToast(
-        "Если пользователь с таким Email существует, инструкции по сбросу пароля будут отправлены на указанный адрес.",
+        t("Если пользователь с таким Email существует, инструкции по сбросу пароля будут отправлены на указанный адрес."),
         "success"
       );
     }
@@ -52,10 +54,10 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
   return (
     <div className="flex flex-col flex-1 justify-center self-center min-w-90 w-full max-w-140">
       <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
-        Сброс пароля
+        {t("Сброс пароля")}
       </h2>
       <p className="text-center text-gray-700 dark:text-gray-200 mb-6 text-sm">
-        Введите ваш Email для получения инструкций по сбросу пароля.
+        {t("Введите ваш Email для получения инструкций по сбросу пароля.")}
       </p>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <EmailField
@@ -78,7 +80,7 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
           {form.formState.isSubmitting ? (
             <Spinner size="sm" />
           ) : (
-            "Отправить инструкции"
+            t("Отправить инструкции")
           )}
         </Button>
       </form>

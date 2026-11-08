@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import Table, { TableColumn } from "./Table";
 import PaymentIconDisplay from "./PaymentIconDisplay";
@@ -24,12 +25,13 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { t } = useLanguage();
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
   const columns: TableColumn<Category>[] = [
     {
       id: "icon",
-      header: "Иконка",
+      header: t("Иконка"),
       thClassName: `${thBaseClassName} w-20`,
       cell: (category) => (
         <PaymentIconDisplay
@@ -43,7 +45,7 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
     },
     {
       id: "name",
-      header: "Название",
+      header: t("Название"),
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate",
       cell: (category) => <>{category.name}</>,
@@ -56,15 +58,15 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
       columns={columns}
       getRowKey={(category) => category.id}
       isLoading={isLoading}
-      emptyMessage="Нет категорий."
+      emptyMessage={t("Нет категорий.")}
       rowActions={(category) => [
         {
-          label: "Редактировать",
+          label: t("Редактировать"),
           onClick: () => onEdit(category.id),
           icon: <PencilIcon className="h-4 w-4" />,
         },
         {
-          label: "Удалить",
+          label: t("Удалить"),
           onClick: () => onDelete(category.id, category.name),
           icon: <TrashIcon className="h-4 w-4" />,
         },

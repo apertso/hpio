@@ -1,4 +1,5 @@
 // src/components/LoginForm.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +30,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
   onSwitchToRegister,
   onSwitchToPasswordReset,
 }) => {
+  const { t } = useLanguage();
   const loginForm = useForm<LoginFormInputs>({
     resolver: zodResolver(loginSchema),
     mode: "onChange",
@@ -45,7 +47,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
       await onLogin(data.email, data.password);
       clearPersistedData();
     } catch (err: unknown) {
-      let message = "Ошибка входа";
+      let message = t("Ошибка входа");
       if (
         typeof err === "object" &&
         err !== null &&
@@ -61,7 +63,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
   return (
     <div className="flex flex-col flex-1 justify-center self-center min-w-90 w-full max-w-140">
       <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
-        Вход в аккаунт
+        {t("Вход в аккаунт")}
       </h2>
       <form
         onSubmit={loginForm.handleSubmit(handleLoginSubmit)}
@@ -95,26 +97,27 @@ const LoginForm: React.FC<LoginFormProps> = ({
               type="button"
               onClick={onSwitchToPasswordReset}
             >
-              Забыли пароль?
+              {t("Забыли пароль?")}
             </Button>
           </div>
         </div>
         <Button
+          animatedStroke
           variant="primary"
           size="large"
           type="submit"
           disabled={loginForm.formState.isSubmitting}
           className="w-full md:w-auto md:min-w-[24em] md:mx-auto"
         >
-          {loginForm.formState.isSubmitting ? <Spinner size="sm" /> : "Войти"}
+          {loginForm.formState.isSubmitting ? <Spinner size="sm" /> : t("Войти")}
         </Button>
       </form>
 
       {/* Registration Link */}
       <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-4">
-        Впервые здесь?{" "}
+        {t("Впервые здесь?")}{" "}
         <Button variant="link" size="small" onClick={onSwitchToRegister}>
-          Создать аккаунт
+          {t("Создать аккаунт")}
         </Button>
       </p>
     </div>

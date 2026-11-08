@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
@@ -9,6 +10,7 @@ import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 
 const ResetPasswordPage: React.FC = () => {
+  const { t } = useLanguage();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,33 +29,33 @@ const ResetPasswordPage: React.FC = () => {
     setSuccess(null);
 
     if (!token) {
-      setError("Токен для сброса пароля не найден.");
+      setError(t("Токен для сброса пароля не найден."));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Пароли не совпадают.");
+      setError(t("Пароли не совпадают."));
       return;
     }
 
     if (password.length < 8) {
-      setError("Пароль должен быть не менее 8 символов.");
+      setError(t("Пароль должен быть не менее 8 символов."));
       return;
     }
     if (!/[A-Z]/.test(password)) {
-      setError("Пароль должен содержать хотя бы одну заглавную букву.");
+      setError(t("Пароль должен содержать хотя бы одну заглавную букву."));
       return;
     }
     if (!/[a-z]/.test(password)) {
-      setError("Пароль должен содержать хотя бы одну строчную букву.");
+      setError(t("Пароль должен содержать хотя бы одну строчную букву."));
       return;
     }
     if (!/\d/.test(password)) {
-      setError("Пароль должен содержать хотя бы одну цифру.");
+      setError(t("Пароль должен содержать хотя бы одну цифру."));
       return;
     }
     if (!/[^A-Za-z0-9]/.test(password)) {
-      setError("Пароль должен содержать хотя бы один специальный символ.");
+      setError(t("Пароль должен содержать хотя бы один специальный символ."));
       return;
     }
 
@@ -63,7 +65,7 @@ const ResetPasswordPage: React.FC = () => {
         token,
         password,
       });
-      setSuccess(res.data.message || "Пароль успешно изменен!");
+      setSuccess(res.data.message || t("Пароль успешно изменен!"));
       logger.info("Password has been reset successfully.");
       setTimeout(() => navigate("/login"), 3000); // Перенаправляем на страницу входа через 3 секунды
     } catch (err: unknown) {
@@ -74,11 +76,11 @@ const ResetPasswordPage: React.FC = () => {
         };
         const errorMessage =
           errObj.response?.data?.message ||
-          "Не удалось сбросить пароль. Возможно, ваш токен истек или недействителен.";
+          t("Не удалось сбросить пароль. Возможно, ваш токен истек или недействителен.");
         setError(errorMessage);
         logger.error("Password reset failed:", errorMessage);
       } else {
-        const errorMessage = "Произошла неизвестная ошибка при сбросе пароля.";
+        const errorMessage = t("Произошла неизвестная ошибка при сбросе пароля.");
         setError(errorMessage);
         logger.error("Password reset failed:", String(err));
       }
@@ -94,14 +96,14 @@ const ResetPasswordPage: React.FC = () => {
       <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
         <FormBlock className="w-full max-w-md bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
           <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
-            Установить новый пароль
+            {t("Установить новый пароль")}
           </h2>
           {error && (
             <div
               className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
               role="alert"
             >
-              <span className="block sm:inline">{error}</span>
+              <span className="block sm:inline">{t(error)}</span>
             </div>
           )}
           {success && (
@@ -114,18 +116,18 @@ const ResetPasswordPage: React.FC = () => {
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <PasswordField
-              label="Новый пароль"
+              label={t("Новый пароль")}
               inputId="password"
               placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={isLoading || !!success}
-              description="Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол."
+              description={t("Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол.")}
               autoComplete="new-password"
             />
             <PasswordField
-              label="Подтвердите новый пароль"
+              label={t("Подтвердите новый пароль")}
               inputId="confirm-password"
               placeholder="********"
               value={confirmPassword}
@@ -140,7 +142,7 @@ const ResetPasswordPage: React.FC = () => {
                 type="submit"
                 disabled={isLoading || !!success}
               >
-                {isLoading ? <Spinner size="sm" /> : "Сменить пароль"}
+                {isLoading ? <Spinner size="sm" /> : t("Сменить пароль")}
               </button>
             </div>
             <div className="text-center text-sm text-gray-700 dark:text-gray-200">
@@ -148,7 +150,7 @@ const ResetPasswordPage: React.FC = () => {
                 to="/login"
                 className="font-bold text-blue-500 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-600"
               >
-                Вернуться ко входу
+                {t("Вернуться ко входу")}
               </Link>
             </div>
           </form>

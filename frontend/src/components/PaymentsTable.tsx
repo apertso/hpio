@@ -1,10 +1,11 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 import Table, { TableColumn } from "./Table";
 import PaymentIconDisplay from "./PaymentIconDisplay";
 import { PaymentData } from "../types/paymentData";
 import { getPaymentColorClass } from "../utils/paymentColors";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
-import { formatDateForDisplay } from "../utils/dateUtils";
+import { parseCalendarDate, formatDateForDisplay } from "../utils/dateUtils";
 import { ArrowPathIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 import {
   PencilIcon,
@@ -31,13 +32,14 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
   onDownloadFile,
   emptyMessage = "Нет платежей",
 }) => {
+  const { t, locale } = useLanguage();
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
 
   const columns: TableColumn<PaymentData>[] = [
     {
       id: "icon",
-      header: "Иконка",
+      header: t("Иконка"),
       thClassName: `${thBaseClassName} w-20`,
       cell: (payment) => (
         <PaymentIconDisplay payment={payment} sizeClass="h-6 w-6" />
@@ -45,7 +47,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
     },
     {
       id: "status",
-      header: "Статус",
+      header: t("Статус"),
       thClassName: `${thBaseClassName} w-40`,
       cell: (payment) => (
         <div className="text-sm text-gray-900 dark:text-gray-100">
@@ -54,23 +56,23 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
               payment
             )}`}
           ></span>
-          {payment.status === "upcoming" && "Предстоящий"}
-          {payment.status === "overdue" && "Просрочен"}
-          {payment.status === "completed" && "Выполнен"}
-          {payment.status === "deleted" && "Удален"}
+          {payment.status === "upcoming" && t("Предстоящий")}
+          {payment.status === "overdue" && t("Просрочен")}
+          {payment.status === "completed" && t("Выполнен")}
+          {payment.status === "deleted" && t("Удален")}
         </div>
       ),
     },
     {
       id: "title",
-      header: "Название",
+      header: t("Название"),
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs",
       cell: (payment) => <>{payment.title}</>,
     },
     {
       id: "recurrence",
-      header: "Повторение",
+      header: t("Повторение"),
       thClassName: `${thBaseClassName} w-48`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
@@ -79,32 +81,32 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
           {payment.seriesId && payment.series?.isActive ? (
             <span className="flex items-center">
               <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
-              {formatRecurrenceRule(payment.series?.recurrenceRule)}
+              {t(formatRecurrenceRule(payment.series?.recurrenceRule))}
               {payment.series.recurrenceEndDate &&
-                ` до ${formatDateForDisplay(
-                  new Date(payment.series.recurrenceEndDate)
-                )}`}
+                t(" до {1}", formatDateForDisplay(
+                  parseCalendarDate(payment.series.recurrenceEndDate), locale
+                ))}
             </span>
           ) : payment.seriesId && !payment.series?.isActive ? (
             <span className="flex items-center text-gray-400 italic">
               <ArrowPathIcon className="h-4 w-4 mr-1" />
-              Шаблон неактивен
+              {t("Шаблон неактивен")}
             </span>
           ) : (
-            "Разовый"
+            t("Разовый")
           )}
         </>
       ),
     },
     {
       id: "amount",
-      header: "Сумма",
+      header: t("Сумма"),
       thClassName: `${thBaseClassName} w-32`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
         <>
-          {new Intl.NumberFormat("ru-RU", {
+          {new Intl.NumberFormat(locale, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           }).format(payment.amount)}
@@ -116,17 +118,17 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
     },
     {
       id: "dueDate",
-      header: "Срок оплаты",
+      header: t("Срок оплаты"),
       thClassName: `${thBaseClassName} w-36`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
-        <>{formatDateForDisplay(new Date(payment.dueDate))}</>
+        <>{formatDateForDisplay(parseCalendarDate(payment.dueDate), locale)}</>
       ),
     },
     {
       id: "category",
-      header: "Категория",
+      header: t("Категория"),
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 truncate",
       cell: (payment) => (
@@ -139,7 +141,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
     },
     {
       id: "file",
-      header: "Файл",
+      header: t("Файл"),
       thClassName: `${thBaseClassName} w-16`,
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
@@ -167,7 +169,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
       columns={columns}
       getRowKey={(p) => p.id}
       isLoading={isLoading}
-      emptyMessage={emptyMessage}
+      emptyMessage={t(emptyMessage)}
       rowActions={(payment) => {
         const options: {
           label: string;
@@ -176,7 +178,7 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
         }[] = [];
         if (payment.status !== "deleted") {
           options.push({
-            label: "Редактировать",
+            label: t("Редактировать"),
             onClick: () => onEdit(payment.id),
             icon: <PencilIcon className="h-4 w-4" />,
           });
@@ -184,12 +186,12 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({
         if (payment.status === "upcoming" || payment.status === "overdue") {
           options.push(
             {
-              label: "Выполнить",
+              label: t("Выполнить"),
               onClick: () => onComplete(payment),
               icon: <CheckCircleIcon className="h-4 w-4" />,
             },
             {
-              label: "Удалить",
+              label: t("Удалить"),
               onClick: () => onDelete(payment),
               icon: <TrashIcon className="h-4 w-4" />,
             }

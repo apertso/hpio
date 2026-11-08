@@ -163,7 +163,7 @@ const Select: React.FC<SelectProps> = ({
                   key={option.value || "null-option"}
                   className={`px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
                     value === option.value
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
+                      ? "bg-slate-100 dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-medium"
                       : ""
                   }`}
                   onClick={() => handleSelect(option.value)}

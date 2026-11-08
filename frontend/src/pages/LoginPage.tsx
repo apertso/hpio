@@ -1,4 +1,5 @@
 // src/pages/LoginPage.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -8,9 +9,11 @@ import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { useToast } from "../context/ToastContext";
 import LoginForm from "../components/LoginForm";
+import LanguageSelect from "../components/LanguageSelect";
 import { isTauriMobile } from "../utils/platform";
 
 const LoginPage: React.FC = () => {
+  const { t } = useLanguage();
   const { login, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -34,6 +37,9 @@ const LoginPage: React.FC = () => {
     <>
       <PageMeta {...metadata} />
       <div className="flex flex-col flex-1 items-center w-full px-4 py-6 gap-6">
+        <div className="flex w-full max-w-xl justify-end">
+          <LanguageSelect />
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -45,15 +51,15 @@ const LoginPage: React.FC = () => {
         >
           <img
             src="/icons/favicon.svg"
-            alt="Хочу Плачу Logo"
+            alt={t("Хочу Плачу Logo")}
             className="w-14 h-14 mr-6 flex-shrink-0"
           />
           <div className="flex flex-col text-left">
             <h1 className="text-lg md:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-              Хочу Плачу
+              {t("Хочу Плачу")}
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Ваш финансовый помощник
+              {t("Ваш финансовый помощник")}
             </p>
           </div>
         </button>

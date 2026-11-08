@@ -24,7 +24,7 @@ const useCategories = (filterType?: "expense" | "income") => {
     isLoading,
     error,
     execute: fetchCategories,
-  } = useApi<Category[]>(fetchCategoriesApi, {
+  } = useApi(fetchCategoriesApi, {
     offlineDataKey: "categories",
   });
 

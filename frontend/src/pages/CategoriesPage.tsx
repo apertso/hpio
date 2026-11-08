@@ -1,4 +1,5 @@
 // src/pages/CategoriesPage.tsx
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState, useRef } from "react";
 import axiosInstance from "../api/axiosInstance";
 import {
@@ -53,16 +54,17 @@ const MobileActionsOverlay: React.FC<{
   onEdit: (id: string) => void;
   onDelete: (id: string, name: string) => void;
 }> = ({ category, shouldClose, onClose, onEdit, onDelete }) => {
+  const { t } = useLanguage();
   if (!category) return null;
 
   const actions = [
     {
-      label: "Изменить",
+      label: t("Изменить"),
       icon: PencilSolidIcon,
       handler: () => onEdit(category.id),
     },
     {
-      label: "Удалить",
+      label: t("Удалить"),
       icon: TrashSolidIcon,
       handler: () => onDelete(category.id, category.name),
     },
@@ -117,17 +119,18 @@ const CategoryListItem: React.FC<{
   </button>
 );
 const CategoriesPage: React.FC = () => {
+  const { t } = useLanguage();
   const { showToast } = useToast(); // Import useToast
   const { setPageTitle, setHeaderAction } = usePageTitle();
   const metadata = getPageMetadata("categories");
 
   useEffect(() => {
-    setPageTitle("Категории");
-  }, [setPageTitle]);
+    setPageTitle(t("Категории"));
+  }, [setPageTitle, t]);
 
   useEffect(() => {
     setHeaderAction(
-      <Tooltip content="Категории группируют платежи и напрямую влияют на аналитику.">
+      <Tooltip content={t("Категории группируют платежи и напрямую влияют на аналитику.")}>
         <button className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
           <InformationIcon className="h-[16px] w-[16px]" />
         </button>
@@ -135,14 +138,14 @@ const CategoriesPage: React.FC = () => {
     );
 
     return () => setHeaderAction(null);
-  }, [setHeaderAction]);
+  }, [setHeaderAction, t]);
 
   // Use useApi for fetching the categories list
   const {
     data: categories,
     isLoading: isLoadingCategories,
     execute: executeFetchCategories,
-  } = useApi<Category[]>(fetchCategoriesApi, {
+  } = useApi(fetchCategoriesApi, {
     offlineDataKey: "categories",
   });
 
@@ -268,7 +271,7 @@ const CategoriesPage: React.FC = () => {
       try {
         await axiosInstance.delete(`/categories/${categoryId}`);
         executeFetchCategories();
-        showToast("Категория успешно удалена.", "success");
+        showToast(t("Категория успешно удалена."), "success");
       } catch (error) {
         showToast(getErrorMessage(error), "error");
       }
@@ -277,8 +280,8 @@ const CategoriesPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Удалить категорию",
-      message: `Вы уверены, что хотите удалить категорию "${categoryName}"? Связанные платежи останутся без категории.`,
+      title: t("Удалить категорию"),
+      message: t("Вы уверены, что хотите удалить категорию \"{1}\"? Связанные платежи останутся без категории.", categoryName),
     });
   };
 
@@ -290,9 +293,9 @@ const CategoriesPage: React.FC = () => {
         <div className="flex justify-between items-center md:mb-6">
           <div className="flex items-center gap-2">
             <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Управление категориями
+              {t("Управление категориями")}
             </h2>
-            <Tooltip content="Категории группируют платежи и напрямую влияют на аналитику.">
+            <Tooltip content={t("Категории группируют платежи и напрямую влияют на аналитику.")}>
               <div className="hidden md:block p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
                 <InformationIcon className="h-[16px] w-[16px]" />
               </div>
@@ -300,14 +303,14 @@ const CategoriesPage: React.FC = () => {
           </div>
           <Button
             onClick={handleAddCategory}
-            label="Добавить категорию"
+            label={t("Добавить категорию")}
             icon={<PlusIcon className="w-4 h-4" />}
             className="hidden md:inline-flex"
           />
         </div>
         <div className="flex justify-center md:justify-start mb-4">
           <SegmentedControl
-            options={categoryTabOptions}
+            options={categoryTabOptions.map((option) => ({ ...option, label: t(option.label) }))}
             selected={activeCategoryType}
             onChange={setActiveCategoryType}
             className="w-full md:w-auto"
@@ -365,7 +368,7 @@ const CategoriesPage: React.FC = () => {
         onConfirm={onConfirmAction}
         title={confirmModalState.title}
         message={confirmModalState.message}
-        confirmText="Да, удалить"
+        confirmText={t("Да, удалить")}
         isConfirming={isConfirming}
       />
       <MobileActionsOverlay

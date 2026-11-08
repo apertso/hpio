@@ -36,7 +36,7 @@ const MultipleCheckboxes = () => {
     option3: false,
   });
 
-  const handleChange = (id: string) => {
+  const handleChange = (id: keyof typeof checkedItems): void => {
     setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 

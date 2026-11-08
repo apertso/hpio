@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PageMeta from "../components/PageMeta";
@@ -6,6 +7,7 @@ import { blogApi, BlogPost } from "../api/blogApi";
 import { formatDateForDisplay } from "../utils/dateUtils";
 
 const BlogPage: React.FC = () => {
+  const { t, locale } = useLanguage();
   const metadata = getPageMetadata("blog");
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -32,21 +34,21 @@ const BlogPage: React.FC = () => {
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex items-center justify-between gap-4 mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Блог
+            {t("Блог")}
           </h1>
         </div>
 
         {isLoading && (
-          <div className="text-gray-600 dark:text-gray-300">Загрузка...</div>
+          <div className="text-gray-600 dark:text-gray-300">{t("Загрузка...")}</div>
         )}
 
         {!isLoading && error && (
-          <div className="text-red-500 text-sm">{error}</div>
+          <div className="text-red-500 text-sm">{t(error)}</div>
         )}
 
         {!isLoading && !error && posts.length === 0 && (
           <div className="text-gray-600 dark:text-gray-300">
-            Статей пока нет.
+            {t("Статей пока нет.")}
           </div>
         )}
 
@@ -71,7 +73,7 @@ const BlogPage: React.FC = () => {
                   </p>
                 )}
                 <div className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-                  {formatDateForDisplay(new Date(post.createdAt))}
+                  {formatDateForDisplay(new Date(post.createdAt), locale)}
                 </div>
               </article>
             ))}

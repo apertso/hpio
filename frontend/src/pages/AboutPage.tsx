@@ -1,237 +1,341 @@
-import React, { useState } from "react";
+import { useState, type ReactElement } from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { submitFeedback } from "../api/feedbackApi";
-import { useToast } from "../context/ToastContext";
-import PageMeta from "../components/PageMeta";
-import { getPageMetadata } from "../utils/pageMetadata";
 import {
-  PaperAirplaneIcon,
-  UserIcon,
+  ArrowTopRightOnSquareIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
   CodeBracketIcon,
   EnvelopeIcon,
+  PaperClipIcon,
+  UserIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { TextInputField, EmailField } from "../components/Input";
+import { submitFeedback } from "../api/feedbackApi";
+import { Button } from "../components/Button";
+import { EmailField, TextInputField } from "../components/Input";
+import PageMeta from "../components/PageMeta";
+import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
+import { getPageMetadata } from "../utils/pageMetadata";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const SUPPORT_EMAIL = "support@hpio.ru";
+const contactActionClassName =
+  "w-full cursor-pointer items-center gap-3 py-3 text-left text-gray-900 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:text-gray-100";
 
 const feedbackSchema = z.object({
-  name: z.string().min(1, "Имя обязательно"),
-  email: z.string().email("Некорректный email"),
-  message: z.string().min(10, "Сообщение должно содержать минимум 10 символов"),
+  name: z.string().trim().min(1, "Укажите имя"),
+  email: z.string().trim().email("Проверьте адрес почты"),
+  message: z.string().trim().min(10, "Напишите хотя бы 10 символов"),
+  attachment: z.instanceof(FileList).optional().refine(
+    (files) => !files?.[0] || files[0].size < MAX_FILE_SIZE,
+    "Выберите файл размером меньше 5 МБ"
+  ),
 });
 
 type FeedbackFormData = z.infer<typeof feedbackSchema>;
 
-const AboutPage: React.FC = () => {
-  const metadata = getPageMetadata("about");
-  const { showToast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const supportLinks = [
+  {
+    href: `mailto:${SUPPORT_EMAIL}`,
+    label: SUPPORT_EMAIL,
+    description: "Вопросы об аккаунте",
+    icon: EnvelopeIcon,
+  },
+  {
+    href: "https://github.com/apertso/hpio/issues",
+    label: "GitHub Issues",
+    description: "Сообщить об ошибке",
+    icon: CodeBracketIcon,
+  },
+  {
+    href: "https://www.linkedin.com/in/artur-pertsev/",
+    label: "LinkedIn",
+    description: "Деловые вопросы",
+    icon: UserIcon,
+  },
+];
 
+const AboutPage = (): ReactElement => {
+  const { t } = useLanguage();
+  const { isAuthenticated, loading } = useAuth();
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<"sent" | "queued" | "error" | null>(null);
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
+    clearErrors,
     reset,
+    resetField,
+    setFocus,
+    watch,
   } = useForm<FeedbackFormData>({
     resolver: zodResolver(feedbackSchema),
+    mode: "onChange",
+    delayError: 1000,
   });
 
-  const onSubmit = async (data: FeedbackFormData) => {
+  const nameField = register("name");
+  const emailField = register("email");
+  const messageField = register("message");
+  const attachmentField = register("attachment");
+  const attachment = watch("attachment")?.[0];
+
+  const onSubmit = async (data: FeedbackFormData): Promise<void> => {
+    setSubmitStatus(null);
     try {
-      setIsSubmitting(true);
-      // Combine name and email with the message for the feedback API
-      const feedbackMessage = `Имя: ${data.name}\nEmail: ${data.email}\n\nСообщение:\n${data.message}`;
-      await submitFeedback(feedbackMessage);
-      showToast(
-        "Спасибо за ваше предложение! Мы обязательно рассмотрим его в ближайшее время.",
-        "success"
-      );
+      const description = `Имя: ${data.name}\nEmail: ${data.email}\n\nСообщение:\n${data.message}`;
+      const sent = await submitFeedback(description, data.attachment?.[0]);
       reset();
+      setSubmitStatus(sent ? "sent" : "queued");
     } catch {
-      showToast("Не удалось отправить сообщение. Попробуйте еще раз.", "error");
-    } finally {
-      setIsSubmitting(false);
+      setSubmitStatus("error");
     }
   };
 
+  const statusMessage = {
+    sent: t("Спасибо! Сообщение отправлено."),
+    queued: t("Сообщение отправится после восстановления связи."),
+    error: t("Не удалось отправить сообщение. Попробуйте ещё раз."),
+  };
+
+  const feedbackTitle = t("Обратная связь");
+  const feedbackRow = (
+    <>
+      <ChatBubbleLeftRightIcon aria-hidden="true" className="size-5 shrink-0 text-gray-500 dark:text-gray-400" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-semibold">{feedbackTitle}</span>
+        <span className="block text-base font-normal text-gray-600 dark:text-gray-400">
+          {t("Расскажите, что можно улучшить, или опишите проблему.")}
+        </span>
+      </span>
+    </>
+  );
+
   return (
     <>
-      <PageMeta {...metadata} />
+      <PageMeta {...getPageMetadata("about")} />
 
-      <section className="w-full max-w-4xl mx-auto py-12 px-6 sm:px-8 lg:px-12 bg-white dark:bg-gray-800 rounded-2xl shadow-lg mb-10 mt-6 md:mt-10">
-        <div className="prose dark:prose-invert max-w-none">
-          <div className="text-center mb-12">
-            <div className="flex justify-center mb-6">
-              <img
-                src="/icons/android-chrome-192x192.png"
-                alt="Хочу Плачу логотип"
-                className="w-20 h-20 rounded-2xl shadow-md"
-              />
-            </div>
-            <h1 className="text-3xl font-bold mb-8 text-gray-900 dark:text-white">
-              О сервисе
-            </h1>
-          </div>
+      <div className="mx-auto flex w-full max-w-3xl shrink-0 flex-col gap-9 px-4 py-9 sm:px-8 sm:py-14 lg:py-18 selection:bg-indigo-100 selection:text-indigo-950 dark:selection:bg-indigo-800 dark:selection:text-white">
+        <header>
+          <h1 className="flex items-center gap-3 text-4xl font-bold tracking-[-0.03em] text-gray-950 dark:text-white sm:gap-4 sm:text-6xl">
+            <img
+              src="/icons/favicon.svg"
+              alt=""
+              width={48}
+              height={48}
+              className="size-10 shrink-0 rounded-xl border border-gray-200 sm:size-12 dark:border-gray-700"
+            />
+            <span>{t("О сервисе")}</span>
+          </h1>
+          <p className="mt-4 max-w-[55ch] text-xl leading-relaxed text-gray-800 dark:text-gray-200">
+            <strong className="font-semibold">{t("Хочу Плачу")}</strong>{t(" помогает планировать разовые и регулярные платежи, получать напоминания и отслеживать расходы.")}
+          </p>
+          <p className="mt-3 max-w-[60ch] text-base leading-relaxed text-gray-600 dark:text-gray-400">
+            {t("Сервис подходит для личного и семейного бюджета, фриланса и малого бизнеса. История платежей и аналитика помогают понять, на что уходят деньги.")}
+          </p>
+        </header>
 
-          <div className="space-y-6 text-lg leading-relaxed">
-            <p className="text-gray-700 dark:text-gray-300">
-              <strong>Хочу Плачу</strong> - это сервис для управления разовыми и
-              регулярными платежами. Он помогает отслеживать расходы, получать
-              напоминания и анализировать финансовую активность в удобном
-              формате.
-            </p>
-
-            <p className="text-gray-700 dark:text-gray-300">
-              Данный проект это простой и надежный инструмент для управления
-              финансами который может быть полезен семьям, фрилансерам, малому
-              бизнесу и тем, кто хочет сделать планирование личных финансов
-              проще.
-            </p>
-          </div>
-
-          <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Feedback Form */}
-              <div className="lg:col-span-2">
-                <h2 className="text-xl md:text-2xl font-bold mb-2 text-gray-900 dark:text-white">
-                  Ваши предложения
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Поделитесь своими идеями и предложениями.
-                </p>
-
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  <TextInputField
-                    label="Имя"
-                    inputId="name"
-                    error={errors.name?.message}
-                    required
-                    type="text"
-                    disabled={isSubmitting}
-                    {...register("name")}
+        <section aria-labelledby="about-support-title">
+          <h2 id="about-support-title" className="mb-3 text-xl font-semibold text-gray-950 dark:text-white">
+            {t("Контакты")}
+          </h2>
+          <ul className="divide-y divide-gray-200 border-y border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+            {supportLinks.map(({ href, label, description, icon: Icon }) => {
+              const external = href.startsWith("https:");
+              return (
+                <li key={href}>
+                  <a
+                    href={href}
+                    target={external ? "_blank" : undefined}
+                    rel={external ? "noopener noreferrer" : undefined}
+                    className={`flex ${contactActionClassName}`}
+                  >
+                    <Icon aria-hidden="true" className="size-5 shrink-0 text-gray-500 dark:text-gray-400" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-semibold">{label}</span>
+                      <span className="block text-base text-gray-600 dark:text-gray-400">{t(description)}</span>
+                    </span>
+                    {external && (
+                      <ArrowTopRightOnSquareIcon aria-hidden="true" className="size-4 shrink-0 text-gray-500 dark:text-gray-400" />
+                    )}
+                  </a>
+                </li>
+              );
+            })}
+            <li>
+              <h3 aria-label={feedbackTitle} className="text-gray-900 dark:text-gray-100">
+                <span className="flex items-center gap-3 py-3 md:hidden">{feedbackRow}</span>
+                <button
+                  type="button"
+                  aria-label={feedbackTitle}
+                  aria-expanded={isFeedbackOpen}
+                  aria-controls="about-feedback-body"
+                  onClick={() => setIsFeedbackOpen((open) => !open)}
+                  className={`group hidden md:flex ${contactActionClassName}`}
+                >
+                  {feedbackRow}
+                  <ChevronDownIcon
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-gray-500 group-aria-expanded:rotate-180 motion-safe:transition-transform dark:text-gray-400"
                   />
+                </button>
+              </h3>
+              <div
+                id="about-feedback-body"
+                className={`border-t border-gray-200 py-4 dark:border-gray-700 md:pl-8 ${isFeedbackOpen ? "" : "md:hidden"}`}
+              >
+                {isAuthenticated ? (
+                  <form noValidate onSubmit={handleSubmit(onSubmit)} aria-busy={isSubmitting}>
+                    <fieldset disabled={isSubmitting} className="min-w-0 space-y-5">
+                      <div className="space-y-5 [&_label]:text-base [&_input]:border-gray-500 [&_input[aria-invalid=true]]:border-red-600 [&_p]:text-base [&_p]:text-red-700 dark:[&_input]:border-gray-400 dark:[&_input[aria-invalid=true]]:border-red-400 dark:[&_p]:text-red-300">
+                        <TextInputField
+                          label={t("Имя")}
+                          inputId="feedback-name"
+                          autoComplete="name"
+                          className="min-w-0"
+                          error={errors.name?.message}
+                          required
+                          {...nameField}
+                          onChange={(event) => {
+                            clearErrors("name");
+                            void nameField.onChange(event);
+                          }}
+                        />
+                        <EmailField
+                          label={t("Электронная почта")}
+                          inputId="feedback-email"
+                          autoComplete="email"
+                          className="min-w-0"
+                          error={errors.email?.message}
+                          required
+                          {...emailField}
+                          onChange={(event) => {
+                            clearErrors("email");
+                            void emailField.onChange(event);
+                          }}
+                        />
+                      </div>
 
-                  <EmailField
-                    inputId="email"
-                    label="Email"
-                    {...register("email")}
-                    autoComplete="email"
-                    disabled={isSubmitting}
-                    error={errors.email?.message}
-                    required
-                  />
+                      <div>
+                        <label htmlFor="feedback-message" className="mb-1.5 block text-base font-medium text-gray-700 dark:text-gray-200">
+                          {t("Сообщение")}
+                        </label>
+                        <textarea
+                          id="feedback-message"
+                          rows={5}
+                          required
+                          aria-invalid={Boolean(errors.message)}
+                          aria-describedby={errors.message ? "feedback-message-error" : undefined}
+                          className={`block w-full resize-y rounded-xl border bg-white px-3 py-2.5 text-base leading-relaxed text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-100 ${
+                            errors.message ? "border-red-600 dark:border-red-400" : "border-gray-500 dark:border-gray-400"
+                          }`}
+                          {...messageField}
+                          onChange={(event) => {
+                            clearErrors("message");
+                            void messageField.onChange(event);
+                          }}
+                        />
+                        {errors.message && (
+                          <p id="feedback-message-error" className="mt-1.5 text-base text-red-700 dark:text-red-300">
+                            {t(errors.message.message ?? "")}
+                          </p>
+                        )}
+                      </div>
 
+                      <div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <label className="relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-2.5 text-base font-medium text-indigo-700 transition-all hover:bg-indigo-50 hover:opacity-80 focus-within:outline-2 focus-within:outline-indigo-500 dark:text-indigo-300 dark:hover:bg-gray-700">
+                            <PaperClipIcon aria-hidden="true" className="size-5 shrink-0" />
+                            {attachment ? t("Заменить файл") : t("Прикрепить файл")}
+                            <input
+                              type="file"
+                              className="absolute inset-0 size-full cursor-pointer opacity-0"
+                              aria-invalid={Boolean(errors.attachment)}
+                              aria-describedby={errors.attachment ? "feedback-file-error" : "feedback-file-hint"}
+                              {...attachmentField}
+                              onChange={(event) => {
+                                clearErrors("attachment");
+                                void attachmentField.onChange(event);
+                              }}
+                            />
+                          </label>
+                          <span id="feedback-file-hint" className="text-base text-gray-600 dark:text-gray-300">
+                            {t("Необязательно, меньше 5 МБ")}
+                          </span>
+                        </div>
+                        {attachment && (
+                          <div className="mt-2 flex items-center gap-2 rounded-xl bg-gray-50 py-1 pr-1 pl-3 dark:bg-gray-900" aria-live="polite">
+                            <span className="min-w-0 flex-1 text-base break-all text-gray-800 dark:text-gray-100">
+                              {attachment.name}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label={t("Убрать вложение")}
+                              className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full text-gray-600 transition-all hover:bg-gray-200 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:text-gray-300 dark:hover:bg-gray-700"
+                              onClick={() => {
+                                resetField("attachment");
+                                setFocus("attachment");
+                              }}
+                            >
+                              <XMarkIcon aria-hidden="true" className="size-5" />
+                            </button>
+                          </div>
+                        )}
+                        {errors.attachment && (
+                          <p id="feedback-file-error" role="alert" className="mt-2 text-base text-red-700 dark:text-red-300">
+                            {t(errors.attachment.message ?? "")}
+                          </p>
+                        )}
+                      </div>
+                    </fieldset>
+
+                    <div className="mt-5 flex flex-col gap-3 border-t border-gray-200 pt-5 dark:border-gray-700 sm:flex-row sm:items-center">
+                      <p
+                        role="status"
+                        className={submitStatus
+                          ? `text-base ${submitStatus === "error"
+                            ? "text-red-700 dark:text-red-300"
+                            : "text-gray-700 dark:text-gray-200"}`
+                          : "sr-only"}
+                      >
+                        {submitStatus && statusMessage[submitStatus]}
+                      </p>
+                      <Button
+                        type="submit"
+                        size="large"
+                        className="w-full sm:ml-auto sm:w-auto sm:shrink-0"
+                        loading={isSubmitting}
+                        label={isSubmitting ? t("Отправляем…") : t("Отправить сообщение")}
+                      />
+                    </div>
+                  </form>
+                ) : !loading && (
                   <div>
-                    <label
-                      htmlFor="message"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >
-                      Ваше предложение
-                    </label>
-                    <textarea
-                      {...register("message")}
-                      id="message"
-                      rows={4}
-                      className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
-                        errors.message
-                          ? "border-red-500"
-                          : "border-gray-300 dark:border-gray-600"
-                      }`}
-                      placeholder=""
-                    />
-                    {errors.message && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.message.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        <span>Отправляется...</span>
-                      </>
-                    ) : (
-                      <>
-                        <PaperAirplaneIcon className="w-4 h-4" />
-                        <span>Отправить</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              </div>
-
-              {/* Support Options */}
-              <div className="lg:col-span-1">
-                <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-                  Поддержка
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Свяжитесь с нами:
-                </p>
-
-                <div className="space-y-4">
-                  <a
-                    href="https://www.linkedin.com/in/artur-pertsev/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:opacity-80 transition-opacity"
-                  >
-                    <div className="flex-shrink-0">
-                      <UserIcon className="w-6 h-6 text-gray-900 dark:text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        LinkedIn
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Деловые вопросы
-                      </p>
-                    </div>
-                  </a>
-
-                  <a
-                    href="https://github.com/apertso/hpio/issues"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:opacity-80 transition-opacity"
-                  >
-                    <div className="flex-shrink-0">
-                      <CodeBracketIcon className="w-6 h-6 text-gray-900 dark:text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        GitHub Issues
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Сообщить об ошибке
-                      </p>
-                    </div>
-                  </a>
-
-                  <div className="pt-4 border-t border-gray-200 dark:border-gray-600">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      По вопросам аккаунта:
+                    <p className="text-base leading-relaxed text-gray-600 dark:text-gray-300">
+                      {t("Войдите, чтобы отправить сообщение и прикрепить файл. Без аккаунта можно написать на")}{" "}
+                      <a
+                        href={`mailto:${SUPPORT_EMAIL}`}
+                        className="cursor-pointer text-indigo-700 underline underline-offset-2 transition-opacity hover:opacity-80 dark:text-indigo-300"
+                      >
+                        {t("почту поддержки")}
+                      </a>
+                      .
                     </p>
-                    <a
-                      href="mailto:support@hpio.ru"
-                      className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 transition-colors font-medium"
-                    >
-                      <EnvelopeIcon className="w-4 h-4" />
-                      <span>support@hpio.ru</span>
-                    </a>
+                    <Link to="/login" className="mt-3 inline-flex min-h-11 cursor-pointer items-center font-semibold text-indigo-700 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:text-indigo-300">
+                      {t("Войти в аккаунт")}
+                    </Link>
                   </div>
-                </div>
+                )}
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
+            </li>
+          </ul>
+        </section>
+      </div>
     </>
   );
 };

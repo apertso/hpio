@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -11,7 +12,6 @@ import {
   GlobeAltIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { DeviceMockup } from '../components/DeviceMockup';
@@ -19,6 +19,7 @@ import { LandingHeroCreditCard } from '../components/LandingHeroCreditCard';
 import { LandingHeroMockup } from '../components/LandingHeroMockup';
 import { LandingTopBar } from '../components/LandingTopBar';
 import PageMeta from '../components/PageMeta';
+import { useGradientStroke } from '../hooks/useGradientStroke';
 import { getPageMetadata } from '../utils/pageMetadata';
 
 const Feature = ({
@@ -40,7 +41,7 @@ const Feature = ({
     } py-12`}
   >
     <div className="flex-1 space-y-6 text-center md:text-left">
-      <div className="inline-flex p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl text-indigo-600 dark:text-indigo-400">
+      <div className="accent-icon inline-flex p-3 rounded-2xl">
         <Icon className="w-8 h-8" />
       </div>
       <div>
@@ -67,8 +68,11 @@ const Feature = ({
 );
 
 const LandingPage: React.FC = () => {
+  const { t } = useLanguage();
   const { isAuthenticated, loading } = useAuth();
   const { resolvedTheme } = useTheme();
+  const heroStrokeRef = useGradientStroke();
+  const footerStrokeRef = useGradientStroke();
   const navigate = useNavigate();
   const metadata = getPageMetadata('landing');
 
@@ -101,34 +105,36 @@ const LandingPage: React.FC = () => {
             <div className="relative grid min-h-0 min-w-0 flex-1 grid-cols-1 items-center gap-8 py-6 sm:gap-10 sm:py-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-6 xl:gap-10">
               <div className="relative z-10 mx-auto w-full min-w-0 max-w-2xl text-center lg:mx-0 lg:max-w-[560px] lg:-translate-y-24 lg:text-left xl:max-w-[600px]">
                 <h1 className="landing-hero-reveal landing-hero-delay-1 text-[3.25rem] font-extrabold leading-[1.02] tracking-tight text-gray-950 dark:text-white sm:text-[4.5rem] lg:text-[4rem] xl:text-[4.75rem]">
-                  Финансы под
+                  {t("Финансы под")}
                   <br />
                   <span className="bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-500 bg-clip-text text-transparent dark:from-indigo-400 dark:via-sky-400 dark:to-violet-300">
-                    полным контролем
+                    {t("полным контролем")}
                   </span>
                 </h1>
 
                 <p className="landing-hero-reveal landing-hero-delay-2 mx-auto mt-10 max-w-xl text-base leading-7 text-gray-500 dark:text-gray-300 sm:text-lg sm:leading-8 lg:mx-0">
-                  Эстетичный трекер регулярных платежей и подписок.
+                  {t("Эстетичный трекер регулярных платежей и подписок.")}
                 </p>
                 <p className="landing-hero-reveal landing-hero-delay-2 mt-3 text-base font-bold text-gray-950 dark:text-white sm:text-lg">
-                  Без рекламы. Без скрытых комиссий.
+                  {t("Без рекламы. Без скрытых комиссий.")}
                 </p>
 
                 <div className="landing-hero-reveal landing-hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
                   <Link
+                    ref={heroStrokeRef}
                     to="/register"
-                    className="group inline-flex min-h-[66px] w-full min-w-0 items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3.5 text-left text-white shadow-[0_20px_44px_rgba(99,102,241,0.38)] transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_52px_rgba(99,102,241,0.44)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 sm:w-[272px] cursor-pointer"
+                    className="primary-action gradient-stroke inline-flex min-h-[66px] w-full min-w-0 items-center gap-4 rounded-2xl px-5 py-3.5 text-left shadow-sm transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 sm:w-[272px] cursor-pointer"
                   >
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-white/15">
+                    <span className="gradient-stroke-edge" aria-hidden="true" />
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-neutral-100 dark:bg-white/10">
                       <SparklesIcon className="h-6 w-6" />
                     </span>
                     <span>
                       <span className="block text-lg font-bold leading-6">
-                        Начать бесплатно
+                        {t("Начать бесплатно")}
                       </span>
-                      <span className="block text-sm text-indigo-100">
-                        Создайте аккаунт за 30 секунд
+                      <span className="block text-sm text-neutral-600 dark:text-neutral-300">
+                        {t("Создайте аккаунт за 30 секунд")}
                       </span>
                     </span>
                   </Link>
@@ -142,10 +148,10 @@ const LandingPage: React.FC = () => {
                     </span>
                     <span>
                       <span className="block text-lg font-bold leading-6">
-                        Скачать APK
+                        {t("Скачать APK")}
                       </span>
                       <span className="block text-sm text-gray-500 dark:text-gray-400">
-                        Версия 1.2.0
+                        {t("Версия 1.2.0")}
                       </span>
                     </span>
                   </Link>
@@ -159,7 +165,7 @@ const LandingPage: React.FC = () => {
                         Web
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Доступно в браузере
+                        {t("Доступно в браузере")}
                       </p>
                     </div>
                   </div>
@@ -176,7 +182,7 @@ const LandingPage: React.FC = () => {
                         Android
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        APK для установки
+                        {t("APK для установки")}
                       </p>
                     </div>
                   </div>
@@ -193,7 +199,7 @@ const LandingPage: React.FC = () => {
                         iOS
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Скоро в App Store
+                        {t("Скоро в App Store")}
                       </p>
                     </div>
                   </div>
@@ -224,7 +230,7 @@ const LandingPage: React.FC = () => {
                         src={`/hero/mobile-${
                           resolvedTheme === 'dark' ? 'dark' : 'light'
                         }.png`}
-                        alt="Интерфейс Хочу Плачу на телефоне"
+                        alt={t("Интерфейс Хочу Плачу на телефоне")}
                         className="w-[236px]"
                       />
                     </div>
@@ -235,19 +241,19 @@ const LandingPage: React.FC = () => {
                 <div className="landing-floating-element landing-netflix-alert absolute -left-4 top-[30%] z-30 hidden lg:block xl:-left-8">
                   <div className="landing-netflix-alert-body">
                     <div
-                      className="landing-netflix-alert-icon"
+                      className="accent-icon landing-netflix-alert-icon"
                       aria-hidden="true"
                     >
-                      <BellAlertIcon className="h-[20px] w-[20px] text-white" />
+                      <BellAlertIcon className="h-[20px] w-[20px]" />
                     </div>
                     <div className="landing-netflix-alert-text">
                       <p className="landing-netflix-alert-label">
-                        Скоро спишется
+                        {t("Скоро спишется")}
                       </p>
                       <p className="landing-netflix-alert-name">Netflix</p>
                       <p className="landing-netflix-alert-amount">599 ₽</p>
                       <p className="landing-netflix-alert-date">
-                        22 мая • через 2 дня
+                        {t("22 мая • через 2 дня")}
                       </p>
                     </div>
                   </div>
@@ -261,16 +267,16 @@ const LandingPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-gray-950 dark:text-white">
-                        Напоминание
+                        {t("Напоминание")}
                       </p>
                       <p className="mt-0.5 text-[10px] leading-4 text-gray-500 dark:text-gray-400">
-                        3 платежа на этой неделе
+                        {t("3 платежа на этой неделе")}
                       </p>
                       <button
                         type="button"
                         className="mt-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400"
                       >
-                        Посмотреть
+                        {t("Посмотреть")}
                       </button>
                     </div>
                   </div>
@@ -285,10 +291,10 @@ const LandingPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-xs font-bold leading-tight text-gray-950 dark:text-white">
-                      Ваши данные под защитой
+                      {t("Ваши данные под защитой")}
                     </p>
                     <p className="mt-0.5 text-[10px] leading-snug text-gray-500 dark:text-gray-400">
-                      Мы не передаем данные третьим лицам.
+                      {t("Мы не передаем данные третьим лицам.")}
                     </p>
                   </div>
                 </div>
@@ -305,29 +311,27 @@ const LandingPage: React.FC = () => {
                 <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-4">
                   <ShieldCheckIcon className="w-8 h-8 text-gray-900 dark:text-white" />
                 </div>
-                <h4 className="font-bold text-lg mb-2">Локальное хранение</h4>
+                <h4 className="font-bold text-lg mb-2">{t("Локальное хранение")}</h4>
                 <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                  Обработка SMS и уведомлений происходит прямо на вашем
-                  устройстве.
+                  {t("Обработка SMS и уведомлений происходит прямо на вашем устройстве.")}
                 </p>
               </div>
               <div className="flex flex-col items-center">
                 <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-4">
                   <DevicePhoneMobileIcon className="w-8 h-8 text-gray-900 dark:text-white" />
                 </div>
-                <h4 className="font-bold text-lg mb-2">Работа офлайн</h4>
+                <h4 className="font-bold text-lg mb-2">{t("Работа офлайн")}</h4>
                 <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                  Приложение работает без интернета. Данные синхронизируются при
-                  подключении.
+                  {t("Приложение работает без интернета. Данные синхронизируются при подключении.")}
                 </p>
               </div>
               <div className="flex flex-col items-center">
                 <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-4">
                   <ChartBarIcon className="w-8 h-8 text-gray-900 dark:text-white" />
                 </div>
-                <h4 className="font-bold text-lg mb-2">Честная статистика</h4>
+                <h4 className="font-bold text-lg mb-2">{t("Честная статистика")}</h4>
                 <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                  Никаких скрытых алгоритмов или продажи данных.
+                  {t("Никаких скрытых алгоритмов или продажи данных.")}
                 </p>
               </div>
             </div>
@@ -342,40 +346,36 @@ const LandingPage: React.FC = () => {
           <div className="space-y-24">
             <Feature
               icon={CalendarDaysIcon}
-              title="Умное отслеживание"
+              title={t("Умное отслеживание")}
               image={{
                 src: '/landing/notifications.webp',
-                alt: 'Скриншот уведомлений',
+                alt: t("Скриншот уведомлений"),
               }}
             >
-              Забудьте о ручном вводе. Приложение автоматически распознает
-              уведомления от банков (Сбер, Тинькофф, Райффайзен) и создает
-              записи о расходах.
+              {t("Забудьте о ручном вводе. Приложение автоматически распознает уведомления от банков (Сбер, Тинькофф, Райффайзен) и создает записи о расходах.")}
             </Feature>
 
             <Feature
               icon={ArrowPathIcon}
-              title="Регулярные платежи"
+              title={t("Регулярные платежи")}
               reverse
               image={{
                 src: '/landing/payment-tracking.webp',
-                alt: 'Скриншот списка платежей',
+                alt: t("Скриншот списка платежей"),
               }}
             >
-              Гибкая настройка повторяющихся операций. Подписки, ЖКХ, кредиты —
-              настройте один раз, и мы напомним вам заранее.
+              {t("Гибкая настройка повторяющихся операций. Подписки, ЖКХ, кредиты — настройте один раз, и мы напомним вам заранее.")}
             </Feature>
 
             <Feature
               icon={ChartBarIcon}
-              title="Глубокая аналитика"
+              title={t("Глубокая аналитика")}
               image={{
                 src: '/landing/analytics.webp',
-                alt: 'Скриншот аналитики',
+                alt: t("Скриншот аналитики"),
               }}
             >
-              Понимайте, куда уходят деньги. Визуализация расходов по
-              категориям, дням и динамика трат за любой период.
+              {t("Понимайте, куда уходят деньги. Визуализация расходов по категориям, дням и динамика трат за любой период.")}
             </Feature>
           </div>
         </section>
@@ -384,20 +384,21 @@ const LandingPage: React.FC = () => {
         <section className="py-24 bg-gray-50 dark:bg-gray-800/50">
           <div className="max-w-4xl mx-auto px-4 text-center">
             <h2 className="text-3xl md:text-4xl font-extrabold mb-6 tracking-tight">
-              Начните контролировать бюджет сегодня
+              {t("Начните контролировать бюджет сегодня")}
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-400 mb-10">
-              Присоединяйтесь к пользователям, которые уже навели порядок в
-              своих финансах.
+              {t("Присоединяйтесь к пользователям, которые уже навели порядок в своих финансах.")}
             </p>
-            <Link className="inline-block" to="/register">
-              <Button
-                label="Создать аккаунт"
-                className="px-10 py-4 text-lg font-bold bg-indigo-600 hover:bg-indigo-700 shadow-lg transition-transform hover:scale-105"
-              />
+            <Link
+              ref={footerStrokeRef}
+              className="primary-action gradient-stroke inline-flex cursor-pointer items-center rounded-xl px-10 py-4 text-lg font-bold shadow-sm transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
+              to="/register"
+            >
+              {t("Создать аккаунт")}
+              <span className="gradient-stroke-edge" aria-hidden="true" />
             </Link>
             <p className="mt-4 text-sm text-gray-500">
-              Бесплатно. Не требует привязки карты.
+              {t("Бесплатно. Не требует привязки карты.")}
             </p>
           </div>
         </section>

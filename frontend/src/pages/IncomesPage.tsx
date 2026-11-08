@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -27,7 +28,7 @@ import MobilePanel from "../components/MobilePanel";
 import Spinner from "../components/Spinner";
 import Select from "../components/Select";
 import { CURRENCY_OPTIONS as CURRENCY_OPTIONS } from "../utils/currencies";
-import { formatDateForDisplay } from "../utils/dateUtils";
+import { parseCalendarDate, formatDateForDisplay } from "../utils/dateUtils";
 
 const METHOD_LABELS: Record<string, string> = {
   cash: "Наличные",
@@ -66,6 +67,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   onSuccess,
   onCancel,
 }) => {
+  const { t } = useLanguage();
   const isEditMode = !!income;
   const { showToast } = useToast();
   const {
@@ -103,7 +105,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         exchangeRate: income.exchangeRate || 1,
         comment: income.comment || "",
       });
-      setDate(new Date(income.date));
+      setDate(parseCalendarDate(income.date));
       setCurrency(income.currency);
       setMethod(income.method);
       setCardId(income.card?.id || null);
@@ -120,7 +122,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   const onSubmit = async (data: IncomeFormInputs) => {
     setFormError(null);
     if (!date) {
-      setFormError("Дата обязательна");
+      setFormError(t("Дата обязательна"));
       return;
     }
 
@@ -151,7 +153,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       onSuccess();
     } catch {
       setFormError(
-        isEditMode ? "Ошибка при обновлении" : "Ошибка при добавлении"
+        isEditMode ? t("Ошибка при обновлении") : t("Ошибка при добавлении")
       );
       showToast("Ошибка", "error");
     }
@@ -170,7 +172,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
   // Build card options
   const cardOptions = [
-    { value: null, label: "-- Выберите карту --" },
+    { value: null, label: t("-- Выберите карту --") },
     ...cards.map((card) => ({
       value: card.id,
       label: `${card.name}${card.pan ? ` (*${card.pan.slice(-4)})` : ""}`,
@@ -184,13 +186,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg"
           role="alert"
         >
-          {formError}
+          {t(formError)}
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <NumberField
-          label="Сумма"
+          label={t("Сумма")}
           step={0.01}
           {...register("amount", { valueAsNumber: true })}
           error={errors.amount?.message}
@@ -200,8 +202,8 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
         <div className="space-y-1">
           <Select
-            label="Валюта"
-            options={currencyOptions}
+            label={t("Валюта")}
+            options={currencyOptions.map((option) => ({ ...option, label: t(option.label) }))}
             value={currency}
             onChange={(val) => setCurrency(val || "RUB")}
             disabled={isSubmitting}
@@ -211,7 +213,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             onClick={() => setShowCrypto(!showCrypto)}
             className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
           >
-            {showCrypto ? "Скрыть крипто" : "Выбрать крипто"}
+            {showCrypto ? t("Скрыть крипто") : t("Выбрать крипто")}
           </button>
         </div>
       </div>
@@ -220,7 +222,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
       {watchedCurrency !== "RUB" && (
         <NumberField
-          label="Курс обмена (к RUB)"
+          label={t("Курс обмена (к RUB)")}
           step={0.000001}
           {...register("exchangeRate", { valueAsNumber: true })}
           disabled={isSubmitting}
@@ -230,13 +232,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       <DatePicker
         selected={date}
         onSingleChange={(d) => setDate(d)}
-        label="Дата"
+        label={t("Дата")}
         disabled={isSubmitting}
       />
 
       <Select
-        label="Способ получения"
-        options={METHOD_OPTIONS}
+        label={t("Способ получения")}
+        options={METHOD_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))}
         value={method}
         onChange={(val) => setMethod(val || "transfer")}
         disabled={isSubmitting}
@@ -244,7 +246,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
       {method === "card" && cards.length > 0 && (
         <Select
-          label="Карта"
+          label={t("Карта")}
           options={cardOptions}
           value={cardId}
           onChange={(val) => setCardId(val)}
@@ -261,9 +263,9 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
       />
 
       <TextInputField
-        label="Комментарий"
+        label={t("Комментарий")}
         {...register("comment")}
-        placeholder="Необязательно"
+        placeholder={t("Необязательно")}
         disabled={isSubmitting}
       />
 
@@ -272,13 +274,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <Button
           variant="ghost"
           onClick={onCancel}
-          label="Отмена"
+          label={t("Отмена")}
           disabled={isSubmitting}
         />
         <Button
           variant="primary"
           type="submit"
-          label="Сохранить"
+          label={t("Сохранить")}
           loading={isSubmitting}
         />
       </div>
@@ -289,14 +291,14 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           variant="primary"
           size="large"
           type="submit"
-          label="Сохранить"
+          label={t("Сохранить")}
           loading={isSubmitting}
           className="w-full"
         />
         <Button
           variant="ghost"
           onClick={onCancel}
-          label="Отмена"
+          label={t("Отмена")}
           disabled={isSubmitting}
           className="w-full"
         />
@@ -313,16 +315,17 @@ const MobileActionsOverlay: React.FC<{
   onEdit: (income: IncomeData) => void;
   onDelete: (income: IncomeData) => void;
 }> = ({ income, shouldClose, onClose, onEdit, onDelete }) => {
+  const { t } = useLanguage();
   if (!income) return null;
 
   const actions = [
     {
-      label: "Изменить",
+      label: t("Изменить"),
       icon: PencilSolidIcon,
       handler: () => onEdit(income),
     },
     {
-      label: "Удалить",
+      label: t("Удалить"),
       icon: TrashSolidIcon,
       handler: () => onDelete(income),
     },
@@ -359,7 +362,9 @@ const MobileActionsOverlay: React.FC<{
 const IncomeListItem: React.FC<{
   income: IncomeData;
   className?: string;
-}> = ({ income, className }) => (
+}> = ({ income, className }) => {
+  const { t, locale } = useLanguage();
+  return (
   <button
     type="button"
     data-mobile-list-item-id={income.id}
@@ -368,11 +373,11 @@ const IncomeListItem: React.FC<{
     <div className="flex justify-between items-center">
       <div>
         <div className="font-bold dark:text-white">
-          {income.transactionCategory?.name || "Без категории"}
+          {income.transactionCategory?.name || t("Без категории")}
         </div>
         <div className="text-sm text-gray-500">
-          {formatDateForDisplay(new Date(income.date))} ·{" "}
-          {METHOD_LABELS[income.method] || income.method}
+          {formatDateForDisplay(parseCalendarDate(income.date), locale)} ·{" "}
+          {t(METHOD_LABELS[income.method] || income.method)}
           {income.card && ` · ${income.card.name}`}
         </div>
         {income.comment && (
@@ -381,7 +386,7 @@ const IncomeListItem: React.FC<{
       </div>
       <div className="font-bold text-green-600">
         +
-        {new Intl.NumberFormat("ru-RU", {
+        {new Intl.NumberFormat(locale, {
           style: "currency",
           currency: income.currency,
         }).format(income.amount)}
@@ -389,8 +394,10 @@ const IncomeListItem: React.FC<{
     </div>
   </button>
 );
+};
 
 const IncomesPage: React.FC = () => {
+  const { t, locale } = useLanguage();
   const metadata = getPageMetadata("incomes");
   const [incomes, setIncomes] = useState<IncomeData[]>([]);
   const [cards, setCards] = useState<CardData[]>([]);
@@ -417,8 +424,8 @@ const IncomesPage: React.FC = () => {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
-    setPageTitle("Доходы");
-  }, [setPageTitle]);
+    setPageTitle(t("Доходы"));
+  }, [setPageTitle, t]);
 
   // Set header right action (+ button for mobile)
   useEffect(() => {
@@ -485,8 +492,8 @@ const IncomesPage: React.FC = () => {
     setConfirmModalState({
       isOpen: true,
       action,
-      title: "Удалить запись",
-      message: "Вы уверены, что хотите удалить эту запись о доходе?",
+      title: t("Удалить запись"),
+      message: t("Вы уверены, что хотите удалить эту запись о доходе?"),
     });
   };
 
@@ -580,15 +587,15 @@ const IncomesPage: React.FC = () => {
 
   return (
     <>
-      <PageMeta {...metadata} title="Доходы" />
+      <PageMeta {...metadata} title={t("Доходы")} />
       <div className="max-w-4xl mx-auto pb-20 dark:text-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Доходы
+            {t("Доходы")}
           </h2>
           <Button
             icon={<PlusIcon className="w-4 h-4" />}
-            label="Добавить доход"
+            label={t("Добавить доход")}
             onClick={handleAddIncome}
             className="hidden md:inline-flex"
           />
@@ -604,7 +611,7 @@ const IncomesPage: React.FC = () => {
             <div className="hidden md:block space-y-3">
               {incomes.length === 0 ? (
                 <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                  Нет записей о доходах
+                  {t("Нет записей о доходах")}
                 </div>
               ) : (
                 incomes.map((inc) => (
@@ -614,11 +621,11 @@ const IncomesPage: React.FC = () => {
                   >
                     <div>
                       <div className="font-bold dark:text-white">
-                        {inc.transactionCategory?.name || "Без категории"}
+                        {inc.transactionCategory?.name || t("Без категории")}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {formatDateForDisplay(new Date(inc.date))} ·{" "}
-                        {METHOD_LABELS[inc.method] || inc.method}
+                        {formatDateForDisplay(parseCalendarDate(inc.date), locale)} ·{" "}
+                        {t(METHOD_LABELS[inc.method] || inc.method)}
                         {inc.card && ` · ${inc.card.name}`}
                       </div>
                       {inc.comment && (
@@ -630,7 +637,7 @@ const IncomesPage: React.FC = () => {
                     <div className="flex items-center gap-4">
                       <div className="font-bold text-green-600">
                         +
-                        {new Intl.NumberFormat("ru-RU", {
+                        {new Intl.NumberFormat(locale, {
                           style: "currency",
                           currency: inc.currency,
                         }).format(inc.amount)}
@@ -639,14 +646,14 @@ const IncomesPage: React.FC = () => {
                         <button
                           onClick={() => handleEditIncome(inc)}
                           className="p-2 text-gray-400 hover:text-indigo-500 transition-colors"
-                          title="Редактировать"
+                          title={t("Редактировать")}
                         >
                           <PencilSolidIcon className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleDeleteIncome(inc)}
                           className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                          title="Удалить"
+                          title={t("Удалить")}
                         >
                           <TrashSolidIcon className="w-5 h-5" />
                         </button>
@@ -665,7 +672,7 @@ const IncomesPage: React.FC = () => {
             >
               {incomes.length === 0 ? (
                 <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                  Нет записей о доходах
+                  {t("Нет записей о доходах")}
                 </div>
               ) : (
                 incomes.map((income) => {
@@ -692,7 +699,7 @@ const IncomesPage: React.FC = () => {
         <Modal
           isOpen={isModalOpen}
           onClose={handleFormCancel}
-          title={editingIncome ? "Редактировать доход" : "Добавить доход"}
+          title={editingIncome ? t("Редактировать доход") : t("Добавить доход")}
         >
           <IncomeForm
             income={editingIncome}
@@ -715,7 +722,7 @@ const IncomesPage: React.FC = () => {
           onConfirm={onConfirmAction}
           title={confirmModalState.title}
           message={confirmModalState.message}
-          confirmText="Да, удалить"
+          confirmText={t("Да, удалить")}
           isConfirming={isConfirming}
         />
 

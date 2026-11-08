@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useLayoutEffect } from "react";
 
 export interface PageMetaProps {
@@ -24,19 +25,20 @@ const PageMeta: React.FC<PageMetaProps> = ({
   ogType = "website",
   canonical,
   robots,
-  locale = "ru_RU",
+  locale: ogLocale,
   isLandingPage = false,
 }) => {
+  const { t, locale } = useLanguage();
   const baseUrl = import.meta.env.VITE_APP_URL || "https://hpio.ru";
   const defaultOgImage = `${baseUrl}/og-image.png`;
-  const siteName = "Хочу Плачу";
+  const siteName = t("Хочу Плачу");
 
   const finalTitle =
     title ?? isLandingPage
-      ? `${siteName} - ${ogTitle}`
-      : `${ogTitle} - ${siteName}`;
-  const finalOgTitle = ogTitle || title;
-  const finalOgDescription = ogDescription || description;
+      ? `${siteName} - ${t(ogTitle ?? "")}`
+      : `${t(ogTitle ?? "")} - ${siteName}`;
+  const finalOgTitle = t(ogTitle || title || "");
+  const finalOgDescription = t(ogDescription || description || "");
   const finalOgImage = ogImage || defaultOgImage;
   const finalOgUrl =
     ogUrl || (typeof window !== "undefined" ? window.location.href : baseUrl);
@@ -46,8 +48,8 @@ const PageMeta: React.FC<PageMetaProps> = ({
     document.title = finalTitle;
     document.head
       .querySelector('meta[name="description"]')
-      ?.setAttribute("content", description ?? "");
-  }, [description, finalTitle]);
+      ?.setAttribute("content", t(description || ogDescription || ""));
+  }, [description, ogDescription, finalTitle, t]);
 
   return (
     <>
@@ -60,7 +62,7 @@ const PageMeta: React.FC<PageMetaProps> = ({
       <meta property="og:image" content={finalOgImage} />
       <meta property="og:url" content={finalOgUrl} />
       <meta property="og:type" content={ogType} />
-      <meta property="og:locale" content={locale} />
+      <meta property="og:locale" content={ogLocale ?? locale.replace("-", "_")} />
 
       {/* Twitter Card meta tags */}
       <meta name="twitter:card" content="summary_large_image" />

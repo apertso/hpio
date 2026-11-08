@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React from "react";
 
 interface SpinnerProps {
@@ -12,6 +13,7 @@ const sizeClasses = {
 };
 
 const Spinner: React.FC<SpinnerProps> = ({ size = "md", className = "" }) => {
+  const { t } = useLanguage();
   return (
     <div
       className={`relative ${sizeClasses[size]} ${className}`}
@@ -48,7 +50,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", className = "" }) => {
           strokeDashoffset="141.37"
         />
       </svg>
-      <span className="sr-only">Загрузка...</span>
+      <span className="sr-only">{t("Загрузка...")}</span>
     </div>
   );
 };

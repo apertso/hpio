@@ -1,3 +1,4 @@
+import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PaymentForm from "../components/PaymentForm";
@@ -14,6 +15,7 @@ import { getPageMetadata } from "../utils/pageMetadata";
 import { usePageTitle } from "../context/PageTitleContext";
 
 const PaymentEditPage: React.FC = () => {
+  const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
@@ -53,11 +55,11 @@ const PaymentEditPage: React.FC = () => {
   useEffect(() => {
     const headerText = isEditMode
       ? editScope === "single"
-        ? "Редактировать платеж"
-        : "Редактировать серию"
-      : "Добавить платеж";
+        ? t("Редактировать платеж")
+        : t("Редактировать серию")
+      : t("Добавить платеж");
     setPageTitle(headerText);
-  }, [isEditMode, editScope, setPageTitle]);
+  }, [isEditMode, editScope, setPageTitle, t]);
 
   const handleSuccess = () => {
     navigate(-1);
@@ -77,9 +79,9 @@ const PaymentEditPage: React.FC = () => {
 
   const headerText = isEditMode
     ? editScope === "single"
-      ? "Редактировать платеж"
-      : "Редактировать серию"
-    : "Добавить платеж";
+      ? t("Редактировать платеж")
+      : t("Редактировать серию")
+    : t("Добавить платеж");
 
   const seriesInactive =
     editScope === "series" && !!initialData?.series
@@ -105,7 +107,7 @@ const PaymentEditPage: React.FC = () => {
           <button
             onClick={handleCancel}
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"
-            aria-label="Назад"
+            aria-label={t("Назад")}
           >
             <ArrowLeftIcon className="h-6 w-6" />
           </button>
@@ -113,7 +115,7 @@ const PaymentEditPage: React.FC = () => {
             {headerText}
             {seriesInactive && (
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600">
-                Серия неактивна
+                {t("Серия неактивна")}
               </span>
             )}
           </h2>
@@ -129,19 +131,19 @@ const PaymentEditPage: React.FC = () => {
               className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative"
               role="alert"
             >
-              {error}
+              {t(error)}
             </div>
           ) : (
             <>
               {showEditScopeHeader && (
                 <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-700/20">
                   <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Это повторяющийся платеж. Что вы хотите изменить?
+                    {t("Это повторяющийся платеж. Что вы хотите изменить?")}
                   </h4>
                   <SegmentedControl
                     options={[
-                      { value: "single", label: "Только этот платеж" },
-                      { value: "series", label: "Вся серия" },
+                      { value: "single", label: t("Только этот платеж") },
+                      { value: "series", label: t("Вся серия") },
                     ]}
                     selected={editScope}
                     onChange={(val) => setEditScope(val as "single" | "series")}
@@ -150,8 +152,8 @@ const PaymentEditPage: React.FC = () => {
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
                     {editScope === "single"
-                      ? "Изменения коснутся только текущего платежа. Остальные платежи серии останутся прежними."
-                      : "Изменения будут применены к этому и всем будущим платежам серии. Прошлые платежи не изменятся."}
+                      ? t("Изменения коснутся только текущего платежа. Остальные платежи серии останутся прежними.")
+                      : t("Изменения будут применены к этому и всем будущим платежам серии. Прошлые платежи не изменятся.")}
                   </p>
                 </div>
               )}

@@ -17,14 +17,15 @@ function redirectPath(
   }
   if (bare === "/" && (isAuthenticated || isTauriMobile())) return null;
   if (!isPublicSeoPath(bare)) return null;
-  // Сохранённый English открывает /en. У бота хранилища нет, русский адрес остаётся.
-  if (hasEnglishUrl(bare) && getStoredLanguage() === "en") {
+  // Язык браузера учитываем на главной, а на остальных страницах — только сохранённый выбор.
+  const preferredLanguage = bare === "/" ? getPreferredLanguage() : getStoredLanguage();
+  if (hasEnglishUrl(bare) && preferredLanguage === "en") {
     return `${toEnglishPath(bare)}${search}${hash}`;
   }
   return null;
 }
 
-/** Держит язык публичной страницы равным адресу, а не языку браузера. */
+/** Синхронизирует язык интерфейса с адресом публичной страницы. */
 export default function PublicLocaleSync(): ReactNode {
   const { pathname, search, hash } = useLocation();
   const { setLanguage } = useLanguage();

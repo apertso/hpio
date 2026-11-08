@@ -53,6 +53,25 @@ describe("PublicLocaleSync", () => {
     );
   };
 
+  it.each([
+    ["en-US", "en-home", "en"],
+    ["ru-RU", "home", "ru"],
+    ["fr-FR", "home", "ru"],
+  ])("выбирает главную по языку браузера %s", async (browserLanguage, heading, language) => {
+    vi.spyOn(navigator, "languages", "get").mockReturnValue([browserLanguage]);
+    renderAt("/");
+    expect(await screen.findByRole("heading", { name: heading })).toBeVisible();
+    expect(document.documentElement.lang).toBe(language);
+  });
+
+  it("оставляет русскую главную при сохранённом русском и английском браузере", () => {
+    vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]);
+    localStorage.setItem("language", "ru");
+    renderAt("/");
+    expect(screen.getByRole("heading", { name: "home" })).toBeVisible();
+    expect(document.documentElement.lang).toBe("ru");
+  });
+
   it("keeps a Russian url in Russian when the browser is English", () => {
     vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]);
     renderAt("/about");

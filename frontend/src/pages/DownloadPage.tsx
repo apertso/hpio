@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowDownTrayIcon,
@@ -11,9 +11,14 @@ import PageMeta from '../components/PageMeta';
 import { LandingMobileMockup } from '../components/LandingMobileMockup';
 import { useLanguage } from '../context/LanguageContext';
 import { getPageMetadata } from '../utils/pageMetadata';
+import {
+  ARM64_APK_NAME,
+  UNIVERSAL_APK_NAME,
+  fetchReadyRelease,
+  type DownloadBuild,
+} from '../utils/downloadRelease';
 
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || '0.6.0';
-const releaseUrl = `https://cdn.hpio.ru/releases/${APP_VERSION}`;
+const releasesPageUrl = 'https://github.com/apertso/hpio/releases';
 
 const builds = [
   {
@@ -21,7 +26,7 @@ const builds = [
     subtitle: 'Для современных смартфонов',
     description:
       'Оптимизированная 64-битная версия. Лучшая производительность и меньший размер файла. Подходит для большинства устройств, выпущенных после 2016 года.',
-    filename: 'app-arm64-release.apk',
+    filename: ARM64_APK_NAME,
     icon: CpuChipIcon,
     recommended: true,
   },
@@ -30,7 +35,7 @@ const builds = [
     subtitle: 'Для старых устройств',
     description:
       'Включает библиотеки для всех архитектур процессоров. Используйте эту версию, если ARM64 не устанавливается или работает некорректно.',
-    filename: 'app-universal-release.apk',
+    filename: UNIVERSAL_APK_NAME,
     icon: ArchiveBoxIcon,
     recommended: false,
   },
@@ -54,8 +59,38 @@ const steps = [
   },
 ];
 
+type ReleaseStatus = 'loading' | 'ready' | 'empty' | 'error';
+
 export default function DownloadPage(): ReactElement {
   const { t } = useLanguage();
+  const [release, setRelease] = useState<DownloadBuild | null>(null);
+  const [status, setStatus] = useState<ReleaseStatus>('loading');
+
+  useEffect(() => {
+    let active = true;
+    void fetchReadyRelease()
+      .then((next) => {
+        if (!active) return;
+        setRelease(next);
+        setStatus(next ? 'ready' : 'empty');
+      })
+      .catch(() => {
+        if (!active) return;
+        setStatus('error');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const statusText =
+    status === 'loading'
+      ? t('Ищем сборку')
+      : status === 'error'
+        ? t('Не удалось получить сборку')
+        : release
+          ? t('Версия {1}', release.version)
+          : t('Сборка ещё готовится');
 
   return (
     <div className="public-container public-section space-y-8 sm:space-y-12">
@@ -69,13 +104,26 @@ export default function DownloadPage(): ReactElement {
             )}
           </p>
 
-          <section aria-labelledby="apk-builds" className="mt-8">
+          <section aria-labelledby="apk-builds" aria-busy={status === 'loading'} className="mt-8">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h2 id="apk-builds" className="public-subtitle">
                 {t('Сборки APK')}
               </h2>
               <span className="text-sm tabular-nums text-gray-600 dark:text-gray-300">
-                {t('Версия {1}', APP_VERSION)}
+                {statusText}
+                {status !== 'loading' && !release && (
+                  <>
+                    {' · '}
+                    <a
+                      href={releasesPageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="public-link underline underline-offset-2"
+                    >
+                      {t('Релизы на GitHub')}
+                    </a>
+                  </>
+                )}
               </span>
             </div>
             <ul className="grid gap-3">
@@ -112,20 +160,35 @@ export default function DownloadPage(): ReactElement {
                         {t(description)}
                       </p>
                     </div>
-                    <a
-                      href={`${releaseUrl}/${filename}`}
-                      download={filename}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${t('Скачать APK')} · ${t(name)}`}
-                      className={`public-action inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm ${recommended ? 'primary-action' : 'border-gray-200 text-gray-700 hover:bg-gray-100 dark:border-white/10 dark:text-gray-200 dark:hover:bg-white/5'}`}
-                    >
-                      <ArrowDownTrayIcon
-                        className="size-5 shrink-0 text-indigo-700 dark:text-indigo-300"
-                        aria-hidden="true"
-                      />
-                      {t('Скачать APK')}
-                    </a>
+                    {release?.files[filename] ? (
+                      <a
+                        href={release.files[filename]}
+                        download={filename}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${t('Скачать APK')} · ${t(name)}`}
+                        className={`public-action inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm ${recommended ? 'primary-action' : 'border-gray-200 text-gray-700 hover:bg-gray-100 dark:border-white/10 dark:text-gray-200 dark:hover:bg-white/5'}`}
+                      >
+                        <ArrowDownTrayIcon
+                          className="size-5 shrink-0 text-indigo-700 dark:text-indigo-300"
+                          aria-hidden="true"
+                        />
+                        {t('Скачать APK')}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        aria-label={`${t('Скачать APK')} · ${t(name)}`}
+                        className={`public-action inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm opacity-60 ${recommended ? 'primary-action' : 'border-gray-200 text-gray-700 dark:border-white/10 dark:text-gray-200'}`}
+                      >
+                        <ArrowDownTrayIcon
+                          className="size-5 shrink-0 text-indigo-700 dark:text-indigo-300"
+                          aria-hidden="true"
+                        />
+                        {t('Скачать APK')}
+                      </button>
+                    )}
                   </li>
                 ),
               )}

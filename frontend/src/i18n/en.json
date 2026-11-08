@@ -985,5 +985,9 @@
   "Неверный или истекший токен для сброса пароля.": "This password reset link is invalid or has expired.",
   "Пользователь не найден.": "Account not found.",
   "Email уже подтвержден.": "This email address has already been verified.",
-  "Не удалось отправить ссылку для подтверждения.": "Could not send the verification link."
+  "Не удалось отправить ссылку для подтверждения.": "Could not send the verification link.",
+  "Ищем сборку": "Looking for a build",
+  "Сборка ещё готовится": "The build is still being prepared",
+  "Не удалось получить сборку": "Could not load the build",
+  "Релизы на GitHub": "GitHub releases"
 }

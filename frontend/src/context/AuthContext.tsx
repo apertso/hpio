@@ -14,6 +14,7 @@ import logger from "../utils/logger"; // Используем простой л�
 import userApi from "../api/userApi"; // <-- ADD THIS
 import { isTauriMobile } from "../utils/platform";
 import getErrorMessage from "../utils/getErrorMessage";
+import { resolveCurrency } from "../utils/currencies";
 
 export interface User {
   id: string;
@@ -388,3 +389,9 @@ export const useAuth = () => {
   }
   return context;
 };
+
+/** Валюта профиля. Вне провайдера и без выбора пользователя остаётся рубль. */
+export function usePreferredCurrency(): string {
+  const context = useContext(AuthContext);
+  return resolveCurrency(context?.user?.preferredCurrency);
+}

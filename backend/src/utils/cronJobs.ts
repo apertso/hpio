@@ -164,12 +164,14 @@ const setupCronJobs = () => {
 
           for (const payment of paymentsToRemind) {
             if (user.emailNotifications) {
+              const currency = payment.currency || "RUB";
               await sendPaymentReminderEmail(
                 user.email,
                 user.name,
                 payment.title,
                 payment.amount,
-                payment.dueDate
+                payment.dueDate,
+                currency
               );
             }
 
@@ -181,7 +183,7 @@ const setupCronJobs = () => {
               if (user.fcmToken) {
                 const formattedAmount = new Intl.NumberFormat("ru-RU", {
                   style: "currency",
-                  currency: "RUB",
+                  currency: payment.currency || "RUB",
                 }).format(payment.amount);
 
                 await sendPushNotification(user.fcmToken, {

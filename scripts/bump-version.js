@@ -49,7 +49,8 @@ function bumpVersion(currentVersion, type) {
 
 function calculateVersionCode(version) {
   const { major, minor, patch } = parseVersion(version);
-  return major * 1000 + minor * 100 + patch * 10;
+  // Та же формула, что у Tauri CLI. Меньший versionCode Android отказывается ставить поверх уже установленной сборки.
+  return major * 1000000 + minor * 1000 + patch;
 }
 
 function updateJsonFile(filePath, version) {

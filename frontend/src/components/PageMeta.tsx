@@ -1,5 +1,7 @@
 import { useLanguage } from "../context/LanguageContext";
 import React, { useLayoutEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { seoAlternates } from "../i18n/localePath";
 
 export interface PageMetaProps {
   title?: string;
@@ -29,7 +31,10 @@ const PageMeta: React.FC<PageMetaProps> = ({
   isLandingPage = false,
 }) => {
   const { t, locale } = useLanguage();
+  const { pathname } = useLocation();
   const baseUrl = import.meta.env.VITE_APP_URL || "https://hpio.ru";
+  const seo = seoAlternates(pathname, baseUrl);
+  const canonicalHref = seo?.canonical ?? canonical;
   const defaultOgImage = `${baseUrl}/og-image.png`;
   const siteName = t("Хочу Плачу");
 
@@ -41,7 +46,7 @@ const PageMeta: React.FC<PageMetaProps> = ({
   const finalOgDescription = t(ogDescription || description || "");
   const finalOgImage = ogImage || defaultOgImage;
   const finalOgUrl =
-    ogUrl || (typeof window !== "undefined" ? window.location.href : baseUrl);
+    ogUrl || canonicalHref || (typeof window !== "undefined" ? window.location.href : baseUrl);
 
   // Обновляем теги из index.html при переходах между страницами.
   useLayoutEffect((): void => {
@@ -49,12 +54,18 @@ const PageMeta: React.FC<PageMetaProps> = ({
     document.head
       .querySelector('meta[name="description"]')
       ?.setAttribute("content", t(description || ogDescription || ""));
-  }, [description, ogDescription, finalTitle, t]);
+    document.head
+      .querySelector('meta[property="og:site_name"]')
+      ?.setAttribute("content", siteName);
+  }, [description, ogDescription, finalTitle, siteName, t]);
 
   return (
     <>
       {robots && <meta name="robots" content={robots} />}
-      {canonical && <link rel="canonical" href={canonical} />}
+      {canonicalHref && <link rel="canonical" href={canonicalHref} />}
+      {seo && <link rel="alternate" hrefLang="ru" href={seo.ru} />}
+      {seo?.en && <link rel="alternate" hrefLang="en" href={seo.en} />}
+      {seo && <link rel="alternate" hrefLang="x-default" href={seo.ru} />}
 
       {/* Open Graph meta tags */}
       <meta property="og:title" content={finalOgTitle} />

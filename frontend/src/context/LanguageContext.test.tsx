@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import LanguageSelect from "../components/LanguageSelect";
 import { translate } from "../i18n/translate";
@@ -17,9 +18,11 @@ function LocalizedContent(): React.JSX.Element {
 }
 
 const renderPage = (): ReturnType<typeof render> => render(
-  <LanguageProvider>
-    <LocalizedContent />
-  </LanguageProvider>,
+  <MemoryRouter initialEntries={["/settings"]}>
+    <LanguageProvider>
+      <LocalizedContent />
+    </LanguageProvider>
+  </MemoryRouter>,
 );
 
 afterEach(() => {
@@ -56,6 +59,25 @@ describe("LanguageProvider", () => {
     vi.spyOn(navigator, "languages", "get").mockReturnValue(["fr-FR"]);
     renderPage();
     expect(screen.getByRole("heading", { name: "Настройки" })).toBeVisible();
+  });
+
+  it("moves a public page to its English url", () => {
+    vi.spyOn(navigator, "languages", "get").mockReturnValue(["ru-RU"]);
+    render(
+      <MemoryRouter initialEntries={["/about"]}>
+        <LanguageProvider>
+          <Routes>
+            <Route path="/about" element={<LanguageSelect />} />
+            <Route path="/en/about" element={<p>english-about</p>} />
+          </Routes>
+        </LanguageProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Язык интерфейса" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "English" }));
+    expect(screen.getByText("english-about")).toBeVisible();
+    expect(localStorage.getItem("language")).toBe("en");
   });
 });
 

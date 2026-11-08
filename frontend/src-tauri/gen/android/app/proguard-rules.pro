@@ -19,3 +19,6 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# JNI вызывает методы по имени. Без этого R8 удалит класс из release-сборки.
+-keep class com.hochuplachu.hpio.AppUpdateHelper { *; }

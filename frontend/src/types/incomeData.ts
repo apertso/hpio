@@ -11,6 +11,7 @@ export interface IncomeData {
   transactionCategory?: {
     id: string;
     name: string;
+    nameEn?: string | null;
     builtinIconName?: string | null;
   } | null;
   card?: CardData | null;

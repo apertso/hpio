@@ -10,6 +10,7 @@ export interface MerchantCategoryRule {
   transactionCategory?: {
     id: string;
     name: string;
+    nameEn?: string | null;
     builtinIconName?: string;
   };
 }

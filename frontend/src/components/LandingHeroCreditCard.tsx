@@ -1,13 +1,16 @@
 import React from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
-/** Декоративная банковская карта МИР для hero-секции лендинга */
-export const LandingHeroCreditCard: React.FC = () => (
+/** Декоративная карта для hero-секции: МИР на русском, VISA на английском. */
+export const LandingHeroCreditCard: React.FC = () => {
+  const { language } = useLanguage();
+
+  return (
   <div
-    className="landing-hero-credit-card absolute bottom-20 left-[4%] z-30 hidden lg:block xl:left-[5%]"
+    className="landing-hero-credit-card landing-card-in landing-card-in-3 absolute bottom-6 -left-3 z-30 hidden lg:block"
     aria-hidden="true"
   >
-    <div className="landing-floating-element">
-      <div className="landing-hero-credit-card-inner">
+    <div className="landing-hero-credit-card-inner">
         <div className="landing-hero-credit-card-sheen" />
 
         <div className="relative flex h-full flex-col justify-between">
@@ -81,19 +84,41 @@ export const LandingHeroCreditCard: React.FC = () => (
                 <p className="landing-hero-credit-card-expiry">11/28</p>
               </div>
 
-              <svg
-                className="landing-hero-credit-card-mir"
-                viewBox="0 0 400 120"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="m31 13h33c3 0 12-1 16 13 3 9 7 23 13 44h2c6-22 11-37 13-44 4-14 14-13 18-13h31v96h-32v-57h-2l-17 57h-24l-17-57h-3v57h-31m139-96h32v57h3l21-47c4-9 13-10 13-10h30v96h-32v-57h-2l-21 47c-4 9-14 10-14 10h-30m142-29v29h-30v-50h98c-4 12-18 21-34 21" />
-                <path d="m382 53c4-18-8-40-34-40h-68c2 21 20 40 39 40" />
-              </svg>
+              {language === 'en' ? (
+                <svg
+                  className="landing-hero-credit-card-mir"
+                  viewBox="0 0 64 20"
+                  aria-hidden="true"
+                >
+                  <text
+                    x="32"
+                    y="16"
+                    textAnchor="middle"
+                    fill="currentColor"
+                    fontFamily="Arial, Helvetica, sans-serif"
+                    fontStyle="italic"
+                    fontWeight="700"
+                    fontSize="18"
+                    letterSpacing="1"
+                  >
+                    VISA
+                  </text>
+                </svg>
+              ) : (
+                <svg
+                  className="landing-hero-credit-card-mir"
+                  viewBox="0 0 400 120"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="m31 13h33c3 0 12-1 16 13 3 9 7 23 13 44h2c6-22 11-37 13-44 4-14 14-13 18-13h31v96h-32v-57h-2l-17 57h-24l-17-57h-3v57h-31m139-96h32v57h3l21-47c4-9 13-10 13-10h30v96h-32v-57h-2l-21 47c-4 9-14 10-14 10h-30m142-29v29h-30v-50h98c-4 12-18 21-34 21" />
+                  <path d="m382 53c4-18-8-40-34-40h-68c2 21 20 40 39 40" />
+                </svg>
+              )}
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};

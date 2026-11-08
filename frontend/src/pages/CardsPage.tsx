@@ -29,13 +29,13 @@ import Spinner from "../components/Spinner";
 import CardDisplay from "../components/CardDisplay";
 import Select from "../components/Select";
 import { TextInputField } from "../components/Input";
-import { CURRENCY_OPTIONS, getCurrencySymbol } from "../utils/currencies"; // Import shared currencies
+import { CURRENCY_OPTIONS, getCurrencySymbol } from "../utils/currencies";
+import { usePreferredCurrency } from "../context/AuthContext";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const CASH_STORAGE_KEY = "cash_balances";
-const BASE_CASH_CURRENCY = "RUB";
 
 const cardBalanceSchema = z.object({
   currency: z.string().min(1, "Выберите валюту"),
@@ -101,6 +101,7 @@ const MobileActionsOverlay: React.FC<{
 
 const CardsPage: React.FC = () => {
   const { t, locale } = useLanguage();
+  const baseCashCurrency = usePreferredCurrency();
   const metadata = getPageMetadata("cards");
   const navigate = useNavigate();
   const [cards, setCards] = useState<CardData[]>([]);
@@ -259,7 +260,7 @@ const CardsPage: React.FC = () => {
         // Server has data or local is empty/default -> use server
         // Ensure RUB exists if list is empty
         if (serverBalances.length === 0) {
-          const defaultBal = [{ currency: "RUB", amount: 0 }];
+          const defaultBal = [{ currency: baseCashCurrency, amount: 0 }];
           // We don't necessarily need to save it to server immediately,
           // but for UI consistency let's set it in state
           setCashBalances(defaultBal);
@@ -279,12 +280,12 @@ const CardsPage: React.FC = () => {
       if (stored) {
         setCashBalances(JSON.parse(stored));
       } else {
-        setCashBalances([{ currency: "RUB", amount: 0 }]);
+        setCashBalances([{ currency: baseCashCurrency, amount: 0 }]);
       }
     } finally {
       setIsCashLoading(false);
     }
-  }, [showToast]);
+  }, [baseCashCurrency, showToast]);
 
   useEffect(() => {
     fetchCards();
@@ -586,7 +587,7 @@ const CardsPage: React.FC = () => {
   ]);
 
   const handleDeleteCashCurrency = (currency: string) => {
-    if (currency === BASE_CASH_CURRENCY) return;
+    if (currency === baseCashCurrency) return;
     const updated = cashBalances.filter((entry) => entry.currency !== currency);
     updateCashBalancesBackend(updated);
 
@@ -599,7 +600,7 @@ const CardsPage: React.FC = () => {
   };
 
   const handleRequestDeleteCashCurrency = (currency: string) => {
-    if (currency === BASE_CASH_CURRENCY) return;
+    if (currency === baseCashCurrency) return;
     setConfirmModalState({
       isOpen: true,
       action: () => handleDeleteCashCurrency(currency),
@@ -914,7 +915,7 @@ const CardsPage: React.FC = () => {
                 {cashBalances.map((balance) => {
                   const isSelected = selectedCashCurrency === balance.currency;
                   const isEditing = editingCashCurrency === balance.currency;
-                  const canDelete = balance.currency !== BASE_CASH_CURRENCY;
+                  const canDelete = balance.currency !== baseCashCurrency;
                   const amountClassName =
                     "text-2xl font-semibold text-gray-900 dark:text-gray-100";
                   const amountValue = formatCashAmountValue(balance.amount);
@@ -1570,7 +1571,7 @@ const CardsPage: React.FC = () => {
                 <PencilSolidIcon className="h-6 w-6" />
                 <span className="text-sm">{t("Изменить")}</span>
               </button>
-              {activeCashBalance.currency !== BASE_CASH_CURRENCY && (
+              {activeCashBalance.currency !== baseCashCurrency && (
                 <button
                   onClick={() => {
                     handleRequestDeleteCashCurrency(activeCashBalance.currency);

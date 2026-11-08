@@ -14,6 +14,7 @@ import {
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { User } from "../context/AuthContext";
+import { localizeHref } from "../i18n/localePath";
 import { useAvatarCache } from "../hooks/useAvatarCache";
 
 type NavItem = {
@@ -68,7 +69,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   onLogout,
   gesturesEnabled = true,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
@@ -374,7 +375,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
                 className="size-12 rounded-full object-cover bg-gray-300 dark:bg-gray-800"
               />
             ) : (
-              <div className="flex items-center justify-center size-12 rounded-full border border-violet-400/70 bg-slate-700 text-white">
+              <div className="flex size-12 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-gray-900 shadow-sm dark:border-white/10 dark:bg-gray-800 dark:text-white">
                 <UserIcon className="w-6 h-6" />
               </div>
             )}
@@ -443,9 +444,9 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
             {t("Настройки")}
           </Link>
           <Link
-            to="/about"
+            to={localizeHref(language, "/about")}
             onClick={onClose}
-            aria-current={currentPath === "/about" ? "page" : undefined}
+            aria-current={currentPath === localizeHref(language, "/about") ? "page" : undefined}
             className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 transition-opacity hover:opacity-80 aria-[current=page]:bg-gray-100 dark:text-gray-100 dark:aria-[current=page]:bg-gray-700"
           >
             <InformationCircleIcon aria-hidden="true" className="h-5 w-5 text-gray-500 dark:text-gray-400" />

@@ -1,5 +1,6 @@
 // src/pages/HomePage.tsx
 import { useLanguage } from "../context/LanguageContext";
+import { DEFAULT_CURRENCY, formatMoney } from "../utils/currencies";
 import React, {
   useState,
   useEffect,
@@ -162,10 +163,16 @@ interface DashboardStats {
   totalUpcomingAmount: string; // Строка, т.к. DECIMAL с бэкенда
   totalCompletedAmount: string; // Строка
   totalIncomeAmount?: string; // Income total
-  categoriesDistribution: { id?: string; name: string; amount: number }[]; // id is optional for "No Category"
+  categoriesDistribution: {
+    id?: string;
+    name: string;
+    nameEn?: string | null;
+    amount: number;
+  }[]; // id is optional for "No Category"
   incomeCategoriesDistribution?: {
     id?: string;
     name: string;
+    nameEn?: string | null;
     amount: number;
   }[]; // Income by category
   dailyPaymentLoad: { date: string; amount: number }[];
@@ -281,7 +288,7 @@ const calculateStatsFromPayments = (
   // Calculate categories distribution
   const categoryMap = new Map<
     string,
-    { id?: string; name: string; amount: number }
+    { id?: string; name: string; nameEn?: string | null; amount: number }
   >();
   filteredPayments.forEach((p) => {
     const amount =
@@ -294,6 +301,7 @@ const calculateStatsFromPayments = (
         categoryMap.set(p.transactionCategory.id, {
           id: p.transactionCategory.id,
           name: p.transactionCategory.name,
+          nameEn: p.transactionCategory.nameEn,
           amount: amount,
         });
       }
@@ -1458,13 +1466,12 @@ const HomePage: React.FC = () => {
                     {t("Предстоящие платежи")}
                   </p>
                   <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-orange-600 dark:text-orange-400">
-                    {new Intl.NumberFormat(locale, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }).format(parseFloat(stats.totalUpcomingAmount))}
-                    <span className="ml-1 text-lg md:text-2xl font-normal">
-                      ₽
-                    </span>
+                    {/* shortcut: итог складывает числа без курса и подписан рублём; разные валюты считать отдельно */}
+                    {formatMoney(
+                      parseFloat(stats.totalUpcomingAmount),
+                      locale,
+                      DEFAULT_CURRENCY
+                    )}
                   </p>
                 </div>
 
@@ -1480,13 +1487,11 @@ const HomePage: React.FC = () => {
                     {t("Выполненные платежи")}
                   </p>
                   <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-red-600 dark:text-red-400">
-                    {new Intl.NumberFormat(locale, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }).format(parseFloat(stats.totalCompletedAmount))}
-                    <span className="ml-1 text-lg md:text-2xl font-normal">
-                      ₽
-                    </span>
+                    {formatMoney(
+                      parseFloat(stats.totalCompletedAmount),
+                      locale,
+                      DEFAULT_CURRENCY
+                    )}
                   </p>
                 </div>
 
@@ -1504,13 +1509,11 @@ const HomePage: React.FC = () => {
                         {t("Полученные доходы")}
                       </p>
                       <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-green-600 dark:text-green-400">
-                        {new Intl.NumberFormat(locale, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        }).format(parseFloat(stats.totalIncomeAmount || "0"))}
-                        <span className="ml-1 text-lg md:text-2xl font-normal">
-                          ₽
-                        </span>
+                        {formatMoney(
+                          parseFloat(stats.totalIncomeAmount || "0"),
+                          locale,
+                          DEFAULT_CURRENCY
+                        )}
                       </p>
                     </div>
 
@@ -1539,13 +1542,7 @@ const HomePage: React.FC = () => {
                             }`}
                           >
                             {isPositive ? "+" : ""}
-                            {new Intl.NumberFormat(locale, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            }).format(balance)}
-                            <span className="ml-1 text-lg md:text-2xl font-normal">
-                              ₽
-                            </span>
+                            {formatMoney(balance, locale, DEFAULT_CURRENCY)}
                           </p>
                         );
                       })()}
@@ -1726,13 +1723,7 @@ const HomePage: React.FC = () => {
                       </span>
                     </div>
                     <span className="font-bold text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat(locale, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }).format(p.amount)}
-                      <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
-                        ₽
-                      </span>
+                      {formatMoney(p.amount, locale, p.currency)}
                     </span>
                   </li>
                 ))}
@@ -1779,13 +1770,7 @@ const HomePage: React.FC = () => {
                       </span>
                     </div>
                     <span className="font-bold text-gray-900 dark:text-gray-100">
-                      {new Intl.NumberFormat(locale, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }).format(p.amount)}
-                      <span className="ml-1 text-sm font-normal text-gray-500 dark:text-gray-400">
-                        ₽
-                      </span>
+                      {formatMoney(p.amount, locale, p.currency)}
                     </span>
                   </li>
                 ))}

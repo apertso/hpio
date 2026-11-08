@@ -15,6 +15,7 @@ import { useToast } from "../context/ToastContext";
 import useDebounce from "../hooks/useDebounce";
 import { getVendorDisplayName } from "../utils/cardVendor";
 import { getCardDisplayName, getCardFallbackName } from "../utils/cardName";
+import { usePreferredCurrency } from "../context/AuthContext";
 
 const formatCardPan = (value: string): string => {
   const digits = value.replace(/\D/g, "");
@@ -27,6 +28,7 @@ const CardEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
   const { showToast } = useToast();
+  const preferredCurrency = usePreferredCurrency();
   const isEditMode = !!id;
   const metadata = getPageMetadata("cards");
 
@@ -43,6 +45,13 @@ const CardEditPage: React.FC = () => {
   const [type, setType] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [country, setCountry] = useState<string | null>(null);
+  const [cardCurrency, setCardCurrency] = useState(preferredCurrency);
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setCardCurrency(preferredCurrency);
+    }
+  }, [isEditMode, preferredCurrency]);
   const initialPanRef = useRef<string | null>(null);
 
   const debouncedPan = useDebounce(pan, 800);
@@ -73,6 +82,7 @@ const CardEditPage: React.FC = () => {
           setType(card.type || null);
           setLevel(card.level || null);
           setCountry(card.country || null);
+          setCardCurrency(card.currency || preferredCurrency);
           setShouldShowNameField(cleanedPan.length >= 6);
         })
         .catch(() => {
@@ -83,7 +93,7 @@ const CardEditPage: React.FC = () => {
           setIsLoading(false);
         });
     }
-  }, [id, isEditMode, navigate, showToast]);
+  }, [id, isEditMode, navigate, preferredCurrency, showToast]);
 
   // BIN lookup for auto-fill (only for new cards or when PAN changes significantly)
   const lookupBin = useCallback(async (binNumber: string) => {
@@ -142,7 +152,7 @@ const CardEditPage: React.FC = () => {
       level,
       country,
       name: resolvedCardName,
-      currency: "RUB", // Default, not shown to user
+      currency: cardCurrency,
       balance: 0, // Default, not shown to user
     };
 
@@ -176,7 +186,7 @@ const CardEditPage: React.FC = () => {
     level: level || null,
     country: country || null,
     name: getCardDisplayName(cardName, pan),
-    currency: "RUB",
+    currency: cardCurrency,
     balance: 0,
     createdAt: "",
     updatedAt: "",

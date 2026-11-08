@@ -25,6 +25,9 @@ import SyncStatusIndicator from './components/SyncStatusIndicator';
 import MobileNavigationDrawer from './components/MobileNavigationDrawer';
 import VerificationBanner from './components/VerificationBanner';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
+import { LandingTopBar } from './components/LandingTopBar';
+import PublicLocaleSync from './components/PublicLocaleSync';
+import { localizeHref, splitLocalePath, toEnglishPath } from './i18n/localePath';
 
 // Icons
 import {
@@ -213,8 +216,8 @@ const Navigation: React.FC = () => {
                     className="size-9 rounded-full object-cover bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-gray-700"
                   />
                 ) : (
-                  <div className="flex items-center justify-center rounded-full border border-violet-400/70 bg-slate-700 size-9 shadow-sm">
-                    <UserIcon className="w-5 h-5 text-white" />
+                  <div className="flex size-9 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-gray-900 shadow-sm dark:border-white/10 dark:bg-gray-800 dark:text-white">
+                    <UserIcon className="w-5 h-5" />
                   </div>
                 )}
               </button>
@@ -287,7 +290,7 @@ const Navigation: React.FC = () => {
 // --- Main App Component ---
 
 function App() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { isAuthenticated, user, logout, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -611,7 +614,7 @@ function App() {
   // --- Logic: Handlers ---
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    const targetUrl = isAuthenticated ? '/dashboard' : '/';
+    const targetUrl = isAuthenticated ? '/dashboard' : localizeHref(language, '/');
     if (isAuthenticated && location.pathname === targetUrl) {
       triggerReset();
     } else {
@@ -676,18 +679,23 @@ function App() {
     trackNavigation(location.pathname);
   }, [location.pathname]);
 
-  const isTermsOrPrivacyPage =
-    location.pathname === '/terms' || location.pathname === '/privacy';
-  const isPublicAuthPage = ['/login', '/register', '/forgot-password'].includes(
-    location.pathname,
+  const barePath = splitLocalePath(location.pathname).bare;
+  const isTermsOrPrivacyPage = barePath === '/terms' || barePath === '/privacy';
+  const isPublicAuthPage = ['/login', '/register', '/forgot-password', '/reset-password'].includes(
+    barePath,
   );
+  const isPublicPage = isPublicAuthPage || isTermsOrPrivacyPage ||
+    ['/download', '/about', '/blog'].includes(barePath) ||
+    barePath.startsWith('/blog/');
+  const showPublicHeader = isPublicPage && !isAuthenticated && !isTauriMobile();
 
   const isLandingPage =
-    location.pathname === '/' && !isAuthenticated && !isTauriMobile();
+    barePath === '/' && !isAuthenticated && !isTauriMobile();
 
   const showHeader =
+    !showPublicHeader &&
     !isPublicAuthPage &&
-    !(isTauriMobile() && location.pathname === '/') &&
+    !(isTauriMobile() && barePath === '/') &&
     !(isTauriMobile() && isTermsOrPrivacyPage) &&
     !isLandingPage;
 
@@ -704,7 +712,7 @@ function App() {
 
   // --- Render Helpers ---
 
-  const Header = () => (
+  const renderHeader = (): React.JSX.Element => (
     <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-gray-200/80 bg-white/80 px-3 py-3 backdrop-blur-xl transition-colors duration-300 dark:border-gray-800/80 dark:bg-gray-900/80 sm:px-6 md:px-8 z-30">
       <div className="flex items-center gap-3 min-w-0">
         {isAuthenticated && isEditPage ? (
@@ -794,8 +802,8 @@ function App() {
     </header>
   );
 
-  const Footer = () => (
-    <footer className="border-t border-gray-200 dark:border-gray-800 py-8 bg-white dark:bg-gray-900 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
+  const renderFooter = (): React.JSX.Element => (
+    <footer className="border-t border-gray-200 dark:border-gray-800 py-8 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-center md:text-left">
           <p>
@@ -811,28 +819,32 @@ function App() {
           </p>
         </div>
 
-        <nav className="flex gap-6 font-medium">
+        <nav className="flex flex-wrap justify-center gap-x-6 gap-y-3 font-medium">
           <Link
-            to="/terms"
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+            to={localizeHref(language, "/terms")}
+            className="cursor-pointer transition-opacity hover:opacity-80"
+            aria-current={barePath === '/terms' ? 'page' : undefined}
           >
             {t("Соглашение")}
           </Link>
           <Link
-            to="/privacy"
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+            to={localizeHref(language, "/privacy")}
+            className="cursor-pointer transition-opacity hover:opacity-80"
+            aria-current={barePath === '/privacy' ? 'page' : undefined}
           >
             {t("Приватность")}
           </Link>
           <Link
-            to="/blog"
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+            to={localizeHref(language, "/blog")}
+            className="cursor-pointer transition-opacity hover:opacity-80"
+            aria-current={barePath === '/blog' ? 'page' : undefined}
           >
             {t("Блог")}
           </Link>
           <Link
-            to="/about"
-            className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+            to={localizeHref(language, "/about")}
+            className="cursor-pointer transition-opacity hover:opacity-80"
+            aria-current={barePath === '/about' ? 'page' : undefined}
           >
             {t("О нас")}
           </Link>
@@ -852,40 +864,60 @@ function App() {
               </svg>
             </a>
           )}
-          {!isAuthenticated && <ThemeSwitcher />}
+          {!isAuthenticated && !showPublicHeader && <ThemeSwitcher />}
         </div>
       </div>
     </footer>
   );
 
   // --- Render Layout ---
-  const layoutClasses = `relative flex h-dvh flex-col font-sans overflow-hidden transition-colors duration-300 ${
-    isLandingPage ? 'bg-transparent' : 'bg-gray-50 dark:bg-dark-bg'
+  const layoutClasses = `relative flex h-dvh flex-col overflow-hidden transition-colors duration-300 ${
+    isPublicPage ? 'public-surface' : isLandingPage ? 'font-sans bg-transparent' : 'font-sans bg-gray-50 dark:bg-dark-bg'
   } ${isTauriMobile() ? 'safe-area-top safe-area-bottom' : ''}`;
   // Enforce min-h-0 to allow scrolling within flex container
   const mainClasses = `flex flex-col flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden scroll-smooth`;
 
   return (
     <div className={layoutClasses}>
-      {showHeader && <Header />}
+      <PublicLocaleSync />
+      {showHeader && renderHeader()}
+      {showPublicHeader && (
+        <div className="shrink-0 border-b border-gray-200/80 dark:border-white/10">
+          <div className="public-container">
+            <LandingTopBar showSignIn={!isPublicAuthPage} />
+          </div>
+        </div>
+      )}
 
       <VerificationBanner />
 
-      <main className={mainClasses}>
+      <main className={`${mainClasses} motion-reduce:scroll-auto`} key={isPublicPage ? location.pathname : undefined}>
         <Routes>
-          {/* Public Routes */}
-          <Route
-            path="/"
-            element={
-              isAuthenticated ? (
-                <Navigate to="/dashboard" replace />
-              ) : isTauriMobile() ? (
-                <Navigate to="/login" replace />
-              ) : (
-                <LandingPage />
-              )
-            }
-          />
+          {/* Public Routes. Русские адреса без префикса, английские под /en. */}
+          {[false, true].flatMap((english) => {
+            const path = (bare: string): string => (english ? toEnglishPath(bare) : bare);
+            return [
+              <Route
+                key={path("/")}
+                path={path("/")}
+                element={
+                  isAuthenticated ? (
+                    <Navigate to="/dashboard" replace />
+                  ) : isTauriMobile() ? (
+                    <Navigate to="/login" replace />
+                  ) : (
+                    <LandingPage />
+                  )
+                }
+              />,
+              <Route key={path("/terms")} path={path("/terms")} element={<TermsPage />} />,
+              <Route key={path("/privacy")} path={path("/privacy")} element={<PrivacyPage />} />,
+              <Route key={path("/about")} path={path("/about")} element={<AboutPage />} />,
+              <Route key={path("/download")} path={path("/download")} element={<DownloadPage />} />,
+              <Route key={path("/blog")} path={path("/blog")} element={<BlogPage />} />,
+              <Route key={path("/blog/:slug")} path={path("/blog/:slug")} element={<BlogPostPage />} />,
+            ];
+          })}
           <Route
             path="/login"
             element={
@@ -900,12 +932,6 @@ function App() {
           <Route path="/forgot-password" element={<PasswordResetPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/download" element={<DownloadPage />} />
-          <Route path="/blog" element={<BlogPage />} />
-          <Route path="/blog/:slug" element={<BlogPostPage />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
@@ -949,13 +975,11 @@ function App() {
         </Routes>
 
         {/* Footer acts as a spacer in the scroll view for mobile, or real footer on desktop */}
-        {!isTauriMobile() &&
-          location.pathname !== '/login' &&
-          location.pathname !== '/register' && (
-            <div className="mt-auto pt-10">
-              <Footer />
-            </div>
-          )}
+        {!isTauriMobile() && !isPublicAuthPage && (
+          <div className={isPublicPage ? "mt-auto" : "mt-auto pt-10"}>
+            {renderFooter()}
+          </div>
+        )}
       </main>
 
       {/* Global Modals */}

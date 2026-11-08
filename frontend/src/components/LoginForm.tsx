@@ -1,13 +1,13 @@
-// src/components/LoginForm.tsx
 import { useLanguage } from "../context/LanguageContext";
 import React from "react";
+import { Link } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { EmailField, PasswordField } from "./Input";
 import { Button } from "./Button";
-import Spinner from "./Spinner";
 import useFormPersistence from "../hooks/useFormPersistence";
+import { getTranslatableErrorMessage } from "../utils/getErrorMessage";
 
 const loginSchema = z.object({
   email: z.string().email("Неверный формат email."),
@@ -20,15 +20,11 @@ const LOGIN_FORM_STORAGE_KEY = "login_form_data";
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
   onShowToast: (message: string, type: "success" | "error") => void;
-  onSwitchToRegister: () => void;
-  onSwitchToPasswordReset: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({
   onLogin,
   onShowToast,
-  onSwitchToRegister,
-  onSwitchToPasswordReset,
 }) => {
   const { t } = useLanguage();
   const loginForm = useForm<LoginFormInputs>({
@@ -41,86 +37,79 @@ const LoginForm: React.FC<LoginFormProps> = ({
     loginForm,
     LOGIN_FORM_STORAGE_KEY
   );
+  const { register, clearErrors, formState: { errors, isSubmitting } } = loginForm;
+  const email = register("email");
+  const password = register("password");
 
   const handleLoginSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     try {
       await onLogin(data.email, data.password);
       clearPersistedData();
     } catch (err: unknown) {
-      let message = t("Ошибка входа");
-      if (
-        typeof err === "object" &&
-        err !== null &&
-        "message" in err &&
-        typeof (err as { message?: unknown }).message === "string"
-      ) {
-        message = (err as { message: string }).message;
-      }
-      onShowToast(message, "error");
+      onShowToast(getTranslatableErrorMessage(err, "Ошибка входа"), "error");
     }
   };
 
   return (
-    <div className="flex flex-col flex-1 justify-center self-center min-w-90 w-full max-w-140">
-      <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
+    <>
+      <h1 id="auth-title" className="public-title">
         {t("Вход в аккаунт")}
-      </h2>
+      </h1>
       <form
+        noValidate
+        aria-busy={isSubmitting}
         onSubmit={loginForm.handleSubmit(handleLoginSubmit)}
-        className="space-y-6"
+        className="mt-6 space-y-4"
       >
         <EmailField
+          label={t("Электронная почта")}
           inputId="login-email"
-          placeholder="your@email.com"
+          placeholder="example@example.com"
           autoComplete="email"
-          {...loginForm.register("email")}
-          error={loginForm.formState.errors.email?.message}
-          disabled={loginForm.formState.isSubmitting}
-          className="text-base py-3"
+          {...email}
+          onChange={(event) => {
+            clearErrors("email");
+            void email.onChange(event);
+          }}
+          error={errors.email?.message}
+          disabled={isSubmitting}
           required
         />
-        <div className="space-y-1">
+        <div>
           <PasswordField
             inputId="login-password"
-            placeholder="********"
             autoComplete="current-password"
-            {...loginForm.register("password")}
-            error={loginForm.formState.errors.password?.message}
-            disabled={loginForm.formState.isSubmitting}
-            className="text-base py-3"
+            {...password}
+            onChange={(event) => {
+              clearErrors("password");
+              void password.onChange(event);
+            }}
+            error={errors.password?.message}
+            disabled={isSubmitting}
             required
           />
           <div className="flex justify-end">
-            <Button
-              variant="link"
-              size="small"
-              type="button"
-              onClick={onSwitchToPasswordReset}
-            >
+            <Link to="/forgot-password" className="public-link inline-flex min-h-11 items-center text-sm">
               {t("Забыли пароль?")}
-            </Button>
+            </Link>
           </div>
         </div>
         <Button
-          animatedStroke
-          variant="primary"
           size="large"
           type="submit"
-          disabled={loginForm.formState.isSubmitting}
-          className="w-full md:w-auto md:min-w-[24em] md:mx-auto"
-        >
-          {loginForm.formState.isSubmitting ? <Spinner size="sm" /> : t("Войти")}
-        </Button>
+          loading={isSubmitting}
+          className="public-action w-full"
+          label={t("Войти")}
+        />
       </form>
 
-      {/* Registration Link */}
-      <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-4">
+      <p className="mt-6 border-t border-gray-200 pt-4 text-center text-sm text-gray-600 dark:border-white/10 dark:text-gray-300">
         {t("Впервые здесь?")}{" "}
-        <Button variant="link" size="small" onClick={onSwitchToRegister}>
+        <Link to="/register" className="public-link inline-flex min-h-11 items-center">
           {t("Создать аккаунт")}
-        </Button>
+        </Link>
       </p>
-    </div>
+    </>
   );
 };
 

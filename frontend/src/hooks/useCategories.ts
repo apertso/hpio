@@ -7,6 +7,7 @@ import { BuiltinIcon } from "../utils/builtinIcons";
 export interface Category {
   id: string;
   name: string;
+  nameEn?: string | null;
   type?: "expense" | "income";
   builtinIconName?: BuiltinIcon | null;
 }

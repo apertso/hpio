@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './public-pages.css';
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -22,7 +23,10 @@
 
 @layer components {
   .primary-action {
-    @apply border border-gray-200 bg-white text-neutral-950 hover:not-disabled:bg-neutral-50 dark:border-white/10 dark:bg-neutral-800 dark:text-white dark:hover:not-disabled:bg-neutral-700;
+    @apply border border-gray-200/90 bg-white text-gray-900 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all;
+    @apply hover:not-disabled:-translate-y-0.5 hover:not-disabled:bg-white hover:not-disabled:opacity-90;
+    @apply focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#7638FA] focus-visible:ring-offset-2;
+    @apply dark:border-white/10 dark:bg-white/8 dark:text-white dark:hover:not-disabled:bg-white/12;
   }
 
   .accent-icon {
@@ -192,358 +196,64 @@ body {
   }
 }
 
-@keyframes landingHeroReveal {
+@keyframes landingChartReveal {
   from {
-    opacity: 0;
-    transform: translateY(18px);
+    transform: scaleX(0);
   }
   to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: scaleX(1);
   }
 }
 
-@keyframes landingMockupIn {
-  from {
+@media (prefers-reduced-motion: no-preference) {
+  .landing-chart-clip {
+    transform-box: fill-box;
+    transform-origin: left center;
+  }
+
+  [data-reveal-state="pending"] .landing-chart-clip,
+  .landing-category-bars[data-reveal-state="pending"] [data-category-fill] {
+    transform: scaleX(0);
+  }
+
+  [data-reveal-state="playing"] .landing-chart-clip {
+    animation: landingChartReveal 750ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .landing-category-bars [data-category-fill] {
+    transform-origin: left center;
+  }
+
+  .landing-category-bars[data-reveal-state="playing"] [data-category-fill] {
+    transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .landing-payment-cards[data-reveal-state="pending"] > div {
     opacity: 0;
-    transform: translateY(16px) scale(0.975);
+    transform: translateY(0.5rem);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
-@keyframes landingMockupFloat {
-  0%,
-  100% {
-    translate: 0 0;
+  .landing-payment-cards[data-reveal-state="playing"] > div {
+    transition: opacity 600ms cubic-bezier(0.22, 1, 0.36, 1), transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-  50% {
-    translate: 0 -5px;
+
+  .landing-payment-cards[data-reveal-state="playing"] > div + div {
+    transition-delay: 70ms;
   }
 }
 
-@keyframes landingGentleFloat {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  50% {
-    translate: 0 -4px;
-  }
-}
-
-.landing-hero-section {
-  min-height: 100dvh;
-  background:
-    radial-gradient(
-      48rem 30rem at 18% 12%,
-      rgba(255, 255, 255, 0.95),
-      transparent 72%
-    ),
-    radial-gradient(
-      36rem 24rem at 82% 18%,
-      rgba(147, 197, 253, 0.22),
-      transparent 70%
-    ),
-    radial-gradient(
-      40rem 28rem at 70% 88%,
-      rgba(148, 163, 184, 0.18),
-      transparent 68%
-    ),
-    linear-gradient(180deg, #f8f9ff 0%, #f3f6ff 48%, #fafbff 100%);
-}
-
-.dark .landing-hero-section {
-  background:
-    radial-gradient(
-      48rem 30rem at 18% 12%,
-      rgba(30, 41, 59, 0.55),
-      transparent 72%
-    ),
-    radial-gradient(
-      36rem 24rem at 82% 18%,
-      rgba(59, 130, 246, 0.18),
-      transparent 70%
-    ),
-    radial-gradient(
-      40rem 28rem at 70% 88%,
-      rgba(71, 85, 105, 0.22),
-      transparent 68%
-    ),
-    linear-gradient(180deg, #070b14 0%, #0b1020 54%, #050816 100%);
-}
-
-.landing-hero-orb {
-  position: absolute;
-  border-radius: 9999px;
-  background:
-    radial-gradient(
-      circle at 30% 28%,
-      rgba(255, 255, 255, 0.95),
-      rgba(255, 255, 255, 0) 42%
-    ),
-    radial-gradient(
-      circle at 72% 78%,
-      rgba(191, 219, 254, 0.55),
-      rgba(191, 219, 254, 0) 48%
-    ),
-    linear-gradient(135deg, rgba(226, 232, 240, 0.9), rgba(191, 219, 254, 0.55));
-  box-shadow:
-    inset 0 1px 24px rgba(255, 255, 255, 0.75),
-    0 18px 50px rgba(59, 130, 246, 0.12);
-  opacity: 0.75;
-}
-
-.dark .landing-hero-orb {
-  background:
-    radial-gradient(
-      circle at 30% 28%,
-      rgba(255, 255, 255, 0.18),
-      rgba(255, 255, 255, 0) 42%
-    ),
-    radial-gradient(
-      circle at 72% 78%,
-      rgba(59, 130, 246, 0.35),
-      rgba(59, 130, 246, 0) 48%
-    ),
-    linear-gradient(135deg, rgba(51, 65, 85, 0.65), rgba(30, 64, 175, 0.25));
-  box-shadow:
-    inset 0 1px 24px rgba(255, 255, 255, 0.08),
-    0 18px 50px rgba(0, 0, 0, 0.35);
-  opacity: 0.55;
-}
-
-.landing-hero-orb-1 {
-  top: 8%;
-  left: 4%;
-  width: 7.5rem;
-  height: 7.5rem;
-}
-
-.landing-hero-orb-2 {
-  top: 18%;
-  right: 8%;
-  width: 5.5rem;
-  height: 5.5rem;
-}
-
-.landing-hero-orb-3 {
-  bottom: 12%;
-  left: 38%;
-  width: 4.5rem;
-  height: 4.5rem;
-}
-
-.landing-hero-orb-4 {
-  top: 42%;
-  right: 18%;
-  width: 6rem;
-  height: 6rem;
-}
-
-/* Сферы вокруг hero-макета */
-.landing-hero-orb-mockup-1 {
-  top: -4%;
-  right: 6%;
-  width: 5.5rem;
-  height: 5.5rem;
-  opacity: 0.9;
-  animation: landingOrbPulse 8s ease-in-out infinite;
-}
-
-.landing-hero-orb-mockup-2 {
-  bottom: 22%;
-  left: -3%;
-  width: 4.25rem;
-  height: 4.25rem;
-  opacity: 0.75;
-  animation: landingOrbPulse 9.5s ease-in-out 1.2s infinite;
-}
-
-.landing-hero-orb-mockup-3 {
-  bottom: 6%;
-  right: 0%;
-  width: 3.5rem;
-  height: 3.5rem;
-  opacity: 0.7;
-  animation: landingOrbPulse 7.5s ease-in-out 0.6s infinite;
-}
-
-@keyframes landingOrbPulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 0.9;
-  }
-}
-
-.landing-hero-glow {
-  position: absolute;
-  bottom: 4%;
-  left: 50%;
-  width: 14rem;
-  height: 6rem;
-  transform: translateX(-50%);
-  border-radius: 9999px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(59, 130, 246, 0.22) 0%,
-    rgba(100, 116, 139, 0.12) 45%,
-    transparent 72%
-  );
-  filter: blur(12px);
-  pointer-events: none;
-}
-
-.dark .landing-hero-glow {
-  background: radial-gradient(
-    ellipse at center,
-    rgba(59, 130, 246, 0.28) 0%,
-    rgba(100, 116, 139, 0.16) 45%,
-    transparent 72%
-  );
-}
-
-.landing-hero-visual {
-  perspective: 1200px;
-}
-
-/* Плавающая карточка «Скоро спишется» — Netflix */
-.landing-netflix-alert {
-  width: 14rem;
-  padding: 1.25rem;
-  border-radius: 1.25rem;
-  background: #ffffff;
-  box-shadow:
-    0 2px 4px rgba(15, 23, 42, 0.03),
-    0 16px 40px rgba(15, 23, 42, 0.08),
-    0 6px 20px rgba(93, 95, 239, 0.07);
-}
-
-.dark .landing-netflix-alert {
-  background: rgba(15, 23, 42, 0.97);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 4px 6px rgba(0, 0, 0, 0.12),
-    0 18px 48px rgba(0, 0, 0, 0.35);
-}
-
-.landing-netflix-alert-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.landing-netflix-alert-icon {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 9999px;
-}
-
-.landing-netflix-alert-text {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.landing-netflix-alert-label {
-  margin: 0 0 0.125rem;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  line-height: 1.2;
-  color: #6b7280;
-}
-
-.dark .landing-netflix-alert-label {
-  color: #9ca3af;
-}
-
-.landing-netflix-alert-name {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #111827;
-}
-
-.landing-netflix-alert-amount {
-  margin: 0.125rem 0 0;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #111827;
-}
-
-.dark .landing-netflix-alert-name,
-.dark .landing-netflix-alert-amount {
-  color: #f9fafb;
-}
-
-.landing-netflix-alert-date {
-  margin: 0.25rem 0 0;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  line-height: 1.2;
-  color: #6366f1;
-}
-
-.dark .landing-netflix-alert-date {
-  color: #818cf8;
-}
-
-.landing-hero-reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  animation: landingHeroReveal 720ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  will-change: opacity, transform;
-}
-
-.landing-hero-delay-1 {
-  animation-delay: 90ms;
-}
-
-.landing-hero-delay-2 {
-  animation-delay: 180ms;
-}
-
-.landing-hero-delay-3 {
-  animation-delay: 300ms;
-}
-
-.landing-hero-delay-4 {
-  animation-delay: 420ms;
-}
-
-.landing-mockup-intro {
-  opacity: 0;
-  transform: translateY(16px) scale(0.975);
-  animation: landingMockupIn 900ms cubic-bezier(0.22, 1, 0.36, 1) 240ms forwards;
-  will-change: opacity, transform;
-}
-
-.landing-mockup-float {
-  animation: landingMockupFloat 7s ease-in-out 1.15s infinite;
-  will-change: translate;
-}
-
-.landing-floating-element {
-  animation: landingGentleFloat 6.8s ease-in-out 1.2s infinite;
-  will-change: translate;
-}
-
-.landing-floating-delay {
-  animation-delay: 1.65s;
+/* Сохраняем масштаб мобильного макета лендинга на всех страницах. */
+.landing-hero-phone {
+  --phone-unit: 14px;
+  --spacing: calc(var(--phone-unit) / 4);
+  --text-xs: calc(var(--phone-unit) * 0.75);
+  --text-base: var(--phone-unit);
+  --text-lg: calc(var(--phone-unit) * 1.125);
+  --radius-lg: calc(var(--phone-unit) / 2);
+  --radius-2xl: var(--phone-unit);
+  --radius-3xl: calc(var(--phone-unit) * 1.5);
+  --radius-4xl: calc(var(--phone-unit) * 2);
+  font-size: var(--phone-unit);
 }
 
 /* Декоративная банковская карта МИР в hero-секции */
@@ -552,11 +262,6 @@ body {
   height: 120px;
   transform: translateX(-50%) rotate(-7deg);
   transform-origin: center center;
-}
-
-.landing-hero-credit-card > .landing-floating-element {
-  width: 100%;
-  height: 100%;
 }
 
 .landing-hero-credit-card-inner {
@@ -678,21 +383,6 @@ body {
   width: 52px;
   height: 16px;
   color: rgba(255, 255, 255, 0.86);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-hero-reveal,
-  .landing-mockup-intro,
-  .landing-mockup-float,
-  .landing-floating-element,
-  .landing-hero-orb-mockup-1,
-  .landing-hero-orb-mockup-2,
-  .landing-hero-orb-mockup-3 {
-    animation: none;
-    opacity: 1;
-    transform: none;
-    translate: 0 0;
-  }
 }
 
 input.number-field-input::-webkit-outer-spin-button,

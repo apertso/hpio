@@ -511,7 +511,7 @@ const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
           <button
             type="button"
             onClick={handleToggle}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+            className="absolute inset-y-0 right-0 flex min-w-11 cursor-pointer items-center justify-center rounded-full text-gray-600 transition-all hover:bg-gray-100 hover:opacity-80 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 motion-reduce:transition-none dark:text-gray-300 dark:hover:bg-gray-800"
             aria-label={toggleLabel}
           >
             {isVisible ? (

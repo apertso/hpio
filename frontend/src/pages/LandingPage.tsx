@@ -4,75 +4,89 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowDownTrayIcon,
   ArrowPathIcon,
-  BellAlertIcon,
+  ArrowRightIcon,
   CalendarDaysIcon,
   ChartBarIcon,
   ShieldCheckIcon,
   DevicePhoneMobileIcon,
   GlobeAltIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import { DeviceMockup } from '../components/DeviceMockup';
-import { LandingHeroCreditCard } from '../components/LandingHeroCreditCard';
+import {
+  LandingAnalyticsPreview,
+  LandingNotificationsPreview,
+  LandingPaymentsPreview,
+} from '../components/LandingFeaturePreviews';
 import { LandingHeroMockup } from '../components/LandingHeroMockup';
+import { LandingMobileMockup } from '../components/LandingMobileMockup';
 import { LandingTopBar } from '../components/LandingTopBar';
 import PageMeta from '../components/PageMeta';
-import { useGradientStroke } from '../hooks/useGradientStroke';
 import { getPageMetadata } from '../utils/pageMetadata';
+import { localizeHref } from '../i18n/localePath';
 
-const Feature = ({
+const actionClassName = 'primary-action inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-3 rounded-xl px-4 py-2 text-lg font-semibold transition-colors duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] hover:not-disabled:translate-y-0 focus-visible:ring-offset-gray-50 motion-reduce:transition-none sm:w-auto dark:focus-visible:ring-offset-gray-900';
+const signupActionClassName = 'border-indigo-200 dark:border-indigo-400/40';
+const sectionContentClassName = 'mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8';
+const platformCardClassName = 'flex w-full min-w-0 flex-col items-center gap-1 rounded-2xl border border-gray-100 bg-white/80 px-1 py-2 text-center dark:border-white/10 dark:bg-white/5 sm:max-w-[200px] sm:flex-row sm:gap-2.5 sm:px-3 sm:py-2.5 sm:text-left sm:shadow-[0_4px_16px_rgba(15,23,42,0.04)] sm:backdrop-blur-sm';
+const platformIconClassName = 'size-4 shrink-0 text-gray-500 dark:text-gray-400 sm:size-6';
+const featureIconClassName = 'inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300';
+
+const trustItems = [
+  {
+    icon: ShieldCheckIcon,
+    title: 'Локальное хранение',
+    description: 'Обработка SMS и уведомлений происходит прямо на вашем устройстве.',
+  },
+  {
+    icon: DevicePhoneMobileIcon,
+    title: 'Работа офлайн',
+    description: 'Приложение работает без интернета. Данные синхронизируются при подключении.',
+  },
+  {
+    icon: ChartBarIcon,
+    title: 'Честная статистика',
+    description: 'Никаких скрытых алгоритмов или продажи данных.',
+  },
+];
+
+function Feature({
   icon: Icon,
   title,
   children,
-  image,
+  preview,
   reverse = false,
 }: {
   icon: React.ElementType;
   title: string;
   children: React.ReactNode;
-  image?: { src: string; alt: string };
+  preview: React.ReactNode;
   reverse?: boolean;
-}) => (
-  <div
-    className={`flex flex-col gap-12 items-center md:flex-row ${
-      reverse ? 'md:flex-row-reverse' : ''
-    } py-12`}
-  >
-    <div className="flex-1 space-y-6 text-center md:text-left">
-      <div className="accent-icon inline-flex p-3 rounded-2xl">
-        <Icon className="w-8 h-8" />
-      </div>
-      <div>
-        <h3 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
+}): React.ReactElement {
+  return (
+    <article className={`grid min-w-0 items-center gap-6 py-8 lg:gap-12 lg:py-12 ${reverse
+      ? 'lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]'
+      : 'lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]'}`}>
+      <div className={`lg:max-w-lg ${reverse ? 'lg:col-start-2 lg:row-start-1' : ''}`}>
+        <span className={featureIconClassName} aria-hidden="true">
+          <Icon className="size-6" />
+        </span>
+        <h3 className="mt-4 text-balance text-3xl font-semibold tracking-tight text-gray-950 dark:text-white lg:text-4xl">
           {title}
         </h3>
-        <p className="mt-4 text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+        <p className="mt-3 text-pretty text-lg text-gray-700 dark:text-gray-300 lg:text-xl">
           {children}
         </p>
       </div>
-    </div>
-    {image && (
-      <div className="flex-1 w-full max-w-md">
-        <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <img
-            src={image.src}
-            alt={image.alt}
-            className="w-full h-auto transform hover:scale-105 transition-transform duration-500"
-          />
-        </div>
-      </div>
-    )}
-  </div>
-);
+      <figure className={`w-full min-w-0 rounded-2xl border border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-[#1f1f1f] ${reverse ? 'lg:col-start-1 lg:row-start-1' : ''}`}>
+        {preview}
+      </figure>
+    </article>
+  );
+}
 
 const LandingPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { isAuthenticated, loading } = useAuth();
-  const { resolvedTheme } = useTheme();
-  const heroStrokeRef = useGradientStroke();
-  const footerStrokeRef = useGradientStroke();
   const navigate = useNavigate();
   const metadata = getPageMetadata('landing');
 
@@ -86,80 +100,49 @@ const LandingPage: React.FC = () => {
     <>
       <PageMeta {...metadata} />
 
-      <div className="w-full text-gray-900 dark:text-gray-100">
-        <section className="landing-hero-section relative flex min-h-dvh flex-col overflow-hidden border-b border-indigo-100/50 dark:border-gray-800">
-          {/* Декоративные сферы */}
-          <div
-            className="pointer-events-none absolute inset-0 overflow-hidden"
-            aria-hidden="true"
-          >
-            <div className="landing-hero-orb landing-hero-orb-1" />
-            <div className="landing-hero-orb landing-hero-orb-2" />
-            <div className="landing-hero-orb landing-hero-orb-3" />
-            <div className="landing-hero-orb landing-hero-orb-4" />
-          </div>
-
+      <div className="w-full font-[Manrope,system-ui,sans-serif] text-gray-900 dark:text-gray-100">
+        <section className="relative flex min-h-dvh flex-col overflow-hidden border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-dark-bg">
           <div className="relative mx-auto flex w-full max-w-[1280px] flex-1 flex-col px-4 sm:px-6 lg:px-8">
             <LandingTopBar />
 
-            <div className="relative grid min-h-0 min-w-0 flex-1 grid-cols-1 items-center gap-8 py-6 sm:gap-10 sm:py-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-6 xl:gap-10">
-              <div className="relative z-10 mx-auto w-full min-w-0 max-w-2xl text-center lg:mx-0 lg:max-w-[560px] lg:-translate-y-24 lg:text-left xl:max-w-[600px]">
-                <h1 className="landing-hero-reveal landing-hero-delay-1 text-[3.25rem] font-extrabold leading-[1.02] tracking-tight text-gray-950 dark:text-white sm:text-[4.5rem] lg:text-[4rem] xl:text-[4.75rem]">
+            <div className="relative grid min-h-0 min-w-0 flex-1 grid-cols-1 items-center gap-6 py-6 sm:gap-10 sm:py-8 min-[60rem]:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] min-[60rem]:gap-6 xl:gap-10">
+              <div className="relative z-10 mx-auto w-full min-w-0 max-w-2xl text-center min-[60rem]:mx-0 min-[60rem]:max-w-[560px] min-[60rem]:-translate-y-8 min-[60rem]:text-left xl:max-w-[600px]">
+                <h1 className="text-balance text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl lg:text-6xl">
                   {t("Финансы под")}
                   <br />
-                  <span className="bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-500 bg-clip-text text-transparent dark:from-indigo-400 dark:via-sky-400 dark:to-violet-300">
+                  <span className="text-indigo-700 dark:text-indigo-300">
                     {t("полным контролем")}
                   </span>
                 </h1>
 
-                <p className="landing-hero-reveal landing-hero-delay-2 mx-auto mt-10 max-w-xl text-base leading-7 text-gray-500 dark:text-gray-300 sm:text-lg sm:leading-8 lg:mx-0">
-                  {t("Эстетичный трекер регулярных платежей и подписок.")}
+                <p className="mx-auto mt-6 max-w-xl text-pretty text-base text-gray-700 dark:text-gray-300 sm:text-lg min-[60rem]:mx-0">
+                  {t("Следите за подписками и регулярными платежами в одном списке.")}
                 </p>
-                <p className="landing-hero-reveal landing-hero-delay-2 mt-3 text-base font-bold text-gray-950 dark:text-white sm:text-lg">
+                <p className="mt-3 text-base font-semibold text-gray-800 dark:text-gray-200 sm:text-lg">
                   {t("Без рекламы. Без скрытых комиссий.")}
                 </p>
 
-                <div className="landing-hero-reveal landing-hero-delay-3 mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center min-[60rem]:justify-start">
                   <Link
-                    ref={heroStrokeRef}
                     to="/register"
-                    className="primary-action gradient-stroke inline-flex min-h-[66px] w-full min-w-0 items-center gap-4 rounded-2xl px-5 py-3.5 text-left shadow-sm transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 sm:w-[272px] cursor-pointer"
+                    className={`${actionClassName} ${signupActionClassName}`}
                   >
-                    <span className="gradient-stroke-edge" aria-hidden="true" />
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-neutral-100 dark:bg-white/10">
-                      <SparklesIcon className="h-6 w-6" />
-                    </span>
-                    <span>
-                      <span className="block text-lg font-bold leading-6">
-                        {t("Начать бесплатно")}
-                      </span>
-                      <span className="block text-sm text-neutral-600 dark:text-neutral-300">
-                        {t("Создайте аккаунт за 30 секунд")}
-                      </span>
-                    </span>
+                    {t("Начать бесплатно")}
+                    <ArrowRightIcon className="size-5 shrink-0 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />
                   </Link>
 
                   <Link
-                    to="/download"
-                    className="inline-flex min-h-[66px] w-full min-w-0 items-center gap-4 rounded-2xl border border-gray-200/90 bg-white px-5 py-3.5 text-left text-gray-900 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:bg-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7638FA] focus-visible:ring-offset-2 dark:border-white/10 dark:bg-white/8 dark:text-white dark:hover:bg-white/12 sm:w-[212px] cursor-pointer"
+                    to={localizeHref(language, "/download")}
+                    className={`${actionClassName} text-gray-700 shadow-none dark:text-gray-200`}
                   >
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-200">
-                      <ArrowDownTrayIcon className="h-6 w-6" />
-                    </span>
-                    <span>
-                      <span className="block text-lg font-bold leading-6">
-                        {t("Скачать APK")}
-                      </span>
-                      <span className="block text-sm text-gray-500 dark:text-gray-400">
-                        {t("Версия 1.2.0")}
-                      </span>
-                    </span>
+                    {t("Скачать APK")}
+                    <ArrowDownTrayIcon className="size-5 shrink-0" aria-hidden="true" />
                   </Link>
                 </div>
 
-                <div className="landing-hero-reveal landing-hero-delay-4 mt-7 grid w-full grid-cols-1 gap-2.5 text-left text-sm sm:w-[440px] sm:grid-cols-3 sm:justify-items-center">
-                  <div className="flex w-full items-center gap-2.5 rounded-2xl border border-gray-100 bg-white/80 px-3 py-2.5 shadow-[0_4px_16px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-white/10 dark:bg-white/5 sm:max-w-[200px]">
-                    <GlobeAltIcon className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                <div className="mx-auto mt-6 grid w-full grid-cols-3 gap-2 text-sm sm:max-w-[440px] sm:justify-items-center sm:gap-2.5 min-[60rem]:mx-0">
+                  <div className={platformCardClassName}>
+                    <GlobeAltIcon className={platformIconClassName} aria-hidden="true" />
                     <div>
                       <p className="font-semibold text-gray-900 dark:text-white">
                         Web
@@ -169,9 +152,10 @@ const LandingPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex w-full items-center gap-2.5 rounded-2xl border border-gray-100 bg-white/80 px-3 py-2.5 shadow-[0_4px_16px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-white/10 dark:bg-white/5 sm:max-w-[200px]">
+                  <div className={platformCardClassName}>
                     <svg
-                      className="h-6 w-6 text-gray-500 dark:text-gray-400"
+                      className={platformIconClassName}
+                      aria-hidden="true"
                       viewBox="0 0 24 24"
                       fill="currentColor"
                     >
@@ -186,9 +170,10 @@ const LandingPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex w-full items-center gap-2.5 rounded-2xl border border-gray-100 bg-white/80 px-3 py-2.5 shadow-[0_4px_16px_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-white/10 dark:bg-white/5 sm:max-w-[200px]">
+                  <div className={platformCardClassName}>
                     <svg
-                      className="h-6 w-6 text-gray-500 dark:text-gray-400"
+                      className={platformIconClassName}
+                      aria-hidden="true"
                       viewBox="0 0 24 24"
                       fill="currentColor"
                     >
@@ -206,200 +191,97 @@ const LandingPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="landing-hero-visual relative mx-auto w-full min-w-0 max-w-[760px] pb-12 pt-2 lg:mr-0 lg:max-w-none xl:-mr-2">
-                {/* Сферы вокруг макета */}
-                <div
-                  className="pointer-events-none absolute inset-0 overflow-visible"
-                  aria-hidden="true"
-                >
-                  <div className="landing-hero-orb landing-hero-orb-mockup-1" />
-                  <div className="landing-hero-orb landing-hero-orb-mockup-2" />
-                  <div className="landing-hero-orb landing-hero-orb-mockup-3" />
-                  <div className="landing-hero-glow" />
+              <div className="relative z-10 mx-auto w-full min-w-0 max-w-[760px] pb-8 pt-2 sm:pb-12 min-[60rem]:mr-0 min-[60rem]:max-w-none xl:-mr-2">
+                <div className="hidden md:block">
+                  <LandingHeroMockup />
                 </div>
 
-                <div className="landing-mockup-intro relative z-10">
-                  <div className="landing-mockup-float">
-                    <div className="relative hidden md:block">
-                      <LandingHeroMockup />
-                    </div>
-
-                    <div className="relative md:hidden">
-                      <DeviceMockup
-                        type="mobile"
-                        src={`/hero/mobile-${
-                          resolvedTheme === 'dark' ? 'dark' : 'light'
-                        }.png`}
-                        alt={t("Интерфейс Хочу Плачу на телефоне")}
-                        className="w-[236px]"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Netflix — скоро спишется */}
-                <div className="landing-floating-element landing-netflix-alert absolute -left-4 top-[30%] z-30 hidden lg:block xl:-left-8">
-                  <div className="landing-netflix-alert-body">
-                    <div
-                      className="accent-icon landing-netflix-alert-icon"
-                      aria-hidden="true"
-                    >
-                      <BellAlertIcon className="h-[20px] w-[20px]" />
-                    </div>
-                    <div className="landing-netflix-alert-text">
-                      <p className="landing-netflix-alert-label">
-                        {t("Скоро спишется")}
-                      </p>
-                      <p className="landing-netflix-alert-name">Netflix</p>
-                      <p className="landing-netflix-alert-amount">599 ₽</p>
-                      <p className="landing-netflix-alert-date">
-                        {t("22 мая • через 2 дня")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Напоминание */}
-                <div className="landing-floating-element landing-floating-delay absolute -right-3 top-[18%] z-30 hidden w-[188px] rounded-2xl border border-white/90 bg-white/97 p-3 shadow-[0_24px_56px_rgba(15,23,42,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-gray-950/97 lg:block xl:-right-7">
-                  <div className="flex items-start gap-2.5">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
-                      <CalendarDaysIcon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-950 dark:text-white">
-                        {t("Напоминание")}
-                      </p>
-                      <p className="mt-0.5 text-[10px] leading-4 text-gray-500 dark:text-gray-400">
-                        {t("3 платежа на этой неделе")}
-                      </p>
-                      <button
-                        type="button"
-                        className="mt-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400"
-                      >
-                        {t("Посмотреть")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <LandingHeroCreditCard />
-
-                {/* Защита данных */}
-                <div className="landing-floating-element landing-floating-delay absolute -bottom-1 right-[2%] z-30 hidden max-w-[240px] items-center gap-2.5 rounded-2xl border border-white/90 bg-white/97 px-3.5 py-2.5 shadow-[0_24px_56px_rgba(79,70,229,0.14)] backdrop-blur-sm dark:border-white/10 dark:bg-gray-950/97 lg:flex">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
-                    <ShieldCheckIcon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold leading-tight text-gray-950 dark:text-white">
-                      {t("Ваши данные под защитой")}
-                    </p>
-                    <p className="mt-0.5 text-[10px] leading-snug text-gray-500 dark:text-gray-400">
-                      {t("Мы не передаем данные третьим лицам.")}
-                    </p>
-                  </div>
+                <div className="md:hidden">
+                  <LandingMobileMockup />
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Trust/Privacy Section */}
-        <section className="py-16 bg-gray-50 dark:bg-gray-800/50 border-y border-gray-100 dark:border-gray-800">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-              <div className="flex flex-col items-center">
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-4">
-                  <ShieldCheckIcon className="w-8 h-8 text-gray-900 dark:text-white" />
+        <section
+          aria-label={t("Приватность и доступность")}
+          className="border-b border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-[#1f1f1f]"
+        >
+          <ul className={`${sectionContentClassName} grid gap-6 py-8 sm:py-12 md:grid-cols-3 lg:gap-8`}>
+            {trustItems.map(({ icon: Icon, title, description }) => (
+              <li key={title} className="flex items-start gap-4">
+                <span className={featureIconClassName} aria-hidden="true">
+                  <Icon className="size-6" />
+                </span>
+                <div>
+                  <h2 className="text-lg font-semibold">{t(title)}</h2>
+                  <p className="mt-1 text-pretty text-base text-gray-700 dark:text-gray-300">
+                    {t(description)}
+                  </p>
                 </div>
-                <h4 className="font-bold text-lg mb-2">{t("Локальное хранение")}</h4>
-                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                  {t("Обработка SMS и уведомлений происходит прямо на вашем устройстве.")}
-                </p>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-4">
-                  <DevicePhoneMobileIcon className="w-8 h-8 text-gray-900 dark:text-white" />
-                </div>
-                <h4 className="font-bold text-lg mb-2">{t("Работа офлайн")}</h4>
-                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                  {t("Приложение работает без интернета. Данные синхронизируются при подключении.")}
-                </p>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-4">
-                  <ChartBarIcon className="w-8 h-8 text-gray-900 dark:text-white" />
-                </div>
-                <h4 className="font-bold text-lg mb-2">{t("Честная статистика")}</h4>
-                <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                  {t("Никаких скрытых алгоритмов или продажи данных.")}
-                </p>
-              </div>
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
         </section>
 
-        {/* Features Section */}
         <section
           id="features"
-          className="py-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+          aria-labelledby="landing-feature-title"
+          className="bg-white dark:bg-[#181818]"
         >
-          <div className="space-y-24">
-            <Feature
-              icon={CalendarDaysIcon}
-              title={t("Умное отслеживание")}
-              image={{
-                src: '/landing/notifications.webp',
-                alt: t("Скриншот уведомлений"),
-              }}
-            >
-              {t("Забудьте о ручном вводе. Приложение автоматически распознает уведомления от банков (Сбер, Тинькофф, Райффайзен) и создает записи о расходах.")}
-            </Feature>
+          <div className="mx-auto w-full max-w-[520px] px-4 pt-12 sm:px-6 lg:max-w-7xl lg:px-8 lg:pt-20">
+            <h2 id="landing-feature-title" className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-gray-950 dark:text-white lg:text-5xl">
+              {t("Планируйте платежи и следите за расходами")}
+            </h2>
+            <div className="divide-y divide-gray-200 dark:divide-white/10">
+              <Feature
+                icon={CalendarDaysIcon}
+                title={t("Напоминания и учёт платежей")}
+                preview={<LandingNotificationsPreview />}
+              >
+                {t("Получайте напоминания в день оплаты. На Android приложение может распознать уведомление банка и предложить добавить расход.")}
+              </Feature>
 
-            <Feature
-              icon={ArrowPathIcon}
-              title={t("Регулярные платежи")}
-              reverse
-              image={{
-                src: '/landing/payment-tracking.webp',
-                alt: t("Скриншот списка платежей"),
-              }}
-            >
-              {t("Гибкая настройка повторяющихся операций. Подписки, ЖКХ, кредиты — настройте один раз, и мы напомним вам заранее.")}
-            </Feature>
+              <Feature
+                icon={ArrowPathIcon}
+                title={t("Регулярные платежи")}
+                preview={<LandingPaymentsPreview />}
+                reverse
+              >
+                {t("Укажите сумму и периодичность для подписок, счетов и кредитов. Отметьте платёж выполненным, и приложение запланирует следующий.")}
+              </Feature>
 
-            <Feature
-              icon={ChartBarIcon}
-              title={t("Глубокая аналитика")}
-              image={{
-                src: '/landing/analytics.webp',
-                alt: t("Скриншот аналитики"),
-              }}
-            >
-              {t("Понимайте, куда уходят деньги. Визуализация расходов по категориям, дням и динамика трат за любой период.")}
-            </Feature>
+              <Feature
+                icon={ChartBarIcon}
+                title={t("Расходы по категориям и дням")}
+                preview={<LandingAnalyticsPreview />}
+              >
+                {t("Смотрите, сколько потратили за выбранный период, какие категории заняли больше всего и на какие дни пришлись крупные платежи.")}
+              </Feature>
+            </div>
           </div>
         </section>
 
-        {/* Final CTA */}
-        <section className="py-24 bg-gray-50 dark:bg-gray-800/50">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-6 tracking-tight">
-              {t("Начните контролировать бюджет сегодня")}
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400 mb-10">
-              {t("Присоединяйтесь к пользователям, которые уже навели порядок в своих финансах.")}
-            </p>
-            <Link
-              ref={footerStrokeRef}
-              className="primary-action gradient-stroke inline-flex cursor-pointer items-center rounded-xl px-10 py-4 text-lg font-bold shadow-sm transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
-              to="/register"
-            >
-              {t("Создать аккаунт")}
-              <span className="gradient-stroke-edge" aria-hidden="true" />
-            </Link>
-            <p className="mt-4 text-sm text-gray-500">
-              {t("Бесплатно. Не требует привязки карты.")}
-            </p>
+        <section aria-labelledby="landing-signup-title" className="bg-white pb-12 pt-4 dark:bg-[#181818] lg:pb-20 lg:pt-8">
+          <div className={sectionContentClassName}>
+            <div className="flex flex-col gap-6 rounded-2xl border border-gray-200 bg-gray-50 px-6 py-8 dark:border-white/10 dark:bg-[#1f1f1f] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-8 sm:py-12">
+              <div>
+                <h2 id="landing-signup-title" className="text-balance text-3xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
+                  {t("Добавьте первый платёж")}
+                </h2>
+                <p className="mt-2 text-pretty text-lg text-gray-700 dark:text-gray-300">
+                  {t("Бесплатно. Не требует привязки карты.")}
+                </p>
+              </div>
+              <Link
+                className={`${actionClassName} ${signupActionClassName}`}
+                to="/register"
+              >
+                {t("Создать аккаунт")}
+                <ArrowRightIcon className="size-5 shrink-0 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />
+              </Link>
+            </div>
           </div>
         </section>
       </div>

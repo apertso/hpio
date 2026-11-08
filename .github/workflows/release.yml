@@ -73,3 +73,11 @@ jobs:
           target_commitish: ${{ github.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  android-apk:
+    name: Android APK
+    needs: release
+    uses: ./.github/workflows/android-apk.yml
+    with:
+      tag: ${{ inputs.tag }}
+    secrets: inherit

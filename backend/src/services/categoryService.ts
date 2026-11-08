@@ -7,9 +7,26 @@ import { TransactionCategoryInstance } from "../models/TransactionCategory";
 
 interface CategoryData {
   name: string;
+  nameEn: string;
   builtinIconName?: string;
-  // iconName?: string; // Если добавлены в модель
-  // color?: string;
+}
+
+function requireCategoryName(value: string | undefined, message: string): string {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) {
+    throw new Error(message);
+  }
+  return trimmed;
+}
+
+function duplicateCategoryMessage(error: {
+  original?: { constraint?: string };
+  parent?: { constraint?: string };
+}): string {
+  const constraint = error.original?.constraint ?? error.parent?.constraint;
+  return constraint === "transactionCategoryNameEnUnique"
+    ? "Категория с таким английским названием уже существует."
+    : "Категория с таким названием уже существует.";
 }
 
 // Получить все категории пользователя
@@ -57,27 +74,32 @@ export const getCategoryById = async (
 export const createCategory = async (
   categoryData: CategoryData
 ): Promise<TransactionCategoryInstance> => {
-  // Валидация
-  if (!categoryData.name || categoryData.name.trim() === "") {
-    throw new Error("Название категории обязательно.");
-  }
-  const categoryName = categoryData.name.trim();
+  const categoryName = requireCategoryName(
+    categoryData.name,
+    "Название категории обязательно."
+  );
+  const categoryNameEn = requireCategoryName(
+    categoryData.nameEn,
+    "Английское название категории обязательно."
+  );
 
   try {
     const existingCategory = await db.TransactionCategory.findOne({
       where: {
-        name: categoryName,
+        [Op.or]: [{ name: categoryName }, { nameEn: categoryNameEn }],
       },
     });
     if (existingCategory) {
       throw new Error(
-        `Категория с названием "${categoryName}" уже существует.`
+        existingCategory.nameEn === categoryNameEn
+          ? "Категория с таким английским названием уже существует."
+          : "Категория с таким названием уже существует."
       );
     }
     const category = await db.TransactionCategory.create({
       name: categoryName,
+      nameEn: categoryNameEn,
       builtinIconName: categoryData.builtinIconName || null,
-      // ... другие поля ...
     });
 
     logger.info(`Category created (ID: ${category.id})`);
@@ -86,7 +108,7 @@ export const createCategory = async (
     logger.error("Error creating category:", error);
     // Проверяем, не является ли ошибка уникальности из БД
     if (error.name === "SequelizeUniqueConstraintError") {
-      throw new Error(`Категория с таким названием уже существует.`);
+      throw new Error(duplicateCategoryMessage(error));
     }
     throw new Error(error.message || "Не удалось создать категорию.");
   }
@@ -97,11 +119,14 @@ export const updateCategory = async (
   categoryId: string,
   categoryData: Partial<CategoryData>
 ): Promise<TransactionCategoryInstance | null> => {
-  // Валидация
-  if (!categoryData.name || categoryData.name.trim() === "") {
-    throw new Error("Название категории обязательно.");
-  }
-  const newCategoryName = categoryData.name.trim();
+  const newCategoryName = requireCategoryName(
+    categoryData.name,
+    "Название категории обязательно."
+  );
+  const newCategoryNameEn = requireCategoryName(
+    categoryData.nameEn,
+    "Английское название категории обязательно."
+  );
 
   try {
     const category = await db.TransactionCategory.findOne({
@@ -118,20 +143,22 @@ export const updateCategory = async (
     // Проверка на уникальность нового имени (исключая текущую категорию)
     const existingCategory = await db.TransactionCategory.findOne({
       where: {
-        name: newCategoryName,
-        id: { [Op.ne]: categoryId }, // Исключаем текущую категорию
+        [Op.or]: [{ name: newCategoryName }, { nameEn: newCategoryNameEn }],
+        id: { [Op.ne]: categoryId },
       },
     });
     if (existingCategory) {
       throw new Error(
-        `Категория с названием "${newCategoryName}" уже существует.`
+        existingCategory.nameEn === newCategoryNameEn
+          ? "Категория с таким английским названием уже существует."
+          : "Категория с таким названием уже существует."
       );
     }
 
     await category.update({
       name: newCategoryName,
+      nameEn: newCategoryNameEn,
       builtinIconName: categoryData.builtinIconName,
-      // ... другие поля ...
     });
 
     logger.info(`Category updated (ID: ${category.id})`);
@@ -139,7 +166,7 @@ export const updateCategory = async (
   } catch (error: any) {
     logger.error(`Error updating category (ID: ${categoryId}):`, error);
     if (error.name === "SequelizeUniqueConstraintError") {
-      throw new Error(`Категория с таким названием уже существует.`);
+      throw new Error(duplicateCategoryMessage(error));
     }
     throw new Error(error.message || "Не удалось обновить категорию.");
   }

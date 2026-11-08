@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import { hasTranslation } from "../i18n/translate";
 
 const NETWORK_ERROR_MESSAGE =
   "Нет подключения к интернету. Проверьте соединение и повторите попытку.";
@@ -40,11 +41,17 @@ export default function getErrorMessage(error: unknown): string {
   if (!navigator.onLine || isNetworkError(error)) {
     return NETWORK_ERROR_MESSAGE;
   }
-  if (error instanceof AxiosError && error.response?.data?.message) {
-    return error.response.data.message;
+  if (error instanceof AxiosError) {
+    const message: unknown = error.response?.data?.message;
+    if (typeof message === "string" && message) return message;
   }
   if (error instanceof Error) {
     return error.message;
   }
   return "Произошла неизвестная ошибка.";
+}
+
+export function getTranslatableErrorMessage(error: unknown, fallback: string): string {
+  const message = getErrorMessage(error);
+  return hasTranslation(message) ? message : fallback;
 }

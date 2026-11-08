@@ -1,4 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
+import { usePreferredCurrency } from "../context/AuthContext";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -29,6 +30,7 @@ import Spinner from "../components/Spinner";
 import Select from "../components/Select";
 import { CURRENCY_OPTIONS as CURRENCY_OPTIONS } from "../utils/currencies";
 import { parseCalendarDate, formatDateForDisplay } from "../utils/dateUtils";
+import { localizedCategoryName } from "../utils/categoryLabel";
 
 const METHOD_LABELS: Record<string, string> = {
   cash: "Наличные",
@@ -68,6 +70,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   onCancel,
 }) => {
   const { t } = useLanguage();
+  const preferredCurrency = usePreferredCurrency();
   const isEditMode = !!income;
   const { showToast } = useToast();
   const {
@@ -85,7 +88,13 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   });
 
   const [date, setDate] = useState<Date | null>(new Date());
-  const [currency, setCurrency] = useState("RUB");
+  const [currency, setCurrency] = useState(preferredCurrency);
+
+  useEffect(() => {
+    if (!income) {
+      setCurrency(preferredCurrency);
+    }
+  }, [income, preferredCurrency]);
   const [method, setMethod] = useState("transfer");
   const [cardId, setCardId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -205,7 +214,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
             label={t("Валюта")}
             options={currencyOptions.map((option) => ({ ...option, label: t(option.label) }))}
             value={currency}
-            onChange={(val) => setCurrency(val || "RUB")}
+            onChange={(val) => setCurrency(val || preferredCurrency)}
             disabled={isSubmitting}
           />
           <button
@@ -363,7 +372,7 @@ const IncomeListItem: React.FC<{
   income: IncomeData;
   className?: string;
 }> = ({ income, className }) => {
-  const { t, locale } = useLanguage();
+  const { t, locale, language } = useLanguage();
   return (
   <button
     type="button"
@@ -373,7 +382,9 @@ const IncomeListItem: React.FC<{
     <div className="flex justify-between items-center">
       <div>
         <div className="font-bold dark:text-white">
-          {income.transactionCategory?.name || t("Без категории")}
+          {income.transactionCategory
+            ? localizedCategoryName(income.transactionCategory, language)
+            : t("Без категории")}
         </div>
         <div className="text-sm text-gray-500">
           {formatDateForDisplay(parseCalendarDate(income.date), locale)} ·{" "}
@@ -397,7 +408,7 @@ const IncomeListItem: React.FC<{
 };
 
 const IncomesPage: React.FC = () => {
-  const { t, locale } = useLanguage();
+  const { t, locale, language } = useLanguage();
   const metadata = getPageMetadata("incomes");
   const [incomes, setIncomes] = useState<IncomeData[]>([]);
   const [cards, setCards] = useState<CardData[]>([]);
@@ -621,7 +632,9 @@ const IncomesPage: React.FC = () => {
                   >
                     <div>
                       <div className="font-bold dark:text-white">
-                        {inc.transactionCategory?.name || t("Без категории")}
+                        {inc.transactionCategory
+                          ? localizedCategoryName(inc.transactionCategory, language)
+                          : t("Без категории")}
                       </div>
                       <div className="text-sm text-gray-500">
                         {formatDateForDisplay(parseCalendarDate(inc.date), locale)} ·{" "}

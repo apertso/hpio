@@ -32,6 +32,14 @@ import {
 
 const NO_CATEGORY_FILTER_VALUE = "__NO_CATEGORY__";
 
+const normalizePaymentCurrency = (value: unknown): string => {
+  if (typeof value !== "string") {
+    return "RUB";
+  }
+  const code = value.trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : "RUB";
+};
+
 const normalizeTagIds = (tagIds: unknown): string[] => {
   if (!Array.isArray(tagIds)) {
     return [];
@@ -65,6 +73,7 @@ interface PaymentData {
   createAsCompleted?: boolean;
   autoCreated?: boolean;
   completedAt?: string | Date | null;
+  currency?: string;
   // seriesId is not part of input data for create/update payment instance
 }
 
@@ -191,7 +200,7 @@ export const getUpcomingPayments = async (
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         },
         {
           model: SeriesModel,
@@ -216,6 +225,7 @@ export const getUpcomingPayments = async (
     // --- Виртуальные платежи: добавляем отображение будущих экземпляров серий без записи в БД ---
     // Строим индекс существующих дат по сериям, чтобы не дублировать реальными платежами
     const existingDatesBySeries = new Map<string, Set<string>>();
+    const currencyBySeries = new Map<string, string>();
     for (const p of payments as any[]) {
       const seriesId: string | null = (p as any).seriesId || null;
       if (!seriesId) continue;
@@ -224,6 +234,9 @@ export const getUpcomingPayments = async (
         existingDatesBySeries.set(seriesId, new Set<string>());
       }
       existingDatesBySeries.get(seriesId)!.add(dueStr);
+      if (p.currency) {
+        currencyBySeries.set(seriesId, normalizePaymentCurrency(p.currency));
+      }
     }
 
     // Границы окна отбора
@@ -284,6 +297,7 @@ export const getUpcomingPayments = async (
             remind: series.remind,
             seriesId: series.id,
             builtinIconName: series.builtinIconName,
+            currency: currencyBySeries.get(series.id) || "RUB",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isVirtual: true,
@@ -381,7 +395,7 @@ export const getFilteredPayments = async (
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         },
         {
           model: SeriesModel,
@@ -525,6 +539,7 @@ export const createPayment = async (
       // filePath, fileName, builtinIconName are handled by fileService/icon logic
       // Copy icon data to the first payment instance if it's a new series
       builtinIconName: paymentData.builtinIconName || null,
+      currency: normalizePaymentCurrency(paymentData.currency),
     });
 
     await attachPaymentTags(payment.id, tagIds);
@@ -589,7 +604,7 @@ export const getPaymentById = async (
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         }, // Include category
         {
           model: SeriesModel,
@@ -726,6 +741,7 @@ export const updatePayment = async (
       "builtinIconName",
       "completedAt",
       "remind",
+      "currency",
     ];
 
     allowedFields.forEach((field) => {
@@ -733,6 +749,9 @@ export const updatePayment = async (
         fieldsToUpdate[field] = (paymentData as any)[field];
       }
     });
+    if (fieldsToUpdate.currency !== undefined) {
+      fieldsToUpdate.currency = normalizePaymentCurrency(fieldsToUpdate.currency);
+    }
 
     // Специальная обработка для completedAt
     if (fieldsToUpdate.completedAt) {
@@ -1030,7 +1049,7 @@ export const getArchivedPayments = async (
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         },
         {
           model: SeriesModel,
@@ -1471,12 +1490,19 @@ export const generateNextRecurrentPaymentForSeries = async (
     const nextDueDateString = nextDueDate.toISOString().split("T")[0];
     const status = nextDueDate < today ? "overdue" : "upcoming";
 
+    const latestInSeries = await db.Payment.findOne({
+      where: { seriesId: series.id },
+      order: [["dueDate", "DESC"]],
+      attributes: ["currency"],
+    });
+
     const newPayment = await db.Payment.create({
       userId: series.userId,
       categoryId: series.categoryId,
       title: series.title,
       amount: series.amount,
       dueDate: nextDueDateString,
+      currency: normalizePaymentCurrency(latestInSeries?.currency),
       status,
       seriesId: series.id,
       builtinIconName: series.builtinIconName,
@@ -1538,8 +1564,8 @@ export const getDashboardStats = async (
   totalUpcomingAmount: string;
   totalCompletedAmount: string;
   totalIncomeAmount: string;
-  categoriesDistribution: { id?: string; name: string; amount: number }[];
-  incomeCategoriesDistribution: { id?: string; name: string; amount: number }[];
+  categoriesDistribution: { id?: string; name: string; nameEn?: string | null; amount: number }[];
+  incomeCategoriesDistribution: { id?: string; name: string; nameEn?: string | null; amount: number }[];
   dailyPaymentLoad: { date: string; amount: number }[];
   allPaymentsInMonth: unknown[];
 }> => {
@@ -1600,7 +1626,7 @@ export const getDashboardStats = async (
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         },
       ],
       attributes: [
@@ -1612,6 +1638,7 @@ export const getDashboardStats = async (
         "categoryId",
         "seriesId",
         "completedAt",
+        "currency",
       ],
     });
     const transactionCategoriesById = new Map<
@@ -1636,7 +1663,7 @@ export const getDashboardStats = async (
             [Op.in]: paymentCategoryIds,
           },
         },
-        attributes: ["id", "name", "builtinIconName"],
+        attributes: ["id", "name", "nameEn", "builtinIconName"],
       });
 
       for (const category of transactionCategories) {
@@ -1646,6 +1673,7 @@ export const getDashboardStats = async (
 
     // Виртуальные платежи для выбранного периода
     const existingDatesBySeries = new Map<string, Set<string>>();
+    const currencyBySeries = new Map<string, string>();
     for (const p of relevantPayments as any[]) {
       const seriesId: string | null = (p as any).seriesId || null;
       if (!seriesId) continue;
@@ -1654,6 +1682,9 @@ export const getDashboardStats = async (
         existingDatesBySeries.set(seriesId, new Set<string>());
       }
       existingDatesBySeries.get(seriesId)!.add(dueStr);
+      if (p.currency) {
+        currencyBySeries.set(seriesId, normalizePaymentCurrency(p.currency));
+      }
     }
 
     const seriesList = await getActiveRecurringSeriesWithCategory(userId);
@@ -1718,6 +1749,7 @@ export const getDashboardStats = async (
             remind: series.remind,
             seriesId: series.id,
             builtinIconName: series.builtinIconName,
+            currency: currencyBySeries.get(series.id) || "RUB",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             isVirtual: true,
@@ -1725,6 +1757,7 @@ export const getDashboardStats = async (
               ? {
                   id: series.transactionCategory.id,
                   name: series.transactionCategory.name,
+                  nameEn: series.transactionCategory.nameEn,
                   builtinIconName:
                     series.transactionCategory.builtinIconName,
                 }
@@ -1748,7 +1781,7 @@ export const getDashboardStats = async (
     let totalUpcomingAmount = 0;
     let totalCompletedAmount = 0;
     const categoriesStats: {
-      [key: string]: { id?: string; name: string; amount: number };
+      [key: string]: { id?: string; name: string; nameEn?: string | null; amount: number };
     } = {};
     const dailyStats: { [key: string]: { date: string; amount: number } } = {};
 
@@ -1779,10 +1812,12 @@ export const getDashboardStats = async (
           : null);
       const categoryId = resolvedCategory?.id || "no-category";
       const categoryName = resolvedCategory?.name || "Без категории";
+      const categoryNameEn = resolvedCategory?.nameEn || null;
       if (!categoriesStats[categoryId]) {
         categoriesStats[categoryId] = {
           id: categoryId !== "no-category" ? categoryId : undefined,
           name: categoryName,
+          nameEn: categoryNameEn,
           amount: 0,
         };
       }
@@ -1839,10 +1874,12 @@ export const getDashboardStats = async (
           : null);
       const categoryId = resolvedCategory?.id || "no-category";
       const categoryName = resolvedCategory?.name || "Без категории";
+      const categoryNameEn = resolvedCategory?.nameEn || null;
       if (!categoriesStats[categoryId]) {
         categoriesStats[categoryId] = {
           id: categoryId !== "no-category" ? categoryId : undefined,
           name: categoryName,
+          nameEn: categoryNameEn,
           amount: 0,
         };
       }
@@ -1888,7 +1925,7 @@ export const getDashboardStats = async (
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         },
       ],
     });
@@ -1911,7 +1948,7 @@ export const getDashboardStats = async (
             [Op.in]: incomeCategoryIds,
           },
         },
-        attributes: ["id", "name", "builtinIconName"],
+        attributes: ["id", "name", "nameEn", "builtinIconName"],
       });
 
       for (const category of transactionCategories) {
@@ -1926,7 +1963,7 @@ export const getDashboardStats = async (
 
     // Calculate income categories distribution
     const incomeCategoriesStats: {
-      [key: string]: { id?: string; name: string; amount: number };
+      [key: string]: { id?: string; name: string; nameEn?: string | null; amount: number };
     } = {};
 
     for (const income of incomes as any[]) {
@@ -1938,11 +1975,13 @@ export const getDashboardStats = async (
           : null);
       const categoryId = resolvedCategory?.id || "no-category";
       const categoryName = resolvedCategory?.name || "Без категории";
+      const categoryNameEn = resolvedCategory?.nameEn || null;
 
       if (!incomeCategoriesStats[categoryId]) {
         incomeCategoriesStats[categoryId] = {
           id: categoryId !== "no-category" ? categoryId : undefined,
           name: categoryName,
+          nameEn: categoryNameEn,
           amount: 0,
         };
       }

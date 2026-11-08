@@ -21,27 +21,54 @@ export const formatDateToLocal = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+const displayDateOptions: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+};
+
+const displayTimeOptions: Intl.DateTimeFormatOptions = {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+};
+
 /**
  * Форматирует дату для отображения в выбранной локали
  */
 export const formatDateForDisplay = (date: Date, locale = "ru-RU"): string =>
-  date.toLocaleDateString(locale, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  date.toLocaleDateString(locale, displayDateOptions);
 
 /**
  * Форматирует дату и время для отображения в выбранной локали
  */
 export const formatDateTimeForDisplay = (date: Date, locale = "ru-RU"): string => {
-  const time = date.toLocaleTimeString(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  const time = date.toLocaleTimeString(locale, displayTimeOptions);
   return `${formatDateForDisplay(date, locale)}, ${time}`;
 };
+
+export function createDateDisplayFormatter(
+  locale: string,
+  includeTime = false
+): (date: Date) => string {
+  const dateFormatter = new Intl.DateTimeFormat(locale, displayDateOptions);
+  const timeFormatter = includeTime
+    ? new Intl.DateTimeFormat(locale, displayTimeOptions)
+    : null;
+
+  return (date) => {
+    if (Number.isNaN(date.getTime())) {
+      return includeTime
+        ? formatDateTimeForDisplay(date, locale)
+        : formatDateForDisplay(date, locale);
+    }
+
+    const formattedDate = dateFormatter.format(date);
+    return timeFormatter
+      ? `${formattedDate}, ${timeFormatter.format(date)}`
+      : formattedDate;
+  };
+}
 
 /**
  * Форматирует дату и час (YYYY-MM-DD HH:00)

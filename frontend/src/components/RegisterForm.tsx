@@ -1,7 +1,6 @@
-// src/components/RegisterForm.tsx
 import { useLanguage } from "../context/LanguageContext";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +8,8 @@ import { TextInputField, EmailField, PasswordField } from "./Input";
 import Checkbox from "./Checkbox";
 import { Button } from "./Button";
 import useFormPersistence from "../hooks/useFormPersistence";
+import { getTranslatableErrorMessage } from "../utils/getErrorMessage";
+import { localizeHref } from "../i18n/localePath";
 
 const REGISTER_FORM_STORAGE_KEY = "register_form_data";
 
@@ -48,18 +49,24 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onRegister,
   onShowToast,
 }) => {
-  const { t } = useLanguage();
-  const navigate = useNavigate();
+  const { t, language } = useLanguage();
   const registerForm = useForm<RegisterFormInputs>({
     resolver: zodResolver(registerSchema),
     mode: "onChange",
     delayError: 1000,
+    defaultValues: { acceptTerms: false },
   });
 
   const { clearPersistedData } = useFormPersistence(
     registerForm,
     REGISTER_FORM_STORAGE_KEY
   );
+  const { register, clearErrors, formState: { errors, isSubmitting } } = registerForm;
+  const name = register("name");
+  const email = register("email");
+  const password = register("password");
+  const confirmation = register("confirmPassword");
+  const acceptTerms = registerForm.watch("acceptTerms");
 
   const handleRegisterSubmit: SubmitHandler<RegisterFormInputs> = async (
     data
@@ -69,17 +76,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       // Очищаем сохраненные данные формы после успешной регистрации
       clearPersistedData();
     } catch (err: unknown) {
-      let message = t("Ошибка регистрации");
-      if (
-        typeof err === "object" &&
-        err !== null &&
-        "message" in err &&
-        typeof (err as { message?: unknown }).message === "string"
-      ) {
-        message = (err as { message: string }).message;
-      }
+      const message = getTranslatableErrorMessage(err, "Ошибка регистрации");
 
-      if (message.includes("уже существует")) {
+      if (message === "Пользователь с таким Email уже существует.") {
         registerForm.setError("email", { type: "server", message });
       } else {
         onShowToast(message, "error");
@@ -88,108 +87,112 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <div className="flex flex-col flex-1 justify-center self-center min-w-90 w-full max-w-140">
-      <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
+    <>
+      <h1 id="auth-title" className="public-title">
         {t("Создать аккаунт")}
-      </h2>
+      </h1>
       <form
+        noValidate
+        aria-busy={isSubmitting}
         onSubmit={registerForm.handleSubmit(handleRegisterSubmit)}
-        className="space-y-6"
+        className="mt-6 space-y-4"
       >
         <TextInputField
           label={t("Имя")}
           inputId="register-name"
-          error={registerForm.formState.errors.name?.message}
+          error={errors.name?.message}
           required
-          placeholder={t("Ваше имя")}
-          disabled={registerForm.formState.isSubmitting}
-          className="text-base py-3"
-          {...registerForm.register("name")}
+          autoComplete="name"
+          disabled={isSubmitting}
+          {...name}
+          onChange={(event) => {
+            clearErrors("name");
+            void name.onChange(event);
+          }}
         />
         <EmailField
           inputId="register-email"
-          placeholder="your@email.com"
+          label={t("Электронная почта")}
+          placeholder="example@example.com"
           autoComplete="email"
-          {...registerForm.register("email")}
-          error={registerForm.formState.errors.email?.message}
-          disabled={registerForm.formState.isSubmitting}
-          className="text-base py-3"
+          {...email}
+          onChange={(event) => {
+            clearErrors("email");
+            void email.onChange(event);
+          }}
+          error={errors.email?.message}
+          disabled={isSubmitting}
           required
         />
         <PasswordField
           label={t("Пароль")}
           inputId="register-password"
-          placeholder="********"
           autoComplete="new-password"
-          {...registerForm.register("password")}
-          error={registerForm.formState.errors.password?.message}
-          disabled={registerForm.formState.isSubmitting}
-          className="text-base py-3"
+          hint={t("Не менее 8 символов: заглавная и строчная латинские буквы, цифра и спецсимвол.")}
+          {...password}
+          onChange={(event) => {
+            clearErrors("password");
+            void password.onChange(event);
+          }}
+          error={errors.password?.message}
+          disabled={isSubmitting}
           required
         />
         <PasswordField
           label={t("Подтвердите пароль")}
           inputId="register-confirm-password"
-          placeholder="********"
           autoComplete="new-password"
-          {...registerForm.register("confirmPassword")}
-          error={registerForm.formState.errors.confirmPassword?.message}
-          disabled={registerForm.formState.isSubmitting}
-          className="text-base py-3"
+          {...confirmation}
+          onChange={(event) => {
+            clearErrors("confirmPassword");
+            void confirmation.onChange(event);
+          }}
+          error={errors.confirmPassword?.message}
+          disabled={isSubmitting}
           required
         />
 
-        {/* Terms and Privacy Checkbox */}
-        <div className="flex items-center space-x-4 mt-4">
+        <div className="flex min-h-11 items-start gap-3 pt-2">
           <Checkbox
             id="accept-terms"
+            aria-labelledby="accept-terms-label"
+            checked={acceptTerms}
+            disabled={isSubmitting}
             {...registerForm.register("acceptTerms")}
           />
           <label
+            id="accept-terms-label"
             htmlFor="accept-terms"
-            className="text-sm text-gray-700 dark:text-gray-300"
+            className="cursor-pointer text-sm leading-relaxed text-gray-700 dark:text-gray-300"
           >
             {t("Я принимаю")}{" "}
-            <Button
-              variant="link"
-              size="small"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/terms");
-              }}
-            >
+            <Link to={localizeHref(language, "/terms")} state={{ fromRegister: true }} className="public-link underline underline-offset-2">
               {t("Условия использования")}
-            </Button>{" "}
+            </Link>{" "}
             {t("и")}{" "}
-            <Button
-              variant="link"
-              size="small"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/privacy");
-              }}
-            >
+            <Link to={localizeHref(language, "/privacy")} state={{ fromRegister: true }} className="public-link underline underline-offset-2">
               {t("Политику конфиденциальности")}
-            </Button>
+            </Link>
           </label>
         </div>
 
         <Button
-          animatedStroke
-          variant="primary"
           size="large"
-          className="w-full mt-4 md:w-auto md:min-w-[24em] md:mx-auto"
+          className="public-action w-full"
           type="submit"
-          disabled={
-            registerForm.formState.isSubmitting ||
-            !registerForm.watch("acceptTerms")
-          }
-          loading={registerForm.formState.isSubmitting}
+          disabled={isSubmitting || !acceptTerms}
+          loading={isSubmitting}
         >
           {t("Зарегистрироваться")}
         </Button>
       </form>
-    </div>
+      <p className="mt-4 border-t border-gray-200 pt-2 text-center text-sm text-gray-600 dark:border-white/10 dark:text-gray-300">
+        {t("Уже есть аккаунт?")}{" "}
+        <Link to="/login" className="public-link inline-flex min-h-11 items-center">
+          {t("Войти")}
+        </Link>
+      </p>
+    </>
   );
 };
 

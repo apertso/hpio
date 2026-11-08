@@ -18,7 +18,7 @@ export const getMerchantRules = async (): Promise<
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -41,7 +41,7 @@ export const findRuleByMerchant = async (
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         },
       ],
     });

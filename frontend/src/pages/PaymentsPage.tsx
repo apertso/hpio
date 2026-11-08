@@ -1,4 +1,5 @@
-import { parseCalendarDate } from "../utils/dateUtils";
+import { createDateDisplayFormatter, parseCalendarDate } from "../utils/dateUtils";
+import { localizedCategoryName } from "../utils/categoryLabel";
 // src/pages/PaymentsPage.tsx
 import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect, useRef, useMemo } from "react";
@@ -65,6 +66,8 @@ const initialFilterState: FilterState = {
 
 const PAYMENTS_STATE_STORAGE_KEY = "paymentsPageState";
 const NO_CATEGORY_FILTER_VALUE = "__NO_CATEGORY__";
+const DESKTOP_MEDIA_QUERY = "(min-width: 48rem)";
+const PAYMENT_BATCH_SIZE = 24;
 
 const isBooleanFilterValue = (
   value: unknown
@@ -224,23 +227,36 @@ const fetchArchivedPaymentsApi = async (
 };
 
 const PaymentsPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language, locale } = useLanguage();
   const { showToast } = useToast();
   const { setPageTitle, setHeaderRightAction } = usePageTitle();
   const metadata = getPageMetadata("payments");
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as PaymentTabType) || "active";
-  const storedFiltersRef = useRef<FilterState | null>(getStoredFilterState());
+  const [paymentWindow, setPaymentWindow] = useState({
+    tab: activeTab,
+    limit: PAYMENT_BATCH_SIZE,
+  });
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const [activeFilters, setActiveFilters] = useState<FilterState>(
-    storedFiltersRef.current || initialFilterState
+    () => getStoredFilterState() || initialFilterState
   );
-  const [draftFilters, setDraftFilters] = useState<FilterState>(
-    storedFiltersRef.current || initialFilterState
-  );
+  const [draftFilters, setDraftFilters] = useState(activeFilters);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(
+    () => window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+  );
   const { categories } = useCategories("expense");
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+    const updateViewport = (): void => setIsDesktopViewport(mediaQuery.matches);
+    mediaQuery.addEventListener("change", updateViewport);
+    updateViewport();
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   const debouncedSearch = useDebounce(activeFilters.search, 500);
 
@@ -367,6 +383,12 @@ const PaymentsPage: React.FC = () => {
   const [shouldCloseMobilePanel, setShouldCloseMobilePanel] = useState(false);
   const selectedMobilePaymentId = mobileActionsPayment?.id ?? null;
   const mobileListRef = useRef<HTMLDivElement | null>(null);
+
+  if (paymentWindow.tab !== activeTab) {
+    setPaymentWindow({ tab: activeTab, limit: PAYMENT_BATCH_SIZE });
+    setMobileActionsPayment(null);
+    setShouldCloseMobilePanel(false);
+  }
 
   useEffect(() => {
     if (rawActivePayments) {
@@ -522,6 +544,33 @@ const PaymentsPage: React.FC = () => {
       : activeTab === "active"
       ? errorActive
       : errorArchived;
+
+  const visiblePayments = displayedPayments.slice(0, paymentWindow.limit);
+  const canShowMore =
+    !isLoading && !error && visiblePayments.length < displayedPayments.length;
+  const showMorePayments = React.useCallback((): void => {
+    setPaymentWindow((current) =>
+      current === paymentWindow
+        ? { ...current, limit: current.limit + PAYMENT_BATCH_SIZE }
+        : current
+    );
+  }, [paymentWindow]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!canShowMore || !target || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) showMorePayments();
+      },
+      { root: target.closest("main"), rootMargin: "240px 0px" }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [canShowMore, showMorePayments]);
 
   const navigate = useNavigate();
 
@@ -852,11 +901,14 @@ const PaymentsPage: React.FC = () => {
     }
   };
 
-  const handleTabChange = (tab: PaymentTabType) => {
-    setSearchParams({ tab });
+  const handleTabChange = (tab: PaymentTabType): void => {
+    if (tab !== activeTab) setSearchParams({ tab });
   };
 
   const isArchiveOrTrash = activeTab === "archive" || activeTab === "trash";
+  const formatMobileDate = isDesktopViewport
+    ? undefined
+    : createDateDisplayFormatter(locale);
 
   const getEmptyMessage = () => {
     switch (activeTab) {
@@ -995,44 +1047,46 @@ const PaymentsPage: React.FC = () => {
 
         {!error && (
           <>
-            <div className="hidden md:block overflow-x-auto card-base">
-              {isArchiveOrTrash ? (
-                <ArchiveTable
-                  data={displayedPayments}
-                  isLoading={isLoading}
-                  onEdit={handleEditPayment}
-                  onRestore={handleRestorePayment}
-                  onPermanentDelete={handlePermanentDeletePayment}
-                  onDownloadFile={handleDownloadFile}
-                  emptyMessage={getEmptyMessage()}
-                  completedOrDeletedHeader={
-                    activeTab === "trash" ? t("Удален") : t("Выполнен")
-                  }
-                />
-              ) : (
-                <PaymentsTable
-                  data={displayedPayments}
-                  isLoading={isLoading}
-                  onEdit={handleEditPayment}
-                  onComplete={handleCompletePayment}
-                  onDelete={handleDeletePayment}
-                  onDownloadFile={handleDownloadFile}
-                  emptyMessage={getEmptyMessage()}
-                />
-              )}
-            </div>
-            {!isLoading && (
+            {isDesktopViewport && (
+              <div className="overflow-x-auto card-base">
+                {isArchiveOrTrash ? (
+                  <ArchiveTable
+                    data={visiblePayments}
+                    isLoading={isLoading}
+                    onEdit={handleEditPayment}
+                    onRestore={handleRestorePayment}
+                    onPermanentDelete={handlePermanentDeletePayment}
+                    onDownloadFile={handleDownloadFile}
+                    emptyMessage={getEmptyMessage()}
+                    completedOrDeletedHeader={
+                      activeTab === "trash" ? t("Удален") : t("Выполнен")
+                    }
+                  />
+                ) : (
+                  <PaymentsTable
+                    data={visiblePayments}
+                    isLoading={isLoading}
+                    onEdit={handleEditPayment}
+                    onComplete={handleCompletePayment}
+                    onDelete={handleDeletePayment}
+                    onDownloadFile={handleDownloadFile}
+                    emptyMessage={getEmptyMessage()}
+                  />
+                )}
+              </div>
+            )}
+            {!isDesktopViewport && !isLoading && (
               <div
                 ref={mobileListRef}
                 onClick={handleMobileListClick}
-                className="block md:hidden space-y-2"
+                className="space-y-2"
               >
-                {displayedPayments.length === 0 ? (
+                {visiblePayments.length === 0 ? (
                   <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                     {getEmptyMessage()}
                   </div>
                 ) : (
-                  displayedPayments.map((payment) => {
+                  visiblePayments.map((payment) => {
                     const isSelected = selectedMobilePaymentId === payment.id;
                     const cardStateClasses = [
                       "transition-all duration-200",
@@ -1049,10 +1103,20 @@ const PaymentsPage: React.FC = () => {
                         context={isArchiveOrTrash ? "archive" : "payments"}
                         onDownloadFile={handleDownloadFile}
                         className={cardStateClasses}
+                        formatDate={formatMobileDate}
                       />
                     );
                   })
                 )}
+              </div>
+            )}
+            {canShowMore && (
+              <div ref={loadMoreRef} className="mt-4 flex justify-center">
+                <Button
+                  variant="secondary"
+                  label={t("Показать больше")}
+                  onClick={showMorePayments}
+                />
               </div>
             )}
           </>
@@ -1125,8 +1189,10 @@ const PaymentsPage: React.FC = () => {
               options={[
                 { value: null, label: t("Все категории") },
                 { value: NO_CATEGORY_FILTER_VALUE, label: t("Без категории") },
-                ...(categories?.map((c) => ({ value: c.id, label: c.name })) ||
-                  []),
+                ...(categories?.map((c) => ({
+                  value: c.id,
+                  label: localizedCategoryName(c, language),
+                })) || []),
               ]}
               value={draftFilters.categoryId}
               onChange={(val) =>

@@ -30,7 +30,6 @@ export const pageMetadata: Record<string, PageConfig> = {
     ...publicConfig,
     description:
       "Следите за регулярными платежами, подписками и кредитами. Бесплатное приложение с уведомлениями и анализом расходов - начните вести финансы онлайн!",
-    canonical: "https://hpio.ru/",
     ogTitle: "Сервис для учёта расходов и напоминаний о платежах",
     ogDescription:
       "Не забывайте о важных платежах! Учет расходов, напоминания о подписках и кредитах, анализ финансов - всё в одном приложении.",
@@ -42,7 +41,6 @@ export const pageMetadata: Record<string, PageConfig> = {
     title: "Скачать приложение - Хочу Плачу",
     description:
       "Скачайте мобильное приложение Хочу Плачу для Android. Управляйте финансами на ходу с удобным мобильным интерфейсом.",
-    canonical: "https://hpio.ru/download",
     ogTitle: "Скачать мобильное приложение Хочу Плачу",
     ogDescription:
       "Управляйте финансами где угодно! Скачайте приложение для Android и получите доступ ко всем функциям на мобильном устройстве.",
@@ -66,7 +64,6 @@ export const pageMetadata: Record<string, PageConfig> = {
 
   terms: {
     ...publicConfig,
-    canonical: "https://hpio.ru/terms",
     ogTitle: "Пользовательское соглашение",
     ogDescription:
       "Условия использования сервиса Хочу Плачу для управления финансами и платежами.",
@@ -74,7 +71,6 @@ export const pageMetadata: Record<string, PageConfig> = {
 
   privacy: {
     ...publicConfig,
-    canonical: "https://hpio.ru/privacy",
     ogTitle: "Политика конфиденциальности",
     ogDescription:
       "Информация о том, как мы защищаем ваши данные и обеспечиваем конфиденциальность в Хочу Плачу.",
@@ -82,14 +78,12 @@ export const pageMetadata: Record<string, PageConfig> = {
 
   about: {
     ...publicConfig,
-    canonical: "https://hpio.ru/about",
     ogTitle: "О проекте",
     ogDescription:
       "История создания и цели сервиса для управления личными финансами и контроля расходов.",
   },
   blog: {
     ...publicConfig,
-    canonical: "https://hpio.ru/blog",
     ogTitle: "Блог Хочу Плачу",
     ogDescription:
       "Полезные материалы о личных финансах, управлении платежами и сравнении сервисов.",

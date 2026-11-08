@@ -3,18 +3,19 @@ import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
-import Spinner from "../components/Spinner";
+import { Button } from "../components/Button";
 import { PasswordField } from "../components/Input";
-import FormBlock from "../components/FormBlock";
+import AuthPanel from "../components/AuthPanel";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
+import { getTranslatableErrorMessage } from "../utils/getErrorMessage";
 
 const ResetPasswordPage: React.FC = () => {
   const { t } = useLanguage();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const metadata = getPageMetadata("reset-password");
 
@@ -23,67 +24,54 @@ const ResetPasswordPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
+    setSuccess(false);
 
     if (!token) {
-      setError(t("Токен для сброса пароля не найден."));
+      setError("Токен для сброса пароля не найден.");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError(t("Пароли не совпадают."));
+      setError("Пароли не совпадают.");
       return;
     }
 
     if (password.length < 8) {
-      setError(t("Пароль должен быть не менее 8 символов."));
+      setError("Пароль должен быть не менее 8 символов.");
       return;
     }
     if (!/[A-Z]/.test(password)) {
-      setError(t("Пароль должен содержать хотя бы одну заглавную букву."));
+      setError("Пароль должен содержать хотя бы одну заглавную букву.");
       return;
     }
     if (!/[a-z]/.test(password)) {
-      setError(t("Пароль должен содержать хотя бы одну строчную букву."));
+      setError("Пароль должен содержать хотя бы одну строчную букву.");
       return;
     }
     if (!/\d/.test(password)) {
-      setError(t("Пароль должен содержать хотя бы одну цифру."));
+      setError("Пароль должен содержать хотя бы одну цифру.");
       return;
     }
     if (!/[^A-Za-z0-9]/.test(password)) {
-      setError(t("Пароль должен содержать хотя бы один специальный символ."));
+      setError("Пароль должен содержать хотя бы один специальный символ.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await axiosInstance.post("/auth/reset-password", {
+      await axiosInstance.post("/auth/reset-password", {
         token,
         password,
       });
-      setSuccess(res.data.message || t("Пароль успешно изменен!"));
+      setSuccess(true);
       logger.info("Password has been reset successfully.");
       setTimeout(() => navigate("/login"), 3000); // Перенаправляем на страницу входа через 3 секунды
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const errObj = err as {
-          response?: { data?: { message?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          errObj.response?.data?.message ||
-          t("Не удалось сбросить пароль. Возможно, ваш токен истек или недействителен.");
-        setError(errorMessage);
-        logger.error("Password reset failed:", errorMessage);
-      } else {
-        const errorMessage = t("Произошла неизвестная ошибка при сбросе пароля.");
-        setError(errorMessage);
-        logger.error("Password reset failed:", String(err));
-      }
+      setError(getTranslatableErrorMessage(err, "Не удалось сбросить пароль. Возможно, ваш токен истек или недействителен."));
+      logger.error("Password reset failed:", err);
     } finally {
       setIsLoading(false);
     }
@@ -93,69 +81,59 @@ const ResetPasswordPage: React.FC = () => {
     <>
       <PageMeta {...metadata} />
 
-      <div className="flex justify-center items-center min-h-[calc(100vh-header-height-footer-height)] p-4">
-        <FormBlock className="w-full max-w-md bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
-            {t("Установить новый пароль")}
-          </h2>
-          {error && (
-            <div
-              className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
-              role="alert"
-            >
-              <span className="block sm:inline">{t(error)}</span>
-            </div>
-          )}
-          {success && (
-            <div
-              className="bg-green-100 dark:bg-green-900/20 border border-green-400 dark:border-green-500/30 text-green-700 dark:text-green-400 px-4 py-3 rounded relative mb-4"
-              role="alert"
-            >
-              <span className="block sm:inline">{success}</span>
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <PasswordField
-              label={t("Новый пароль")}
-              inputId="password"
-              placeholder="********"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={isLoading || !!success}
-              description={t("Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и спецсимвол.")}
-              autoComplete="new-password"
-            />
-            <PasswordField
-              label={t("Подтвердите новый пароль")}
-              inputId="confirm-password"
-              placeholder="********"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              disabled={isLoading || !!success}
-              autoComplete="new-password"
-            />
-            <div className="flex items-center justify-center pt-2">
-              <button
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-44"
-                type="submit"
-                disabled={isLoading || !!success}
-              >
-                {isLoading ? <Spinner size="sm" /> : t("Сменить пароль")}
-              </button>
-            </div>
-            <div className="text-center text-sm text-gray-700 dark:text-gray-200">
-              <Link
-                to="/login"
-                className="font-bold text-blue-500 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-600"
-              >
-                {t("Вернуться ко входу")}
-              </Link>
-            </div>
-          </form>
-        </FormBlock>
-      </div>
+      <AuthPanel>
+        <h1 id="auth-title" className="public-title">
+          {t("Установить новый пароль")}
+        </h1>
+        {error && (
+          <div
+            className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300"
+            role="alert"
+          >
+            <span className="block sm:inline">{t(error)}</span>
+          </div>
+        )}
+        {success && (
+          <div
+            className="mt-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950 dark:bg-indigo-400/10 dark:text-indigo-100"
+            role="status"
+          >
+            <span className="block sm:inline">{t("Пароль успешно изменен.")}</span>
+          </div>
+        )}
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4" aria-busy={isLoading}>
+          <PasswordField
+            label={t("Новый пароль")}
+            inputId="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={isLoading || success}
+            description={t("Не менее 8 символов: заглавная и строчная латинские буквы, цифра и спецсимвол.")}
+            autoComplete="new-password"
+          />
+          <PasswordField
+            label={t("Подтвердите новый пароль")}
+            inputId="confirm-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            disabled={isLoading || success}
+            autoComplete="new-password"
+          />
+          <Button
+            className="public-action w-full"
+            size="large"
+            type="submit"
+            loading={isLoading}
+            disabled={isLoading || success}
+            label={t("Сменить пароль")}
+          />
+        </form>
+        <Link to="/login" className="public-link mt-4 inline-flex min-h-11 items-center text-sm">
+          {t("Вернуться ко входу")}
+        </Link>
+      </AuthPanel>
     </>
   );
 };

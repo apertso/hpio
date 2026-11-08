@@ -1,9 +1,11 @@
 import { useLanguage } from "../context/LanguageContext";
 import React from "react";
+import { localizedCategoryName } from "../utils/categoryLabel";
 
 interface CategoryStat {
   id?: string;
   name: string;
+  nameEn?: string | null;
   amount: number;
 }
 
@@ -16,7 +18,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
   data,
   colors,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   if (!data || data.length === 0 || data.every((cat) => cat.amount === 0)) {
     return (
       <div className="text-center text-gray-700 dark:text-gray-300 py-10">
@@ -36,6 +38,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
           const percentage =
             totalAmount > 0 ? (category.amount / totalAmount) * 100 : 0;
           const color = colors[index % colors.length];
+          const label = localizedCategoryName(category, language);
 
           return (
             <div
@@ -45,14 +48,15 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
               {/* Category name - col-span-3 */}
               <span
                 className="md:col-span-3 truncate font-medium text-gray-700 dark:text-gray-200"
-                title={category.name}
+                title={label}
               >
-                {category.name}
+                {label}
               </span>
               {/* Progress bar - col-span-8 */}
               <div className="md:col-span-8 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 overflow-hidden">
                 <div
                   className="h-2.5 rounded-full"
+                  data-category-fill=""
                   style={{
                     width: `${percentage}%`,
                     background: `linear-gradient(to right, ${color}99, ${color})`,
@@ -71,6 +75,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
           const percentage =
             totalAmount > 0 ? (category.amount / totalAmount) * 100 : 0;
           const color = colors[index % colors.length];
+          const label = localizedCategoryName(category, language);
 
           return (
             <div
@@ -81,9 +86,9 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
               <div className="flex items-center justify-between gap-2">
                 <span
                   className="flex-1 truncate font-medium text-gray-700 dark:text-gray-200"
-                  title={category.name}
+                  title={label}
                 >
-                  {category.name}
+                  {label}
                 </span>
                 <span className="font-medium text-gray-500 dark:text-gray-400">
                   {percentage.toFixed(1)}%
@@ -93,6 +98,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
               <div className="bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 overflow-hidden">
                 <div
                   className="h-2.5 rounded-full"
+                  data-category-fill=""
                   style={{
                     width: `${percentage}%`,
                     background: `linear-gradient(to right, ${color}99, ${color})`,

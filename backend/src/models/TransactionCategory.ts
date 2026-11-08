@@ -3,6 +3,7 @@ import { DataTypes, Sequelize, Model, Optional, ModelStatic } from "sequelize";
 interface TransactionCategoryAttributes {
   id: string;
   name: string;
+  nameEn: string;
   type: "expense" | "income";
   builtinIconName?: string | null;
   createdAt: Date;
@@ -41,6 +42,10 @@ export default (
         type: dataTypes.STRING,
         allowNull: false,
       },
+      nameEn: {
+        type: dataTypes.STRING,
+        allowNull: false,
+      },
       type: {
         type: dataTypes.ENUM("expense", "income"),
         allowNull: false,
@@ -66,6 +71,11 @@ export default (
           unique: true,
           fields: ["name", "type"],
           name: "transactionCategoryUnique",
+        },
+        {
+          unique: true,
+          fields: ["nameEn", "type"],
+          name: "transactionCategoryNameEnUnique",
         },
         { fields: ["type"], name: "transactionCategories_type_idx" },
       ],

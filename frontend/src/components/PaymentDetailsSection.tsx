@@ -4,6 +4,8 @@ import { UseFormRegister, UseFormSetValue, FieldErrors } from "react-hook-form";
 import DatePicker from "./DatePicker";
 import { PaymentFormInputs } from "./PaymentForm"; // Assuming PaymentFormInputs is exported from PaymentForm
 import { TextInputField, NumberField } from "./Input";
+import Select from "./Select";
+import { CURRENCY_OPTIONS } from "../utils/currencies";
 
 interface PaymentDetailsSectionProps {
   register: UseFormRegister<PaymentFormInputs>;
@@ -12,6 +14,8 @@ interface PaymentDetailsSectionProps {
   watchDueDate: PaymentFormInputs["dueDate"];
   isSubmitting: boolean;
   showSeriesStartHint?: boolean;
+  currency: string;
+  onCurrencyChange: (value: string) => void;
 }
 
 const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
@@ -21,6 +25,8 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
   watchDueDate,
   isSubmitting,
   showSeriesStartHint,
+  currency,
+  onCurrencyChange,
 }) => {
   const { t } = useLanguage();
   return (
@@ -35,15 +41,30 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
         {...register("title")}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <NumberField
-          label={t("Сумма")}
-          inputId="amount"
-          step="0.01"
-          {...register("amount", { valueAsNumber: true })}
-          disabled={isSubmitting}
-          error={errors.amount?.message}
-          required
-        />
+        <div className="grid grid-cols-2 gap-3">
+          <NumberField
+            label={t("Сумма")}
+            inputId="amount"
+            step="0.01"
+            {...register("amount", { valueAsNumber: true })}
+            disabled={isSubmitting}
+            error={errors.amount?.message}
+            required
+          />
+          <Select
+            id="currency"
+            label={t("Валюта")}
+            options={CURRENCY_OPTIONS.map((option) => ({
+              value: option.value,
+              label: t(option.label),
+            }))}
+            value={currency}
+            onChange={(value) => onCurrencyChange(value || currency)}
+            disabled={isSubmitting}
+            error={errors.currency?.message}
+            required
+          />
+        </div>
         <div className="space-y-1">
           <DatePicker
             id="dueDate"

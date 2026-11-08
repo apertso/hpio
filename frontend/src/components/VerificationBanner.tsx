@@ -3,7 +3,7 @@ import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
-import getErrorMessage from "../utils/getErrorMessage";
+import { getTranslatableErrorMessage } from "../utils/getErrorMessage";
 import Spinner from "./Spinner";
 import { authApi } from "../api/axiosInstance";
 
@@ -17,17 +17,14 @@ const VerificationBanner: React.FC = () => {
     return null;
   }
 
-  const handleResend = async () => {
+  const handleResend = async (): Promise<void> => {
     setIsLoading(true);
     setMessage(null);
     try {
-      const response = await authApi.resendVerificationEmail();
-      setMessage(
-        response.message ||
-          t("Новая ссылка для подтверждения отправлена на ваш email.")
-      );
+      await authApi.resendVerificationEmail();
+      setMessage("Новая ссылка для подтверждения отправлена на ваш email.");
     } catch (error) {
-      setMessage(t("Ошибка: {1}", t(getErrorMessage(error))));
+      setMessage(getTranslatableErrorMessage(error, "Не удалось отправить ссылку для подтверждения."));
     } finally {
       setIsLoading(false);
     }

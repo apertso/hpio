@@ -4,11 +4,13 @@ import Table, { TableColumn } from "./Table";
 import PaymentIconDisplay from "./PaymentIconDisplay";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { BuiltinIcon } from "../utils/builtinIcons";
+import { localizedCategoryName } from "../utils/categoryLabel";
 
 // Define the Category interface for this component
 interface Category {
   id: string;
   name: string;
+  nameEn?: string | null;
   builtinIconName?: BuiltinIcon | null;
 }
 
@@ -25,7 +27,7 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
   const columns: TableColumn<Category>[] = [
@@ -48,7 +50,7 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
       header: t("Название"),
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate",
-      cell: (category) => <>{category.name}</>,
+      cell: (category) => <>{localizedCategoryName(category, language)}</>,
     },
   ];
 
@@ -67,7 +69,8 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
         },
         {
           label: t("Удалить"),
-          onClick: () => onDelete(category.id, category.name),
+          onClick: () =>
+            onDelete(category.id, localizedCategoryName(category, language)),
           icon: <TrashIcon className="h-4 w-4" />,
         },
       ]}

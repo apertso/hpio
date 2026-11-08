@@ -5,6 +5,7 @@ export interface PaymentData {
   id: string;
   title: string;
   amount: number; // number after conversion
+  currency?: string;
   dueDate: string; // YYYY-MM-DD
   status: "upcoming" | "overdue" | "completed" | "deleted";
   isVirtual?: boolean;
@@ -22,6 +23,7 @@ export interface PaymentData {
   transactionCategory?: {
     id: string;
     name: string;
+    nameEn?: string | null;
     builtinIconName?: BuiltinIcon | null;
   } | null;
   tags?: {

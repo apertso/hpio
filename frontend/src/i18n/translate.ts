@@ -9,9 +9,13 @@ export function isLanguage(value: unknown): value is Language {
   return value === "ru" || value === "en";
 }
 
+export function hasTranslation(message: string): boolean {
+  return Object.prototype.hasOwnProperty.call(messages, message);
+}
+
 export function translate(language: Language, message: string, ...values: unknown[]): string {
   const text =
-    language === "en" && Object.prototype.hasOwnProperty.call(messages, message)
+    language === "en" && hasTranslation(message)
       ? messages[message]
       : message;
   return values.length

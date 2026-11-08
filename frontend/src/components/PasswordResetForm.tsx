@@ -1,12 +1,11 @@
-// src/components/PasswordResetForm.tsx
 import { useLanguage } from "../context/LanguageContext";
-import React from "react";
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { EmailField } from "./Input";
 import { Button } from "./Button";
-import Spinner from "./Spinner";
 import useFormPersistence from "../hooks/useFormPersistence";
 
 const passwordResetSchema = z.object({
@@ -18,14 +17,13 @@ const PASSWORD_RESET_FORM_STORAGE_KEY = "password_reset_form_data";
 
 interface PasswordResetFormProps {
   onSubmit: (email: string) => Promise<void>;
-  onShowToast: (message: string, type: "success" | "error") => void;
 }
 
 const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
   onSubmit,
-  onShowToast,
 }) => {
   const { t } = useLanguage();
+  const [requested, setRequested] = useState(false);
   const form = useForm<PasswordResetFormInputs>({
     resolver: zodResolver(passwordResetSchema),
     mode: "onChange",
@@ -36,55 +34,62 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
     form,
     PASSWORD_RESET_FORM_STORAGE_KEY
   );
+  const { register, clearErrors, formState: { errors, isSubmitting } } = form;
+  const email = register("email");
 
   const handleSubmit: SubmitHandler<PasswordResetFormInputs> = async (data) => {
     try {
       await onSubmit(data.email);
       clearPersistedData();
-      onShowToast(t("Инструкции по сбросу пароля отправлены."), "success");
     } catch {
-      // Для безопасности показываем универсальное сообщение даже при ошибке
-      onShowToast(
-        t("Если пользователь с таким Email существует, инструкции по сбросу пароля будут отправлены на указанный адрес."),
-        "success"
-      );
+      // Не раскрываем, зарегистрирован ли адрес.
     }
+    setRequested(true);
   };
 
   return (
-    <div className="flex flex-col flex-1 justify-center self-center min-w-90 w-full max-w-140">
-      <h2 className="text-xl md:text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
+    <>
+      <h1 id="auth-title" className="public-title">
         {t("Сброс пароля")}
-      </h2>
-      <p className="text-center text-gray-700 dark:text-gray-200 mb-6 text-sm">
+      </h1>
+      <p className="mt-3 text-pretty text-base text-gray-700 dark:text-gray-300">
         {t("Введите ваш Email для получения инструкций по сбросу пароля.")}
       </p>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form noValidate aria-busy={isSubmitting} onSubmit={form.handleSubmit(handleSubmit)} className="mt-6 space-y-4">
         <EmailField
+          label={t("Электронная почта")}
           inputId="reset-email"
-          placeholder="your@email.com"
+          placeholder="example@example.com"
           autoComplete="email"
-          {...form.register("email")}
-          error={form.formState.errors.email?.message}
-          disabled={form.formState.isSubmitting}
-          className="text-base py-3"
+          {...email}
+          onChange={(event) => {
+            setRequested(false);
+            clearErrors("email");
+            void email.onChange(event);
+          }}
+          error={errors.email?.message}
+          disabled={isSubmitting}
           required
         />
         <Button
-          variant="primary"
           size="large"
           type="submit"
-          disabled={form.formState.isSubmitting}
-          className="w-full md:w-auto md:min-w-[24em] md:mx-auto"
-        >
-          {form.formState.isSubmitting ? (
-            <Spinner size="sm" />
-          ) : (
-            t("Отправить инструкции")
-          )}
-        </Button>
+          loading={isSubmitting}
+          className="public-action w-full"
+          label={t("Отправить инструкции")}
+        />
       </form>
-    </div>
+      <div role="status">
+        {requested && (
+          <p className="mt-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950 dark:bg-indigo-400/10 dark:text-indigo-100">
+            {t("Если для этого адреса есть аккаунт, вы получите письмо со ссылкой для сброса пароля. Проверьте также папку «Спам».")}
+          </p>
+        )}
+      </div>
+      <Link to="/login" className="public-link mt-4 inline-flex min-h-11 items-center text-sm">
+        {t("Вернуться ко входу")}
+      </Link>
+    </>
   );
 };
 

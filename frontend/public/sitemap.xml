@@ -1,28 +1,130 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
         <loc>https://hpio.ru/</loc>
-        <lastmod>2025-11-21</lastmod>
+        <lastmod>2026-11-09</lastmod>
         <changefreq>monthly</changefreq>
         <priority>1.0</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/en</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/download</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/download"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/download"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/download"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/en/download</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/download"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/download"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/download"/>
     </url>
     <url>
         <loc>https://hpio.ru/terms</loc>
-        <lastmod>2025-11-21</lastmod>
+        <lastmod>2026-11-09</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/terms"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/terms"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/terms"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/en/terms</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/terms"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/terms"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/terms"/>
     </url>
     <url>
         <loc>https://hpio.ru/privacy</loc>
-        <lastmod>2025-11-21</lastmod>
+        <lastmod>2026-11-09</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/privacy"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/privacy"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/privacy"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/en/privacy</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/privacy"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/privacy"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/privacy"/>
     </url>
     <url>
         <loc>https://hpio.ru/about</loc>
-        <lastmod>2025-11-21</lastmod>
+        <lastmod>2026-11-09</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/about"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/about"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/about"/>
     </url>
-
+    <url>
+        <loc>https://hpio.ru/en/about</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/about"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/about"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/about"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/blog</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/blog"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/blog"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/blog"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/en/blog</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/blog"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/blog"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/blog"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/blog/hpio-vs-zenmoney</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/blog/hpio-vs-zenmoney"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/blog/hpio-vs-zenmoney"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/blog/hpio-vs-zenmoney"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/en/blog/hpio-vs-zenmoney</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/blog/hpio-vs-zenmoney"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/blog/hpio-vs-zenmoney"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/blog/hpio-vs-zenmoney"/>
+    </url>
 </urlset>

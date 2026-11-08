@@ -1,57 +1,40 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import type { ReactElement } from "react";
+import LegalDocument, { type LegalSection } from "../components/LegalDocument";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
-import { isTauriMobile } from "../utils/platform";
-import { useLanguage } from "../context/LanguageContext";
 
-const PrivacyPage: React.FC = () => {
-  const { t } = useLanguage();
-  const metadata = getPageMetadata("privacy");
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <PageMeta {...metadata} />
-
-      <section
-        className={`w-full max-w-3xl mx-auto ${
-          isTauriMobile()
-            ? "px-8 pb-8"
-            : "py-8 px-4 sm:px-6 lg:px-8 mb-10 mt-6 md:mt-10 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg"
-        }`}
-      >
-        {isTauriMobile() && (
-          <div className="flex justify-start mt-4 mb-12">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex cursor-pointer items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium transition-colors"
-            >
-              <ArrowLeftIcon className="w-5 h-5 mr-2" />
-              {t("Назад")}
-            </button>
-          </div>
-        )}
-        <div lang="ru" className="prose dark:prose-invert max-w-none">
-          <h1 className="text-xl md:text-2xl font-bold mb-4">
-            Политика конфиденциальности
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-slate-400 mb-8">
-            Последнее обновление: 12.08.2025
-          </p>
-          <h2 className="text-xl font-bold my-6">1. Общие положения</h2>
+const sections: LegalSection[] = [
+  {
+    id: "general",
+    ru: {
+      title: "Общие положения",
+      body: (
+        <>
           <p>
             1.1. Настоящая Политика конфиденциальности (далее - «Политика»)
             описывает, как Администрация сервиса обрабатывает персональные
             данные Пользователей. 1.2. Политика разработана в соответствии с
             Федеральным законом РФ № 152-ФЗ «О персональных данных».
           </p>
-
-          <h2 className="text-xl font-bold my-6">
-            2. Какие данные мы собираем
-          </h2>
-          <ul className="list-disc list-inside ml-6">
+        </>
+      ),
+    },
+    en: {
+      title: "General provisions",
+      body: (
+        <>
+          <p>1.1. This Privacy Policy (the “Policy”) describes how the service operator (the “Operator”) processes Users’ personal data. 1.2. The Policy was drawn up in accordance with Russian Federal Law No. 152-FZ “On Personal Data.”</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "collected-data",
+    ru: {
+      title: "Какие данные мы собираем",
+      body: (
+        <>
+          <ul>
             <li>Имя и адрес электронной почты, указанные при регистрации;</li>
             <li>Пароль (хранится в зашифрованном виде);</li>
             <li>Загруженные Пользователем файлы и иные данные;</li>
@@ -60,18 +43,58 @@ const PrivacyPage: React.FC = () => {
               безопасности и улучшения работы сервиса).
             </li>
           </ul>
-
-          <h2 className="text-xl font-bold my-6">3. Цели обработки данных</h2>
-          <ul className="list-disc list-inside ml-6">
+        </>
+      ),
+    },
+    en: {
+      title: "Data we collect",
+      body: (
+        <>
+          <ul>
+            <li>The name and email address provided at registration;</li>
+            <li>The password (stored in encrypted form);</li>
+            <li>Files and other data uploaded by the User;</li>
+            <li>The IP address and information about the browser and device, for security and to improve the service.</li>
+          </ul>
+        </>
+      ),
+    },
+  },
+  {
+    id: "purposes",
+    ru: {
+      title: "Цели обработки данных",
+      body: (
+        <>
+          <ul>
             <li>Предоставление доступа к сервису и его функционалу;</li>
             <li>Техническая поддержка и обратная связь;</li>
             <li>Улучшение качества работы сервиса;</li>
             <li>Обеспечение безопасности аккаунтов Пользователей.</li>
           </ul>
-
-          <h2 className="text-xl font-bold my-6">
-            4. Хранение и защита данных
-          </h2>
+        </>
+      ),
+    },
+    en: {
+      title: "Why we process data",
+      body: (
+        <>
+          <ul>
+            <li>To provide access to the service and its features;</li>
+            <li>To provide technical support and handle feedback;</li>
+            <li>To improve the quality of the service;</li>
+            <li>To protect Users’ accounts.</li>
+          </ul>
+        </>
+      ),
+    },
+  },
+  {
+    id: "storage",
+    ru: {
+      title: "Хранение и защита данных",
+      body: (
+        <>
           <p>
             4.1. Все персональные данные хранятся на защищённых серверах, доступ
             к которым ограничен.
@@ -81,32 +104,100 @@ const PrivacyPage: React.FC = () => {
             алгоритмов хеширования.
           </p>
           <p>4.3. Передача данных осуществляется по защищённым протоколам.</p>
-
-          <h2 className="text-xl font-bold my-6">
-            5. Передача данных третьим лицам
-          </h2>
+        </>
+      ),
+    },
+    en: {
+      title: "Data storage and protection",
+      body: (
+        <>
+          <p>4.1. All personal data is stored on secure servers with restricted access.</p>
+          <p>4.2. Passwords are protected using strong hashing algorithms.</p>
+          <p>4.3. Data is transmitted over secure protocols.</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "third-parties",
+    ru: {
+      title: "Передача данных третьим лицам",
+      body: (
+        <>
           <p>
             5.1. Персональные данные не передаются третьим лицам, за исключением
             случаев, предусмотренных законодательством РФ.
           </p>
-
-          <h2 className="text-xl font-bold my-6">6. Права пользователя</h2>
+        </>
+      ),
+    },
+    en: {
+      title: "Sharing data with third parties",
+      body: (
+        <>
+          <p>5.1. Personal data is not shared with third parties except as provided for by Russian law.</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "rights",
+    ru: {
+      title: "Права пользователя",
+      body: (
+        <>
           <p>6.1. Пользователь имеет право:</p>
-          <ul className="list-disc list-inside ml-6">
+          <ul>
             <li>запрашивать копию своих персональных данных;</li>
             <li>требовать их исправления или удаления;</li>
             <li>удалять свой аккаунт через соответствующую функцию сервиса.</li>
           </ul>
-
-          <h2 className="text-xl font-bold my-6">7. Изменения политики</h2>
+        </>
+      ),
+    },
+    en: {
+      title: "User rights",
+      body: (
+        <>
+          <p>6.1. The User has the right to:</p>
+          <ul>
+            <li>request a copy of their personal data;</li>
+            <li>request that it be corrected or deleted;</li>
+            <li>delete their account using the feature provided by the service.</li>
+          </ul>
+        </>
+      ),
+    },
+  },
+  {
+    id: "changes",
+    ru: {
+      title: "Изменения политики",
+      body: (
+        <>
           <p>
             7.1. Администрация вправе изменять Политику, уведомляя об этом
             Пользователей через сервис или по электронной почте.
           </p>
-        </div>
-      </section>
+        </>
+      ),
+    },
+    en: {
+      title: "Changes to this policy",
+      body: (
+        <>
+          <p>7.1. The Operator may amend the Policy and notify Users through the service or by email.</p>
+        </>
+      ),
+    },
+  },
+];
+
+export default function PrivacyPage(): ReactElement {
+  return (
+    <>
+      <PageMeta {...getPageMetadata("privacy")} />
+      <LegalDocument title="Политика конфиденциальности" sections={sections} />
     </>
   );
-};
-
-export default PrivacyPage;
+}

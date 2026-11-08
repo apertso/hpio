@@ -5,6 +5,7 @@ import Select, { SelectOption } from "./Select";
 import { PaymentFormInputs } from "./PaymentForm";
 import { Tooltip } from "./Tooltip";
 import { InformationIcon } from "./InformationIcon";
+import { localizedCategoryName } from "../utils/categoryLabel";
 
 interface PaymentCategorySelectProps {
   errors: FieldErrors<PaymentFormInputs>;
@@ -27,12 +28,15 @@ function PaymentCategorySelect({
   isLocked,
   lockReason,
 }: PaymentCategorySelectProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { categories, isLoading, error } = useCategories(categoryType);
 
   const options: SelectOption[] = [
     { value: null, label: t("-- Без категории --") },
-    ...(categories?.map((cat) => ({ value: cat.id, label: cat.name })) || []),
+    ...(categories?.map((cat) => ({
+      value: cat.id,
+      label: localizedCategoryName(cat, language),
+    })) || []),
   ];
 
   if (isLoading) {

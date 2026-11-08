@@ -6,11 +6,12 @@ import { PaymentData } from "../types/paymentData";
 import { getPaymentColorClass } from "../utils/paymentColors";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
 import {
-  formatDateForDisplay,
-  formatDateTimeForDisplay,
+  createDateDisplayFormatter,
   parseCalendarDate,
 } from "../utils/dateUtils";
+import { formatMoney } from "../utils/currencies";
 import { PaperClipIcon } from "@heroicons/react/24/outline";
+import { localizedCategoryName } from "../utils/categoryLabel";
 import {
   PencilIcon,
   ArrowPathIcon,
@@ -38,7 +39,9 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
   emptyMessage = "Архив пуст",
   completedOrDeletedHeader = "Выполнен/Удален",
 }) => {
-  const { t, locale } = useLanguage();
+  const { t, locale, language } = useLanguage();
+  const formatDate = createDateDisplayFormatter(locale);
+  const formatDateTime = createDateDisplayFormatter(locale, true);
   const thBaseClassName =
     "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
   const columns: TableColumn<PaymentData>[] = [
@@ -86,9 +89,10 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
               <ArrowPathIcon className="h-4 w-4 mr-1 text-blue-500" />
               {t(formatRecurrenceRule(payment.series.recurrenceRule))}
               {payment.series.recurrenceEndDate &&
-                t(" до {1}", formatDateForDisplay(
-                  parseCalendarDate(payment.series.recurrenceEndDate), locale
-                ))}
+                t(
+                  " до {1}",
+                  formatDate(parseCalendarDate(payment.series.recurrenceEndDate))
+                )}
             </span>
           ) : (
             t("Разовый")
@@ -104,13 +108,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
         <>
-          {new Intl.NumberFormat(locale, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(payment.amount)}
-          <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
-            ₽
-          </span>
+          {formatMoney(payment.amount, locale, payment.currency)}
         </>
       ),
     },
@@ -121,7 +119,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       tdClassName:
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
-        <>{formatDateForDisplay(parseCalendarDate(payment.dueDate), locale)}</>
+        <>{formatDate(parseCalendarDate(payment.dueDate))}</>
       ),
     },
     {
@@ -132,9 +130,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
         "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
       cell: (payment) => (
         <>
-          {payment.completedAt
-            ? formatDateTimeForDisplay(new Date(payment.completedAt), locale)
-            : formatDateTimeForDisplay(new Date(payment.updatedAt), locale)}
+          {formatDateTime(new Date(payment.completedAt || payment.updatedAt))}
         </>
       ),
     },
@@ -146,7 +142,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       cell: (payment) => (
         <>
           {payment.transactionCategory
-            ? payment.transactionCategory.name
+            ? localizedCategoryName(payment.transactionCategory, language)
             : "-"}
         </>
       ),

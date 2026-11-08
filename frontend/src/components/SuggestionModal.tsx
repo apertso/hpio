@@ -11,6 +11,8 @@ import { suggestionApi } from "../api/suggestionApi";
 import { merchantRuleApi } from "../api/merchantRuleApi";
 import { normalizeNotificationTimestamp } from "../utils/dateUtils";
 import logger from "../utils/logger";
+import { formatMoney } from "../utils/currencies";
+import { localizedCategoryName } from "../utils/categoryLabel";
 
 interface ParsedSuggestion {
   id: string;
@@ -37,7 +39,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
   onComplete,
   onSuggestionProcessed,
 }) => {
-  const { t } = useLanguage();
+  const { t, locale, language } = useLanguage();
   // Компонент временно не используется, оставлен для возможного возврата.
   const { showToast } = useToast();
   const { categories } = useCategories();
@@ -63,15 +65,16 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
   if (!currentSuggestion) {
     return null;
   }
-  const selectedCategoryName = categories?.find(
-    (c) => c.id === selectedCategoryId
-  )?.name;
+  const selectedCategory = categories?.find((c) => c.id === selectedCategoryId);
+  const selectedCategoryName = selectedCategory
+    ? localizedCategoryName(selectedCategory, language)
+    : undefined;
 
   const categoryOptions = [
     { value: null, label: t("Без категории") },
     ...(categories?.map((cat) => ({
       value: cat.id,
-      label: cat.name,
+      label: localizedCategoryName(cat, language),
     })) || []),
   ];
 
@@ -205,7 +208,7 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
               {t("Сумма")}
             </span>
             <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-              {Math.abs(currentSuggestion?.amount || 0).toFixed(2)} ₽
+              {formatMoney(Math.abs(currentSuggestion?.amount || 0), locale)}
             </span>
           </div>
         </div>

@@ -1,5 +1,6 @@
 mod notifications;
 mod fcm;
+mod app_update;
 
 use std::panic;
 
@@ -132,7 +133,10 @@ pub fn run() {
         notifications::open_autostart_settings,
         fcm::get_fcm_token,
         fcm::get_pending_navigation,
-        fcm::clear_pending_navigation
+        fcm::clear_pending_navigation,
+        app_update::fetch_latest_github_release,
+        app_update::android_device_arch,
+        app_update::install_github_release_apk
       ])
       .setup(|app| {
         if cfg!(debug_assertions) {

@@ -1,4 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
+import { usePreferredCurrency } from "../context/AuthContext";
 import React, { useEffect, useState, useMemo } from "react";
 import {
   ArrowUpRightIcon,
@@ -16,6 +17,7 @@ interface FundsTrendWidgetProps {
 
 const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
   const { t, locale } = useLanguage();
+  const currency = usePreferredCurrency();
   const { resolvedTheme } = useTheme();
   const [history, setHistory] = useState<FundsHistoryPoint[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -91,6 +93,7 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
       {hasData ? (
         <CustomDailySpendingChart
           data={chartData}
+          currency={currency}
           labels={chartLabels}
           rawDates={chartDates}
           theme={resolvedTheme}

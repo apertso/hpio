@@ -16,6 +16,7 @@ import Overlay from './Overlay';
 import PaymentIconDisplay from './PaymentIconDisplay';
 import { formatRecurrenceRule } from '../utils/formatRecurrence';
 import { parseCalendarDate, formatDateForDisplay } from '../utils/dateUtils';
+import { formatMoney } from '../utils/currencies';
 
 interface PaymentCardProps {
   payment: {
@@ -27,7 +28,9 @@ interface PaymentCardProps {
     seriesId?: string | null;
     series?: { id: string; isActive: boolean; recurrenceRule?: string } | null;
     isVirtual?: boolean;
+    currency?: string;
   };
+  currency?: string;
   onEdit: () => void;
   onComplete: () => void;
   onDelete: () => void;
@@ -47,6 +50,7 @@ function isToday(dateString: string) {
 
 const PaymentCard: React.FC<PaymentCardProps> = ({
   payment,
+  currency,
   onEdit,
   onComplete,
   onDelete,
@@ -54,10 +58,11 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
 }) => {
   const { t, locale } = useLanguage();
   const formattedDueDate = formatDateForDisplay(parseCalendarDate(payment.dueDate), locale);
-  const formattedAmount = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(payment.amount);
+  const formattedAmount = formatMoney(
+    payment.amount,
+    locale,
+    currency || payment.currency,
+  );
 
   const isEffectivelyRecurring =
     payment.seriesId !== null && payment.series?.isActive !== false;
@@ -162,10 +167,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
       <div className="mt-2 pt-2">
         <div className="flex items-end justify-between">
           <p className="text-xl font-bold leading-none">
-            {formattedAmount}{' '}
-            <span className="text-sm font-normal text-gray-600 dark:text-gray-400">
-              ₽
-            </span>
+            {formattedAmount}
           </p>
           <div className="flex items-center gap-2">
             {payment.status === 'overdue' ? (
@@ -180,7 +182,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({
                   {t("Сегодня")}
                 </span>
               ) : (
-                <p className="text-xs text-gray-600 dark:text-gray-500">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   {formattedDueDate}
                 </p>
               )

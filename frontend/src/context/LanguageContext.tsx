@@ -10,13 +10,19 @@ import { isLanguage, locales, translate, type Language } from "../i18n/translate
 
 const storageKey = "language";
 
-function getInitialLanguage(): Language {
+export function getStoredLanguage(): Language | null {
   try {
     const saved = localStorage.getItem(storageKey);
-    if (isLanguage(saved)) return saved;
+    return isLanguage(saved) ? saved : null;
   } catch {
     // Хранилище может быть недоступно в браузере или WebView.
+    return null;
   }
+}
+
+export function getPreferredLanguage(): Language {
+  const saved = getStoredLanguage();
+  if (saved) return saved;
 
   for (const preference of navigator.languages ?? [navigator.language]) {
     const language = preference.split("-")[0].toLowerCase();
@@ -28,7 +34,7 @@ function getInitialLanguage(): Language {
 interface LanguageContextValue {
   language: Language;
   locale: (typeof locales)[Language];
-  setLanguage: (language: Language) => void;
+  setLanguage: (language: Language, persist?: boolean) => void;
   t: (message: string, ...values: unknown[]) => string;
 }
 
@@ -40,10 +46,11 @@ const LanguageContext = createContext<LanguageContextValue>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }): ReactNode {
-  const [language, setCurrentLanguage] = useState(getInitialLanguage);
+  const [language, setCurrentLanguage] = useState(getPreferredLanguage);
 
-  const setLanguage = useCallback((nextLanguage: Language): void => {
+  const setLanguage = useCallback((nextLanguage: Language, persist = true): void => {
     setCurrentLanguage(nextLanguage);
+    if (!persist) return;
     try {
       localStorage.setItem(storageKey, nextLanguage);
     } catch {

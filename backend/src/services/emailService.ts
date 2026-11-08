@@ -210,11 +210,12 @@ const createPaymentReminderEmailTemplate = (
   name: string,
   paymentTitle: string,
   paymentAmount: number,
-  dueDate: string
+  dueDate: string,
+  currency = "RUB"
 ): string => {
   const formattedAmount = new Intl.NumberFormat("ru-RU", {
     style: "currency",
-    currency: "RUB",
+    currency,
   }).format(paymentAmount);
   const formattedDueDate = new Date(dueDate).toLocaleDateString("ru-RU");
 
@@ -257,7 +258,8 @@ export const sendPaymentReminderEmail = async (
   recipientName: string,
   paymentTitle: string,
   paymentAmount: number,
-  dueDate: string
+  dueDate: string,
+  currency = "RUB"
 ) => {
   if (!config.smtp.host) {
     logger.warn(
@@ -274,7 +276,8 @@ export const sendPaymentReminderEmail = async (
       recipientName,
       paymentTitle,
       paymentAmount,
-      dueDate
+      dueDate,
+      currency
     ),
   };
 

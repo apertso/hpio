@@ -22,6 +22,7 @@ import { isIncomeAndCardsEnabled } from "./featureFlags";
 interface Category {
   id: string;
   name: string;
+  nameEn?: string | null;
   builtinIconName?: string | null;
 }
 

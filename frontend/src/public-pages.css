@@ -1,0 +1,202 @@
+html:has(.public-surface) {
+  font-size: 16px;
+}
+
+@layer components {
+  .public-surface {
+    @apply bg-gray-50 text-gray-900 dark:bg-[#181818] dark:text-gray-100;
+    font-family: Manrope, system-ui, sans-serif;
+  }
+
+  .public-container {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .public-section {
+    @apply py-8 sm:py-12;
+  }
+
+  .public-title {
+    @apply text-balance text-3xl font-semibold tracking-tight text-gray-950 sm:text-4xl dark:text-white;
+    overflow-wrap: anywhere;
+  }
+
+  .public-subtitle {
+    @apply text-balance text-xl font-semibold tracking-tight text-gray-950 sm:text-2xl dark:text-white;
+  }
+
+  .public-lead {
+    @apply text-pretty text-base leading-relaxed text-gray-700 sm:text-lg dark:text-gray-300;
+  }
+
+  .public-link {
+    @apply cursor-pointer rounded-sm font-semibold text-indigo-700 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-500 motion-reduce:transition-none dark:text-indigo-300;
+  }
+
+  .card-base.public-card {
+    @apply border-gray-200 dark:border-white/10 dark:bg-[#1f1f1f];
+  }
+
+  .public-action {
+    @apply min-h-11 font-semibold transition-colors hover:not-disabled:translate-y-0 active:scale-100 focus-visible:ring-offset-gray-50 motion-reduce:transition-none dark:focus-visible:ring-offset-[#181818];
+  }
+
+  .public-prose {
+    @apply max-w-none text-base text-gray-700 dark:text-gray-300;
+    overflow-wrap: anywhere;
+  }
+
+  .public-prose :where(h2, h3) {
+    @apply text-balance font-semibold tracking-tight text-gray-950 dark:text-white;
+  }
+
+  .public-prose :where(h2) {
+    @apply text-xl sm:text-2xl;
+  }
+
+  .public-prose :where(h3) {
+    @apply text-lg;
+  }
+}
+
+.public-surface .text-sm {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.public-surface .public-header-pill {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@media (width < 40rem) {
+  .public-header-pill {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .landing-top-bar .text-sm {
+    font-size: max(14px, var(--text-sm));
+    line-height: max(20px, 1.25rem);
+  }
+
+  .landing-top-bar-title {
+    font-size: max(16px, var(--text-base));
+  }
+}
+
+.public-action.primary-action:hover:not(:disabled) {
+  translate: none;
+  @apply border-indigo-300 bg-indigo-50 dark:border-indigo-400/50 dark:bg-indigo-400/10;
+}
+
+.public-action {
+  transition-property: color, background-color, border-color, opacity, box-shadow;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-action {
+    transition: none;
+  }
+}
+
+.public-action:active {
+  scale: none;
+}
+
+.public-surface :where(a, button, summary):focus-visible {
+  outline: 2px solid var(--color-indigo-500);
+  outline-offset: 3px;
+}
+
+.public-auth :where(input:not([type='checkbox'])) {
+  min-height: 44px;
+}
+
+.dark .public-auth input:not([type='checkbox']) {
+  @apply bg-[#181818] placeholder:text-gray-400;
+}
+
+.public-auth [aria-invalid='true'] {
+  border-color: var(--color-red-500);
+}
+
+.public-auth [id$='-error'] {
+  @apply text-red-700 dark:text-red-300;
+}
+
+.public-surface footer [aria-current='page'] {
+  @apply text-indigo-700 dark:text-indigo-300;
+}
+
+.public-surface footer {
+  @apply dark:border-white/10 dark:bg-[#1f1f1f];
+}
+
+/* Стили статьи применяются поверх разметки, сохранённой в блоге. */
+.comparison-content > div {
+  min-width: 0;
+  max-width: none;
+  padding: 0;
+}
+
+.comparison-content figure {
+  margin-block: 0 2rem;
+}
+
+.comparison-content figure img {
+  @apply shadow-sm dark:border-white/10;
+}
+
+.comparison-content :where(h2, h3) img {
+  flex: none;
+}
+
+.comparison-content > div > .overflow-x-auto,
+.comparison-content > div > .grid > div,
+.comparison-content > div > .text-center {
+  @apply border-gray-200 bg-white text-left shadow-sm dark:border-white/10 dark:bg-[#1f1f1f];
+}
+
+.comparison-content table {
+  @apply m-0 w-full table-fixed bg-transparent text-sm;
+}
+
+.comparison-content table thead {
+  @apply border-0 bg-indigo-50 normal-case tracking-normal text-indigo-950 dark:bg-indigo-400/12 dark:text-indigo-100;
+}
+
+.comparison-content table tbody tr {
+  @apply bg-transparent hover:bg-transparent;
+}
+
+.comparison-content table th,
+.comparison-content table td {
+  @apply px-2 py-3 align-top sm:px-4 dark:border-white/10;
+  overflow-wrap: anywhere;
+}
+
+.comparison-content table td:last-child {
+  @apply text-indigo-800 dark:text-indigo-200;
+}
+
+.comparison-content > div > .grid {
+  @apply gap-4;
+}
+
+.comparison-content > div > .grid > div,
+.comparison-content > div > .text-center {
+  @apply p-4 sm:p-6;
+}
+
+.comparison-content > div > .grid h3 {
+  @apply text-lg font-semibold text-gray-950 dark:text-white;
+}
+
+.comparison-content > div > .grid ul {
+  @apply ml-4 list-outside text-base;
+}
+
+.public-prose a {
+  @apply cursor-pointer text-indigo-700 transition-opacity hover:opacity-80 dark:text-indigo-300;
+}

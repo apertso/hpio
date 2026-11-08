@@ -1,7 +1,9 @@
 import { useLanguage } from "../context/LanguageContext";
 import { useEffect } from "react";
 import { CheckIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useDropdown } from "../hooks/useDropdown";
+import { pathForLanguage } from "../i18n/localePath";
 import type { Language } from "../i18n/translate";
 
 const languages: { value: Language; label: string }[] = [
@@ -10,8 +12,10 @@ const languages: { value: Language; label: string }[] = [
 ];
 
 /** Пилюля с меню — тот же вид, что у кнопки «Войти» на главной */
-export default function LanguageSelect(): React.JSX.Element {
+export default function LanguageSelect({ compact = false }: { compact?: boolean }): React.JSX.Element {
   const { language, setLanguage, t } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { isOpen, setIsOpen, containerRef } = useDropdown();
   const current = languages.find((item) => item.value === language) ?? languages[0];
 
@@ -28,15 +32,16 @@ export default function LanguageSelect(): React.JSX.Element {
     <div className="relative shrink-0" ref={containerRef}>
       <button
         type="button"
-        className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 dark:border-white/10 dark:bg-white/5 dark:text-white"
+        className={`inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 dark:border-white/10 dark:bg-white/5 dark:text-white ${compact ? "public-header-pill max-sm:px-3" : ""}`}
         aria-label={t("Язык интерфейса")}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span lang={current.value}>{current.label}</span>
+        <span lang={current.value} className={compact ? "hidden sm:inline" : undefined}>{current.label}</span>
+        {compact && <span className="uppercase sm:hidden">{current.value}</span>}
         <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`h-4 w-4 motion-safe:transition-transform ${isOpen ? "rotate-180" : ""} ${compact ? "max-[360px]:hidden" : ""}`}
           aria-hidden="true"
         />
       </button>
@@ -62,6 +67,10 @@ export default function LanguageSelect(): React.JSX.Element {
                 }`}
                 onClick={() => {
                   setLanguage(item.value);
+                  const nextPath = pathForLanguage(location.pathname, item.value);
+                  if (nextPath !== location.pathname) {
+                    navigate(`${nextPath}${location.search}${location.hash}`);
+                  }
                   setIsOpen(false);
                 }}
               >

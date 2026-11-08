@@ -1,4 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
+import { usePreferredCurrency } from "../context/AuthContext";
 import React, { useEffect, useState, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -50,6 +51,7 @@ const singlePaymentSchema = z.object({
     .optional(),
   tagIds: z.array(z.string().uuid()).optional(),
   completedAt: z.date().nullable().optional(),
+  currency: z.string().min(3, "Выберите валюту"),
 });
 
 // Schema for a series edit
@@ -82,6 +84,7 @@ const paymentFormSchema = z.object({
   remind: z.boolean().optional(),
   completedAt: z.date().nullable().optional(),
   method: z.enum(["cash", "card", "transfer", "other"]).optional(),
+  currency: z.string().min(3, "Выберите валюту"),
 });
 
 export type PaymentFormInputs = z.infer<typeof paymentFormSchema>;
@@ -108,6 +111,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   onRepeatChange,
 }) => {
   const { t } = useLanguage();
+  const preferredCurrency = usePreferredCurrency();
   const isEditMode = !!paymentId;
   const { showToast } = useToast();
   const isAutoCreated = Boolean(initialData?.autoCreated);
@@ -206,6 +210,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         method:
           (initialData as { method?: PaymentFormInputs["method"] }).method ||
           "cash",
+        currency: initialData.currency || preferredCurrency,
       };
       reset(dataToSet);
 
@@ -232,13 +237,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         recurrenceRule: null,
         remind: true,
         method: "cash",
+        currency: preferredCurrency,
       });
       setManualIconName(null);
       setAttachedFile(null);
       setPaymentStatus(null);
       setShouldRepeat(false);
     }
-  }, [initialData, editScope, isEditMode, reset]);
+  }, [initialData, editScope, isEditMode, preferredCurrency, reset]);
 
   const handleIconChange = useCallback((iconName: BuiltinIcon | null) => {
     setManualIconName(iconName);
@@ -280,6 +286,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               ? data.completedAt.toISOString()
               : null,
             method: data.method || "cash",
+            currency: data.currency,
           };
 
           if (shouldSendTags) {
@@ -322,6 +329,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             cutOffPaymentId: paymentId,
             startDate: formatDateToLocal(data.dueDate),
             remind: data.remind ?? false,
+            currency: data.currency,
           };
           await seriesApi.updateSeries(seriesId, payload);
           logger.info(`Recurring series updated (ID: ${seriesId})`);
@@ -339,6 +347,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           builtinIconName: builtinIconForPayload,
           remind: data.remind || false,
           method: data.method || "cash",
+          currency: preferredCurrency,
         };
 
         if (shouldSendTags) {
@@ -448,6 +457,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   );
 
   const watchDueDate = watch("dueDate");
+  const watchCurrency = watch("currency");
   const watchCategoryId = watch("categoryId");
   const watchTagIds = watch("tagIds");
   const currentRule = watch("recurrenceRule");
@@ -533,6 +543,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               watchDueDate={watchDueDate}
               isSubmitting={isSubmitting}
               showSeriesStartHint={editScope === "series"}
+              currency={watchCurrency || preferredCurrency}
+              onCurrencyChange={(value) =>
+                setValue("currency", value, { shouldValidate: true })
+              }
             />
 
             <div className="flex flex-col md:flex-row gap-6">

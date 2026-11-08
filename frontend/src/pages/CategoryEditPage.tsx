@@ -23,6 +23,10 @@ const categoryFormSchema = z.object({
     .string()
     .min(1, "Название обязательно")
     .max(255, "Название слишком длинное"),
+  nameEn: z
+    .string()
+    .min(1, "Английское название обязательно")
+    .max(255, "Название слишком длинное"),
 });
 
 type CategoryFormInputs = z.infer<typeof categoryFormSchema>;
@@ -47,7 +51,7 @@ const CategoryEditPage: React.FC = () => {
     setValue,
   } = useForm<CategoryFormInputs>({
     resolver: zodResolver(categoryFormSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", nameEn: "" },
   });
 
   useEffect(() => {
@@ -57,6 +61,7 @@ const CategoryEditPage: React.FC = () => {
         .get(`/categories/${id}`)
         .then((res) => {
           setValue("name", res.data.name);
+          setValue("nameEn", res.data.nameEn || "");
           setSelectedIcon(res.data.builtinIconName || null);
         })
         .catch((error) => {
@@ -67,7 +72,7 @@ const CategoryEditPage: React.FC = () => {
           setIsLoading(false);
         });
     } else {
-      reset({ name: "" });
+      reset({ name: "", nameEn: "" });
     }
   }, [id, isEditMode, setValue, reset]);
 
@@ -138,7 +143,7 @@ const CategoryEditPage: React.FC = () => {
                   )}
                   <div className="mb-6">
                     <TextInputField
-                      label={t("Название категории")}
+                      label={t("Название на русском")}
                       inputId="category-name"
                       error={errors.name?.message}
                       required
@@ -146,6 +151,18 @@ const CategoryEditPage: React.FC = () => {
                       placeholder={t("Например, Продукты")}
                       disabled={combinedIsLoading}
                       {...register("name")}
+                    />
+                  </div>
+                  <div className="mb-6">
+                    <TextInputField
+                      label={t("Название на английском")}
+                      inputId="category-name-en"
+                      error={errors.nameEn?.message}
+                      required
+                      type="text"
+                      placeholder={t("Например, Groceries")}
+                      disabled={combinedIsLoading}
+                      {...register("nameEn")}
                     />
                   </div>
                   <div className="mb-6">

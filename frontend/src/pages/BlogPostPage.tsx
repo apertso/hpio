@@ -1,16 +1,20 @@
 import { useLanguage } from "../context/LanguageContext";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { blogApi, BlogPost } from "../api/blogApi";
+import { comparisonSlug, localizeBlogPost } from "../i18n/blog/localizeBlogPost";
+import { localizeHref } from "../i18n/localePath";
+import { locales } from "../i18n/translate";
 import { formatDateForDisplay } from "../utils/dateUtils";
 
 const BlogPostPage: React.FC = () => {
-  const { t, locale } = useLanguage();
+  const { t, locale, language } = useLanguage();
   const { slug } = useParams<{ slug: string }>();
   const baseMetadata = getPageMetadata("blogPost");
-  const [post, setPost] = useState<BlogPost | null>(null);
+  const [sourcePost, setPost] = useState<BlogPost | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +25,7 @@ const BlogPostPage: React.FC = () => {
       return;
     }
 
-    const load = async () => {
+    const load = async (): Promise<void> => {
       try {
         const data = await blogApi.getBlogPost(slug);
         setPost(data);
@@ -35,58 +39,62 @@ const BlogPostPage: React.FC = () => {
     void load();
   }, [slug]);
 
-  const meta = useMemo(() => {
-    if (!post) {
-      return baseMetadata;
-    }
-
-    return {
+  const post = sourcePost && localizeBlogPost(sourcePost, language);
+  const meta = post
+    ? {
       ...baseMetadata,
-      title: post.title,
       description: post.excerpt || baseMetadata.description,
       ogTitle: post.title,
       ogDescription: post.excerpt || baseMetadata.ogDescription,
       ogType: "article" as const,
-    };
-  }, [baseMetadata, post]);
+      locale: locales[post.language].replace("-", "_"),
+    }
+    : baseMetadata;
 
   return (
     <>
       <PageMeta {...meta} />
-      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="public-container public-section max-w-3xl">
         <Link
-          to="/blog"
-          className="inline-flex items-center gap-2 text-blue-600 hover:opacity-80 transition-opacity cursor-pointer mb-6"
+          to={localizeHref(language, "/blog")}
+          className="public-link mb-4 inline-flex min-h-11 items-center gap-2 text-sm"
         >
-          <span>←</span>
+          <ArrowLeftIcon className="size-4 shrink-0" aria-hidden="true" />
           <span>{t("Назад к блогу")}</span>
         </Link>
 
         {isLoading && (
-          <div className="text-gray-600 dark:text-gray-300">{t("Загрузка...")}</div>
-        )}
-
-        {!isLoading && error && (
-          <div className="text-red-500 text-sm">{t(error)}</div>
-        )}
-
-        {!isLoading && !error && !post && (
-          <div className="text-gray-600 dark:text-gray-300">
-            {t("Статья не найдена.")}
+          <div role="status" className="space-y-4">
+            <span className="sr-only">{t("Загрузка...")}</span>
+            <div aria-hidden="true" className="h-8 w-3/4 rounded bg-gray-200 dark:bg-white/10" />
+            <div aria-hidden="true" className="h-4 w-24 rounded bg-gray-200 dark:bg-white/10" />
+            <div aria-hidden="true" className="aspect-video rounded-2xl bg-gray-200 dark:bg-white/10" />
           </div>
         )}
 
+        {!isLoading && error && (
+          <p role="alert" className="card-base public-card p-6 text-red-800 dark:text-red-300">{t(error)}</p>
+        )}
+
+        {!isLoading && !error && !post && (
+          <p className="card-base public-card p-6 text-gray-700 dark:text-gray-300">
+            {t("Статья не найдена.")}
+          </p>
+        )}
+
         {!isLoading && !error && post && (
-          <article lang="ru" className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-              {post.title}
-            </h1>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              {formatDateForDisplay(new Date(post.createdAt), locale)}
-            </div>
+          <article>
+            <header className="mb-6 border-b border-gray-200 pb-6 dark:border-white/10">
+              <h1 lang={post.language} className="public-title max-w-2xl">{post.title}</h1>
+              {post.excerpt && <p lang={post.language} className="public-lead mt-3 max-w-prose">{post.excerpt}</p>}
+              <time dateTime={post.createdAt} className="mt-4 block text-sm text-gray-600 dark:text-gray-300">
+                {formatDateForDisplay(new Date(post.createdAt), locale)}
+              </time>
+            </header>
             <div
-              className="prose dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: post.content || "" }}
+              lang={post.language}
+              className={`prose prose-gray public-prose max-w-none dark:prose-invert ${post.slug === comparisonSlug ? "comparison-content" : ""}`}
+              dangerouslySetInnerHTML={{ __html: post.content?.replace(/<(\/?)h1(?=[\s>])/gi, "<$1h2") || "" }}
             />
           </article>
         )}

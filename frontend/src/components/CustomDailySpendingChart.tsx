@@ -1,7 +1,10 @@
 // frontend/src/components/CustomDailySpendingChart.tsx
 import { useLanguage } from "../context/LanguageContext";
+import { useRevealOnView } from "../hooks/useRevealOnView";
+import { DEFAULT_CURRENCY, formatMoney } from "../utils/currencies";
 import React, {
   useMemo,
+  useId,
   useState,
   useRef,
   useCallback,
@@ -15,6 +18,8 @@ interface Point {
 
 interface CustomChartProps {
   data: number[];
+  animateOnView?: boolean;
+  currency?: string;
   labels: string[]; // Formatted labels for tooltip
   theme: "light" | "dark";
   rawDates: string[];
@@ -49,6 +54,8 @@ const createSplinePath = (points: Point[]): string => {
 
 const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
   data,
+  animateOnView = false,
+  currency,
   labels,
   theme,
   rawDates,
@@ -57,6 +64,23 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
   endDate,
 }) => {
   const { t, locale } = useLanguage();
+  const resolvedCurrency = currency || DEFAULT_CURRENCY;
+  const moneyFormatter = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: resolvedCurrency,
+    currencyDisplay: "narrowSymbol",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const axisFormatter = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: resolvedCurrency,
+    currencyDisplay: "narrowSymbol",
+    notation: "compact",
+    maximumFractionDigits: 0,
+  });
+  const gradientId = useId();
+  const revealId = `${gradientId}-reveal`;
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
@@ -67,25 +91,38 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const yAxisLabelsRef = useRef<SVGGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [yAxisLabelWidth, setYAxisLabelWidth] = useState(0);
+
+  useRevealOnView(svgRef, animateOnView);
 
   useEffect(() => {
-    if (containerRef.current) {
-      const resizeObserver = new ResizeObserver((entries) => {
-        if (entries[0]) {
-          const { width, height } = entries[0].contentRect;
+    const container = containerRef.current;
+    const yAxisLabels = yAxisLabelsRef.current;
+    if (!container || !yAxisLabels) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const { target, contentRect: { width, height } } of entries) {
+        if (target === yAxisLabels) {
+          setYAxisLabelWidth(width);
+        } else {
           setDimensions({ width, height });
         }
-      });
-      resizeObserver.observe(containerRef.current);
-      return () => resizeObserver.disconnect();
-    }
+      }
+    });
+    resizeObserver.observe(container);
+    resizeObserver.observe(yAxisLabels);
+    return () => resizeObserver.disconnect();
   }, []);
 
   const { width, height } = dimensions;
   // Константы для геометрии графика
-  const yAxisAreaWidth = 35; // Пространство для меток оси Y
+  const yAxisLabelEnd = Math.max(35, Math.ceil(yAxisLabelWidth) + 2);
+  const yAxisAreaWidth = yAxisLabelEnd + 8;
   const padding = { top: 20, right: 20, bottom: 30, left: 10 }; // Внутренние отступы самого графика
+  const plotClip = animateOnView ? `url(#${revealId})` : undefined;
+  const clipStart = yAxisAreaWidth + padding.left - 4;
 
   const { linePath, areaPath, points, yAxisTicks, xAxisTicks } = useMemo(() => {
     if (width === 0 || height === 0 || !data || data.length === 0) {
@@ -389,7 +426,20 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         aria-label={t("График платежной нагрузки {1}", t(rawDates.some((d) => d.includes(" ")) ? "по часам" : "по дням"))}
       >
         <defs>
-          <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+          {animateOnView && (
+            <clipPath id={revealId}>
+              <rect
+                className="landing-chart-clip"
+                x={clipStart}
+                width={Math.max(0, width - clipStart)}
+                height={height}
+                onAnimationEnd={() => {
+                  if (svgRef.current) delete svgRef.current.dataset.revealState;
+                }}
+              />
+            </clipPath>
+          )}
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop
               offset="0%"
               stopColor={gradientStartColor}
@@ -399,31 +449,31 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
           </linearGradient>
         </defs>
 
-        {/* Y-Axis Grid Lines and Labels */}
+        {/* Линии сетки по оси Y */}
         {yAxisTicks.map((tick, i) => (
-          <g
+          <line
             key={`y-${i}`}
-            className="text-xs font-medium"
-            fill={theme === "dark" ? "#6b7280" : "#94a3b8"}
-          >
-            <line
-              x1={yAxisAreaWidth + padding.left}
-              x2={width - padding.right}
-              y1={tick.y}
-              y2={tick.y}
-              stroke={theme === "dark" ? "#374151" : "#f1f5f9"} // Darker/Lighter lines
-              strokeWidth="1"
-              strokeDasharray="4 4"
-            />
-            <text x={yAxisAreaWidth - 8} y={tick.y + 4} textAnchor="end">
-              {tick.value === 0
-                ? "0"
-                : tick.value >= 1000
-                ? `${Math.round(tick.value / 1000)}k`
-                : Math.round(tick.value)}
-            </text>
-          </g>
+            x1={yAxisAreaWidth + padding.left}
+            x2={width - padding.right}
+            y1={tick.y}
+            y2={tick.y}
+            stroke={theme === "dark" ? "#374151" : "#f1f5f9"}
+            strokeWidth="1"
+            strokeDasharray="4 4"
+          />
         ))}
+        <g
+          ref={yAxisLabelsRef}
+          className="text-xs font-medium"
+          fill={theme === "dark" ? "#6b7280" : "#94a3b8"}
+          textAnchor="end"
+        >
+          {yAxisTicks.map((tick, i) => (
+            <text key={i} x={yAxisLabelEnd} y={tick.y + 4}>
+              {axisFormatter.format(tick.value)}
+            </text>
+          ))}
+        </g>
 
         {/* X-Axis Labels */}
         {xAxisTicks.map((tick, i) => (
@@ -442,9 +492,10 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
           </g>
         ))}
 
-        <path d={areaPath} fill="url(#chartGradient)" />
+        <path d={areaPath} fill={`url(#${gradientId})`} clipPath={plotClip} />
         <path
           d={linePath}
+          clipPath={plotClip}
           fill="none"
           stroke={lineColor}
           strokeWidth="2"
@@ -457,7 +508,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
         {points.map((pt, idx) => {
           const isHovered = hoveredIndex === idx;
           return (
-            <g key={`pt-${idx}`}>
+            <g key={`pt-${idx}`} clipPath={plotClip}>
               {/* Visible point for hover feedback */}
               <circle
                 cx={pt.x}
@@ -482,10 +533,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
                 fill="transparent"
                 stroke="transparent"
                 tabIndex={-1}
-                aria-label={`${labels[idx]}: ${new Intl.NumberFormat(locale, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }).format(data[idx])} ₽`}
+                aria-label={`${labels[idx]}: ${moneyFormatter.format(data[idx])}`}
                 onFocus={(e) => {
                   // Убираем фокусное кольцо по табу
                   (e.target as SVGCircleElement).blur();
@@ -538,13 +586,7 @@ const CustomDailySpendingChart: React.FC<CustomChartProps> = ({
           }}
         >
           {labels[tooltip.index]}:{" "}
-          {new Intl.NumberFormat(locale, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(data[tooltip.index])}
-          <span className="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
-            ₽
-          </span>
+          {formatMoney(data[tooltip.index], locale, resolvedCurrency)}
         </div>
       )}
     </div>

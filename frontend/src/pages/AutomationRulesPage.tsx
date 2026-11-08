@@ -22,6 +22,7 @@ import { Button } from "../components/Button";
 import { TextInputField } from "../components/Input";
 import getErrorMessage from "../utils/getErrorMessage";
 import ConfirmModal from "../components/ConfirmModal";
+import { localizedCategoryName } from "../utils/categoryLabel";
 
 type TreeNode =
   | { type: "rule"; rule: MerchantCategoryRule }
@@ -35,7 +36,7 @@ interface TreeGroup {
 }
 
 const AutomationRulesPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { setPageTitle } = usePageTitle();
   const { showToast } = useToast();
   const metadata = getPageMetadata("automation-rules");
@@ -105,19 +106,19 @@ const AutomationRulesPage: React.FC = () => {
       { value: null, label: t("Все категории") },
       ...(categories?.map((category) => ({
         value: category.id,
-        label: category.name,
+        label: localizedCategoryName(category, language),
       })) || []),
     ];
-  }, [categories, t]);
+  }, [categories, t, language]);
 
   const editOptions = useMemo(() => {
     return (
       categories?.map((category) => ({
         value: category.id,
-        label: category.name,
+        label: localizedCategoryName(category, language),
       })) || []
     );
-  }, [categories]);
+  }, [categories, language]);
 
   const searchValue = search.trim().toLowerCase();
 
@@ -186,7 +187,7 @@ const AutomationRulesPage: React.FC = () => {
       if (!hasActiveFilters || nodes.length > 0) {
         groups.push({
           id: category.id,
-          label: category.name,
+          label: localizedCategoryName(category, language),
           nodes,
           isUncategorized: false,
         });
@@ -222,7 +223,9 @@ const AutomationRulesPage: React.FC = () => {
     filteredUnassigned,
     groupedRules,
     hasActiveFilters,
-    uncategorizedGroupId, t,
+    uncategorizedGroupId,
+    t,
+    language,
   ]);
 
   useEffect(() => {

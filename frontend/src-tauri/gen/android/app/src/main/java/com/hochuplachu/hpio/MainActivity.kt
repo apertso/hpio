@@ -79,6 +79,7 @@ class MainActivity : TauriActivity() {
   override fun onResume() {
     super.onResume()
     logAppLifecycle("APP_RESUME")
+    AppUpdateHelper.resumePendingInstall(this)
   }
 
   override fun onPause() {

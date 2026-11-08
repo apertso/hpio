@@ -32,7 +32,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           unstyled
         />
         <span
-          className={`w-7 h-7 md:w-5 md:h-5 border-2 rounded flex items-center justify-center transition-all flex-shrink-0 focus-within:ring-2 focus-within:ring-blue-400 dark:focus-within:ring-blue-600 ${
+          className={`w-7 h-7 md:w-5 md:h-5 border-2 rounded flex items-center justify-center transition-all flex-shrink-0 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500 ${
             checked
               ? "border-blue-600 dark:border-blue-500 bg-blue-600 dark:bg-blue-500"
               : "border-gray-400 dark:border-gray-500"

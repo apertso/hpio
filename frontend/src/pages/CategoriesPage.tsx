@@ -24,11 +24,13 @@ import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import MobilePanel from "../components/MobilePanel";
 import { usePageTitle } from "../context/PageTitleContext";
+import { localizedCategoryName } from "../utils/categoryLabel";
 
 // Интерфейс для данных категории
 interface Category {
   id: string;
   name: string;
+  nameEn?: string | null;
   type?: "expense" | "income";
   builtinIconName?: BuiltinIcon | null;
 }
@@ -54,7 +56,7 @@ const MobileActionsOverlay: React.FC<{
   onEdit: (id: string) => void;
   onDelete: (id: string, name: string) => void;
 }> = ({ category, shouldClose, onClose, onEdit, onDelete }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   if (!category) return null;
 
   const actions = [
@@ -66,7 +68,8 @@ const MobileActionsOverlay: React.FC<{
     {
       label: t("Удалить"),
       icon: TrashSolidIcon,
-      handler: () => onDelete(category.id, category.name),
+      handler: () =>
+        onDelete(category.id, localizedCategoryName(category, language)),
     },
   ];
 
@@ -99,7 +102,9 @@ const MobileActionsOverlay: React.FC<{
 const CategoryListItem: React.FC<{
   category: Category;
   className?: string;
-}> = ({ category, className }) => (
+}> = ({ category, className }) => {
+  const { language } = useLanguage();
+  return (
   <button
     type="button"
     data-mobile-list-item-id={category.id}
@@ -113,11 +118,12 @@ const CategoryListItem: React.FC<{
         sizeClass="h-8 w-8"
       />
       <p className="font-medium text-gray-900 dark:text-gray-100">
-        {category.name}
+        {localizedCategoryName(category, language)}
       </p>
     </div>
   </button>
-);
+  );
+};
 const CategoriesPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast(); // Import useToast

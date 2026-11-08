@@ -54,8 +54,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   // Variant (color) styles
   const variants: Record<string, string> = {
-    primary:
-      "primary-action shadow-sm focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 dark:focus:ring-offset-gray-900",
+    primary: "primary-action",
     secondary:
       "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-800 dark:hover:bg-gray-800 dark:hover:border-gray-700 dark:focus:ring-offset-gray-900 shadow-sm",
     destructive:

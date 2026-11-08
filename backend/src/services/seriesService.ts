@@ -106,7 +106,7 @@ export const getActiveRecurringSeriesWithCategory = async (
         {
           model: db.TransactionCategory,
           as: "transactionCategory",
-          attributes: ["id", "name", "builtinIconName"],
+          attributes: ["id", "name", "nameEn", "builtinIconName"],
         },
       ],
     });
@@ -401,13 +401,17 @@ export const createRecurringSeries = async (
   }
 };
 
+const normalizeSeriesCurrency = (value: unknown): string => {
+  if (typeof value !== "string") {
+    return "RUB";
+  }
+  const code = value.trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : "RUB";
+};
+
 /**
- * Updates a recurring series. If only non-recurrence fields change, updates the existing series.
- * If the recurrence rule changes, splits the series by deactivating the old one and creating a new one.
- * @param seriesId - The ID of the recurring series to update.
- * @param userId - The ID of the user.
- * @param data - The data for updating the series, including the cut-off payment ID and new start date.
- * @returns The updated recurring series instance or null if not found or not owned by the user.
+ * Обновляет серию. Смена правила повторения закрывает старую серию и создаёт новую.
+ * Смена валюты без смены правила остаётся в той же серии: прошлые платежи не трогает.
  */
 export const updateRecurringSeries = async (
   seriesId: string,
@@ -415,9 +419,12 @@ export const updateRecurringSeries = async (
   data: Partial<RecurringSeriesCreationAttributes> & {
     cutOffPaymentId: string;
     startDate: string;
+    currency?: string;
   }
 ): Promise<RecurringSeriesInstance | null> => {
-  const { cutOffPaymentId, startDate, ...newSeriesData } = data;
+  const { cutOffPaymentId, startDate, currency, ...newSeriesData } = data;
+  const nextCurrency =
+    currency !== undefined ? normalizeSeriesCurrency(currency) : undefined;
 
   if (!cutOffPaymentId) {
     throw new Error("cutOffPaymentId is required to update a series.");
@@ -505,6 +512,9 @@ export const updateRecurringSeries = async (
       cutOffPayment.builtinIconName = newSeries.builtinIconName;
       cutOffPayment.dueDate = startDate; // The dueDate becomes the new startDate
       cutOffPayment.remind = newSeries.remind;
+      if (nextCurrency) {
+        cutOffPayment.currency = nextCurrency;
+      }
       await cutOffPayment.save({ transaction });
       logger.info(
         `Updated payment ${cutOffPayment.id} to be the first of new series ${newSeries.id}.`
@@ -554,6 +564,19 @@ export const updateRecurringSeries = async (
         paymentUpdates.builtinIconName = newSeriesData.builtinIconName;
       if (newSeriesData.remind !== undefined)
         paymentUpdates.remind = newSeriesData.remind;
+      if (nextCurrency) {
+        paymentUpdates.currency = nextCurrency;
+        await db.Payment.update(
+          { currency: nextCurrency },
+          {
+            where: {
+              seriesId: series.id,
+              dueDate: { [Op.gt]: cutOffPayment.dueDate },
+            },
+            transaction,
+          }
+        );
+      }
 
       await cutOffPayment.update(paymentUpdates, { transaction });
       logger.info(

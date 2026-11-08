@@ -13,6 +13,8 @@ import {
 import { CheckCircleIcon, TrashIcon } from "@heroicons/react/24/solid";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
 import { parseCalendarDate, formatDateForDisplay } from "../utils/dateUtils";
+import { formatMoney } from "../utils/currencies";
+import { localizedCategoryName } from "../utils/categoryLabel";
 
 type PaymentListCardContext = "home" | "payments" | "archive";
 
@@ -22,10 +24,10 @@ export interface PaymentListCardProps {
   onDownloadFile?: (id: string, fileName: string) => void;
   className?: string;
   hideDate?: boolean;
+  formatDate?: (date: Date) => string;
 }
 
-const isToday = (dateString: string) => {
-  const date = parseCalendarDate(dateString);
+const isToday = (date: Date): boolean => {
   const now = new Date();
   return (
     date.getDate() === now.getDate() &&
@@ -40,29 +42,21 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
   onDownloadFile,
   className,
   hideDate = false,
+  formatDate,
 }) => {
-  const { t, locale } = useLanguage();
-  const amount = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(payment.amount);
+  const { t, locale, language } = useLanguage();
+  const amount = formatMoney(payment.amount, locale, payment.currency);
 
   const isHome = context === "home";
-  const dueDateStr = formatDateForDisplay(parseCalendarDate(payment.dueDate), locale);
-  const completedOrDeletedDateStr = new Date(
-    payment.completedAt || payment.updatedAt
-  );
-  const formattedCompletedOrDeletedDateStr = formatDateForDisplay(
-    completedOrDeletedDateStr, locale
-  );
+  const dueDate = parseCalendarDate(payment.dueDate);
 
   const showRecurring =
     !!payment.seriesId && (payment.series?.isActive ?? true);
 
   const showTodayBadge =
-    payment.status === "upcoming" && isToday(payment.dueDate);
+    payment.status === "upcoming" && isToday(dueDate);
   const showUpcomingBadge =
-    payment.status === "upcoming" && !isToday(payment.dueDate) && !isHome;
+    payment.status === "upcoming" && !showTodayBadge && !isHome;
   const showOverdueBadge = payment.status === "overdue";
   const showCompletedBadge = payment.status === "completed";
   const showDeletedBadge = payment.status === "deleted";
@@ -75,8 +69,8 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
 
   const displayDate =
     payment.status === "completed" || payment.status === "deleted"
-      ? formattedCompletedOrDeletedDateStr
-      : dueDateStr;
+      ? new Date(payment.completedAt || payment.updatedAt)
+      : dueDate;
 
   return (
     <div
@@ -99,7 +93,7 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
             </p>
             {payment.transactionCategory?.name && (
               <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">
-                {payment.transactionCategory.name}
+                {localizedCategoryName(payment.transactionCategory, language)}
               </p>
             )}
           </div>
@@ -107,13 +101,12 @@ const PaymentListCard: React.FC<PaymentListCardProps> = ({
         <div className="text-right flex-shrink-0">
           <span className="block font-semibold text-lg text-gray-900 dark:text-gray-100">
             {amount}
-            <span className="ml-1 text-sm font-normal text-gray-600 dark:text-gray-400">
-              ₽
-            </span>
           </span>
           {!hideDate && (
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              {displayDate}
+              {formatDate
+                ? formatDate(displayDate)
+                : formatDateForDisplay(displayDate, locale)}
             </p>
           )}
         </div>

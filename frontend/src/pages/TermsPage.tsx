@@ -1,46 +1,15 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import type { ReactElement } from "react";
+import LegalDocument, { type LegalSection } from "../components/LegalDocument";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
-import { isTauriMobile } from "../utils/platform";
-import { useLanguage } from "../context/LanguageContext";
 
-const TermsPage: React.FC = () => {
-  const { t } = useLanguage();
-  const metadata = getPageMetadata("terms");
-  const navigate = useNavigate();
-
-  return (
-    <>
-      <PageMeta {...metadata} />
-
-      <section
-        className={`w-full max-w-3xl mx-auto ${
-          isTauriMobile()
-            ? "px-8 pb-8"
-            : "py-8 px-4 sm:px-6 lg:px-8 mb-10 mt-6 md:mt-10 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg"
-        }`}
-      >
-        {isTauriMobile() && (
-          <div className="flex justify-start mt-4 mb-12">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex cursor-pointer items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium transition-colors"
-            >
-              <ArrowLeftIcon className="w-5 h-5 mr-2" />
-              {t("Назад")}
-            </button>
-          </div>
-        )}
-        <div lang="ru" className="prose dark:prose-invert max-w-none">
-          <h1 className="text-xl md:text-2xl font-bold mb-4">
-            Пользовательское соглашение
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-slate-400 mb-8">
-            Последнее обновление: 12.08.2025
-          </p>
-          <h2 className="text-xl font-bold my-6">1. Общие положения</h2>
+const sections: LegalSection[] = [
+  {
+    id: "general",
+    ru: {
+      title: "Общие положения",
+      body: (
+        <>
           <p>
             1.1. Настоящее Пользовательское соглашение (далее - «Соглашение»)
             регулирует отношения между владельцем сервиса (далее -
@@ -51,8 +20,25 @@ const TermsPage: React.FC = () => {
             1.2. Используя сервис, Пользователь подтверждает, что ознакомился и
             согласен с условиями Соглашения.
           </p>
-
-          <h2 className="text-xl font-bold my-6">2. Описание сервиса</h2>
+        </>
+      ),
+    },
+    en: {
+      title: "General provisions",
+      body: (
+        <>
+          <p>1.1. These Terms of Use (the “Terms”) govern the relationship between the owner of the service (the “Operator”) and any individual or legal entity that uses the service (the “User”).</p>
+          <p>1.2. By using the service, the User confirms that they have read and agree to the Terms.</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "service",
+    ru: {
+      title: "Описание сервиса",
+      body: (
+        <>
           <p>
             2.1. Сервис предназначен для учёта, планирования и хранения
             информации о платежах и иных финансовых событиях пользователя.
@@ -66,8 +52,26 @@ const TermsPage: React.FC = () => {
             2.3. Сервис предоставляется в бесплатном режиме и «как есть» без
             каких-либо гарантий.
           </p>
-
-          <h2 className="text-xl font-bold my-6">3. Регистрация и аккаунт</h2>
+        </>
+      ),
+    },
+    en: {
+      title: "About the service",
+      body: (
+        <>
+          <p>2.1. The service is intended for tracking, planning, and storing information about the User’s payments and other financial events.</p>
+          <p>2.2. The service <strong>does not act as</strong> a payment system, bank, or credit institution. It does not accept, hold, or transfer funds.</p>
+          <p>2.3. The service is provided free of charge and “as is” without any warranties.</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "account",
+    ru: {
+      title: "Регистрация и аккаунт",
+      body: (
+        <>
           <p>
             3.1. Для использования сервиса требуется регистрация с указанием
             имени, адреса электронной почты и пароля.
@@ -76,8 +80,25 @@ const TermsPage: React.FC = () => {
             3.2. Пользователь несёт ответственность за безопасность своего
             пароля и за все действия, совершённые через его аккаунт.
           </p>
-
-          <h2 className="text-xl font-bold my-6">4. Контент и файлы</h2>
+        </>
+      ),
+    },
+    en: {
+      title: "Registration and account",
+      body: (
+        <>
+          <p>3.1. To use the service, the User must register with a name, email address, and password.</p>
+          <p>3.2. The User is responsible for keeping their password secure and for all activity carried out through their account.</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "content",
+    ru: {
+      title: "Контент и файлы",
+      body: (
+        <>
           <p>
             4.1. Пользователь может загружать файлы и данные, необходимые для
             работы сервиса.
@@ -86,7 +107,7 @@ const TermsPage: React.FC = () => {
             4.2. Запрещено размещение материалов, нарушающих законодательство
             РФ, включая, но не ограничиваясь:
           </p>
-          <ul className="list-disc list-inside ml-6">
+          <ul>
             <li>экстремистскими материалами;</li>
             <li>материалами, нарушающими авторские права;</li>
             <li>порнографическими и иными запрещёнными материалами.</li>
@@ -95,10 +116,33 @@ const TermsPage: React.FC = () => {
             4.3. Администрация вправе удалять любой контент, нарушающий условия
             Соглашения или требования законодательства РФ.
           </p>
-
-          <h2 className="text-xl font-bold my-6">5. Ответственность</h2>
+        </>
+      ),
+    },
+    en: {
+      title: "Content and files",
+      body: (
+        <>
+          <p>4.1. The User may upload files and data needed to use the service.</p>
+          <p>4.2. The User may not post materials that violate Russian law, including but not limited to:</p>
+          <ul>
+            <li>extremist material;</li>
+            <li>material that infringes copyright;</li>
+            <li>pornographic or other prohibited material.</li>
+          </ul>
+          <p>4.3. The Operator may remove any content that violates the Terms or Russian law.</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "responsibility",
+    ru: {
+      title: "Ответственность",
+      body: (
+        <>
           <p>5.1. Администрация не несёт ответственности за:</p>
-          <ul className="list-disc list-inside ml-6">
+          <ul>
             <li>достоверность данных, вводимых Пользователем;</li>
             <li>сбои или прерывания работы сервиса;</li>
             <li>утрату данных по вине Пользователя или третьих лиц.</li>
@@ -107,26 +151,77 @@ const TermsPage: React.FC = () => {
             5.2. Пользователь обязуется самостоятельно делать резервные копии
             своих данных.
           </p>
-
-          <h2 className="text-xl font-bold my-6">6. Прекращение доступа</h2>
+        </>
+      ),
+    },
+    en: {
+      title: "Liability",
+      body: (
+        <>
+          <p>5.1. The Operator is not liable for:</p>
+          <ul>
+            <li>the accuracy of data entered by the User;</li>
+            <li>service failures or interruptions;</li>
+            <li>loss of data caused by the User or third parties.</li>
+          </ul>
+          <p>5.2. The User agrees to back up their own data.</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "termination",
+    ru: {
+      title: "Прекращение доступа",
+      body: (
+        <>
           <p>
             6.1. Администрация вправе временно или навсегда заблокировать
             аккаунт Пользователя в случае нарушения условий Соглашения или
             требований законодательства.
           </p>
-
-          <h2 className="text-xl font-bold my-6">
-            7. Заключительные положения
-          </h2>
+        </>
+      ),
+    },
+    en: {
+      title: "Termination of access",
+      body: (
+        <>
+          <p>6.1. The Operator may suspend or permanently block the User’s account if the User violates the Terms or applicable law.</p>
+        </>
+      ),
+    },
+  },
+  {
+    id: "changes",
+    ru: {
+      title: "Заключительные положения",
+      body: (
+        <>
           <p>
             7.1. Администрация оставляет за собой право изменять условия
             Соглашения с уведомлением Пользователей через сервис или по
             электронной почте.
           </p>
-        </div>
-      </section>
+        </>
+      ),
+    },
+    en: {
+      title: "Final provisions",
+      body: (
+        <>
+          <p>7.1. The Operator reserves the right to amend the Terms and notify Users through the service or by email.</p>
+        </>
+      ),
+    },
+  },
+];
+
+export default function TermsPage(): ReactElement {
+  return (
+    <>
+      <PageMeta {...getPageMetadata("terms")} />
+      <LegalDocument title="Пользовательское соглашение" sections={sections} />
     </>
   );
-};
-
-export default TermsPage;
+}

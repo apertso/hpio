@@ -9,6 +9,10 @@ on:
         description: "Release tag, e.g. v1.2.3"
         required: true
         type: string
+      build_only:
+        description: "Build APKs for timing without uploading to a release"
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       tag:
@@ -20,7 +24,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-apk-${{ inputs.tag || github.event.release.tag_name }}
+  group: android-apk-${{ inputs.build_only && 'benchmark-' || '' }}${{ inputs.tag || github.event.release.tag_name }}
   cancel-in-progress: false
 
 env:
@@ -59,6 +63,8 @@ jobs:
     if: needs.check.outputs.skip != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      VITE_API_BASE_URL: https://hpio.ru/api
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -77,6 +83,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
@@ -169,6 +176,7 @@ jobs:
           cp "$file" "$RUNNER_TEMP/app-universal-release.apk"
 
       - name: Attach APKs to the release
+        if: inputs.build_only != true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

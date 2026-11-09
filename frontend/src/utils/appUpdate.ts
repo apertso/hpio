@@ -8,8 +8,8 @@ export interface AppUpdate {
   url: string;
 }
 
-const ARM64_APK = "app-arm64-release.apk";
-const UNIVERSAL_APK = "app-universal-release.apk";
+export const ARM64_APK_NAME = "app-arm64-release.apk";
+export const ARMV7_APK_NAME = "app-armv7-release.apk";
 
 export function releaseVersion(tag: string): string | null {
   const match = /^v?(\d+\.\d+\.\d+)$/.exec(tag.trim());
@@ -35,12 +35,10 @@ export function pickApkAsset(
   assets: ReleaseAsset[],
   arch: string,
 ): ReleaseAsset | null {
-  const preferred = arch === "aarch64" ? ARM64_APK : UNIVERSAL_APK;
-  return (
-    assets.find((asset) => asset.name === preferred) ??
-    assets.find((asset) => asset.name === UNIVERSAL_APK) ??
-    null
-  );
+  const preferred =
+    arch === "aarch64" ? ARM64_APK_NAME :
+    arch === "armeabi-v7a" ? ARMV7_APK_NAME : null;
+  return assets.find((asset) => asset.name === preferred) ?? null;
 }
 
 export function selectAppUpdate(

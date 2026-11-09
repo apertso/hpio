@@ -13,33 +13,34 @@ import { useLanguage } from '../context/LanguageContext';
 import { getPageMetadata } from '../utils/pageMetadata';
 import {
   ARM64_APK_NAME,
-  UNIVERSAL_APK_NAME,
+  ARMV7_APK_NAME,
+} from '../utils/appUpdate';
+import {
   fetchReadyRelease,
   type DownloadBuild,
 } from '../utils/downloadRelease';
 
 const releasesPageUrl = 'https://github.com/apertso/hpio/releases';
 
-const builds = [
-  {
-    name: 'Android ARM64',
-    subtitle: 'Для современных смартфонов',
-    description:
-      'Оптимизированная 64-битная версия. Лучшая производительность и меньший размер файла. Подходит для большинства устройств, выпущенных после 2016 года.',
-    filename: ARM64_APK_NAME,
-    icon: CpuChipIcon,
-    recommended: true,
-  },
-  {
-    name: 'Универсальная сборка Android',
-    subtitle: 'Для старых устройств',
-    description:
-      'Включает библиотеки для всех архитектур процессоров. Используйте эту версию, если ARM64 не устанавливается или работает некорректно.',
-    filename: UNIVERSAL_APK_NAME,
-    icon: ArchiveBoxIcon,
-    recommended: false,
-  },
-];
+const arm64Build = {
+  name: 'Android ARM64',
+  subtitle: 'Для современных смартфонов',
+  description: 'Подходит для большинства телефонов и планшетов Android.',
+  filename: ARM64_APK_NAME,
+  icon: CpuChipIcon,
+  recommended: true,
+};
+
+const armv7Build = {
+  name: 'Android ARMv7',
+  subtitle: 'Для старых устройств',
+  description: 'Выберите эту сборку, если ваше устройство работает на Android для ARM с разрядностью 32 бита.',
+  filename: ARMV7_APK_NAME,
+  icon: ArchiveBoxIcon,
+  recommended: false,
+};
+
+const builds = [arm64Build, armv7Build];
 
 const steps = [
   {

@@ -5,7 +5,7 @@ import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { blogApi, BlogPost } from "../api/blogApi";
-import { comparisonSlug, localizeBlogPost } from "../i18n/blog/localizeBlogPost";
+import { comparisonSlug, localizeBlogPost, releaseSlug } from "../i18n/blog/localizeBlogPost";
 import { localizeHref } from "../i18n/localePath";
 import { locales } from "../i18n/translate";
 import { formatDateForDisplay } from "../utils/dateUtils";
@@ -46,6 +46,9 @@ const BlogPostPage: React.FC = () => {
       description: post.excerpt || baseMetadata.description,
       ogTitle: post.title,
       ogDescription: post.excerpt || baseMetadata.ogDescription,
+      ogImage: post.slug === releaseSlug
+        ? new URL("/blog/hpio-1-1-cover.jpg", import.meta.env.VITE_APP_URL || "https://hpio.ru").href
+        : baseMetadata.ogImage,
       ogType: "article" as const,
       locale: locales[post.language].replace("-", "_"),
     }

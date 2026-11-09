@@ -91,7 +91,7 @@ object AppUpdateHelper {
     private fun isAllowedApkUrl(url: String): Boolean {
         if (!url.startsWith(ALLOWED_PREFIX)) return false
         val name = url.substringAfterLast('/')
-        return name == "app-arm64-release.apk" || name == "app-universal-release.apk"
+        return name == "app-arm64-release.apk" || name == "app-armv7-release.apk"
     }
 
     private fun canRequestInstall(context: Context): Boolean {

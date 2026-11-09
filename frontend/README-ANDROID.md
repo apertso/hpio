@@ -33,7 +33,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup default stable-x86_64-pc-windows-msvc
 
 # Добавьте Android targets
-rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+rustup target add aarch64-linux-android armv7-linux-androideabi
 ```
 
 ### 3. Установка Java JDK
@@ -150,15 +150,16 @@ npx tauri android init --ci
 ### 3. Сборка APK
 
 ```bash
-npx tauri android build --apk
+npm run android:build:release
 ```
 
 ### 4. Поиск готового APK
 
-После успешной сборки APK файл будет находиться в:
+Сборка создаёт два APK:
 
 ```
-frontend/src-tauri/target/aarch64-linux-android/release/apk/
+frontend/src-tauri/gen/android/app/build/outputs/apk/arm64/release/app-arm64-release.apk
+frontend/src-tauri/gen/android/app/build/outputs/apk/arm/release/app-arm-release.apk
 ```
 
 ## 🔧 Устранение проблем

@@ -19,6 +19,14 @@ on:
         description: "Release tag, e.g. v1.2.3"
         required: true
         type: string
+      source_sha:
+        description: "Commit used to build the release artifacts"
+        required: true
+        type: string
+      publish:
+        description: "Publish the draft after both APKs are attached"
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -49,8 +57,9 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          names=$(gh release view "$RELEASE_TAG" --json assets --jq '[.assets[].name] | join(",")')
-          if [[ "$names" == *app-arm64-release.apk* && "$names" == *app-universal-release.apk* ]]; then
+          names=$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[] | select(.state == "uploaded") | .name')
+          if grep -Fxq 'app-arm64-release.apk' <<< "$names" &&
+            grep -Fxq 'app-armv7-release.apk' <<< "$names"; then
             echo "APKs are already attached to $RELEASE_TAG"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
@@ -66,9 +75,6 @@ jobs:
     env:
       VITE_API_BASE_URL: https://hpio.ru/api
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
       - name: Require a semver tag
         run: |
           version="${RELEASE_TAG#v}"
@@ -77,6 +83,11 @@ jobs:
             exit 1
           fi
           echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_sha || (inputs.build_only && github.sha) || format('refs/tags/{0}', env.RELEASE_TAG) }}
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -102,7 +113,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android,armv7-linux-androideabi
 
       - name: Cache Rust builds
         uses: swatinem/rust-cache@v2
@@ -147,40 +158,67 @@ jobs:
           NO_COMMIT: "true"
         run: node scripts/bump-version.js "$APP_VERSION"
 
-      - name: Build arm64 APK
+      - name: Build ARM64 and ARMv7 APKs
         working-directory: frontend
-        run: npx tauri android build --apk --target aarch64 --split-per-abi --ci
+        run: npx tauri android build --apk --target aarch64 armv7 --split-per-abi --ci
 
-      - name: Keep arm64 APK
+      - name: Verify and stage signed APKs
+        shell: bash
         run: |
-          file=$(find frontend/src-tauri/gen/android/app/build/outputs/apk -path '*/release/*' -name 'app-arm64*.apk' ! -name '*unsigned*' ! -name '*unaligned*' -print -quit)
-          if [ -z "$file" ]; then
-            echo "::error::arm64 release APK was not produced"
-            find frontend/src-tauri/gen/android/app/build/outputs/apk -name '*.apk' || true
-            exit 1
-          fi
-          cp "$file" "$RUNNER_TEMP/app-arm64-release.apk"
-
-      - name: Build universal APK
-        working-directory: frontend
-        run: npx tauri android build --apk --ci
-
-      - name: Keep universal APK
-        run: |
-          file=$(find frontend/src-tauri/gen/android/app/build/outputs/apk -path '*/release/*' -name 'app-universal-release.apk' ! -name '*unsigned*' ! -name '*unaligned*' -print -quit)
-          if [ -z "$file" ]; then
-            echo "::error::universal release APK was not produced"
-            find frontend/src-tauri/gen/android/app/build/outputs/apk -name '*.apk' || true
-            exit 1
-          fi
-          cp "$file" "$RUNNER_TEMP/app-universal-release.apk"
+          apk_dir=frontend/src-tauri/gen/android/app/build/outputs/apk
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          stage_apk() {
+            local apk="$1" abi="$2" filename="$3" native_abis
+            "$tools/apksigner" verify "$apk"
+            native_abis=$(unzip -Z1 "$apk" | awk -F/ '$1 == "lib" && $3 ~ /\.so$/ { print $2 }' | sort -u)
+            if [[ "$native_abis" != "$abi" ]]; then
+              echo "::error::Expected $abi in $filename, found $native_abis."
+              exit 1
+            fi
+            cp "$apk" "$RUNNER_TEMP/$filename"
+          }
+          stage_apk "$apk_dir/arm64/release/app-arm64-release.apk" arm64-v8a app-arm64-release.apk
+          stage_apk "$apk_dir/arm/release/app-arm-release.apk" armeabi-v7a app-armv7-release.apk
 
       - name: Attach APKs to the release
         if: inputs.build_only != true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          release=$(gh release view "$RELEASE_TAG" --json isDraft,targetCommitish,assets)
+          if [[ -n "$SOURCE_SHA" ]] && [[ $(jq -r '.isDraft' <<< "$release") != true ]]; then
+            echo "::error::Release $RELEASE_TAG must be a draft before uploading APKs."
+            exit 1
+          fi
+          tag_sha=$(git ls-remote --tags --sort=refname origin "refs/tags/$RELEASE_TAG" "refs/tags/$RELEASE_TAG^{}" | tail -n 1 | cut -f1)
+          release_sha=${tag_sha:-$(jq -r '.targetCommitish' <<< "$release")}
+          if [[ "$release_sha" != "$(git rev-parse HEAD)" ]]; then
+            echo "::error::Release $RELEASE_TAG points to a different commit than the APKs."
+            exit 1
+          fi
+          names=$(jq -r '.assets[] | select(.state == "uploaded") | .name' <<< "$release")
+          missing=()
+          for name in app-arm64-release.apk app-armv7-release.apk; do
+            if ! grep -Fxq "$name" <<< "$names"; then
+              missing+=("$RUNNER_TEMP/$name")
+            fi
+          done
+          if ((${#missing[@]})); then
+            gh release upload "$RELEASE_TAG" "${missing[@]}"
+          fi
+
+      - name: Publish the completed draft
+        if: inputs.publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "$RELEASE_TAG" \
-            "$RUNNER_TEMP/app-arm64-release.apk#app-arm64-release.apk" \
-            "$RUNNER_TEMP/app-universal-release.apk#app-universal-release.apk" \
-            --clobber
+          names=$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[] | select(.state == "uploaded") | .name')
+          for name in app-arm64-release.apk app-armv7-release.apk frontend-dist.tar.gz storybook-static.tar.gz backend-dist.tar.gz; do
+            if ! grep -Fxq "$name" <<< "$names"; then
+              echo "::error::Missing release asset: $name"
+              exit 1
+            fi
+          done
+          gh release edit "$RELEASE_TAG" --draft=false

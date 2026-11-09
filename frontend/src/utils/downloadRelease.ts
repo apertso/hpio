@@ -1,11 +1,13 @@
-import { isNewerVersion, releaseVersion, type ReleaseAsset } from "./appUpdate";
-
-export const ARM64_APK_NAME = "app-arm64-release.apk";
-export const UNIVERSAL_APK_NAME = "app-universal-release.apk";
+import {
+  ARM64_APK_NAME,
+  ARMV7_APK_NAME,
+  isNewerVersion,
+  releaseVersion,
+  type ReleaseAsset,
+} from "./appUpdate";
 
 const RELEASES_URL =
   "https://api.github.com/repos/apertso/hpio/releases?per_page=10";
-const APK_NAMES = [ARM64_APK_NAME, UNIVERSAL_APK_NAME];
 
 export interface DownloadBuild {
   version: string;
@@ -59,30 +61,24 @@ function readReleases(body: unknown): GithubRelease[] {
   return releases;
 }
 
-/**
- * Берёт самый новый стабильный релиз, у которого уже есть оба APK.
- * Свежий тег без файлов пропускается: сборка появляется примерно через 10 минут после публикации.
- */
+/** Берёт самый новый стабильный релиз с APK для ARM64 и ARMv7. */
 export function selectReadyRelease(body: unknown): DownloadBuild | null {
   let best: DownloadBuild | null = null;
   for (const release of readReleases(body)) {
     if (release.draft || release.prerelease) continue;
     const version = releaseVersion(release.tag_name);
     if (!version) continue;
-    const files: Record<string, string> = {};
-    let complete = true;
-    for (const name of APK_NAMES) {
-      const url = release.assets.find((asset) => asset.name === name)
-        ?.browser_download_url;
-      if (!url) {
-        complete = false;
-        break;
-      }
-      files[name] = url;
-    }
-    if (!complete) continue;
+    const arm64 = release.assets.find((asset) => asset.name === ARM64_APK_NAME);
+    const armv7 = release.assets.find((asset) => asset.name === ARMV7_APK_NAME);
+    if (!arm64?.browser_download_url || !armv7?.browser_download_url) continue;
     if (!best || isNewerVersion(version, best.version)) {
-      best = { version, files };
+      best = {
+        version,
+        files: {
+          [ARM64_APK_NAME]: arm64.browser_download_url,
+          [ARMV7_APK_NAME]: armv7.browser_download_url,
+        },
+      };
     }
   }
   return best;

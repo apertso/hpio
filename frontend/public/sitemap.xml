@@ -127,4 +127,22 @@
         <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/blog/hpio-vs-zenmoney"/>
         <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/blog/hpio-vs-zenmoney"/>
     </url>
+    <url>
+        <loc>https://hpio.ru/blog/hpio-1-1</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/blog/hpio-1-1"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/blog/hpio-1-1"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/blog/hpio-1-1"/>
+    </url>
+    <url>
+        <loc>https://hpio.ru/en/blog/hpio-1-1</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://hpio.ru/blog/hpio-1-1"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://hpio.ru/en/blog/hpio-1-1"/>
+        <xhtml:link rel="alternate" hreflang="x-default" href="https://hpio.ru/blog/hpio-1-1"/>
+    </url>
 </urlset>

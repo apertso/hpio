@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import PublicLocaleSync from "../components/PublicLocaleSync";
 import { AuthProvider } from "../context/AuthContext";
 import { LanguageProvider } from "../context/LanguageContext";
+import { localizeBlogPost } from "./blog/localizeBlogPost";
 import { localizeHref, pathForLanguage, seoAlternates } from "./localePath";
 
 afterEach(() => {
@@ -29,6 +30,19 @@ describe("locale paths", () => {
     });
     expect(seoAlternates("/en", "https://hpio.ru")?.canonical).toBe("https://hpio.ru/en");
     expect(seoAlternates("/blog/other", "https://hpio.ru")?.en).toBeUndefined();
+  });
+
+  it("связывает русскую и английскую версии статьи об обновлении", () => {
+    const path = "/blog/hpio-1-1";
+    const englishPath = "/en/blog/hpio-1-1";
+    const post = { id: "1", slug: "hpio-1-1", title: "Обновление", createdAt: "2026-11-09" };
+
+    expect(localizeHref("en", path)).toBe(englishPath);
+    expect(pathForLanguage(englishPath, "ru")).toBe(path);
+    expect(seoAlternates(path, "https://hpio.ru")?.en).toBe(`https://hpio.ru${englishPath}`);
+    expect(localizeBlogPost(post, "en")).toMatchObject({ language: "en", content: undefined });
+    expect(localizeBlogPost({ ...post, content: "Русский текст" }, "en").content)
+      .toContain("Choose a currency for each payment");
   });
 });
 

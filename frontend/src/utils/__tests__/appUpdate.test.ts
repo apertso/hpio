@@ -10,12 +10,17 @@ import {
 const arm64: ReleaseAsset = {
   name: "app-arm64-release.apk",
   browser_download_url:
-    "https://github.com/apertso/hpio/releases/download/v1.1.0/app-arm64-release.apk",
+    "https://github.com/apertso/hpio/releases/download/v1.2.0/app-arm64-release.apk",
 };
 const universal: ReleaseAsset = {
   name: "app-universal-release.apk",
   browser_download_url:
     "https://github.com/apertso/hpio/releases/download/v1.1.0/app-universal-release.apk",
+};
+const armv7: ReleaseAsset = {
+  name: "app-armv7-release.apk",
+  browser_download_url:
+    "https://github.com/apertso/hpio/releases/download/v1.2.0/app-armv7-release.apk",
 };
 
 describe("app update selection", () => {
@@ -33,27 +38,23 @@ describe("app update selection", () => {
     expect(isNewerVersion("1.0.0", "1.0.1")).toBe(false);
   });
 
-  it("picks the arm64 apk on aarch64 and the universal apk otherwise", () => {
-    expect(pickApkAsset([universal, arm64], "aarch64")?.name).toBe(
-      "app-arm64-release.apk",
-    );
-    expect(pickApkAsset([arm64, universal], "armeabi-v7a")?.name).toBe(
-      "app-universal-release.apk",
-    );
-    expect(pickApkAsset([universal], "aarch64")?.name).toBe(
-      "app-universal-release.apk",
-    );
-    expect(pickApkAsset([arm64], "armeabi-v7a")).toBeNull();
+  it("picks only the APK matching the device architecture", () => {
+    expect(pickApkAsset([armv7, arm64], "aarch64")).toBe(arm64);
+    expect(pickApkAsset([arm64, armv7], "armeabi-v7a")).toBe(armv7);
+    expect(pickApkAsset([arm64, universal], "armeabi-v7a")).toBeNull();
+    expect(pickApkAsset([universal], "aarch64")).toBeNull();
+    expect(pickApkAsset([arm64, armv7], "x86_64")).toBeNull();
+    expect(pickApkAsset([armv7], "aarch64")).toBeNull();
   });
 
   it("offers an update only when the release is newer and has an apk", () => {
     expect(
       selectAppUpdate(
-        { tag_name: "v1.1.0", assets: [arm64, universal] },
-        "1.0.0",
+        { tag_name: "v1.2.0", assets: [arm64, armv7] },
+        "1.1.0",
         "aarch64",
       ),
-    ).toEqual({ version: "1.1.0", url: arm64.browser_download_url });
+    ).toEqual({ version: "1.2.0", url: arm64.browser_download_url });
     expect(
       selectAppUpdate(
         { tag_name: "v1.0.0", assets: [arm64] },

@@ -1,4 +1,4 @@
-import { comparisonSlug } from "./blog/localizeBlogPost";
+import { hasEnglishBlogPost } from "./blog/localizeBlogPost";
 import type { Language } from "./translate";
 
 const staticEnglishPaths = new Set(["/", "/download", "/about", "/terms", "/privacy", "/blog"]);
@@ -23,7 +23,8 @@ export function splitLocalePath(pathname: string): LocalePath {
 }
 
 export function hasEnglishUrl(bare: string): boolean {
-  return staticEnglishPaths.has(bare) || bare === `/blog/${comparisonSlug}`;
+  return staticEnglishPaths.has(bare) ||
+    (bare.startsWith("/blog/") && hasEnglishBlogPost(bare.slice("/blog/".length)));
 }
 
 export function isPublicSeoPath(bare: string): boolean {

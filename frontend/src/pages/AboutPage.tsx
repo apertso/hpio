@@ -53,7 +53,7 @@ const supportLinks = [
     icon: CodeBracketIcon,
   },
   {
-    href: "https://www.linkedin.com/in/artur-pertsev/",
+    href: "https://www.linkedin.com/in/apertso/",
     label: "LinkedIn",
     description: "Деловые вопросы",
     icon: UserIcon,

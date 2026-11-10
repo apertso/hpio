@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useLanguage } from "./context/LanguageContext";
+import { useLanguage } from './context/LanguageContext';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Routes,
@@ -27,7 +27,11 @@ import VerificationBanner from './components/VerificationBanner';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { LandingTopBar } from './components/LandingTopBar';
 import PublicLocaleSync from './components/PublicLocaleSync';
-import { localizeHref, splitLocalePath, toEnglishPath } from './i18n/localePath';
+import {
+  localizeHref,
+  splitLocalePath,
+  toEnglishPath,
+} from './i18n/localePath';
 
 // Icons
 import {
@@ -137,7 +141,7 @@ const Navigation: React.FC = () => {
               to="/dashboard"
               className={navLinkClass(location.pathname === '/dashboard')}
             >
-              {t("Главная")}
+              {t('Главная')}
             </Link>
             <Link
               to="/payments"
@@ -145,7 +149,7 @@ const Navigation: React.FC = () => {
                 location.pathname.startsWith('/payments'),
               )}
             >
-              {t("Платежи")}
+              {t('Платежи')}
             </Link>
             {canManageCategories && (
               <Link
@@ -154,7 +158,7 @@ const Navigation: React.FC = () => {
                   location.pathname.startsWith('/categories'),
                 )}
               >
-                {t("Категории")}
+                {t('Категории')}
               </Link>
             )}
             {canManageCategories && (
@@ -164,7 +168,7 @@ const Navigation: React.FC = () => {
                   location.pathname.startsWith('/automation-rules'),
                 )}
               >
-                {t("Автоматизация")}
+                {t('Автоматизация')}
               </Link>
             )}
             {tagsEnabled && (
@@ -172,7 +176,7 @@ const Navigation: React.FC = () => {
                 to="/tags"
                 className={navLinkClass(location.pathname.startsWith('/tags'))}
               >
-                {t("Теги")}
+                {t('Теги')}
               </Link>
             )}
             {incomeCardsEnabled && (
@@ -183,7 +187,7 @@ const Navigation: React.FC = () => {
                     location.pathname.startsWith('/incomes'),
                   )}
                 >
-                  {t("Доходы")}
+                  {t('Доходы')}
                 </Link>
                 <Link
                   to="/sources"
@@ -191,7 +195,7 @@ const Navigation: React.FC = () => {
                     location.pathname.startsWith('/sources'),
                   )}
                 >
-                  {t("Источники")}
+                  {t('Источники')}
                 </Link>
               </>
             )}
@@ -206,7 +210,7 @@ const Navigation: React.FC = () => {
               <button
                 onClick={() => setIsUserPopoverOpen(!isUserPopoverOpen)}
                 className="flex items-center justify-center rounded-full hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
-                aria-label={t("Меню пользователя")}
+                aria-label={t('Меню пользователя')}
                 aria-expanded={isUserPopoverOpen}
               >
                 {avatarUrl ? (
@@ -251,7 +255,7 @@ const Navigation: React.FC = () => {
                       role="menuitem"
                     >
                       <Cog6ToothIcon className="mr-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                      {t("Настройки")}
+                      {t('Настройки')}
                     </Link>
                     <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
                     <button
@@ -263,7 +267,7 @@ const Navigation: React.FC = () => {
                       role="menuitem"
                     >
                       <ArrowRightOnRectangleIcon className="mr-3 h-4 w-4 opacity-70" />
-                      {t("Выйти")}
+                      {t('Выйти')}
                     </button>
                   </div>
                 </div>
@@ -278,7 +282,7 @@ const Navigation: React.FC = () => {
             className="flex items-center gap-2 text-sm font-medium text-gray-800 transition-opacity hover:opacity-80 dark:text-gray-200"
           >
             <ArrowRightOnRectangleIcon className="h-4 w-4" />
-            <span>{t("Войти")}</span>
+            <span>{t('Войти')}</span>
           </Link>
           <ThemeSwitcher />
         </div>
@@ -306,19 +310,19 @@ function App() {
   const canManageCategories = Boolean(user?.isAdmin);
 
   const mobileNavItems = [
-    { to: '/dashboard', label: t("Главная") },
-    { to: '/payments', label: t("Платежи") },
+    { to: '/dashboard', label: t('Главная') },
+    { to: '/payments', label: t('Платежи') },
     ...(canManageCategories
       ? [
-          { to: '/categories', label: t("Категории") },
-          { to: '/automation-rules', label: t("Автоматизация") },
+          { to: '/categories', label: t('Категории') },
+          { to: '/automation-rules', label: t('Автоматизация') },
         ]
       : []),
-    ...(tagsEnabled ? [{ to: '/tags', label: t("Теги") }] : []),
+    ...(tagsEnabled ? [{ to: '/tags', label: t('Теги') }] : []),
     ...(incomeCardsEnabled
       ? [
-          { to: '/incomes', label: t("Доходы") },
-          { to: '/sources', label: t("Источники") },
+          { to: '/incomes', label: t('Доходы') },
+          { to: '/sources', label: t('Источники') },
         ]
       : []),
   ];
@@ -533,7 +537,7 @@ function App() {
 
         if (autoCreatedCount > 0) {
           showToast(
-            t("Автоматически добавлено {1} платежей.", autoCreatedCount),
+            t('Автоматически добавлено {1} платежей.', autoCreatedCount),
             'success',
           );
         }
@@ -614,7 +618,9 @@ function App() {
   // --- Logic: Handlers ---
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    const targetUrl = isAuthenticated ? '/dashboard' : localizeHref(language, '/');
+    const targetUrl = isAuthenticated
+      ? '/dashboard'
+      : localizeHref(language, '/');
     if (isAuthenticated && location.pathname === targetUrl) {
       triggerReset();
     } else {
@@ -681,10 +687,15 @@ function App() {
 
   const barePath = splitLocalePath(location.pathname).bare;
   const isTermsOrPrivacyPage = barePath === '/terms' || barePath === '/privacy';
-  const isPublicAuthPage = ['/login', '/register', '/forgot-password', '/reset-password'].includes(
-    barePath,
-  );
-  const isPublicPage = isPublicAuthPage || isTermsOrPrivacyPage ||
+  const isPublicAuthPage = [
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
+  ].includes(barePath);
+  const isPublicPage =
+    isPublicAuthPage ||
+    isTermsOrPrivacyPage ||
     ['/download', '/about', '/blog'].includes(barePath) ||
     barePath.startsWith('/blog/');
   const showPublicHeader = isPublicPage && !isAuthenticated && !isTauriMobile();
@@ -720,7 +731,7 @@ function App() {
             <button
               onClick={() => navigate(-1)}
               className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              aria-label={t("Назад")}
+              aria-label={t('Назад')}
             >
               <ArrowLeftIcon className="h-6 w-6" />
             </button>
@@ -738,7 +749,7 @@ function App() {
             <button
               onClick={() => setIsMobileDrawerOpen(true)}
               className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              aria-label={t("Меню")}
+              aria-label={t('Меню')}
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
@@ -776,7 +787,7 @@ function App() {
             </svg>
           </div>
           <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight transition-opacity group-hover:opacity-80">
-            {t("Хочу Плачу")}
+            {t('Хочу Плачу')}
           </span>
         </a>
       </div>
@@ -792,7 +803,7 @@ function App() {
               onClick={mobileAddAction}
               disabled={mobileActionDisabled}
               className="p-2 rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none disabled:opacity-50"
-              aria-label={mobileActionAriaLabel || t("Действие")}
+              aria-label={mobileActionAriaLabel || t('Действие')}
             >
               {mobileActionIcon}
             </button>
@@ -807,9 +818,9 @@ function App() {
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-center md:text-left">
           <p>
-            {t("Создано")}{' '}
+            {t('Создано')}{' '}
             <a
-              href="https://linkedin.com/in/artur-pertsev/"
+              href="https://apertso.com"
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
@@ -821,32 +832,32 @@ function App() {
 
         <nav className="flex flex-wrap justify-center gap-x-6 gap-y-3 font-medium">
           <Link
-            to={localizeHref(language, "/terms")}
+            to={localizeHref(language, '/terms')}
             className="cursor-pointer transition-opacity hover:opacity-80"
             aria-current={barePath === '/terms' ? 'page' : undefined}
           >
-            {t("Соглашение")}
+            {t('Соглашение')}
           </Link>
           <Link
-            to={localizeHref(language, "/privacy")}
+            to={localizeHref(language, '/privacy')}
             className="cursor-pointer transition-opacity hover:opacity-80"
             aria-current={barePath === '/privacy' ? 'page' : undefined}
           >
-            {t("Приватность")}
+            {t('Приватность')}
           </Link>
           <Link
-            to={localizeHref(language, "/blog")}
+            to={localizeHref(language, '/blog')}
             className="cursor-pointer transition-opacity hover:opacity-80"
             aria-current={barePath === '/blog' ? 'page' : undefined}
           >
-            {t("Блог")}
+            {t('Блог')}
           </Link>
           <Link
-            to={localizeHref(language, "/about")}
+            to={localizeHref(language, '/about')}
             className="cursor-pointer transition-opacity hover:opacity-80"
             aria-current={barePath === '/about' ? 'page' : undefined}
           >
-            {t("О нас")}
+            {t('О нас')}
           </Link>
         </nav>
 
@@ -872,7 +883,11 @@ function App() {
 
   // --- Render Layout ---
   const layoutClasses = `relative flex h-dvh flex-col overflow-hidden transition-colors duration-300 ${
-    isPublicPage ? 'public-surface' : isLandingPage ? 'font-sans bg-transparent' : 'font-sans bg-gray-50 dark:bg-dark-bg'
+    isPublicPage
+      ? 'public-surface'
+      : isLandingPage
+        ? 'font-sans bg-transparent'
+        : 'font-sans bg-gray-50 dark:bg-dark-bg'
   } ${isTauriMobile() ? 'safe-area-top safe-area-bottom' : ''}`;
   // Enforce min-h-0 to allow scrolling within flex container
   const mainClasses = `flex flex-col flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden scroll-smooth`;
@@ -891,15 +906,19 @@ function App() {
 
       <VerificationBanner />
 
-      <main className={`${mainClasses} motion-reduce:scroll-auto`} key={isPublicPage ? location.pathname : undefined}>
+      <main
+        className={`${mainClasses} motion-reduce:scroll-auto`}
+        key={isPublicPage ? location.pathname : undefined}
+      >
         <Routes>
           {/* Public Routes. Русские адреса без префикса, английские под /en. */}
           {[false, true].flatMap((english) => {
-            const path = (bare: string): string => (english ? toEnglishPath(bare) : bare);
+            const path = (bare: string): string =>
+              english ? toEnglishPath(bare) : bare;
             return [
               <Route
-                key={path("/")}
-                path={path("/")}
+                key={path('/')}
+                path={path('/')}
                 element={
                   isAuthenticated ? (
                     <Navigate to="/dashboard" replace />
@@ -910,12 +929,36 @@ function App() {
                   )
                 }
               />,
-              <Route key={path("/terms")} path={path("/terms")} element={<TermsPage />} />,
-              <Route key={path("/privacy")} path={path("/privacy")} element={<PrivacyPage />} />,
-              <Route key={path("/about")} path={path("/about")} element={<AboutPage />} />,
-              <Route key={path("/download")} path={path("/download")} element={<DownloadPage />} />,
-              <Route key={path("/blog")} path={path("/blog")} element={<BlogPage />} />,
-              <Route key={path("/blog/:slug")} path={path("/blog/:slug")} element={<BlogPostPage />} />,
+              <Route
+                key={path('/terms')}
+                path={path('/terms')}
+                element={<TermsPage />}
+              />,
+              <Route
+                key={path('/privacy')}
+                path={path('/privacy')}
+                element={<PrivacyPage />}
+              />,
+              <Route
+                key={path('/about')}
+                path={path('/about')}
+                element={<AboutPage />}
+              />,
+              <Route
+                key={path('/download')}
+                path={path('/download')}
+                element={<DownloadPage />}
+              />,
+              <Route
+                key={path('/blog')}
+                path={path('/blog')}
+                element={<BlogPage />}
+              />,
+              <Route
+                key={path('/blog/:slug')}
+                path={path('/blog/:slug')}
+                element={<BlogPostPage />}
+              />,
             ];
           })}
           <Route
@@ -976,7 +1019,7 @@ function App() {
 
         {/* Footer acts as a spacer in the scroll view for mobile, or real footer on desktop */}
         {!isTauriMobile() && !isPublicAuthPage && (
-          <div className={isPublicPage ? "mt-auto" : "mt-auto pt-10"}>
+          <div className={isPublicPage ? 'mt-auto' : 'mt-auto pt-10'}>
             {renderFooter()}
           </div>
         )}

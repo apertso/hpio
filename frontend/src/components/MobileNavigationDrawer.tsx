@@ -90,19 +90,19 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   const getNavIcon = (path: string) => {
     switch (path) {
       case "/dashboard":
-        return <HomeIcon className="h-5 w-5" />;
+        return <HomeIcon className="size-[18px]" />;
       case "/payments":
-        return <CreditCardIcon className="h-5 w-5" />;
+        return <CreditCardIcon className="size-[18px]" />;
       case "/archive":
-        return <ArchiveBoxIcon className="h-5 w-5" />;
+        return <ArchiveBoxIcon className="size-[18px]" />;
       case "/categories":
-        return <Squares2X2Icon className="h-5 w-5" />;
+        return <Squares2X2Icon className="size-[18px]" />;
       case "/incomes":
-        return <BanknotesIcon className="h-5 w-5" />;
+        return <BanknotesIcon className="size-[18px]" />;
       case "/sources":
-        return <CreditCardIcon className="h-5 w-5" />;
+        return <CreditCardIcon className="size-[18px]" />;
       case "/tags":
-        return <TagIcon className="h-5 w-5" />;
+        return <TagIcon className="size-[18px]" />;
       default:
         return null;
     }
@@ -351,7 +351,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
 
       {/* Панель с анимацией выдвижения */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col pt-[var(--safe-area-inset-top)] pb-[var(--safe-area-inset-bottom)] ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-[var(--ui-bg)] border-r border-[var(--ui-border)] shadow-2xl transform transition-transform duration-300 ease-out flex flex-col pt-[var(--safe-area-inset-top)] pb-[var(--safe-area-inset-bottom)] ${
           isVisible ? "translate-x-0" : "-translate-x-full"
         }`}
         role="dialog"
@@ -365,28 +365,28 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
             navigate("/settings#account");
             onClose();
           }}
-          className="flex items-center w-full px-7 py-4 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left cursor-pointer"
+          className="flex items-center w-full px-5 py-4 border-b border-[var(--ui-border)] hover:bg-gray-100/60 dark:hover:bg-white/[0.03] transition-colors text-left cursor-pointer"
         >
           <div className="flex items-center gap-3">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt={t("Аватар пользователя")}
-                className="size-12 rounded-full object-cover bg-gray-300 dark:bg-gray-800"
+                className="size-9 rounded-full object-cover bg-gray-200 dark:bg-gray-800"
               />
             ) : (
-              <div className="flex size-12 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-gray-900 shadow-sm dark:border-white/10 dark:bg-gray-800 dark:text-white">
-                <UserIcon className="w-6 h-6" />
+              <div className="flex size-9 items-center justify-center rounded-full bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                <UserIcon className="size-4" />
               </div>
             )}
             <div className="flex flex-col min-w-0">
               {user?.name && (
-                <span className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">
                   {user.name}
                 </span>
               )}
               {user?.email && (
-                <span className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {user.email}
                 </span>
               )}
@@ -395,7 +395,7 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
         </button>
 
         {/* Элементы навигации */}
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 py-4">
+        <nav className="min-h-0 flex-1 space-y-px overflow-y-auto px-3 py-3">
           {navItems.map((item) => {
             const isActive = currentPath === item.to;
             const icon = getNavIcon(item.to);
@@ -405,10 +405,10 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-opacity cursor-pointer ${
+                className={`flex items-center gap-3 px-3 h-10 rounded-md text-sm font-medium transition-colors cursor-pointer ${
                   isActive
-                    ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
-                    : "text-gray-900 dark:text-gray-100 hover:opacity-80"
+                    ? "bg-gray-200/70 text-gray-900 dark:bg-white/[0.07] dark:text-gray-50"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-white/[0.04]"
                 }`}
               >
                 {icon && (
@@ -428,14 +428,14 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
           <Link
             to="/settings"
             onClick={onClose}
-            className={`flex items-center gap-3 px-3 py-3 rounded-xl text-base font-medium transition-opacity cursor-pointer ${
+            className={`flex items-center gap-3 px-3 h-10 rounded-md text-sm font-medium transition-colors cursor-pointer ${
               currentPath === "/settings"
-                ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
-                : "text-gray-900 dark:text-gray-100 hover:opacity-80"
+                ? "bg-gray-200/70 text-gray-900 dark:bg-white/[0.07] dark:text-gray-50"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-white/[0.04]"
             }`}
           >
             <Cog6ToothIcon
-              className={`h-5 w-5 ${
+              className={`size-[18px] ${
                 currentPath === "/settings"
                   ? ""
                   : "text-gray-500 dark:text-gray-400"
@@ -447,23 +447,23 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
             to={localizeHref(language, "/about")}
             onClick={onClose}
             aria-current={currentPath === localizeHref(language, "/about") ? "page" : undefined}
-            className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 transition-opacity hover:opacity-80 aria-[current=page]:bg-gray-100 dark:text-gray-100 dark:aria-[current=page]:bg-gray-700"
+            className="flex items-center gap-3 px-3 h-10 rounded-md text-sm font-medium transition-colors cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-white/[0.04] aria-[current=page]:bg-gray-200/70 dark:aria-[current=page]:bg-white/[0.07]"
           >
-            <InformationCircleIcon aria-hidden="true" className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <InformationCircleIcon aria-hidden="true" className="size-[18px] text-gray-500 dark:text-gray-400" />
             {t("О сервисе")}
           </Link>
         </nav>
 
         {/* Кнопка выхода в нижней части */}
-        <div className="shrink-0 border-t border-gray-200 px-4 py-4 dark:border-gray-800">
+        <div className="shrink-0 border-t border-[var(--ui-border)] px-3 py-3">
           <button
             onClick={() => {
               onClose();
               onLogout();
             }}
-            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-base font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
+            className="flex items-center gap-3 px-3 h-10 rounded-md text-sm font-medium transition-colors cursor-pointer w-full text-gray-700 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-white/[0.04]"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+            <ArrowRightOnRectangleIcon className="size-[18px] text-gray-500 dark:text-gray-400" />
             {t("Выйти")}
           </button>
         </div>

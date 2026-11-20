@@ -17,8 +17,7 @@ import {
   LandingNotificationsPreview,
   LandingPaymentsPreview,
 } from '../components/LandingFeaturePreviews';
-import { LandingHeroMockup } from '../components/LandingHeroMockup';
-import { LandingMobileMockup } from '../components/LandingMobileMockup';
+import { LandingDashboardPreview } from '../components/LandingDashboardPreview';
 import { LandingTopBar } from '../components/LandingTopBar';
 import PageMeta from '../components/PageMeta';
 import { getPageMetadata } from '../utils/pageMetadata';
@@ -192,13 +191,7 @@ const LandingPage: React.FC = () => {
               </div>
 
               <div className="relative z-10 mx-auto w-full min-w-0 max-w-[760px] pb-8 pt-2 sm:pb-12 min-[60rem]:mr-0 min-[60rem]:max-w-none xl:-mr-2">
-                <div className="hidden md:block">
-                  <LandingHeroMockup />
-                </div>
-
-                <div className="md:hidden">
-                  <LandingMobileMockup />
-                </div>
+                <LandingDashboardPreview />
               </div>
             </div>
           </div>

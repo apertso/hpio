@@ -43,7 +43,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
   const formatDate = createDateDisplayFormatter(locale);
   const formatDateTime = createDateDisplayFormatter(locale, true);
   const thBaseClassName =
-    "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
+    "px-4 h-9 text-left text-xs font-medium text-gray-500 dark:text-gray-400";
   const columns: TableColumn<PaymentData>[] = [
     {
       id: "icon",
@@ -60,7 +60,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       cell: (payment) => (
         <div className="text-sm text-gray-900 dark:text-gray-100">
           <span
-            className={`inline-block w-3 h-3 rounded-full mr-2 ${getPaymentColorClass(
+            className={`inline-block size-2 rounded-full mr-2 ${getPaymentColorClass(
               payment
             )}`}
           ></span>
@@ -73,7 +73,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       id: "title",
       header: t("Название"),
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs",
+        "px-4 h-11 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-50 truncate max-w-xs",
       cell: (payment) => <>{payment.title}</>,
     },
     {
@@ -81,7 +81,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       header: t("Повторение"),
       thClassName: `${thBaseClassName} w-48`,
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
+        "px-4 h-11 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400",
       cell: (payment) => (
         <>
           {payment.seriesId && payment.series ? (
@@ -105,7 +105,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       header: t("Сумма"),
       thClassName: `${thBaseClassName} w-32`,
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
+        "px-4 h-11 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400",
       cell: (payment) => (
         <>
           {formatMoney(payment.amount, locale, payment.currency)}
@@ -117,7 +117,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       header: t("Срок оплаты"),
       thClassName: `${thBaseClassName} w-36`,
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
+        "px-4 h-11 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400",
       cell: (payment) => (
         <>{formatDate(parseCalendarDate(payment.dueDate))}</>
       ),
@@ -127,7 +127,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       header: t(completedOrDeletedHeader),
       thClassName: `${thBaseClassName} w-48`,
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
+        "px-4 h-11 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400",
       cell: (payment) => (
         <>
           {formatDateTime(new Date(payment.completedAt || payment.updatedAt))}
@@ -138,7 +138,7 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       id: "category",
       header: t("Категория"),
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 truncate",
+        "px-4 h-11 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 truncate",
       cell: (payment) => (
         <>
           {payment.transactionCategory
@@ -152,13 +152,13 @@ const ArchiveTable: React.FC<ArchiveTableProps> = ({
       header: t("Файл"),
       thClassName: `${thBaseClassName} w-16`,
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300",
+        "px-4 h-11 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400",
       cell: (payment) => (
         <>
           {payment.filePath && payment.fileName ? (
             <button
               onClick={() => onDownloadFile(payment.id, payment.fileName!)}
-              className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-600 cursor-pointer"
+              className="inline-flex items-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors cursor-pointer"
               title={t("Скачать {1}", payment.fileName)}
             >
               <PaperClipIcon className="h-5 w-5 inline-block mr-1" />

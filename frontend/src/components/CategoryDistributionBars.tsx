@@ -12,13 +12,20 @@ interface CategoryStat {
 interface CategoryDistributionBarsProps {
   data: CategoryStat[] | undefined | null;
   colors: string[];
+  /**
+   * "responsive" — сетка на десктопе и столбик на мобильных (по умолчанию),
+   * "stacked" — всегда компактный столбик: подпись и процент над полосой (для узких панелей)
+   */
+  variant?: "responsive" | "stacked";
 }
 
 const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
   data,
   colors,
+  variant = "responsive",
 }) => {
   const { t, language } = useLanguage();
+  const isStacked = variant === "stacked";
   if (!data || data.length === 0 || data.every((cat) => cat.amount === 0)) {
     return (
       <div className="text-center text-gray-700 dark:text-gray-300 py-10">
@@ -34,7 +41,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
   return (
     <div className="flex h-full">
       <div className="w-full">
-        {sortedData.map((category, index) => {
+        {!isStacked && sortedData.map((category, index) => {
           const percentage =
             totalAmount > 0 ? (category.amount / totalAmount) * 100 : 0;
           const color = colors[index % colors.length];
@@ -80,7 +87,11 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
           return (
             <div
               key={`mobile-${category.id || category.name}`}
-              className="space-y-1 text-sm mb-3 md:hidden"
+              className={
+                isStacked
+                  ? "space-y-1.5 text-sm mb-3.5 last:mb-0"
+                  : "space-y-1 text-sm mb-3 md:hidden"
+              }
             >
               {/* Category name and percentage on same line */}
               <div className="flex items-center justify-between gap-2">
@@ -90,7 +101,7 @@ const CategoryDistributionBars: React.FC<CategoryDistributionBarsProps> = ({
                 >
                   {label}
                 </span>
-                <span className="font-medium text-gray-500 dark:text-gray-400">
+                <span className="font-medium tabular-nums text-gray-500 dark:text-gray-400">
                   {percentage.toFixed(1)}%
                 </span>
               </div>

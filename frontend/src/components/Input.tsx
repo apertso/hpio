@@ -10,11 +10,98 @@ import React, {
   ReactNode,
 } from "react";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { useUiSurface } from "../context/UiSurfaceContext";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   isInvalid?: boolean;
   unstyled?: boolean;
 }
+
+// Стили поля ввода рабочего интерфейса (компактные, нейтральные)
+const APP_INPUT_CLASSES = [
+  "block",
+  "w-full",
+  "min-w-0",
+  "max-w-[64em]",
+  "rounded-md",
+  "bg-white",
+  "border",
+  "border-gray-200",
+  "px-2.5",
+  "h-9",
+  "md:h-8",
+  "text-sm",
+  "text-gray-900",
+  "placeholder:text-gray-400",
+  "shadow-sm",
+  "transition-colors",
+  "hover:border-gray-300",
+  "focus:outline-none",
+  "focus:border-indigo-500",
+  "focus:ring-2",
+  "focus:ring-indigo-500/25",
+  "dark:bg-white/[0.03]",
+  "dark:border-white/10",
+  "dark:hover:border-white/20",
+  "dark:focus:border-indigo-500",
+  "dark:text-gray-100",
+  "dark:placeholder:text-gray-500",
+];
+const APP_DISABLED_CLASSES = [
+  "bg-gray-50",
+  "text-gray-500",
+  "opacity-60",
+  "cursor-not-allowed",
+  "dark:text-gray-500",
+];
+const APP_INVALID_CLASSES = [
+  "border-red-500",
+  "dark:border-red-500",
+  "focus:ring-2",
+  "focus:ring-red-500/25",
+  "focus:border-red-500",
+];
+
+// Прежние стили для индексируемых публичных страниц
+const LEGACY_INPUT_CLASSES = [
+  "block",
+  "w-full",
+  "min-w-[12em]",
+  "max-w-[64em]",
+  "rounded-xl",
+  "bg-white",
+  "border",
+  "border-gray-200",
+  "px-3",
+  "py-2.5",
+  "text-base",
+  "text-gray-900",
+  "placeholder:text-gray-500",
+  "shadow-sm",
+  "transition-colors",
+  "focus:outline-none",
+  "focus:ring-2",
+  "focus:ring-indigo-500",
+  "focus:border-indigo-500",
+  "dark:bg-gray-900",
+  "dark:border-gray-700",
+  "dark:text-gray-100",
+  "dark:placeholder:text-gray-500",
+];
+const LEGACY_DISABLED_CLASSES = [
+  "bg-gray-100",
+  "text-gray-500",
+  "opacity-70",
+  "cursor-not-allowed",
+  "dark:bg-gray-900",
+  "dark:text-gray-500",
+];
+const LEGACY_INVALID_CLASSES = [
+  "border-red-500",
+  "focus:ring-2",
+  "focus:ring-red-500",
+  "focus:border-red-500",
+];
 
 const shouldSkipStyling = (type?: string, unstyled?: boolean): boolean => {
   if (unstyled !== undefined) {
@@ -43,51 +130,21 @@ const Input = forwardRef<HTMLInputElement, InputProps>((props, ref) => {
   } = props;
   const skipStyling = shouldSkipStyling(type, unstyled);
   const { ["aria-invalid"]: ariaInvalid, ...restProps } = rest;
+  const surface = useUiSurface();
+  const isLegacy = surface === "public";
   const baseClasses = skipStyling
     ? []
-    : [
-        "block",
-        "w-full",
-        "min-w-[12em]",
-        "max-w-[64em]",
-        "rounded-xl",
-        "bg-white",
-        "border",
-        "border-gray-200",
-        "px-3",
-        "py-2.5",
-        "text-base",
-        "text-gray-900",
-        "placeholder:text-gray-500",
-        "shadow-sm",
-        "transition-colors",
-        "focus:outline-none",
-        "focus:ring-2",
-        "focus:ring-indigo-500",
-        "focus:border-indigo-500",
-        "dark:bg-gray-900",
-        "dark:border-gray-700",
-        "dark:text-gray-100",
-        "dark:placeholder:text-gray-500",
-      ];
+    : [...(isLegacy ? LEGACY_INPUT_CLASSES : APP_INPUT_CLASSES)];
 
   if (!skipStyling && disabled) {
     baseClasses.push(
-      "bg-gray-100",
-      "text-gray-500",
-      "opacity-70",
-      "cursor-not-allowed",
-      "dark:bg-gray-900",
-      "dark:text-gray-500"
+      ...(isLegacy ? LEGACY_DISABLED_CLASSES : APP_DISABLED_CLASSES)
     );
   }
 
   if (!skipStyling && isInvalid) {
     baseClasses.push(
-      "border-red-500",
-      "focus:ring-2",
-      "focus:ring-red-500",
-      "focus:border-red-500"
+      ...(isLegacy ? LEGACY_INVALID_CLASSES : APP_INVALID_CLASSES)
     );
   }
 
@@ -144,6 +201,7 @@ const TextFieldRoot: React.FC<TextFieldProps> = (props) => {
     children,
     ...rest
   } = props;
+  const isLegacy = useUiSurface() === "public";
   const generatedId = useId();
   const fieldId = inputId ?? generatedId;
   const hintId = hint ? `${fieldId}-hint` : undefined;
@@ -166,13 +224,13 @@ const TextFieldRoot: React.FC<TextFieldProps> = (props) => {
   return (
     <TextFieldContext.Provider value={contextValue}>
       <div
-        className={`flex w-full max-w-[64em] flex-col gap-2 ${className}`.trim()}
+        className={`flex w-full max-w-[64em] flex-col ${isLegacy ? "gap-2" : "gap-1.5"} ${className}`.trim()}
         {...rest}
       >
         {label && (
           <label
             htmlFor={fieldId}
-            className="text-sm font-medium text-gray-700 dark:text-gray-200"
+            className={`text-sm font-medium ${isLegacy ? "text-gray-700" : "text-gray-800"} dark:text-gray-200`}
           >
             {label}
           </label>
@@ -181,18 +239,18 @@ const TextFieldRoot: React.FC<TextFieldProps> = (props) => {
         {description && (
           <p
             id={descriptionId}
-            className="text-sm text-gray-600 dark:text-gray-400"
+            className={isLegacy ? "text-sm text-gray-600 dark:text-gray-400" : "text-xs text-gray-500 dark:text-gray-400"}
           >
             {description}
           </p>
         )}
         {hint && (
-          <p id={hintId} className="text-sm text-gray-500 dark:text-gray-400">
+          <p id={hintId} className={`${isLegacy ? "text-sm" : "text-xs"} text-gray-500 dark:text-gray-400`}>
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} className="text-sm text-red-500">
+          <p id={errorId} className={isLegacy ? "text-sm text-red-500" : "text-xs text-red-600 dark:text-red-400"}>
             {typeof error === "string" ? t(error) : error}
           </p>
         )}
@@ -303,7 +361,7 @@ const TextFieldLabel: React.FC<TextFieldSubComponentProps> = ({
   return (
     <label
       htmlFor={context.inputId}
-      className={`text-sm font-medium text-gray-700 dark:text-gray-200 ${className}`.trim()}
+      className={`text-sm font-medium text-gray-800 dark:text-gray-200 ${className}`.trim()}
     >
       {children}
     </label>
@@ -400,10 +458,10 @@ const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
     const isDisabled = Boolean(rest.disabled);
 
     const fieldClasses = [
-      "group flex items-stretch rounded-xl border border-gray-200 bg-white shadow-sm transition-colors",
-      "focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500",
-      "dark:bg-gray-900 dark:border-gray-700",
-      "text-base",
+      "group flex items-stretch rounded-md border border-gray-200 bg-white shadow-sm transition-colors hover:border-gray-300",
+      "focus-within:ring-2 focus-within:ring-indigo-500/25 focus-within:border-indigo-500",
+      "dark:bg-white/[0.03] dark:border-white/10 dark:hover:border-white/20 dark:focus-within:border-indigo-500",
+      "text-sm h-9 md:h-8",
     ];
 
     if (isDisabled) {
@@ -416,7 +474,7 @@ const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
 
     if (error) {
       fieldClasses.push(
-        "border-red-500 focus-within:border-red-500 focus-within:ring-red-500"
+        "border-red-500 dark:border-red-500 focus-within:border-red-500 focus-within:ring-red-500/25"
       );
     }
 
@@ -437,13 +495,13 @@ const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
             required={required}
             step={step}
             unstyled
-            className={`number-field-input appearance-none flex-1 bg-transparent py-2.5 text-base text-gray-900 placeholder:text-gray-500 focus:outline-none dark:text-gray-100 ${
-              suffix ? "text-right pr-1 pl-3" : "text-left px-3"
+            className={`number-field-input appearance-none flex-1 min-w-0 bg-transparent text-sm tabular-nums text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-gray-100 ${
+              suffix ? "text-right pr-1 pl-2.5" : "text-left px-2.5"
             }`}
             {...rest}
           />
           {suffix && (
-            <span className="flex items-center pl-0 pr-4 text-sm font-medium text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            <span className="flex items-center pl-0 pr-2.5 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
               {suffix}
             </span>
           )}
@@ -505,19 +563,19 @@ const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
             ref={ref}
             type={isVisible ? "text" : "password"}
             required={required}
-            className={`pr-12 ${className}`.trim()}
+            className={`pr-10 ${className}`.trim()}
             {...rest}
           />
           <button
             type="button"
             onClick={handleToggle}
-            className="absolute inset-y-0 right-0 flex min-w-11 cursor-pointer items-center justify-center rounded-full text-gray-600 transition-all hover:bg-gray-100 hover:opacity-80 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 motion-reduce:transition-none dark:text-gray-300 dark:hover:bg-gray-800"
+            className="absolute inset-y-0 right-0 flex min-w-9 cursor-pointer items-center justify-center rounded-md text-gray-500 transition-colors hover:text-gray-900 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500 motion-reduce:transition-none dark:text-gray-400 dark:hover:text-gray-100"
             aria-label={toggleLabel}
           >
             {isVisible ? (
-              <EyeSlashIcon className="h-5 w-5" />
+              <EyeSlashIcon className="size-4" />
             ) : (
-              <EyeIcon className="h-5 w-5" />
+              <EyeIcon className="size-4" />
             )}
           </button>
         </div>

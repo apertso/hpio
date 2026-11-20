@@ -39,11 +39,11 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({ onSelect }) => {
   return (
     <div className="space-y-2">
       <div className="relative">
-        <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+        <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400" />
         <input
           type="text"
           placeholder={t("Поиск криптовалюты...")}
-          className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full pl-8 pr-3 h-9 md:h-8 bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-md text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -58,12 +58,12 @@ const CryptoSelector: React.FC<CryptoSelectorProps> = ({ onSelect }) => {
             <div
               key={asset.id}
               onClick={() => onSelect(asset)}
-              className="flex items-center gap-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer transition-colors"
+              className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-md cursor-pointer transition-colors"
             >
               <img
                 src={asset.image || asset.large}
                 alt={asset.name}
-                className="w-6 h-6 rounded-full"
+                className="size-5 rounded-full"
               />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900 dark:text-gray-100">

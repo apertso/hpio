@@ -19,7 +19,8 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
   const { t, locale } = useLanguage();
   const currency = usePreferredCurrency();
   const { resolvedTheme } = useTheme();
-  const [history, setHistory] = useState<FundsHistoryPoint[]>([]);
+  const [historyData, setHistory] = useState<{ currency: string; points: FundsHistoryPoint[] }>({ currency, points: [] });
+  const [historyError, setHistoryError] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Map dashboard timeRange to logic
@@ -50,22 +51,28 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
   }, [timeRange]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    let canceled = false;
+    setHistory({ currency, points: [] });
+    setHistoryError(false);
+    const fetchData = async (): Promise<void> => {
       try {
         const data = await fundsApi.getHistory({
           startDate: startDate.toISOString().split("T")[0],
           endDate: endDate.toISOString().split("T")[0],
         });
-        setHistory(data);
+        if (!canceled) setHistory({ currency, points: data });
       } catch (error) {
+        if (!canceled) setHistoryError(true);
         console.error("Failed to load funds history", error);
       }
     };
 
     fetchData();
-  }, [startDate, endDate]);
+    return () => { canceled = true; };
+  }, [startDate, endDate, currency]);
 
   const { chartData, chartLabels, chartDates } = useMemo(() => {
+    const history = historyData.currency === currency ? historyData.points : [];
     const data = history.map((p) => p.totalAmount);
     const labels = history.map((p) =>
       new Date(p.date).toLocaleDateString(locale, {
@@ -75,7 +82,7 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
     );
     const dates = history.map((p) => p.date);
     return { chartData: data, chartLabels: labels, chartDates: dates };
-  }, [history, locale]);
+  }, [historyData, currency, locale]);
 
   const hasData = chartData.length > 1;
 
@@ -102,7 +109,7 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
         />
       ) : (
         <div className="flex items-center justify-center h-full text-sm text-gray-400">
-          {t("Недостаточно данных для графика")}
+          {historyError ? t("Не удалось загрузить баланс в {1}.", currency) : t("Недостаточно данных для графика")}
         </div>
       )}
     </div>
@@ -110,7 +117,7 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
 
   return (
     <>
-      <div className="card-base p-6 flex flex-col justify-between h-full min-h-[160px]">
+      <div className="card-base p-5 flex flex-col justify-between h-full min-h-[160px]">
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -127,14 +134,15 @@ const FundsTrendWidget: React.FC<FundsTrendWidgetProps> = ({ timeRange }) => {
           </div>
           <button
             onClick={() => setIsExpanded(true)}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="-mr-1.5 -mt-1 flex size-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
+            aria-label={t("История баланса")}
           >
-            <ArrowsPointingOutIcon className="w-5 h-5" />
+            <ArrowsPointingOutIcon className="size-4" />
           </button>
         </div>
 
         <div className="-mx-2">
-          <ChartContent heightClass="h-24" />
+          <ChartContent heightClass="h-40" />
         </div>
       </div>
 

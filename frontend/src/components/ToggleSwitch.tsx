@@ -25,7 +25,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         disabled={disabled}
         unstyled
       />
-      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all motion-reduce:after:transition-none dark:border-gray-600 peer-checked:bg-blue-600 flex items-center justify-center"></div>
+      <div className="relative w-[32px] h-[18px] shrink-0 rounded-full bg-gray-300 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500 peer-disabled:opacity-50 dark:bg-white/15 peer-checked:bg-indigo-600 dark:peer-checked:bg-indigo-500 after:content-[''] after:absolute after:left-[2px] after:top-[2px] after:size-[14px] after:rounded-full after:bg-white after:shadow-[0_1px_2px_rgba(0,0,0,0.2)] after:transition-transform motion-reduce:after:transition-none peer-checked:after:translate-x-[14px]"></div>
     </label>
   );
 };

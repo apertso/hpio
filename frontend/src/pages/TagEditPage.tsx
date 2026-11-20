@@ -1,10 +1,10 @@
 import { useLanguage } from "../context/LanguageContext";
+import { PageHeader, PageContent } from "../components/layout/Page";
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
 import Spinner from "../components/Spinner";
@@ -97,21 +97,13 @@ const TagEditPage: React.FC = () => {
   return (
     <>
       <PageMeta {...metadata} />
-      <div className="max-w-4xl mx-auto">
-        <div className="hidden md:flex items-center mb-6">
-          <Link
-            to="/tags"
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 hover:opacity-80 transition-all text-gray-800 dark:text-gray-200 cursor-pointer"
-            aria-label={t("Назад к тегам")}
-          >
-            <ArrowLeftIcon className="h-6 w-6" />
-          </Link>
-          <h2 className="text-xl md:text-2xl font-bold ml-4 text-gray-900 dark:text-white">
-            {isEditMode ? t("Редактировать тег") : t("Новый тег")}
-          </h2>
-        </div>
-
-        <FormBlock className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="dark:text-gray-100">
+        <PageHeader
+          breadcrumbs={[{ label: t("Теги"), to: "/tags" }]}
+          title={isEditMode ? t("Редактировать тег") : t("Новый тег")}
+        />
+        <PageContent width="form">
+        <FormBlock>
           {isLoading && isEditMode ? (
             <div className="flex justify-center items-center h-40">
               <Spinner />
@@ -122,7 +114,7 @@ const TagEditPage: React.FC = () => {
                 <div className="flex flex-col mt-16">
                   {formError && (
                     <div
-                      className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-6"
+                      className="ui-alert-error mb-6"
                       role="alert"
                     >
                       <span className="block sm:inline">{t(formError)}</span>
@@ -183,13 +175,14 @@ const TagEditPage: React.FC = () => {
                   <img
                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuARbik3smEtZAY9taVN-GM0G4mQVtI9TiBbn0ERw51lZXj_8R67ommVEgxBIuik_1tih20DA-CJquH9AKMLWeheqtEoUo33JjYd0ypQaNpjhX7eVyC5FxhbTauSLK051Aj0jbB60mZynnR_YVqZCndgUQ23pVHaFMcMfytqzfwV1oEkVLXifcZSvokGJD8T2BaXoJwhzUftDpQd2TZdg3pIumXwPnMhYXNsvzwNSGd56T-VgLhB__PXIZTKAylgNH470smmE5TnkJ9w"
                     alt="A sketch-style illustration of a person organizing items on a shelf, symbolizing categorization."
-                    className="h-auto w-full max-w-sm rounded-lg object-cover shadow-lg"
+                    className="h-auto w-full max-w-sm rounded-lg border border-[var(--ui-border)] object-cover"
                   />
                 </div>
               </div>
             </form>
           )}
         </FormBlock>
+        </PageContent>
       </div>
     </>
   );

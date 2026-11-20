@@ -230,16 +230,16 @@ const DeveloperSection: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <SettingsSection className="card-base p-6">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="flex-shrink-0 w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
-            <CodeBracketIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+      <SettingsSection className="card-base p-5">
+        <div className="flex items-start gap-3 mb-5">
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <CodeBracketIcon className="size-4" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h2 className="ui-heading mb-0.5">
               {t("Разработка")}
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Инструменты для разработчиков и тестирования функциональности приложения")}
             </p>
           </div>
@@ -335,7 +335,7 @@ const DeveloperSection: React.FC = () => {
         </div>
 
         <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-          <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          <h4 className="ui-heading mb-3">
             {t("Тестовое email-уведомление")}
           </h4>
           <div className="space-y-4">
@@ -357,7 +357,7 @@ const DeveloperSection: React.FC = () => {
         {/* Notification Simulation Section */}
         {isTauriMobile() && (
           <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <h4 className="ui-heading mb-3">
               {t("Симуляция уведомлений")}
             </h4>
             <div className="space-y-4">
@@ -379,7 +379,7 @@ const DeveloperSection: React.FC = () => {
         {/* Log Download Section */}
         {isTauriMobile() && (
           <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <h4 className="ui-heading mb-3">
               {t("Логи приложения")}
             </h4>
             <div className="space-y-4">
@@ -415,7 +415,7 @@ const DeveloperSection: React.FC = () => {
 
         <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-start gap-3 mb-4">
-            <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h4 className="ui-heading">
               {t("Демонстрация Particle Notification")}
             </h4>
           </div>

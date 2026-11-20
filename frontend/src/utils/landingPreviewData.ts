@@ -1,7 +1,8 @@
 import type { Language } from "../i18n/translate";
+import type { PaymentData } from "../types/paymentData";
 import { formatDateToLocal } from "./dateUtils";
 
-type LandingPreviewCurrency = "RUB" | "USD";
+export type LandingPreviewCurrency = "RUB" | "USD";
 
 const upcomingPayments = [
   { id: "landing-internet", title: "Домашний интернет", days: 4, amounts: { RUB: 790, USD: 65 }, builtinIconName: "wifi" },
@@ -81,4 +82,100 @@ export function getLandingSpendingPreview(currency: LandingPreviewCurrency, toda
     rawDates: dates.map((date) => `${formatDateToLocal(date)}T12:00:00`),
     total: categories.reduce((sum, category) => sum + category.amount, 0),
   };
+}
+
+/* Категории демо-панели на лендинге */
+const dashboardCategories = {
+  groceries: "Продукты",
+  utilities: "ЖКХ",
+  communications: "Связь",
+  entertainment: "Развлечения",
+  other: "Прочее",
+} as const;
+
+type DashboardCategory = keyof typeof dashboardCategories;
+
+// Категории регулярных платежей из списка «Ближайшие платежи»
+const upcomingCategories: Record<(typeof upcomingPayments)[number]["id"], DashboardCategory> = {
+  "landing-internet": "communications",
+  "landing-utilities": "utilities",
+  "landing-mobile": "communications",
+  "landing-music": "entertainment",
+};
+
+/*
+ * Разовые траты текущего месяца. share — доля уже прошедших дней месяца,
+ * поэтому траты всегда попадают в период «Месяц» и не уходят в будущее.
+ */
+const currentMonthSpending: { title: string; category: DashboardCategory; share: number; amounts: Record<LandingPreviewCurrency, number> }[] = [
+  { title: "Продукты", category: "groceries", share: 0.05, amounts: { RUB: 1840, USD: 54.82 } },
+  { title: "Такси", category: "other", share: 0.2, amounts: { RUB: 520, USD: 18.4 } },
+  { title: "Продукты", category: "groceries", share: 0.35, amounts: { RUB: 2675, USD: 71.43 } },
+  { title: "Билеты", category: "entertainment", share: 0.45, amounts: { RUB: 900, USD: 32 } },
+  { title: "Продукты", category: "groceries", share: 0.6, amounts: { RUB: 2340, USD: 63.08 } },
+  { title: "Такси", category: "other", share: 0.75, amounts: { RUB: 690, USD: 24.6 } },
+  { title: "Продукты", category: "groceries", share: 0.9, amounts: { RUB: 1560, USD: 42.16 } },
+];
+
+// Разовые траты прошлого месяца (день месяца), чтобы было с чем сравнивать
+const previousMonthSpending: { title: string; category: DashboardCategory; day: number; amounts: Record<LandingPreviewCurrency, number> }[] = [
+  { title: "Продукты", category: "groceries", day: 3, amounts: { RUB: 2210, USD: 68.3 } },
+  { title: "Продукты", category: "groceries", day: 11, amounts: { RUB: 2490, USD: 74.9 } },
+  { title: "Такси", category: "other", day: 14, amounts: { RUB: 840, USD: 27.5 } },
+  { title: "Продукты", category: "groceries", day: 19, amounts: { RUB: 1980, USD: 59.4 } },
+  { title: "Продукты", category: "groceries", day: 26, amounts: { RUB: 2120, USD: 66.75 } },
+];
+
+// Дата внутри месяца со сдвигом monthOffset; день ограничен длиной месяца
+function dateInMonth(today: Date, monthOffset: number, day: number): Date {
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + monthOffset + 1, 0).getDate();
+  return new Date(today.getFullYear(), today.getMonth() + monthOffset, Math.min(day, lastDay), 12);
+}
+
+export function getLandingDashboardPayments(
+  currency: LandingPreviewCurrency,
+  translate: (key: string) => string,
+  today: Date,
+): { upcoming: PaymentData[]; completed: PaymentData[] } {
+  const timestamp = today.toISOString();
+  const { payments } = getLandingUpcomingPreview(currency);
+  const category = (key: DashboardCategory): PaymentData["transactionCategory"] => ({
+    id: `demo-category-${key}`,
+    name: dashboardCategories[key],
+  });
+  const completedPayment = (id: string, title: string, key: DashboardCategory, amount: number, date: Date): PaymentData => ({
+    id,
+    title: translate(title),
+    amount,
+    currency,
+    dueDate: formatDateToLocal(date),
+    completedAt: date.toISOString(),
+    status: "completed",
+    remind: false,
+    createdAt: date.toISOString(),
+    updatedAt: date.toISOString(),
+    transactionCategory: category(key),
+  });
+
+  const elapsedDays = today.getDate() - 1;
+  const currentMonth = currentMonthSpending.map(({ title, category: key, share, amounts }, index) =>
+    completedPayment(`demo-current-${index}`, title, key, amounts[currency], dateInMonth(today, 0, 1 + Math.floor(share * elapsedDays))),
+  );
+  const previousMonth = previousMonthSpending.map(({ title, category: key, day, amounts }, index) =>
+    completedPayment(`demo-previous-${index}`, title, key, amounts[currency], dateInMonth(today, -1, day)),
+  );
+
+  const upcoming: PaymentData[] = payments.map(({ id, title, amount, days, builtinIconName }) => ({
+    id, title: translate(title), amount, currency, builtinIconName,
+    dueDate: formatDateToLocal(landingPreviewDate(days, today)),
+    status: "upcoming", remind: true, createdAt: timestamp, updatedAt: timestamp,
+    transactionCategory: category(upcomingCategories[id]),
+  }));
+
+  // Регулярные платежи уже оплачены месяцем раньше — в тот же день месяца
+  const recurringPaid = payments.map(({ id, title, amount, days }) =>
+    completedPayment(`${id}-paid`, title, upcomingCategories[id], amount, dateInMonth(landingPreviewDate(days, today), -1, landingPreviewDate(days, today).getDate())),
+  );
+
+  return { upcoming, completed: [...previousMonth, ...recurringPaid, ...currentMonth] };
 }

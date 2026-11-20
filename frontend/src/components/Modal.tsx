@@ -1,6 +1,7 @@
 // src/components/Modal.tsx
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 interface ModalProps {
   isOpen: boolean;
@@ -40,60 +41,39 @@ const Modal: React.FC<ModalProps> = ({
   // Используем React Portal для рендеринга модального окна вне основного DOM-дерева
   return ReactDOM.createPortal(
     <div
-      className={`fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 ${
+      className={`fixed inset-0 bg-black/30 dark:bg-black/60 flex justify-center items-center z-50 ${
         className || ""
       }`}
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-[var(--ui-surface)] rounded-lg shadow-2xl border border-[var(--ui-border)] p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto mx-3"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
         {title && (
-          <div className="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-600">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <div className="flex justify-between items-center gap-4 mb-4 -mr-1.5">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50">
               {title}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
+              className="flex size-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 cursor-pointer"
+              aria-label="Close"
             >
-              {/* Простой крестик SVG или символ */}
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                ></path>
-              </svg>
+              <XMarkIcon className="size-4" />
             </button>
           </div>
         )}
         {!title && showCloseButton && (
-          <div className="flex justify-end -mb-2">
+          <div className="flex justify-end -mb-2 -mr-1.5">
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
+              className="flex size-7 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 cursor-pointer"
+              aria-label="Close"
             >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <XMarkIcon className="size-4" />
             </button>
           </div>
         )}

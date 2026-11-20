@@ -7,7 +7,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { CalendarDaysIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import {
+  CalendarDaysIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/24/outline";
 import MobilePanel from "./MobilePanel";
 import { Input, TextField } from "./Input";
 import { Button } from "./Button";
@@ -223,6 +228,15 @@ const formatRangeDisplayValue = (
   locale: string
 ): string => {
   if (start && end) {
+    // Если выбран один день, показываем одну дату вместо диапазона
+    if (
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth() &&
+      start.getDate() === end.getDate()
+    ) {
+      return formatRangePart(start, false, shortMonth, locale);
+    }
+
     const includeYear = start.getFullYear() !== end.getFullYear();
     return `${formatRangePart(start, includeYear, shortMonth, locale)} - ${formatRangePart(
       end,
@@ -232,12 +246,13 @@ const formatRangeDisplayValue = (
     )}`;
   }
 
+  // Пока выбрана только одна граница диапазона, показываем её как одиночную дату
   if (start) {
-    return `${formatRangePart(start, true, shortMonth, locale)} -`;
+    return formatRangePart(start, false, shortMonth, locale);
   }
 
   if (end) {
-    return `- ${formatRangePart(end, true, shortMonth, locale)}`;
+    return formatRangePart(end, false, shortMonth, locale);
   }
 
   return "";
@@ -887,22 +902,24 @@ const DatePicker: React.FC<DatePickerProps> = ({
 
     return (
       <>
-        <div className="hidden md:flex justify-end space-x-4 mt-6 pt-6">
+        <div className="hidden md:flex justify-end gap-1.5 pt-3 border-t border-[var(--ui-border)]">
           <Button
             type="button"
             variant="ghost"
+            size="small"
             label={t(cancelLabel)}
             onClick={handleCancelAction}
           />
           <Button
             type="button"
             variant="primary"
+            size="small"
             label={t(applyLabel)}
             onClick={handleApplyAction}
             disabled={isApplyDisabled}
           />
         </div>
-        <div className="flex flex-col md:hidden px-6 space-y-3 mt-6">
+        <div className="flex flex-col md:hidden px-4 space-y-2 mt-4">
           <Button
             type="button"
             variant="primary"
@@ -927,25 +944,28 @@ const DatePicker: React.FC<DatePickerProps> = ({
   const renderCalendarSection = () => (
     <div className="hp-datepicker__date-section">
       <div className="hp-datepicker__month-header">
-        <button
-          type="button"
-          className="hp-datepicker__nav-button cursor-pointer"
-          onClick={() => handleMonthChange(-1)}
-          aria-label={t("Предыдущий месяц")}
-        >
-          <span aria-hidden="true">‹</span>
-        </button>
         <div className="hp-datepicker__month-title">
-          {formatMonthTitle(viewDate, locale)}
+          {/* Убираем сокращение «г.», которое Intl добавляет для русской локали */}
+          {formatMonthTitle(viewDate, locale).replace(/\s*г\.$/, "")}
         </div>
-        <button
-          type="button"
-          className="hp-datepicker__nav-button cursor-pointer"
-          onClick={() => handleMonthChange(1)}
-          aria-label={t("Следующий месяц")}
-        >
-          <span aria-hidden="true">›</span>
-        </button>
+        <div className="hp-datepicker__nav">
+          <button
+            type="button"
+            className="hp-datepicker__nav-button cursor-pointer"
+            onClick={() => handleMonthChange(-1)}
+            aria-label={t("Предыдущий месяц")}
+          >
+            <ChevronLeftIcon className="size-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="hp-datepicker__nav-button cursor-pointer"
+            onClick={() => handleMonthChange(1)}
+            aria-label={t("Следующий месяц")}
+          >
+            <ChevronRightIcon className="size-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <div className="hp-datepicker__week-row">
         {WEEK_DAYS.map((day) => (

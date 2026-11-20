@@ -119,7 +119,7 @@ const Overlay: React.FC<OverlayProps> = ({
 
   if (!isOpen) return null;
 
-  const baseClasses = `rounded-md bg-white dark:bg-gray-800 shadow-lg focus:outline-none border border-gray-200 dark:border-gray-700 overflow-hidden ${widthClass} ${className}`;
+  const baseClasses = `rounded-lg bg-[var(--ui-surface)] dark:bg-gray-800 shadow-lg focus:outline-none border border-[var(--ui-border)] overflow-hidden ${widthClass} ${className}`;
 
   // Рендерим в портал, чтобы ОВЕРЛЕЙ был вне document flow таблицы
   return ReactDOM.createPortal(

@@ -81,7 +81,7 @@ const PasswordResetForm: React.FC<PasswordResetFormProps> = ({
       </form>
       <div role="status">
         {requested && (
-          <p className="mt-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950 dark:bg-indigo-400/10 dark:text-indigo-100">
+          <p className="mt-4 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950 dark:bg-indigo-400/10 dark:text-indigo-100">
             {t("Если для этого адреса есть аккаунт, вы получите письмо со ссылкой для сброса пароля. Проверьте также папку «Спам».")}
           </p>
         )}

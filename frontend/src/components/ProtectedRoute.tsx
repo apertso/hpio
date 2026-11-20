@@ -12,7 +12,7 @@ const ProtectedRoute: React.FC = () => {
   // Пока загружается состояние аутентификации, ничего не рендерим или показываем спиннер
   if (loading) {
     return (
-      <div className="flex flex-1 justify-center items-center">
+      <div className="ui-skeleton-delayed flex flex-1 justify-center items-center">
         <Spinner size="lg" />
       </div>
     );
@@ -25,7 +25,7 @@ const ProtectedRoute: React.FC = () => {
 
   // Если пользователь аутентифицирован, рендерим вложенные маршруты
   return (
-    <div className="w-full flex-1 p-3 sm:px-6 sm:py-6 md:px-8 lg:px-12">
+    <div className="ui-fade-in w-full flex-1">
       <Outlet />
     </div>
   );

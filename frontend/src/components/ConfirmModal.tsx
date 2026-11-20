@@ -36,40 +36,40 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const renderContent = ({ showTitleInBody }: ContentOptions) => (
     <>
       <div className="flex items-start">
-        <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 sm:mx-0 sm:h-10 sm:w-10">
+        <div className="mx-auto flex-shrink-0 flex items-center justify-center size-9 rounded-md border border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10 sm:mx-0">
           <ExclamationTriangleIcon
-            className="h-6 w-6 text-red-600 dark:text-red-400"
+            className="size-4 text-red-600 dark:text-red-400"
             aria-hidden="true"
           />
         </div>
-        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+        <div className="mt-3 text-center sm:mt-0 sm:ml-3.5 sm:text-left">
           {showTitleInBody && (
             <h3
-              className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100"
+              className="text-base font-semibold text-gray-900 dark:text-gray-50"
               id="modal-title"
             >
               {title}
             </h3>
           )}
-          <div className={`mt-2 ${showTitleInBody ? "" : "mt-0"}`}>
+          <div className={showTitleInBody ? "mt-1" : "mt-0"}>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {message}
             </p>
           </div>
         </div>
       </div>
-      <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+      <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
         <button
           type="button"
           disabled={isConfirming}
-          className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 min-w-24"
+          className="w-full inline-flex items-center justify-center rounded-md border border-red-700/20 shadow-sm px-3 h-10 sm:h-8 bg-red-600 text-sm font-medium text-white hover:bg-red-700 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 sm:w-auto disabled:opacity-50 min-w-24 cursor-pointer"
           onClick={onConfirm}
         >
-          {isConfirming ? <Spinner size="sm" /> : t(confirmText)}
+          {isConfirming ? <Spinner size="sm" className="text-white!" /> : t(confirmText)}
         </button>
         <button
           type="button"
-          className="mt-3 w-full inline-flex justify-center rounded-md px-4 py-2 bg-transparent text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 sm:mt-0 sm:w-auto sm:text-sm"
+          className="w-full inline-flex items-center justify-center rounded-md border border-gray-200 bg-white shadow-sm px-3 h-10 sm:h-8 text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-gray-100 dark:hover:bg-white/[0.08] sm:w-auto cursor-pointer"
           onClick={onClose}
         >
           {t(cancelText)}

@@ -40,8 +40,8 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
         disabled={isSubmitting}
         {...register("title")}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)] gap-3">
+        <div className="contents">
           <NumberField
             label={t("Сумма")}
             inputId="amount"
@@ -65,7 +65,7 @@ const PaymentDetailsSection: React.FC<PaymentDetailsSectionProps> = ({
             required
           />
         </div>
-        <div className="space-y-1">
+        <div className="col-span-2 md:col-span-1 space-y-1">
           <DatePicker
             id="dueDate"
             mode="single"

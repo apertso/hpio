@@ -1,4 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
+import { PageContent, PageToolbar } from "../components/layout/Page";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowPathIcon,
@@ -19,7 +20,7 @@ import useCategories from "../hooks/useCategories";
 import Select from "../components/Select";
 import Spinner from "../components/Spinner";
 import { Button } from "../components/Button";
-import { TextInputField } from "../components/Input";
+import ToolbarSearch from "../components/ToolbarSearch";
 import getErrorMessage from "../utils/getErrorMessage";
 import ConfirmModal from "../components/ConfirmModal";
 import { localizedCategoryName } from "../utils/categoryLabel";
@@ -49,6 +50,7 @@ const AutomationRulesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [ruleCategoryEdits, setRuleCategoryEdits] = useState<
     Record<string, string>
   >({});
@@ -389,42 +391,46 @@ const AutomationRulesPage: React.FC = () => {
   return (
     <>
       <PageMeta {...metadata} />
-      <div className="max-w-5xl mx-auto pb-20 dark:text-gray-100">
-        <div className="flex flex-col gap-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4 md:items-end">
-            <div className="flex-1">
-              <TextInputField
-                label={t("Поиск по мерчанту")}
-                placeholder={t("Введите мерчанта")}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-            <div className="w-full md:w-72">
-              <Select
-                label={t("Фильтр по категории")}
-                options={categoryOptions}
-                value={categoryFilter}
-                onChange={(value) => setCategoryFilter(value)}
-                disabled={isLoadingCategories || categoryOptions.length === 0}
-                placeholder={t("Все категории")}
-              />
-            </div>
+      <div className="dark:text-gray-100">
+        <h1 className="sr-only hidden md:block">{t("Автоматизация")}</h1>
+        <PageToolbar>
+          <div className="min-w-0 w-48">
+            <label htmlFor="automation-category-filter" className="sr-only">
+              {t("Фильтр по категории")}
+            </label>
+            <Select
+              id="automation-category-filter"
+              options={categoryOptions}
+              value={categoryFilter}
+              onChange={(value) => setCategoryFilter(value)}
+              disabled={isLoadingCategories || categoryOptions.length === 0}
+              placeholder={t("Все категории")}
+            />
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <ToolbarSearch
+              value={search}
+              onChange={setSearch}
+              expanded={isSearchVisible}
+              onExpandedChange={setIsSearchVisible}
+              placeholder={t("Поиск по мерчанту")}
+            />
             <Button
-              variant="secondary"
-              size="small"
-              icon={<ArrowPathIcon className="w-4 h-4" />}
-              label={t("Обновить")}
+              variant="ghost"
+              layout="icon-only"
+              icon={<ArrowPathIcon className="size-4" />}
+              aria-label={t("Обновить")}
+              title={t("Обновить")}
               onClick={loadData}
               disabled={isPageLoading}
             />
           </div>
-        </div>
-
-        <div className="space-y-8">
-          <section className="card-base p-6">
+        </PageToolbar>
+        <PageContent width="form">
+        <div className="space-y-4">
+          <section className="card-base p-5">
             <div className="flex items-center justify-between gap-3 mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="ui-heading">
                 {t("Правила автоматизации")}
               </h2>
             </div>
@@ -433,7 +439,7 @@ const AutomationRulesPage: React.FC = () => {
                 <Spinner />
               </div>
             ) : treeGroups.length > 0 ? (
-              <div className="rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="rounded-lg border border-[var(--ui-border)] overflow-hidden">
                 {treeGroups.map((group, index) => {
                   const isExpanded = expandedGroups[group.id] ?? false;
                   return (
@@ -448,7 +454,7 @@ const AutomationRulesPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleToggleGroup(group.id)}
-                        className="w-full flex items-center justify-between gap-4 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-between gap-4 px-3 h-10 text-left hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer"
                         aria-expanded={isExpanded}
                       >
                         <span className="flex items-center gap-2">
@@ -466,7 +472,7 @@ const AutomationRulesPage: React.FC = () => {
                         </span>
                       </button>
                       {isExpanded && (
-                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        <div className="divide-y divide-[var(--ui-border)] border-t border-[var(--ui-border)]">
                           {group.nodes.length > 0 ? (
                             group.nodes.map((node) => {
                               if (node.type === "rule") {
@@ -479,13 +485,13 @@ const AutomationRulesPage: React.FC = () => {
                                 return (
                                   <div
                                     key={node.rule.id}
-                                    className="flex flex-col md:flex-row md:items-center gap-4 px-4 py-4 bg-white/70 dark:bg-gray-900/60"
+                                    className="flex flex-col md:flex-row md:items-center gap-3 px-4 py-3"
                                   >
                                     <div className="flex-1">
                                       <p className="text-sm text-gray-500 dark:text-gray-400">
                                         {t("Мерчант")}
                                       </p>
-                                      <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-50">
                                         {node.rule.merchantKeyword}
                                       </p>
                                     </div>
@@ -511,11 +517,11 @@ const AutomationRulesPage: React.FC = () => {
                                         onClick={() =>
                                           requestRuleDelete(node.rule)
                                         }
-                                        className="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-900/50 dark:hover:text-red-400 transition-all cursor-pointer"
+                                        className="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-gray-500 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors cursor-pointer"
                                         aria-label={t("Удалить правило для {1}", node.rule.merchantKeyword)}
                                         disabled={isSaving}
                                       >
-                                        <TrashIcon className="w-5 h-5" />
+                                        <TrashIcon className="size-4" />
                                       </button>
                                     </div>
                                   </div>
@@ -532,13 +538,13 @@ const AutomationRulesPage: React.FC = () => {
                               return (
                                 <div
                                   key={node.merchant.merchantName}
-                                  className="flex flex-col md:flex-row md:items-center gap-4 px-4 py-4 bg-white/70 dark:bg-gray-900/60"
+                                  className="flex flex-col md:flex-row md:items-center gap-3 px-4 py-3"
                                 >
                                   <div className="flex-1">
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
                                       {t("Мерчант")}
                                     </p>
-                                    <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-50">
                                       {node.merchant.merchantName}
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -583,6 +589,7 @@ const AutomationRulesPage: React.FC = () => {
             )}
           </section>
         </div>
+        </PageContent>
       </div>
       <ConfirmModal
         isOpen={confirmModalState.isOpen}

@@ -92,19 +92,19 @@ const NotificationOnboardingModal: React.FC<
 
   const renderStep1Content = () => (
     <>
-      <div className="border-b border-violet-400/50 bg-slate-900 p-8 text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
-          <SparklesIcon className="w-10 h-10 text-white" />
+      <div className="border-b border-[var(--ui-border)] px-6 pt-7 pb-5 text-center">
+        <div className="inline-flex items-center justify-center size-10 rounded-lg border border-[var(--ui-border)] bg-gray-50 dark:bg-white/[0.04] mb-3">
+          <SparklesIcon className="size-5 text-indigo-600 dark:text-indigo-400" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-1">
           {t("Автоматизация платежей")}
         </h2>
-        <p className="text-slate-200 text-sm">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           {t("Экономьте время на записи повторяющихся платежей")}
         </p>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-5 space-y-5">
         <div className="flex items-center justify-center gap-2 mb-2">
           <div className="flex items-center gap-1">
             <div className="w-8 h-1 bg-indigo-600 rounded-full"></div>
@@ -117,28 +117,28 @@ const NotificationOnboardingModal: React.FC<
         </div>
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 accent-icon rounded-full flex items-center justify-center">
-            <DevicePhoneMobileIcon className="w-6 h-6" />
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <DevicePhoneMobileIcon className="size-4" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
               {t("Умное распознавание")}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Приложение анализирует уведомления от банковских приложений и автоматически создаёт записи о платежах")}
             </p>
           </div>
         </div>
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-            <ShieldCheckIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <ShieldCheckIcon className="size-4" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
               {t("Конфиденциальность")}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Анализ происходит ")}<strong>{t("только на вашем устройстве")}</strong>{t(". Текст уведомлений никогда не отправляется на сервер")}
             </p>
           </div>
@@ -173,19 +173,19 @@ const NotificationOnboardingModal: React.FC<
 
   const renderStep2Content = () => (
     <>
-      <div className="border-b border-violet-400/50 bg-slate-900 p-8 text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
-          <BellIcon className="w-10 h-10 text-white" />
+      <div className="border-b border-[var(--ui-border)] px-6 pt-7 pb-5 text-center">
+        <div className="inline-flex items-center justify-center size-10 rounded-lg border border-[var(--ui-border)] bg-gray-50 dark:bg-white/[0.04] mb-3">
+          <BellIcon className="size-5 text-indigo-600 dark:text-indigo-400" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-1">
           {t("Уведомления приложения")}
         </h2>
-        <p className="text-slate-200 text-sm">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           {t("Получайте важные напоминания вовремя")}
         </p>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-5 space-y-5">
         <div className="flex items-center justify-center gap-2 mb-2">
           <div className="flex items-center gap-1">
             <div className="w-8 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
@@ -198,28 +198,28 @@ const NotificationOnboardingModal: React.FC<
         </div>
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-            <CalendarIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <CalendarIcon className="size-4" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
               {t("Напоминания о платежах")}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Мы напомним вам о предстоящих платежах, чтобы вы ничего не пропустили")}
             </p>
           </div>
         </div>
 
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 accent-icon rounded-full flex items-center justify-center">
-            <SparklesIcon className="w-6 h-6" />
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <SparklesIcon className="size-4" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
               {t("Предложения автоплатежей")}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Получайте уведомления, когда мы обнаружим новые повторяющиеся платежи")}
             </p>
           </div>
@@ -263,8 +263,8 @@ const NotificationOnboardingModal: React.FC<
 
   const renderContent = (variant: ContentVariant) => (
     <div
-      className={`bg-white dark:bg-gray-900 shadow-2xl overflow-hidden ${
-        variant === "mobile" ? "rounded-xl" : "rounded-2xl w-full max-w-md"
+      className={`bg-[var(--ui-surface)] border border-[var(--ui-border)] shadow-2xl overflow-hidden ${
+        variant === "mobile" ? "rounded-lg" : "rounded-lg w-full max-w-md"
       }`}
     >
       {currentStep === 1 ? renderStep1Content() : renderStep2Content()}

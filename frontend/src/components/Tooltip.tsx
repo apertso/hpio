@@ -133,7 +133,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children }) => {
               : "transform 0.3s cubic-bezier(0.4, 0, 0.1, 1)",
           }}
         >
-          <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-900 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+          <div className="rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2 text-sm leading-relaxed text-gray-700 shadow-lg dark:bg-gray-800 dark:text-gray-200">
             <div className="flex items-start justify-between">
               <p className="flex-1">{content}</p>
               {!isMobile && (

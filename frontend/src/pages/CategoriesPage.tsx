@@ -1,5 +1,6 @@
 // src/pages/CategoriesPage.tsx
 import { useLanguage } from "../context/LanguageContext";
+import { PageToolbar, Panel } from "../components/layout/Page";
 import React, { useEffect, useState, useRef } from "react";
 import axiosInstance from "../api/axiosInstance";
 import {
@@ -8,14 +9,13 @@ import {
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
 import { Button } from "../components/Button"; // Import the Button component
-import { InformationIcon } from "../components/InformationIcon";
 import useApi from "../hooks/useApi"; // Import useApi
 import getErrorMessage from "../utils/getErrorMessage";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
-import { CategoriesTable, Tooltip } from "../components"; // Import CategoriesTable from the index
+import { CategoriesTable } from "../components";
 import SegmentedControl, {
   SegmentedControlOption,
 } from "../components/SegmentedControl";
@@ -89,10 +89,10 @@ const MobileActionsOverlay: React.FC<{
               action.handler();
               onClose();
             }}
-            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
           >
-            <action.icon className="h-6 w-6" />
-            <span className="text-sm">{action.label}</span>
+            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
+            <span className="text-xs font-medium">{action.label}</span>
           </button>
         ))}
       </div>
@@ -127,24 +127,12 @@ const CategoryListItem: React.FC<{
 const CategoriesPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast(); // Import useToast
-  const { setPageTitle, setHeaderAction } = usePageTitle();
+  const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("categories");
 
   useEffect(() => {
     setPageTitle(t("Категории"));
   }, [setPageTitle, t]);
-
-  useEffect(() => {
-    setHeaderAction(
-      <Tooltip content={t("Категории группируют платежи и напрямую влияют на аналитику.")}>
-        <button className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
-          <InformationIcon className="h-[16px] w-[16px]" />
-        </button>
-      </Tooltip>
-    );
-
-    return () => setHeaderAction(null);
-  }, [setHeaderAction, t]);
 
   // Use useApi for fetching the categories list
   const {
@@ -296,50 +284,46 @@ const CategoriesPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <div className="flex justify-between items-center md:mb-6">
-          <div className="flex items-center gap-2">
-            <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {t("Управление категориями")}
-            </h2>
-            <Tooltip content={t("Категории группируют платежи и напрямую влияют на аналитику.")}>
-              <div className="hidden md:block p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
-                <InformationIcon className="h-[16px] w-[16px]" />
-              </div>
-            </Tooltip>
-          </div>
-          <Button
-            onClick={handleAddCategory}
-            label={t("Добавить категорию")}
-            icon={<PlusIcon className="w-4 h-4" />}
-            className="hidden md:inline-flex"
-          />
-        </div>
-        <div className="flex justify-center md:justify-start mb-4">
+        <h1 className="sr-only hidden md:block">{t("Категории")}</h1>
+        <PageToolbar className="py-0 md:min-h-[3.375rem]">
           <SegmentedControl
+            variant="tabs"
+            ariaLabel={t("Тип категории")}
             options={categoryTabOptions.map((option) => ({ ...option, label: t(option.label) }))}
             selected={activeCategoryType}
             onChange={setActiveCategoryType}
-            className="w-full md:w-auto"
-            optionClassName="flex-1 md:flex-none justify-center"
+            className="min-h-11"
           />
-        </div>
+          <div className="ml-auto hidden items-center gap-3 md:flex">
+            <span className="text-xs tabular-nums text-gray-500 dark:text-gray-400">
+              {filteredCategories.length}
+            </span>
+            <Button
+              onClick={handleAddCategory}
+              label={t("Добавить категорию")}
+              icon={<PlusIcon className="w-4 h-4" />}
+            />
+          </div>
+        </PageToolbar>
 
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto card-base">
-            <CategoriesTable
-              data={filteredCategories}
-              isLoading={isLoadingCategories}
-              onEdit={handleEditCategory}
-              onDelete={handleDeleteCategory}
-            />
+          <div className="hidden md:block px-6 pt-5">
+            <Panel bodyClassName="overflow-x-auto">
+              <CategoriesTable
+                data={filteredCategories}
+                isLoading={isLoadingCategories}
+                onEdit={handleEditCategory}
+                onDelete={handleDeleteCategory}
+              />
+            </Panel>
           </div>
           {/* Mobile Card View */}
           {!isLoadingCategories && (
             <div
               ref={mobileListRef}
               onClick={handleMobileListClick}
-              className="block md:hidden space-y-2"
+              className="block md:hidden space-y-2 px-3 py-3"
             >
               {filteredCategories.map((category) => {
                 const isSelected = selectedMobileCategoryId === category.id;

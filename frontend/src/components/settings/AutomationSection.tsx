@@ -265,16 +265,16 @@ const AutomationSection: React.FC = () => {
     <div className="space-y-8">
       {/* Automation Toggle */}
       {isTauriMobile() && (
-        <SettingsSection className="card-base p-6">
-          <div className="flex items-start gap-4 mb-6">
-            <div className="flex-shrink-0 w-12 h-12 accent-icon rounded-full flex items-center justify-center">
-              <SparklesIcon className="w-6 h-6" />
+        <SettingsSection className="card-base p-5">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+              <SparklesIcon className="size-4" />
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              <h2 className="ui-heading mb-0.5">
                 {t("Автоматизация уведомлений")}
               </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t("Автоматически создавайте записи о платежах на основе банковских уведомлений")}
               </p>
             </div>
@@ -372,14 +372,14 @@ const AutomationSection: React.FC = () => {
 
           <div className="mt-6">
             <div className="flex items-start gap-4 mb-4">
-              <div className="flex-shrink-0 w-10 h-10 accent-icon rounded-full flex items-center justify-center">
-                <ShieldCheckIcon className="w-5 h-5" />
+              <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+                <ShieldCheckIcon className="size-4" />
               </div>
               <div className="flex-1">
                 <p className="text-base font-semibold text-gray-900 dark:text-white">
                   {t("Чеклист перед запуском")}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {t("Настройте разрешения и питание, чтобы служба не останавливалась")}
                 </p>
               </div>
@@ -412,7 +412,7 @@ const AutomationSection: React.FC = () => {
                         <Tooltip content={t("Доступ к уведомлениям позволяет сервису считывать входящие уведомления от банков и запускать правила сразу после получения сообщения.")}>
                           <button
                             type="button"
-                            className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+                            className="p-1 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
                           >
                             <InformationIcon className="h-[16px] w-[16px]" />
                           </button>
@@ -461,7 +461,7 @@ const AutomationSection: React.FC = () => {
                         <Tooltip content={t("Отключите оптимизацию батареи, чтобы служба автоматически обрабатывала уведомления даже когда приложение закрыто.")}>
                           <button
                             type="button"
-                            className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+                            className="p-1 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
                           >
                             <InformationIcon className="h-[16px] w-[16px]" />
                           </button>
@@ -511,7 +511,7 @@ const AutomationSection: React.FC = () => {
                         <Tooltip content={t("Добавьте приложение в список автозапуска, чтобы система не выгружала сервис после очистки памяти.")}>
                           <button
                             type="button"
-                            className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+                            className="p-1 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
                           >
                             <InformationIcon className="h-[16px] w-[16px]" />
                           </button>

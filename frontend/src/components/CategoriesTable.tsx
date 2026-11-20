@@ -29,7 +29,7 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const thBaseClassName =
-    "px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider";
+    "px-4 h-9 text-left text-xs font-medium text-gray-500 dark:text-gray-400";
   const columns: TableColumn<Category>[] = [
     {
       id: "icon",
@@ -49,7 +49,7 @@ const CategoriesTable: React.FC<CategoriesTableProps> = ({
       id: "name",
       header: t("Название"),
       tdClassName:
-        "px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 truncate",
+        "px-4 h-11 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-50 truncate",
       cell: (category) => <>{localizedCategoryName(category, language)}</>,
     },
   ];

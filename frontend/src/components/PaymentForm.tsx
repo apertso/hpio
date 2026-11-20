@@ -1,4 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
+import { FormSection, SwitchRow } from "./layout/Page";
 import { usePreferredCurrency } from "../context/AuthContext";
 import React, { useEffect, useState, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -527,15 +528,21 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       >
         {formError && (
           <div
-            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg"
+            className="ui-alert-error"
             role="alert"
           >
             {t(formError)}
           </div>
         )}
 
-        <fieldset disabled={disableForInactiveSeries}>
-          <div className="space-y-6">
+        <fieldset
+          disabled={disableForInactiveSeries}
+          className="divide-y divide-[var(--ui-border)]"
+        >
+          <FormSection
+            title={t("Основное")}
+            description={t("Название, сумма и срок оплаты")}
+          >
             <PaymentDetailsSection
               register={register}
               errors={errors}
@@ -548,32 +555,33 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 setValue("currency", value, { shouldValidate: true })
               }
             />
+          </FormSection>
 
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="md:w-1/3">
-                <IconSelector
-                  selectedIconName={iconSelectorDisplayIcon}
-                  onIconChange={handleIconChange}
-                  isFormSubmitting={isSubmitting}
-                  isReadOnly={iconSelectorReadOnly}
-                />
-              </div>
-              <div className="md:flex-1">
-                <PaymentCategorySelect
-                  errors={errors}
-                  setValue={setValue}
-                  watchCategoryId={watchCategoryId}
-                  isSubmitting={isSubmitting}
-                  categoryType="expense"
-                  isLocked={isCategoryLocked}
-                  lockReason={categoryLockReason}
-                />
-              </div>
+          <FormSection
+            title={t("Классификация")}
+            description={t("Иконка, категория и теги помогают находить платёж и строить статистику")}
+          >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <IconSelector
+                selectedIconName={iconSelectorDisplayIcon}
+                onIconChange={handleIconChange}
+                isFormSubmitting={isSubmitting}
+                isReadOnly={iconSelectorReadOnly}
+              />
+              <PaymentCategorySelect
+                errors={errors}
+                setValue={setValue}
+                watchCategoryId={watchCategoryId}
+                isSubmitting={isSubmitting}
+                categoryType="expense"
+                isLocked={isCategoryLocked}
+                lockReason={categoryLockReason}
+              />
             </div>
 
             {showTags && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
                   {t("Теги")}
                 </label>
                 {isLoadingTags ? (
@@ -581,7 +589,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                     {t("Загрузка тегов...")}
                   </p>
                 ) : tags && tags.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {tags.map((tag) => {
                       const isSelected = selectedTagIds.includes(tag.id);
                       return (
@@ -589,14 +597,20 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                           key={tag.id}
                           type="button"
                           onClick={() => handleTagToggle(tag.id)}
-                          className={`px-3 py-1 rounded-full text-sm border transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                          className={`px-2 h-7 inline-flex items-center gap-1 rounded-md text-sm border transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                             isSelected
-                              ? "bg-slate-900 text-white border-violet-500 dark:bg-slate-700 dark:border-violet-400"
-                              : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-500/15 dark:text-indigo-200 dark:border-indigo-400/40"
+                              : "bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
                           }`}
                           aria-pressed={isSelected}
                           disabled={isSubmitting}
                         >
+                          <span
+                            className={`size-1.5 rounded-full ${
+                              isSelected ? "bg-indigo-500" : "bg-gray-300 dark:bg-gray-600"
+                            }`}
+                            aria-hidden="true"
+                          />
                           {tag.name}
                         </button>
                       );
@@ -609,79 +623,68 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 )}
               </div>
             )}
+          </FormSection>
 
-            {editScope === "single" && (
-              <label className="flex items-center gap-3 cursor-pointer">
-                <ToggleSwitch
-                  checked={shouldRepeat}
-                  onChange={(checked) => handleShouldRepeatChange(checked)}
-                  disabled={isSubmitting}
+          {(editScope === "single" || showRecurrence) && (
+            <FormSection
+              title={t("Повторение")}
+              description={t("Настройте расписание для регулярных платежей")}
+            >
+              {editScope === "single" && (
+                <SwitchRow
+                  label={t("Повторять")}
+                  description={t("Создавать платёж по расписанию")}
+                  control={
+                    <ToggleSwitch
+                      checked={shouldRepeat}
+                      onChange={(checked) => handleShouldRepeatChange(checked)}
+                      disabled={isSubmitting}
+                      ariaLabel={t("Повторять")}
+                    />
+                  }
                 />
-                <span className="text-gray-700 dark:text-gray-200 font-medium">
-                  {t("Повторять")}
-                </span>
-              </label>
-            )}
+              )}
 
-            {showRecurrence && (
-              <PaymentRecurrenceSection
-                onRuleChange={handleRecurrenceRuleChange}
-                isSubmitting={isSubmitting}
-                currentRule={currentRule}
-                dueDate={watchDueDate}
-              />
-            )}
+              {showRecurrence && (
+                <PaymentRecurrenceSection
+                  onRuleChange={handleRecurrenceRuleChange}
+                  isSubmitting={isSubmitting}
+                  currentRule={currentRule}
+                  dueDate={watchDueDate}
+                />
+              )}
+            </FormSection>
+          )}
 
-            {isIncomeAndCardsEnabled() && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  {t("Способ оплаты")}
-                </label>
-                <select
-                  {...register("method")}
-                  className="input-base w-full"
+          <FormSection
+            title={t("Дополнительно")}
+            description={t("Напоминания, статус и вложения")}
+          >
+            <SwitchRow
+              label={t("Напоминать")}
+              description={t("Получать напоминание перед сроком оплаты")}
+              control={
+                <ToggleSwitch
+                  checked={watch("remind") || false}
+                  onChange={(checked) => setValue("remind", checked)}
                   disabled={isSubmitting}
-                >
-                  <option value="cash">{t("Наличные")}</option>
-                  <option value="card">{t("Карта")}</option>
-                  <option value="transfer">{t("Перевод")}</option>
-                  <option value="other">{t("Другое")}</option>
-                </select>
-              </div>
-            )}
-
-            <label className="flex items-center gap-3 cursor-pointer">
-              <ToggleSwitch
-                checked={watch("remind") || false}
-                onChange={(checked) => setValue("remind", checked)}
-                disabled={isSubmitting}
-              />
-              <span className="text-gray-700 dark:text-gray-200 font-medium">
-                {t("Напоминать")}
-              </span>
-            </label>
+                  ariaLabel={t("Напоминать")}
+                />
+              }
+            />
 
             {!isEditMode && (
-              <label className="flex items-center gap-3 cursor-pointer">
-                <ToggleSwitch
-                  checked={markAsCompleted}
-                  onChange={setMarkAsCompleted}
-                  disabled={isSubmitting}
-                />
-                <span className="text-gray-700 dark:text-gray-200 font-medium">
-                  {t("Отметить как выполненный")}
-                </span>
-              </label>
-            )}
-
-            {/* File upload is only available for single payments, not for series editing */}
-            {editScope === "single" && (
-              <PaymentFileUploadSection
-                paymentId={paymentId}
-                initialFile={attachedFile}
-                isSubmitting={isSubmitting}
-                setFormError={setFormError}
-                onPendingFileChange={setPendingFile}
+              <SwitchRow
+                label={t("Отметить как выполненный")}
+                description={t("Создать платёж сразу выполненным")}
+                control={
+                  <ToggleSwitch
+                    checked={markAsCompleted}
+                    onChange={setMarkAsCompleted}
+                    disabled={isSubmitting}
+                    ariaLabel={t("Отметить как выполненный")}
+                  />
+                }
               />
             )}
 
@@ -702,10 +705,39 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                 timeFormat="HH:mm"
               />
             )}
-          </div>
+
+            {isIncomeAndCardsEnabled() && (
+              <div>
+                <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
+                  {t("Способ оплаты")}
+                </label>
+                <select
+                  {...register("method")}
+                  className="block w-full h-9 md:h-8 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-900 shadow-sm transition-colors hover:border-gray-300 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-100 dark:hover:border-white/20 cursor-pointer"
+                  disabled={isSubmitting}
+                >
+                  <option value="cash">{t("Наличные")}</option>
+                  <option value="card">{t("Карта")}</option>
+                  <option value="transfer">{t("Перевод")}</option>
+                  <option value="other">{t("Другое")}</option>
+                </select>
+              </div>
+            )}
+
+            {/* File upload is only available for single payments, not for series editing */}
+            {editScope === "single" && (
+              <PaymentFileUploadSection
+                paymentId={paymentId}
+                initialFile={attachedFile}
+                isSubmitting={isSubmitting}
+                setFormError={setFormError}
+                onPendingFileChange={setPendingFile}
+              />
+            )}
+          </FormSection>
         </fieldset>
 
-        <div className="hidden md:flex justify-end space-x-4 pt-6">
+        <div className="hidden md:flex justify-end gap-2 pt-5 border-t border-[var(--ui-border)]">
           <Button
             variant="ghost"
             onClick={onCancel}
@@ -721,7 +753,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             onClick={handleSubmit(handleFormSubmit)}
           />
         </div>
-        <div className="flex flex-col md:hidden px-6 pb-6 space-y-3">
+        <div className="flex flex-col md:hidden pb-4 space-y-2">
           <Button
             variant="primary"
             size="large"

@@ -74,14 +74,9 @@ const SettingsPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <div className="w-full max-w-7xl mx-auto">
-          <div className="flex justify-between items-center md:mb-6 px-4 md:px-0">
-            <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {t("Настройки")}
-            </h2>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-8 px-4 md:px-0">
+        <h1 className="sr-only hidden md:block">{t("Настройки")}</h1>
+        <div className="w-full max-w-5xl px-3 py-4 md:px-6 md:py-6">
+          <div className="flex flex-col md:flex-row gap-6 md:gap-10">
             {/* Навигация по разделам настроек */}
             <SettingsNavigation
               activeSection={activeSection}
@@ -91,7 +86,7 @@ const SettingsPage: React.FC = () => {
             />
 
             {/* Содержимое активного раздела */}
-            <div className="flex-1 min-w-0">{renderActiveSection()}</div>
+            <div className="flex-1 min-w-0 max-w-3xl">{renderActiveSection()}</div>
           </div>
         </div>
       </div>

@@ -16,8 +16,16 @@ import * as fundSnapshotService from "./fundSnapshotService";
 import {
   convertCurrencyToUsd,
   convertUsdToCurrency,
+  ExchangeRates,
+  ExchangeRatesUnavailableError,
   getUsdRates,
+  getUsdRatesForDates,
 } from "./exchangeRateService";
+
+// Сколько часов после локальной полуночи можно догонять пропущенный снимок (например, при недоступных курсах).
+const SNAPSHOT_CATCH_UP_HOURS = 6;
+// Последняя дата, за которую снимок пользователя точно есть; избавляет от лишних запросов к БД каждую минуту.
+const snapshotDoneDateByUser = new Map<string, string>();
 
 export interface FundsSummary {
   totalAmount: number;
@@ -166,23 +174,44 @@ export const getFundsHistory = async (
 ): Promise<FundsHistoryPoint[]> => {
   const user = (await authService.getUserProfile(userId)) as UserInstance;
   const preferredCurrency = resolvePreferredCurrency(user);
-  const rates = await getUsdRates();
   const snapshots = await fundSnapshotService.getSnapshots(
     userId,
     startDate,
     endDate
   );
+  if (snapshots.length === 0) return [];
 
-  return snapshots.map((snapshot) => ({
-    date: snapshot.snapshotDate,
-    totalAmount: Number(
-      convertUsdToCurrency(
-        parseAmount(snapshot.totalUsd),
-        preferredCurrency,
-        rates
-      ).toFixed(2)
-    ),
-  }));
+  // Снимок хранится в USD; переводим его по курсу на дату снимка, текущий курс — только запасной вариант.
+  const ratesByDate = await getUsdRatesForDates(
+    snapshots.map((snapshot) => snapshot.snapshotDate)
+  );
+  let currentRates: ExchangeRates | null | undefined;
+  const resolveCurrentRates = async (): Promise<ExchangeRates | null> => {
+    if (currentRates === undefined) {
+      currentRates = await getUsdRates().catch(() => null);
+    }
+    return currentRates;
+  };
+
+  const points: FundsHistoryPoint[] = [];
+  for (const snapshot of snapshots) {
+    const rates = ratesByDate.get(snapshot.snapshotDate) ?? (await resolveCurrentRates());
+    if (!rates) {
+      logger.warn(`No exchange rates for funds snapshot ${snapshot.snapshotDate}, skipping point`);
+      continue;
+    }
+    try {
+      points.push({
+        date: snapshot.snapshotDate,
+        totalAmount: Number(
+          convertUsdToCurrency(parseAmount(snapshot.totalUsd), preferredCurrency, rates).toFixed(2)
+        ),
+      });
+    } catch (error) {
+      logger.warn(`Failed to convert funds snapshot ${snapshot.snapshotDate}`, error);
+    }
+  }
+  return points;
 };
 
 export const createDailySnapshotForUser = async (
@@ -197,35 +226,51 @@ export const createDailySnapshotForUser = async (
     localToday
   );
   if (existing) {
+    snapshotDoneDateByUser.set(userId, localToday);
     return false;
   }
 
+  // Если курсов нет, ошибка всплывает наверх, и задача повторит попытку на следующей минуте.
   const rates = await getUsdRates();
   const totalUsd = await calculateTotalUsd(userId, rates);
   await fundSnapshotService.createSnapshot(userId, localToday, totalUsd);
+  snapshotDoneDateByUser.set(userId, localToday);
   return true;
 };
 
 export const createDailySnapshots = async (): Promise<number> => {
   const users = await authService.getAllUsers();
   const now = new Date();
+  let ratesUnavailableCount = 0;
   const results = await Promise.all(
     users.map(async (user) => {
       try {
         const timezone = resolveUserTimezone(user);
         const localTime = toZonedTime(now, timezone);
-        const hour = localTime.getHours();
-        const minute = localTime.getMinutes();
-        if (hour !== 0 || minute !== 0) {
+        // Не только ровно в 00:00: неудачная попытка повторяется, пока не истечёт окно догоняния.
+        if (localTime.getHours() >= SNAPSHOT_CATCH_UP_HOURS) {
+          return false;
+        }
+        if (snapshotDoneDateByUser.get(user.id) === formatLocalDate(now, timezone)) {
           return false;
         }
         return await createDailySnapshotForUser(user.id);
       } catch (error) {
-        logger.error(`Failed to create funds snapshot for user ${user.id}`, error);
+        if (error instanceof ExchangeRatesUnavailableError) {
+          ratesUnavailableCount += 1;
+        } else {
+          logger.error(`Failed to create funds snapshot for user ${user.id}`, error);
+        }
         return false;
       }
     })
   );
+
+  if (ratesUnavailableCount > 0) {
+    logger.warn(
+      `Exchange rates unavailable, postponed ${ratesUnavailableCount} funds snapshots until next run`
+    );
+  }
 
   return results.filter(Boolean).length;
 };

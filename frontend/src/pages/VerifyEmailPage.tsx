@@ -55,33 +55,33 @@ const VerifyEmailPage: React.FC = () => {
         {status === "verifying" && (
           <>
             <Spinner size="lg" />
-            <h1 className="text-xl md:text-2xl font-bold mt-4 text-gray-900 dark:text-gray-100">
+            <h1 className="ui-page-title mt-4">
               {t("Подтверждаем ваш email...")}
             </h1>
           </>
         )}
         {status === "success" && (
           <>
-            <h1 className="text-3xl font-bold text-green-600 mb-4">
+            <h1 className="ui-page-title mb-1.5">
               {t("Верификация прошла успешно!")}
             </h1>
-            <p className="text-lg text-gray-900 dark:text-gray-100">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               {t(message)}
             </p>
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {t("Вы будете перенаправлены на главную страницу через 3 секунды.")}
             </p>
           </>
         )}
         {status === "error" && (
           <>
-            <h1 className="text-3xl font-bold text-red-600 mb-4">
+            <h1 className="ui-page-title mb-1.5">
               {t("Ошибка верификации")}
             </h1>
-            <p className="text-lg text-gray-900 dark:text-gray-100">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               {t(message)}
             </p>
-            <Link to="/dashboard" className="mt-4 text-blue-500">
+            <Link to="/dashboard" className="mt-4 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:opacity-80 transition-opacity cursor-pointer">
               {t("Вернуться на главную")}
             </Link>
           </>

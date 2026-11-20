@@ -243,30 +243,30 @@ const AccountSection: React.FC = () => {
     <div className="space-y-8">
       {/* Profile Section */}
       <form onSubmit={handleSettingsSubmit(onSettingsSubmit)}>
-        <SettingsSection className="card-base p-6">
-          <div className="flex items-start gap-4 mb-6">
-            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-              <UserIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <SettingsSection className="card-base p-5">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+              <UserIcon className="size-4" />
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              <h2 className="ui-heading mb-0.5">
                 {t("Профиль и уведомления")}
               </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t("Управляйте своей личной информацией, настройками уведомлений и часовым поясом")}
               </p>
             </div>
           </div>
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
             {/* Avatar and Name on same line */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               {/* Avatar Section - Modern UX Pattern with hover/drag overlay */}
               <div className="flex-shrink-0">
                 <div
                   {...getRootProps()}
-                  className={`relative flex-shrink-0 cursor-pointer group w-28 h-28 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  className={`relative flex-shrink-0 cursor-pointer group size-16 rounded-full flex items-center justify-center transition-all duration-200 ${
                     isDragActive
-                      ? "bg-blue-100 dark:bg-blue-900/30 shadow-blue-500  shadow-[0px_0px_3px_3px]"
+                      ? "bg-indigo-50 ring-2 ring-indigo-500 dark:bg-indigo-500/10"
                       : "bg-gray-200 dark:bg-gray-700"
                   }`}
                 >
@@ -277,13 +277,13 @@ const AccountSection: React.FC = () => {
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <UserIcon className="w-14 h-14 text-gray-400 dark:text-gray-500" />
+                    <UserIcon className="size-7 text-gray-400 dark:text-gray-500" />
                   )}
 
                   {/* Edit Pencil Icon - Always visible in corner */}
-                  <div className="absolute bottom-0 right-0 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center transition-colors duration-200 shadow-md">
+                  <div className="absolute -bottom-0.5 -right-0.5 size-6 bg-[var(--ui-surface)] border border-[var(--ui-border-strong)] rounded-full flex items-center justify-center shadow-sm">
                     <svg
-                      className="w-3.5 h-3.5 text-white"
+                      className="size-3 text-gray-600 dark:text-gray-300"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -375,16 +375,16 @@ const AccountSection: React.FC = () => {
       </form>
 
       {/* Password Section */}
-      <SettingsSection className="card-base p-6">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="flex-shrink-0 w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-            <LockClosedIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
+      <SettingsSection className="card-base p-5">
+        <div className="flex items-start gap-3 mb-5">
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <LockClosedIcon className="size-4" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h2 className="ui-heading mb-0.5">
               {t("Безопасность")}
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Управляйте паролем и настройками безопасности вашего аккаунта")}
             </p>
           </div>
@@ -456,16 +456,16 @@ const AccountSection: React.FC = () => {
         </div>
       </SettingsSection>
       {/* Удаление аккаунта */}
-      <SettingsSection className="card-base p-6">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-            <ExclamationTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+      <SettingsSection className="card-base p-5">
+        <div className="flex items-start gap-3 mb-5">
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <ExclamationTriangleIcon className="size-4" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h2 className="ui-heading mb-0.5">
               {t("Опасная зона")}
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Действия, которые могут привести к потере доступа к аккаунту или удалению данных")}
             </p>
           </div>

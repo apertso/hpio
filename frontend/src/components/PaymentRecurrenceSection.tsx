@@ -362,13 +362,13 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
   };
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-sm">
-      <div className="space-y-8">
+    <div className="border border-[var(--ui-border)] rounded-lg bg-gray-50/50 dark:bg-white/[0.02] p-4 md:p-5">
+      <div className="space-y-6">
         {/* Top Row: Interval and Frequency */}
         <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-6">
           {/* Interval Input */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
               {t("Повторять")}
             </label>
             <NumberField
@@ -381,7 +381,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                   true
                 )
               }
-              className="w-full font-semibold dark:bg-gray-900"
+              className="w-full font-medium tabular-nums"
               wrapperClassName="w-full"
               disabled={isSubmitting}
               min={1}
@@ -391,14 +391,14 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
 
           {/* Frequency Selector */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
               {t("Периодичность")}
             </label>
             <SegmentedControl
               options={frequencyOptions.map((option) => ({ ...option, label: t(option.label) }))}
               selected={state.freq}
               onChange={handleFreqChange}
-              className="w-full p-1.5 bg-gray-100 dark:bg-gray-900"
+              className="w-full"
               optionClassName="flex-1 justify-center"
             />
           </div>
@@ -407,10 +407,10 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
         {/* Weekday Selector */}
         {state.freq === "WEEKLY" && (
           <div className="animate-fade-in-up">
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
               {t("Дни недели")}
             </label>
-            <div className="flex justify-between gap-2 max-w-md">
+            <div className="flex justify-between gap-1.5 max-w-sm">
               {weekDays.map((day) => {
                 const isSelected = state.byday.includes(day.value);
                 const isDueDate = day.value === dueDateWeekday;
@@ -421,15 +421,15 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                     onClick={() => handleWeekdayToggle(day.value)}
                     disabled={isDueDate || isSubmitting}
                     className={`
-                      w-10 h-10 rounded-full text-sm font-bold transition-all duration-200 flex items-center justify-center
+                      size-9 rounded-md text-xs font-medium transition-colors duration-150 flex items-center justify-center
                       ${
                         isSelected
-                          ? "border border-violet-500 bg-slate-900 text-white dark:border-violet-400 dark:bg-slate-700"
-                          : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500"
+                          ? "border bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-500/15 dark:text-indigo-200 dark:border-indigo-400/40"
+                          : "border bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
                       }
                       ${
                         isDueDate
-                          ? "ring-2 ring-offset-1 ring-indigo-600 dark:ring-offset-gray-800 cursor-not-allowed opacity-90"
+                          ? "ring-1 ring-indigo-500 cursor-not-allowed"
                           : "cursor-pointer"
                       }
                     `}
@@ -444,7 +444,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
 
         {/* Monthly Configuration */}
         {state.freq === "MONTHLY" && (
-          <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-5 border border-gray-100 dark:border-gray-700/50 animate-fade-in-up">
+          <div className="bg-[var(--ui-surface)] rounded-lg p-4 border border-[var(--ui-border)] animate-fade-in-up">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-gray-900 dark:text-gray-200">
                 {t("В определенный день недели")}
@@ -480,8 +480,8 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                <CalendarIcon className="w-5 h-5 text-gray-400" />
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 p-3 rounded-md border border-[var(--ui-border)]">
+                <CalendarIcon className="size-4 text-gray-400" />
                 <span>
                   {t("Повтор каждое {1}-е число", state.bymonthday)}
                 </span>
@@ -492,7 +492,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
 
         {/* End Condition */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
             {t("Завершение")}
           </label>
           <div className="flex flex-col gap-4">
@@ -500,7 +500,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
               options={endTypeOptions.map((option) => ({ ...option, label: t(option.label) }))}
               selected={state.end_type}
               onChange={(v) => updateState({ end_type: v }, true)}
-              className="w-full p-1.5 bg-gray-100 dark:bg-gray-900"
+              className="w-full"
               optionClassName="flex-1 justify-center text-sm py-2"
             />
             <div className="min-h-[50px] flex items-center animate-fade-in">
@@ -557,7 +557,7 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
         </div>
 
         {/* Summary Footer */}
-        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-violet-200 dark:border-violet-400/40 flex items-start gap-3">
+        <div className="rounded-lg p-3.5 border border-[var(--ui-border)] bg-[var(--ui-surface)] flex items-start gap-3">
           <div className="mt-0.5 text-indigo-600 dark:text-indigo-400">
             <svg
               className="w-5 h-5"
@@ -574,10 +574,10 @@ const PaymentRecurrenceSection: React.FC<PaymentRecurrenceSectionProps> = ({
             </svg>
           </div>
           <div>
-            <span className="block text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wide mb-0.5">
+            <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">
               {t("Итоговое правило")}
             </span>
-            <p className="text-sm text-indigo-900 dark:text-indigo-100 leading-relaxed">
+            <p className="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">
               {summary}
             </p>
           </div>

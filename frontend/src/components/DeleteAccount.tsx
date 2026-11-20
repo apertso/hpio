@@ -56,7 +56,7 @@ const ReasonSelection: React.FC<{
   const { t } = useLanguage();
   return (
   <div>
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+    <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
       {t("Почему вы хотите удалить свой аккаунт?")}
     </label>
     <div className="space-y-3">
@@ -166,7 +166,7 @@ const ActionButtons: React.FC<{
         type="button"
         onClick={onConfirm}
         disabled={!agreed || isDeleting}
-        className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 transition-all duration-150 ease-in-out text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+        className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-600 transition-all duration-150 ease-in-out text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
       >
         <TrashIcon className="w-4 h-4" />
         {isDeleting ? t("Удаление...") : t("Удалить мой аккаунт")}
@@ -213,12 +213,12 @@ const DeleteAccountContent: React.FC<{
   <>
     {showHeader && (
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white text-2xl">
+        <h3 className="ui-page-title">
           {t("Удалить аккаунт")}
         </h3>
         <button
           onClick={handleClose}
-          className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+          className="p-1 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
         >
           <svg
             className="h-6 w-6"
@@ -263,7 +263,7 @@ const DeleteAccountContent: React.FC<{
                 type="button"
                 onClick={() => setCurrentStep(2)}
                 disabled={!reason}
-                className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 transition-all duration-150 ease-in-out text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                className="bg-red-600 text-white font-bold py-2 px-5 rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-600 transition-all duration-150 ease-in-out text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
               >
                 {t("Далее")}
                 <ArrowRightIcon className="w-4 h-4" />

@@ -134,8 +134,8 @@ const IconSelector: React.FC<IconSelectorProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
         {t("Иконка")}
       </label>
 
@@ -147,7 +147,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
             setIsOpen(!isOpen);
             if (!isOpen) setSearchTerm("");
           }}
-          className={`relative block w-full rounded-xl bg-white dark:bg-gray-900 px-3 pr-12 py-2.5 text-base text-gray-900 dark:text-gray-100 shadow-sm border transition-colors text-left flex items-center gap-3 ${
+          className={`relative block w-full rounded-md bg-white dark:bg-white/[0.03] px-2.5 pr-12 h-9 md:h-8 text-sm text-gray-900 dark:text-gray-100 shadow-sm border transition-colors text-left flex items-center gap-2.5 ${
             isOpen
               ? "border-indigo-500 ring-2 ring-indigo-500/20"
               : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
@@ -165,7 +165,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
               <IconDisplay iconName={selectedIconName} sizeClass="h-5 w-5" />
             </span>
             <span
-              className={`text-base truncate ${
+              className={`text-sm truncate ${
                 selectedIconName
                   ? "text-gray-900 dark:text-gray-100"
                   : "text-gray-500 dark:text-gray-400"
@@ -182,7 +182,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
             type="button"
             onClick={handleClearIcon}
             disabled={isSelectionLocked}
-            className="absolute right-11 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 bg-white dark:bg-gray-900"
+            className="absolute right-9 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors disabled:opacity-50 bg-white dark:bg-gray-900"
             title={t("Удалить иконку")}
           >
             <XCircleIcon className="h-5 w-5" />
@@ -190,7 +190,7 @@ const IconSelector: React.FC<IconSelectorProps> = ({
         )}
         {!isReadOnly && (
           <ChevronDownIcon
-            className={`absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 transition-transform duration-200 pointer-events-none ${
+            className={`absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 transition-transform duration-200 pointer-events-none ${
               isOpen ? "rotate-180" : ""
             }`}
           />
@@ -205,12 +205,12 @@ const IconSelector: React.FC<IconSelectorProps> = ({
         >
           {/* Search Input */}
           <div className="mb-3 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="size-3.5 text-gray-400" />
             </div>
             <input
               type="text"
-              className="block w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg leading-5 bg-white dark:bg-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-gray-900 dark:text-gray-100"
+              className="block w-full pl-8 pr-3 h-8 border border-gray-200 dark:border-white/10 rounded-md bg-white dark:bg-white/[0.03] text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25"
               placeholder={t("Поиск иконки...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -218,18 +218,18 @@ const IconSelector: React.FC<IconSelectorProps> = ({
             />
           </div>
 
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
             {t("Доступные иконки (")}{filteredIcons.length})
           </p>
 
-          <div className="grid grid-cols-6 gap-2 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
+          <div className="grid grid-cols-6 gap-1 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pr-1">
             {filteredIcons.map((iconName) => (
               <button
                 key={iconName}
                 type="button"
                 onClick={() => handleSelectBuiltinIcon(iconName)}
                 disabled={isSelectionLocked}
-                className={`aspect-square flex items-center justify-center rounded-xl transition-all duration-200 disabled:opacity-50 outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800
+                className={`aspect-square flex items-center justify-center rounded-lg transition-all duration-200 disabled:opacity-50 outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800
                   ${
                     selectedIconName === iconName
                       ? "bg-slate-100 border-2 border-indigo-500 text-indigo-600 dark:bg-slate-800 dark:border-indigo-400 dark:text-indigo-300 shadow-sm"

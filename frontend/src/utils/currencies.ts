@@ -11,6 +11,47 @@ export function resolveCurrency(currency?: string | null): string {
   return code || DEFAULT_CURRENCY;
 }
 
+export interface CurrencyTotal {
+  currency: string;
+  amount: number;
+}
+
+export function groupCurrencyTotals(
+  items: { amount: number | string; currency?: string | null }[]
+): CurrencyTotal[] {
+  const totals = new Map<string, number>();
+  for (const item of items) {
+    const currency = resolveCurrency(item.currency);
+    totals.set(currency, (totals.get(currency) || 0) + Number(item.amount));
+  }
+  return Array.from(totals, ([currency, amount]) => ({ currency, amount }));
+}
+
+export function formatCurrencyTotals(
+  items: { amount: number | string; currency?: string | null }[],
+  locale: string
+): string {
+  return groupCurrencyTotals(items).map(({ amount, currency }) => formatMoney(amount, locale, currency)).join(" + ");
+}
+
+export function convertCurrency(
+  amount: number,
+  from: string | null | undefined,
+  to: string,
+  rates: Record<string, number>
+): number | null {
+  if (!Number.isFinite(amount)) return null;
+  const source = resolveCurrency(from).toLowerCase();
+  const target = resolveCurrency(to).toLowerCase();
+  if (source === target) return amount;
+  const sourceRate = source === "usd" ? 1 : rates[source];
+  const targetRate = target === "usd" ? 1 : rates[target];
+  if (!Number.isFinite(sourceRate) || sourceRate <= 0 ||
+      !Number.isFinite(targetRate) || targetRate <= 0) return null;
+  const result = amount / sourceRate * targetRate;
+  return Number.isFinite(result) ? result : null;
+}
+
 export function formatMoney(
   amount: number,
   locale: string,

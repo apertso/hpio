@@ -1,8 +1,8 @@
 import { useLanguage } from "../context/LanguageContext";
+import { PageHeader, PageContent } from "../components/layout/Page";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import PaymentForm from "../components/PaymentForm";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import FormBlock from "../components/FormBlock";
 import axiosInstance from "../api/axiosInstance";
 import { PaymentData } from "../types/paymentData";
@@ -101,34 +101,27 @@ const PaymentEditPage: React.FC = () => {
   return (
     <>
       <PageMeta {...metadata} />
-      <div className="max-w-4xl mx-auto">
-        {/* Title and back button shown only on desktop - on mobile it's in the header */}
-        <div className="hidden md:flex items-center mb-6">
-          <button
-            onClick={handleCancel}
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"
-            aria-label={t("Назад")}
-          >
-            <ArrowLeftIcon className="h-6 w-6" />
-          </button>
-          <h2 className="text-xl md:text-2xl font-bold ml-4 text-gray-900 dark:text-white flex items-center gap-3">
-            {headerText}
-            {seriesInactive && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600">
+      <div className="dark:text-gray-100">
+        <PageHeader
+          breadcrumbs={[{ label: t("Платежи"), to: "/payments" }]}
+          title={headerText}
+          titleAddon={
+            seriesInactive ? (
+              <span className="badge ml-1 border border-[var(--ui-border-strong)] text-gray-600 dark:text-gray-400">
                 {t("Серия неактивна")}
               </span>
-            )}
-          </h2>
-        </div>
-
-        <FormBlock className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+            ) : undefined
+          }
+        />
+        <PageContent width="form">
+        <FormBlock>
           {isLoading ? (
             <div className="flex justify-center items-center h-40">
               <Spinner />
             </div>
           ) : error ? (
             <div
-              className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative"
+              className="ui-alert-error"
               role="alert"
             >
               {t(error)}
@@ -136,10 +129,17 @@ const PaymentEditPage: React.FC = () => {
           ) : (
             <>
               {showEditScopeHeader && (
-                <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-700/20">
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                <div className="mb-8 flex flex-col gap-3 rounded-lg border border-[var(--ui-border)] bg-gray-50/60 p-4 dark:bg-white/[0.02] md:flex-row md:items-center md:justify-between">
+                  <div className="min-w-0">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {t("Это повторяющийся платеж. Что вы хотите изменить?")}
                   </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                    {editScope === "single"
+                      ? t("Изменения коснутся только текущего платежа. Остальные платежи серии останутся прежними.")
+                      : t("Изменения будут применены к этому и всем будущим платежам серии. Прошлые платежи не изменятся.")}
+                  </p>
+                  </div>
                   <SegmentedControl
                     options={[
                       { value: "single", label: t("Только этот платеж") },
@@ -147,14 +147,9 @@ const PaymentEditPage: React.FC = () => {
                     ]}
                     selected={editScope}
                     onChange={(val) => setEditScope(val as "single" | "series")}
-                    className="w-full"
+                    className="w-full shrink-0 md:w-auto"
                     optionClassName="flex-1 justify-center"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">
-                    {editScope === "single"
-                      ? t("Изменения коснутся только текущего платежа. Остальные платежи серии останутся прежними.")
-                      : t("Изменения будут применены к этому и всем будущим платежам серии. Прошлые платежи не изменятся.")}
-                  </p>
                 </div>
               )}
               <PaymentForm
@@ -170,6 +165,7 @@ const PaymentEditPage: React.FC = () => {
             </>
           )}
         </FormBlock>
+        </PageContent>
       </div>
     </>
   );

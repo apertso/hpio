@@ -17,10 +17,8 @@ const RadioButton = ({ label, id, ref, ...rest }: RadioButtonProps) => {
         {...rest}
         unstyled
       />
-      <span className="w-4 h-4 rounded-full border-2 border-gray-400 dark:border-gray-500 peer-checked:border-blue-600 dark:peer-checked:border-blue-500 flex items-center justify-center transition-colors flex-shrink-0">
-        <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-500 scale-0 peer-checked:scale-100 transition-transform" />
-      </span>
-      <div className="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200">
+      <span className="w-4 h-4 rounded-full border border-gray-300 dark:border-white/20 peer-checked:border-indigo-600 peer-checked:border-[5px] dark:peer-checked:border-indigo-500 flex items-center justify-center transition-colors flex-shrink-0" />
+      <div className="ml-2.5 text-sm text-gray-800 dark:text-gray-200">
         {label}
       </div>
     </label>

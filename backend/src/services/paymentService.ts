@@ -1,4 +1,7 @@
 import db from "../models";
+import { ExchangeRates, getUsdRates, getUsdRatesForDates } from "./exchangeRateService";
+import { calculateDashboardStats, getRateDate, StatsPayment } from "./dashboardStats";
+import { getIncomesForPeriod } from "./incomeService";
 import { Op, Sequelize, WhereAttributeHash, WhereOptions } from "sequelize";
 import logger from "../config/logger";
 import { deleteFileFromFS } from "./fileService";
@@ -6,7 +9,7 @@ import { PaymentInstance, PaymentAttributes } from "../models/Payment";
 import { TransactionCategoryInstance } from "../models/TransactionCategory";
 import { RRule } from "rrule";
 import { normalizeDateToUTC } from "../utils/dateUtils";
-import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { config } from "../config/appConfig";
 import {
   createRecurringSeries,
@@ -29,6 +32,27 @@ import {
   attachPaymentTags,
   replacePaymentTags,
 } from "./tagService";
+
+// У серии нет валюты: источником служит последний сохранённый платёж.
+const loadSeriesCurrencies = async (
+  userId: string,
+  seriesIds: string[],
+  currencies: Map<string, string>
+): Promise<void> => {
+  if (seriesIds.length === 0) return;
+  const payments = await db.Payment.findAll({
+    where: { userId, seriesId: { [Op.in]: seriesIds } },
+    attributes: ["seriesId", "currency"],
+    order: [["dueDate", "DESC"], ["createdAt", "DESC"]],
+  });
+  const seen = new Set<string>();
+  for (const payment of payments) {
+    if (payment.seriesId && !seen.has(payment.seriesId)) {
+      currencies.set(payment.seriesId, normalizePaymentCurrency(payment.currency));
+      seen.add(payment.seriesId);
+    }
+  }
+};
 
 const NO_CATEGORY_FILTER_VALUE = "__NO_CATEGORY__";
 
@@ -229,7 +253,7 @@ export const getUpcomingPayments = async (
     for (const p of payments as any[]) {
       const seriesId: string | null = (p as any).seriesId || null;
       if (!seriesId) continue;
-      const dueStr: string = String((p as any).dueDate);
+      const dueStr: string = String(p.dueDate);
       if (!existingDatesBySeries.has(seriesId)) {
         existingDatesBySeries.set(seriesId, new Set<string>());
       }
@@ -245,6 +269,7 @@ export const getUpcomingPayments = async (
 
     // Получаем активные серии пользователя
     const seriesList = await getActiveRecurringSeries(userId);
+    await loadSeriesCurrencies(userId, seriesList.map((series) => series.id), currencyBySeries);
 
     const virtualPayments: any[] = [];
     for (const series of seriesList as any[]) {
@@ -1559,21 +1584,18 @@ export const getDashboardStats = async (
   userId: string,
   startDate?: string,
   endDate?: string
-): Promise<{
-  month: string;
-  totalUpcomingAmount: string;
-  totalCompletedAmount: string;
-  totalIncomeAmount: string;
-  categoriesDistribution: { id?: string; name: string; nameEn?: string | null; amount: number }[];
-  incomeCategoriesDistribution: { id?: string; name: string; nameEn?: string | null; amount: number }[];
-  dailyPaymentLoad: { date: string; amount: number }[];
-  allPaymentsInMonth: unknown[];
-}> => {
+): Promise<ReturnType<typeof calculateDashboardStats>> => {
   try {
     const user = await db.User.findByPk(userId, {
-      attributes: ["timezone"],
+      attributes: ["timezone", "preferredCurrency"],
     });
     const userTimezone = user?.timezone || config.defaultTimezone;
+    const currency = normalizePaymentCurrency(user?.preferredCurrency);
+    // Без текущих курсов статистика всё равно строится: совпадающие валюты и исторические курсы работают.
+    const currentRates: ExchangeRates | null = await getUsdRates().catch((error: unknown) => {
+      logger.warn("Current exchange rates unavailable for dashboard stats", error);
+      return null;
+    });
 
     const now = new Date();
     const periodStartDate = startDate
@@ -1674,10 +1696,10 @@ export const getDashboardStats = async (
     // Виртуальные платежи для выбранного периода
     const existingDatesBySeries = new Map<string, Set<string>>();
     const currencyBySeries = new Map<string, string>();
-    for (const p of relevantPayments as any[]) {
-      const seriesId: string | null = (p as any).seriesId || null;
+    for (const p of relevantPayments) {
+      const seriesId = p.seriesId || null;
       if (!seriesId) continue;
-      const dueStr: string = String((p as any).dueDate);
+      const dueStr: string = String(p.dueDate);
       if (!existingDatesBySeries.has(seriesId)) {
         existingDatesBySeries.set(seriesId, new Set<string>());
       }
@@ -1688,8 +1710,18 @@ export const getDashboardStats = async (
     }
 
     const seriesList = await getActiveRecurringSeriesWithCategory(userId);
+    await loadSeriesCurrencies(userId, seriesList.map((series) => series.id), currencyBySeries);
 
-    const virtualPayments: any[] = [];
+    const virtualPayments: (StatsPayment & {
+      userId: string;
+      title: string;
+      remind: boolean;
+      seriesId: string;
+      builtinIconName?: string | null;
+      createdAt: string;
+      updatedAt: string;
+      isVirtual: boolean;
+    })[] = [];
     const periodStart = new Date(periodStartString);
     periodStart.setHours(0, 0, 0, 0);
     const periodEnd = new Date(periodEndString);
@@ -1697,7 +1729,7 @@ export const getDashboardStats = async (
     const todayDateOnly = new Date();
     todayDateOnly.setHours(0, 0, 0, 0);
 
-    for (const series of seriesList as any[]) {
+    for (const series of seriesList) {
       try {
         if (!series.recurrenceRule) continue;
 
@@ -1713,7 +1745,7 @@ export const getDashboardStats = async (
         // Конец генерации: конец периода, ограниченный концом серии (если задан)
         let effectiveEnd = new Date(periodEnd);
         if (series.recurrenceEndDate) {
-          const endBySeries = new Date(series.recurrenceEndDate as any);
+          const endBySeries = new Date(series.recurrenceEndDate);
           endBySeries.setHours(23, 59, 59, 999);
           if (endBySeries < effectiveEnd) {
             effectiveEnd = endBySeries;
@@ -1723,7 +1755,7 @@ export const getDashboardStats = async (
         if (effectiveStart > effectiveEnd) continue;
 
         const options = RRule.parseString(series.recurrenceRule as string);
-        options.dtstart = normalizeDateToUTC(new Date(series.startDate as any));
+        options.dtstart = normalizeDateToUTC(new Date(series.startDate));
         const rule = new RRule(options);
 
         const hits = rule.between(
@@ -1773,162 +1805,16 @@ export const getDashboardStats = async (
       }
     }
 
-    const combinedPayments: any[] = [
-      ...(relevantPayments as any[]),
+    const combinedPayments = [
+      ...relevantPayments.map((payment) => ({
+        ...payment.toJSON(),
+        completedAt: payment.completedAt instanceof Date ? payment.completedAt : null,
+        transactionCategory: payment.transactionCategory ||
+          (payment.categoryId ? transactionCategoriesById.get(payment.categoryId) : null),
+      })),
       ...virtualPayments,
     ];
-
-    let totalUpcomingAmount = 0;
-    let totalCompletedAmount = 0;
-    const categoriesStats: {
-      [key: string]: { id?: string; name: string; nameEn?: string | null; amount: number };
-    } = {};
-    const dailyStats: { [key: string]: { date: string; amount: number } } = {};
-
-    // Проверяем, если диапазон дат меньше 2 дней
-    const dateRangeInMs = periodEndDate.getTime() - periodStartDate.getTime();
-    const isLessThan2Days = dateRangeInMs < 2 * 24 * 60 * 60 * 1000;
-    const hourlyStats: { [key: string]: { date: string; amount: number } } = {};
-
-    // Считаем выполненные только по реальным платежам
-    for (const payment of relevantPayments) {
-      const amount = parseFloat(payment.amount.toString());
-
-      // Рассчитываем "Предстоящие"
-      if (payment.status === "upcoming" || payment.status === "overdue") {
-        totalUpcomingAmount += amount;
-      }
-
-      // Рассчитываем "Выполненные"
-      if (payment.status === "completed" && payment.completedAt) {
-        totalCompletedAmount += amount;
-      }
-
-      // Распределение по категориям
-      const resolvedCategory =
-        payment.transactionCategory ||
-        (payment.categoryId
-          ? transactionCategoriesById.get(payment.categoryId) || null
-          : null);
-      const categoryId = resolvedCategory?.id || "no-category";
-      const categoryName = resolvedCategory?.name || "Без категории";
-      const categoryNameEn = resolvedCategory?.nameEn || null;
-      if (!categoriesStats[categoryId]) {
-        categoriesStats[categoryId] = {
-          id: categoryId !== "no-category" ? categoryId : undefined,
-          name: categoryName,
-          nameEn: categoryNameEn,
-          amount: 0,
-        };
-      }
-      if (payment.status !== "deleted") {
-        categoriesStats[categoryId].amount += amount;
-      }
-
-      // Статистика по дням/часам с учетом таймзоны
-      let dateKey: string;
-      let hourKey: string;
-      if (payment.status === "completed" && payment.completedAt) {
-        // Конвертируем UTC дату выполнения в дату в таймзоне пользователя
-        const completedDateInUserTZ = toZonedTime(
-          payment.completedAt as Date,
-          userTimezone
-        );
-        dateKey = format(completedDateInUserTZ, "yyyy-MM-dd");
-        hourKey = format(completedDateInUserTZ, "yyyy-MM-dd HH:00");
-      } else {
-        dateKey = payment.dueDate;
-        hourKey = `${payment.dueDate} 12:00`; // По умолчанию на полдень для дат срока оплаты
-      }
-
-      if (!dailyStats[dateKey]) {
-        dailyStats[dateKey] = { date: dateKey, amount: 0 };
-      }
-      if (payment.status !== "deleted") {
-        dailyStats[dateKey].amount += amount;
-      }
-
-      // Для статистики по часам, если диапазон дат меньше 2 дней
-      if (isLessThan2Days) {
-        if (!hourlyStats[hourKey]) {
-          hourlyStats[hourKey] = { date: hourKey, amount: 0 };
-        }
-        if (payment.status !== "deleted") {
-          hourlyStats[hourKey].amount += amount;
-        }
-      }
-    }
-
-    // Добавляем виртуальные платежи в распределения и "предстоящие"
-    for (const payment of virtualPayments as any[]) {
-      const amount = parseFloat(String(payment.amount));
-
-      if (payment.status === "upcoming" || payment.status === "overdue") {
-        totalUpcomingAmount += amount;
-      }
-
-      const resolvedCategory =
-        payment.transactionCategory ||
-        (typeof payment.categoryId === "string"
-          ? transactionCategoriesById.get(payment.categoryId) || null
-          : null);
-      const categoryId = resolvedCategory?.id || "no-category";
-      const categoryName = resolvedCategory?.name || "Без категории";
-      const categoryNameEn = resolvedCategory?.nameEn || null;
-      if (!categoriesStats[categoryId]) {
-        categoriesStats[categoryId] = {
-          id: categoryId !== "no-category" ? categoryId : undefined,
-          name: categoryName,
-          nameEn: categoryNameEn,
-          amount: 0,
-        };
-      }
-      categoriesStats[categoryId].amount += amount;
-
-      const dateKey: string = payment.dueDate;
-      const hourKey: string = `${payment.dueDate} 12:00`; // По умолчанию на полдень для виртуальных платежей
-      if (!dailyStats[dateKey]) {
-        dailyStats[dateKey] = { date: dateKey, amount: 0 };
-      }
-      dailyStats[dateKey].amount += amount;
-
-      // Для статистики по часам, если диапазон дат меньше 2 дней
-      if (isLessThan2Days) {
-        if (!hourlyStats[hourKey]) {
-          hourlyStats[hourKey] = { date: hourKey, amount: 0 };
-        }
-        hourlyStats[hourKey].amount += amount;
-      }
-    }
-
-    const categoriesDistribution = Object.values(categoriesStats).filter(
-      (c) => c.amount > 0
-    );
-    const dailyPaymentLoad = Object.values(dailyStats).sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    // Используем данные по часам, если диапазон дат меньше 2 дней
-    const paymentLoad = isLessThan2Days
-      ? Object.values(hourlyStats).sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        )
-      : dailyPaymentLoad;
-
-    // Add Income Stats Logic
-    const incomes = await db.Income.findAll({
-      where: {
-        userId,
-        date: { [Op.between]: [periodStartString, periodEndString] },
-      },
-      include: [
-        {
-          model: db.TransactionCategory,
-          as: "transactionCategory",
-          attributes: ["id", "name", "nameEn", "builtinIconName"],
-        },
-      ],
-    });
+    const incomes = await getIncomesForPeriod(userId, periodStartString, periodEndString);
 
     const incomeCategoryIds = Array.from(
       new Set(
@@ -1956,62 +1842,35 @@ export const getDashboardStats = async (
       }
     }
 
-    const totalIncome = incomes.reduce(
-      (sum: number, inc: any) => sum + Number(inc.amount),
-      0
-    );
-
-    // Calculate income categories distribution
-    const incomeCategoriesStats: {
-      [key: string]: { id?: string; name: string; nameEn?: string | null; amount: number };
-    } = {};
-
-    for (const income of incomes as any[]) {
-      const amount = parseFloat(String(income.amount));
-      const resolvedCategory =
-        income.transactionCategory ||
-        (typeof income.categoryId === "string"
-          ? transactionCategoriesById.get(income.categoryId) || null
-          : null);
-      const categoryId = resolvedCategory?.id || "no-category";
-      const categoryName = resolvedCategory?.name || "Без категории";
-      const categoryNameEn = resolvedCategory?.nameEn || null;
-
-      if (!incomeCategoriesStats[categoryId]) {
-        incomeCategoriesStats[categoryId] = {
-          id: categoryId !== "no-category" ? categoryId : undefined,
-          name: categoryName,
-          nameEn: categoryNameEn,
-          amount: 0,
-        };
-      }
-      incomeCategoriesStats[categoryId].amount += amount;
+    const statsIncomes = incomes.map((income) => ({
+      ...income.toJSON(),
+      transactionCategory: income.transactionCategory ||
+        (income.categoryId ? transactionCategoriesById.get(income.categoryId) : null),
+    }));
+    const today = formatInTimeZone(new Date(), userTimezone, "yyyy-MM-dd");
+    // Исторические курсы нужны только для прошедших операций в чужой валюте.
+    const rateDates = new Set<string>();
+    for (const item of [...combinedPayments, ...statsIncomes.map((income) => ({ ...income, status: undefined }))]) {
+      if (normalizePaymentCurrency(item.currency) === currency) continue;
+      const rateDate = getRateDate(item, userTimezone, today);
+      if (rateDate) rateDates.add(rateDate);
     }
+    const ratesByDate = await getUsdRatesForDates(rateDates);
 
-    const incomeCategoriesDistribution = Object.values(
-      incomeCategoriesStats
-    ).filter((c) => c.amount > 0);
-
-    return {
-      month: `${periodStartDate.getFullYear()}-${(
-        periodStartDate.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, "0")}`,
-      totalUpcomingAmount: totalUpcomingAmount.toFixed(2),
-      totalCompletedAmount: totalCompletedAmount.toFixed(2),
-      totalIncomeAmount: totalIncome.toFixed(2),
-      categoriesDistribution,
-      incomeCategoriesDistribution,
-      dailyPaymentLoad: paymentLoad,
-      allPaymentsInMonth: combinedPayments,
-    };
+    return calculateDashboardStats(combinedPayments, statsIncomes, {
+      startDate: periodStartString,
+      endDate: periodEndString,
+      timezone: userTimezone,
+      currency,
+      today,
+      rates: { current: currentRates, byDate: ratesByDate },
+    });
   } catch (error) {
     logger.error(
       `Error calculating dashboard stats for user ${userId}:`,
       error
     );
-    throw new Error("Не удалось рассчитать статистику.");
+    throw new Error("Failed to calculate dashboard statistics.");
   }
 };
 

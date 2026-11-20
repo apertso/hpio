@@ -1,7 +1,7 @@
 import { useLanguage } from "../context/LanguageContext";
+import { PageHeader, PageContent } from "../components/layout/Page";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { useNavigate, useParams } from "react-router-dom";
 import { cardApi } from "../api/cardApi";
 import { CardData } from "../types/cardData";
 import Spinner from "../components/Spinner";
@@ -197,22 +197,13 @@ const CardEditPage: React.FC = () => {
   return (
     <>
       <PageMeta {...metadata} />
-      <div className="max-w-4xl mx-auto">
-        {/* Title and back button shown only on desktop */}
-        <div className="hidden md:flex items-center mb-6">
-          <Link
-            to="/sources"
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-800 dark:text-gray-200"
-            aria-label={t("Назад к источникам")}
-          >
-            <ArrowLeftIcon className="h-6 w-6" />
-          </Link>
-          <h2 className="text-xl md:text-2xl font-bold ml-4 text-gray-900 dark:text-white">
-            {isEditMode ? t("Редактировать карту") : t("Новая карта")}
-          </h2>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="dark:text-gray-100">
+        <PageHeader
+          breadcrumbs={[{ label: t("Источники"), to: "/sources" }]}
+          title={isEditMode ? t("Редактировать карту") : t("Новая карта")}
+        />
+        <PageContent width="form">
+        <div>
           {isLoading && isEditMode ? (
             <div className="flex justify-center items-center h-40">
               <Spinner />
@@ -224,7 +215,7 @@ const CardEditPage: React.FC = () => {
                 <div className="flex flex-col">
                   {formError && (
                     <div
-                      className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6"
+                      className="ui-alert-error mb-6"
                       role="alert"
                     >
                       {t(formError)}
@@ -359,6 +350,7 @@ const CardEditPage: React.FC = () => {
             </form>
           )}
         </div>
+        </PageContent>
       </div>
     </>
   );

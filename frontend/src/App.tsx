@@ -8,20 +8,20 @@ import {
   Navigate,
   useLocation,
   useNavigate,
-  useSearchParams,
 } from 'react-router-dom';
 
 // Contexts
 import { useAuth } from './context/AuthContext';
-import { useReset } from './context/ResetContext';
 import { usePageTitle } from './context/PageTitleContext';
 import { useToast } from './context/ToastContext';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
 import NotificationOnboardingModal from './components/NotificationOnboardingModal';
-import Overlay from './components/Overlay';
 import SyncStatusIndicator from './components/SyncStatusIndicator';
+import OverlayScrollbar from './components/OverlayScrollbar';
+import AppSidebar from './components/AppSidebar';
+import { UiSurfaceContext } from './context/UiSurfaceContext';
 import MobileNavigationDrawer from './components/MobileNavigationDrawer';
 import VerificationBanner from './components/VerificationBanner';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
@@ -35,19 +35,13 @@ import {
 
 // Icons
 import {
-  Cog6ToothIcon,
-  ArrowRightOnRectangleIcon,
   ArrowLeftIcon,
-  UserIcon,
   Bars3Icon,
   PlusIcon,
-  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 // Utilities & API
 import axiosInstance from './api/axiosInstance';
-import { useDropdown } from './hooks/useDropdown';
-import { useAvatarCache } from './hooks/useAvatarCache';
 import { isTauri, isTauriMobile } from './utils/platform';
 import logger from './utils/logger';
 import { trackNavigation } from './utils/breadcrumbs';
@@ -97,200 +91,6 @@ const AutomationRulesPage = React.lazy(
 
 const NATIVE_NOTIFICATION_EVENT = 'hpio-native-notification';
 
-// --- Helper Components ---
-
-const Navigation: React.FC = () => {
-  const { t } = useLanguage();
-  const { isAuthenticated, user, logout, token } = useAuth();
-  const location = useLocation();
-  const {
-    isOpen: isUserPopoverOpen,
-    setIsOpen: setIsUserPopoverOpen,
-    containerRef: popoverRef,
-  } = useDropdown();
-  const { avatarUrl } = useAvatarCache(user?.photoPath, token);
-  const incomeCardsEnabled = isIncomeAndCardsEnabled();
-  const tagsAndCategoriesEnabled = isTagsAndCategoriesEnabled();
-  const tagsEnabled = tagsAndCategoriesEnabled;
-  const canManageCategories = Boolean(user?.isAdmin);
-
-  const authPaths = [
-    '/login',
-    '/register',
-    '/forgot-password',
-    '/reset-password',
-    '/verify-email',
-  ];
-  if (authPaths.includes(location.pathname)) {
-    return null;
-  }
-
-  const navLinkClass = (isActive: boolean) =>
-    `text-sm font-medium transition-opacity duration-200 hover:opacity-80 ${
-      isActive
-        ? 'text-black dark:text-white'
-        : 'text-gray-600 dark:text-gray-400'
-    }`;
-
-  return (
-    <nav className="flex items-center gap-2 sm:gap-6">
-      {isAuthenticated ? (
-        <>
-          <div className="hidden md:flex items-center gap-8 mr-4">
-            <Link
-              to="/dashboard"
-              className={navLinkClass(location.pathname === '/dashboard')}
-            >
-              {t('Главная')}
-            </Link>
-            <Link
-              to="/payments"
-              className={navLinkClass(
-                location.pathname.startsWith('/payments'),
-              )}
-            >
-              {t('Платежи')}
-            </Link>
-            {canManageCategories && (
-              <Link
-                to="/categories"
-                className={navLinkClass(
-                  location.pathname.startsWith('/categories'),
-                )}
-              >
-                {t('Категории')}
-              </Link>
-            )}
-            {canManageCategories && (
-              <Link
-                to="/automation-rules"
-                className={navLinkClass(
-                  location.pathname.startsWith('/automation-rules'),
-                )}
-              >
-                {t('Автоматизация')}
-              </Link>
-            )}
-            {tagsEnabled && (
-              <Link
-                to="/tags"
-                className={navLinkClass(location.pathname.startsWith('/tags'))}
-              >
-                {t('Теги')}
-              </Link>
-            )}
-            {incomeCardsEnabled && (
-              <>
-                <Link
-                  to="/incomes"
-                  className={navLinkClass(
-                    location.pathname.startsWith('/incomes'),
-                  )}
-                >
-                  {t('Доходы')}
-                </Link>
-                <Link
-                  to="/sources"
-                  className={navLinkClass(
-                    location.pathname.startsWith('/sources'),
-                  )}
-                >
-                  {t('Источники')}
-                </Link>
-              </>
-            )}
-          </div>
-
-          <div className="hidden md:flex items-center gap-2 pl-4 border-l border-gray-200 dark:border-gray-700">
-            <ThemeSwitcher />
-          </div>
-
-          <div className="hidden md:flex items-center pl-2">
-            <div className="relative" ref={popoverRef}>
-              <button
-                onClick={() => setIsUserPopoverOpen(!isUserPopoverOpen)}
-                className="flex items-center justify-center rounded-full hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
-                aria-label={t('Меню пользователя')}
-                aria-expanded={isUserPopoverOpen}
-              >
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="User Avatar"
-                    className="size-9 rounded-full object-cover bg-gray-200 dark:bg-gray-700 border border-gray-200 dark:border-gray-700"
-                  />
-                ) : (
-                  <div className="flex size-9 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-gray-900 shadow-sm dark:border-white/10 dark:bg-gray-800 dark:text-white">
-                    <UserIcon className="w-5 h-5" />
-                  </div>
-                )}
-              </button>
-
-              <Overlay
-                isOpen={isUserPopoverOpen}
-                widthClass="w-72"
-                anchorRef={popoverRef}
-                offset={12}
-              >
-                <div role="menu" aria-orientation="vertical">
-                  {(user?.email || user?.name) && (
-                    <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
-                      {user.name && (
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                          {user.name}
-                        </p>
-                      )}
-                      {user.email && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                          {user.email}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <div className="p-1">
-                    <Link
-                      to="/settings"
-                      onClick={() => setIsUserPopoverOpen(false)}
-                      className="w-full text-left text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 px-3 py-2 rounded-md transition-colors flex items-center text-sm cursor-pointer"
-                      role="menuitem"
-                    >
-                      <Cog6ToothIcon className="mr-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                      {t('Настройки')}
-                    </Link>
-                    <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
-                    <button
-                      onClick={() => {
-                        logout();
-                        setIsUserPopoverOpen(false);
-                      }}
-                      className="w-full text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-md transition-colors flex items-center text-sm cursor-pointer"
-                      role="menuitem"
-                    >
-                      <ArrowRightOnRectangleIcon className="mr-3 h-4 w-4 opacity-70" />
-                      {t('Выйти')}
-                    </button>
-                  </div>
-                </div>
-              </Overlay>
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="flex items-center gap-4">
-          <Link
-            to="/login"
-            className="flex items-center gap-2 text-sm font-medium text-gray-800 transition-opacity hover:opacity-80 dark:text-gray-200"
-          >
-            <ArrowRightOnRectangleIcon className="h-4 w-4" />
-            <span>{t('Войти')}</span>
-          </Link>
-          <ThemeSwitcher />
-        </div>
-      )}
-    </nav>
-  );
-};
-
 // --- Main App Component ---
 
 function App() {
@@ -298,8 +98,6 @@ function App() {
   const { isAuthenticated, user, logout, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const { triggerReset } = useReset();
   const { showToast } = useToast();
   const { pageTitle, headerAction, headerRightAction } = usePageTitle();
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
@@ -343,9 +141,10 @@ function App() {
       return new Set();
     }
   });
-  const [canClearTrash, setCanClearTrash] = useState(false);
   const isProcessingNotificationsRef = useRef(false);
   const processNotificationsRef = useRef<(() => Promise<void>) | null>(null);
+  // Основной прокручиваемый контейнер — для тонкой полосы прокрутки поверх контента
+  const [mainScrollEl, setMainScrollEl] = useState<HTMLElement | null>(null);
 
   // --- Logic: Mobile Safe Area ---
   useEffect(() => {
@@ -615,59 +414,16 @@ function App() {
     };
   }, [isAuthenticated, navigate]);
 
-  // --- Logic: Handlers ---
-  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    const targetUrl = isAuthenticated
-      ? '/dashboard'
-      : localizeHref(language, '/');
-    if (isAuthenticated && location.pathname === targetUrl) {
-      triggerReset();
-    } else {
-      navigate(targetUrl);
-    }
-  };
-
-  useEffect(() => {
-    const handler = (e: Event & { detail?: { hasItems?: boolean } }) => {
-      setCanClearTrash(Boolean(e.detail?.hasItems));
-    };
-    window.addEventListener('payments:trash-state', handler as EventListener);
-    return () =>
-      window.removeEventListener(
-        'payments:trash-state',
-        handler as EventListener,
-      );
-  }, []);
-
   // --- Mobile Floating Action Logic ---
   let mobileAddAction: (() => void) | null = null;
   let mobileActionIcon: React.ReactNode | null = null;
   let mobileActionAriaLabel: string | null = null;
-  let mobileActionDisabled = false;
 
   if (isAuthenticated) {
     if (location.pathname === '/dashboard') {
       mobileAddAction = () => navigate('/payments/new');
       mobileActionIcon = <PlusIcon className="h-6 w-6" />;
       mobileActionAriaLabel = 'Добавить';
-    } else if (location.pathname === '/payments') {
-      const currentTab = searchParams.get('tab') || 'active';
-      if (currentTab === 'trash') {
-        mobileAddAction = () =>
-          window.dispatchEvent(new CustomEvent('payments:clear-trash-request'));
-        mobileActionIcon = <TrashIcon className="h-6 w-6" />;
-        mobileActionAriaLabel = 'Очистить корзину';
-        mobileActionDisabled = !canClearTrash;
-      } else if (currentTab === 'archive') {
-        mobileAddAction = () => navigate('/payments/new?markAsCompleted=true');
-        mobileActionIcon = <PlusIcon className="h-6 w-6" />;
-        mobileActionAriaLabel = 'Добавить';
-      } else {
-        mobileAddAction = () => navigate('/payments/new');
-        mobileActionIcon = <PlusIcon className="h-6 w-6" />;
-        mobileActionAriaLabel = 'Добавить';
-      }
     } else if (location.pathname === '/categories' && canManageCategories) {
       mobileAddAction = () => navigate('/categories/new');
       mobileActionIcon = <PlusIcon className="h-6 w-6" />;
@@ -693,15 +449,23 @@ function App() {
     '/forgot-password',
     '/reset-password',
   ].includes(barePath);
-  const isPublicPage =
-    isPublicAuthPage ||
+  // Индексируемые страницы сайта — у них собственный публичный дизайн
+  const isIndexedPage =
     isTermsOrPrivacyPage ||
     ['/download', '/about', '/blog'].includes(barePath) ||
     barePath.startsWith('/blog/');
+  const isPublicPage = isPublicAuthPage || isIndexedPage;
   const showPublicHeader = isPublicPage && !isAuthenticated && !isTauriMobile();
 
   const isLandingPage =
     barePath === '/' && !isAuthenticated && !isTauriMobile();
+
+  // Рабочий интерфейс приложения: всё, кроме публичных страниц (включая вход/регистрацию) и лендинга
+  const isAppUi = !isPublicPage && !isLandingPage;
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('app-ui', isAppUi);
+  }, [isAppUi]);
 
   const showHeader =
     !showPublicHeader &&
@@ -709,6 +473,9 @@ function App() {
     !(isTauriMobile() && barePath === '/') &&
     !(isTauriMobile() && isTermsOrPrivacyPage) &&
     !isLandingPage;
+
+  // Боковая панель — только для авторизованного рабочего интерфейса
+  const showSidebar = isAuthenticated && showHeader && isAppUi;
 
   const isEditPage =
     isAuthenticated &&
@@ -723,92 +490,52 @@ function App() {
 
   // --- Render Helpers ---
 
-  const renderHeader = (): React.JSX.Element => (
-    <header className="flex flex-shrink-0 items-center justify-between whitespace-nowrap border-b border-gray-200/80 bg-white/80 px-3 py-3 backdrop-blur-xl transition-colors duration-300 dark:border-gray-800/80 dark:bg-gray-900/80 sm:px-6 md:px-8 z-30">
-      <div className="flex items-center gap-3 min-w-0">
-        {isAuthenticated && isEditPage ? (
-          <>
-            <button
-              onClick={() => navigate(-1)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              aria-label={t('Назад')}
-            >
-              <ArrowLeftIcon className="h-6 w-6" />
-            </button>
-            {pageTitle && (
-              <div className="md:hidden flex items-center gap-2 min-w-0">
-                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
-                  {pageTitle}
-                </h1>
-                {headerAction}
-              </div>
-            )}
-          </>
-        ) : isAuthenticated && !isEditPage ? (
-          <>
-            <button
-              onClick={() => setIsMobileDrawerOpen(true)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              aria-label={t('Меню')}
-            >
-              <Bars3Icon className="h-6 w-6" />
-            </button>
-            {pageTitle && (
-              <div className="md:hidden flex items-center gap-2 min-w-0">
-                <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
-                  {pageTitle}
-                </h1>
-                {headerAction}
-              </div>
-            )}
-          </>
-        ) : null}
+  const headerIconButtonClass =
+    'flex size-9 items-center justify-center rounded-md text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 disabled:opacity-40 cursor-pointer';
 
-        <a
-          href={isAuthenticated ? '/dashboard' : '/'}
-          onClick={handleLogoClick}
-          className={`flex items-center gap-3 group focus-visible:outline-none rounded-lg focus-visible:ring-2 focus-visible:ring-indigo-500/50 ${
-            !isAuthenticated && !isTauriMobile() ? 'flex' : 'hidden md:flex'
-          }`}
-        >
-          <div className="size-4 text-black dark:text-white transition-transform group-hover:scale-105">
-            <svg
-              viewBox="0 0 48 48"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-full h-full"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z"
-                fill="currentColor"
-              ></path>
-            </svg>
+  // Мобильная шапка авторизованного приложения
+  const renderAppMobileHeader = (): React.JSX.Element => (
+    <header className="md:hidden z-30 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[var(--ui-border)] bg-[var(--ui-bg)] px-1.5">
+      <div className="flex min-w-0 items-center gap-1">
+        {isEditPage ? (
+          <button
+            onClick={() => navigate(-1)}
+            className={headerIconButtonClass}
+            aria-label={t('Назад')}
+          >
+            <ArrowLeftIcon className="size-5" />
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className={headerIconButtonClass}
+            aria-label={t('Меню')}
+          >
+            <Bars3Icon className="size-5" />
+          </button>
+        )}
+        {pageTitle && (
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="truncate text-base font-semibold text-gray-900 dark:text-gray-50">
+              {pageTitle}
+            </h1>
+            {headerAction}
           </div>
-          <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight transition-opacity group-hover:opacity-80">
-            {t('Хочу Плачу')}
-          </span>
-        </a>
+        )}
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-1">
         <SyncStatusIndicator />
-        <Navigation />
-
-        <div className="md:hidden flex items-center gap-2">
-          {headerRightAction}
-          {mobileAddAction && mobileActionIcon && (
-            <button
-              onClick={mobileAddAction}
-              disabled={mobileActionDisabled}
-              className="p-2 rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none disabled:opacity-50"
-              aria-label={mobileActionAriaLabel || t('Действие')}
-            >
-              {mobileActionIcon}
-            </button>
-          )}
-        </div>
+        {headerRightAction}
+        {mobileAddAction && mobileActionIcon && (
+          <button
+            onClick={mobileAddAction}
+            className={headerIconButtonClass}
+            aria-label={mobileActionAriaLabel || t('Действие')}
+          >
+            {mobileActionIcon}
+          </button>
+        )}
       </div>
     </header>
   );
@@ -817,8 +544,9 @@ function App() {
     <footer className="border-t border-gray-200 dark:border-gray-800 py-8 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="text-center md:text-left">
+          {/* Копирайт и автор в одну строку; «by» одинаково для всех языков */}
           <p>
-            {t('Создано')}{' '}
+            © {t('Хочу Плачу')} · by{' '}
             <a
               href="https://apertso.com"
               target="_blank"
@@ -826,7 +554,7 @@ function App() {
               className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
             >
               apertso
-            </a>{' '}
+            </a>
           </p>
         </div>
 
@@ -882,148 +610,170 @@ function App() {
   );
 
   // --- Render Layout ---
-  const layoutClasses = `relative flex h-dvh flex-col overflow-hidden transition-colors duration-300 ${
+  const layoutClasses = `relative flex h-dvh overflow-hidden ${
+    showSidebar ? 'flex-row' : 'flex-col'
+  } ${
     isPublicPage
       ? 'public-surface'
       : isLandingPage
         ? 'font-sans bg-transparent'
-        : 'font-sans bg-gray-50 dark:bg-dark-bg'
+        : 'font-sans bg-[var(--ui-bg)] text-gray-900 dark:text-gray-100'
   } ${isTauriMobile() ? 'safe-area-top safe-area-bottom' : ''}`;
   // Enforce min-h-0 to allow scrolling within flex container
-  const mainClasses = `flex flex-col flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden scroll-smooth`;
+  const mainClasses = `flex flex-col flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden scroll-smooth overlay-scroll`;
+  // Футер нужен только публичным страницам и гостям; в рабочем интерфейсе его нет
+  const showFooter =
+    !isTauriMobile() && !isPublicAuthPage && !(isAuthenticated && isAppUi);
 
-  return (
-    <div className={layoutClasses}>
-      <PublicLocaleSync />
-      {showHeader && renderHeader()}
-      {showPublicHeader && (
-        <div className="shrink-0 border-b border-gray-200/80 dark:border-white/10">
-          <div className="public-container">
-            <LandingTopBar showSignIn={!isPublicAuthPage} />
-          </div>
-        </div>
-      )}
-
-      <VerificationBanner />
-
-      <main
-        className={`${mainClasses} motion-reduce:scroll-auto`}
-        key={isPublicPage ? location.pathname : undefined}
-      >
-        <Routes>
-          {/* Public Routes. Русские адреса без префикса, английские под /en. */}
-          {[false, true].flatMap((english) => {
-            const path = (bare: string): string =>
-              english ? toEnglishPath(bare) : bare;
-            return [
-              <Route
-                key={path('/')}
-                path={path('/')}
-                element={
-                  isAuthenticated ? (
-                    <Navigate to="/dashboard" replace />
-                  ) : isTauriMobile() ? (
-                    <Navigate to="/login" replace />
-                  ) : (
-                    <LandingPage />
-                  )
-                }
-              />,
-              <Route
-                key={path('/terms')}
-                path={path('/terms')}
-                element={<TermsPage />}
-              />,
-              <Route
-                key={path('/privacy')}
-                path={path('/privacy')}
-                element={<PrivacyPage />}
-              />,
-              <Route
-                key={path('/about')}
-                path={path('/about')}
-                element={<AboutPage />}
-              />,
-              <Route
-                key={path('/download')}
-                path={path('/download')}
-                element={<DownloadPage />}
-              />,
-              <Route
-                key={path('/blog')}
-                path={path('/blog')}
-                element={<BlogPage />}
-              />,
-              <Route
-                key={path('/blog/:slug')}
-                path={path('/blog/:slug')}
-                element={<BlogPostPage />}
-              />,
-            ];
-          })}
+  const routes = (
+    <Routes>
+      {/* Public Routes. Русские адреса без префикса, английские под /en. */}
+      {[false, true].flatMap((english) => {
+        const path = (bare: string): string =>
+          english ? toEnglishPath(bare) : bare;
+        return [
           <Route
-            path="/login"
+            key={path('/')}
+            path={path('/')}
             element={
               isAuthenticated ? (
                 <Navigate to="/dashboard" replace />
+              ) : isTauriMobile() ? (
+                <Navigate to="/login" replace />
               ) : (
-                <LoginPage />
+                <LandingPage />
               )
             }
-          />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<PasswordResetPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          />,
+          <Route
+            key={path('/terms')}
+            path={path('/terms')}
+            element={<TermsPage />}
+          />,
+          <Route
+            key={path('/privacy')}
+            path={path('/privacy')}
+            element={<PrivacyPage />}
+          />,
+          <Route
+            key={path('/about')}
+            path={path('/about')}
+            element={<AboutPage />}
+          />,
+          <Route
+            key={path('/download')}
+            path={path('/download')}
+            element={<DownloadPage />}
+          />,
+          <Route
+            key={path('/blog')}
+            path={path('/blog')}
+            element={<BlogPage />}
+          />,
+          <Route
+            key={path('/blog/:slug')}
+            path={path('/blog/:slug')}
+            element={<BlogPostPage />}
+          />,
+        ];
+      })}
+      <Route
+        path="/login"
+        element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
+        }
+      />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<PasswordResetPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<HomePage />} />
-            <Route path="/payments" element={<PaymentsPage />} />
-            <Route path="/payments/new" element={<PaymentEditPage />} />
-            <Route path="/payments/edit/:id" element={<PaymentEditPage />} />
-            {canManageCategories && (
-              <>
-                <Route path="/categories" element={<CategoriesPage />} />
-                <Route path="/categories/new" element={<CategoryEditPage />} />
-                <Route
-                  path="/categories/edit/:id"
-                  element={<CategoryEditPage />}
-                />
-                <Route
-                  path="/automation-rules"
-                  element={<AutomationRulesPage />}
-                />
-              </>
-            )}
-            {tagsEnabled && (
-              <>
-                <Route path="/tags" element={<TagsPage />} />
-                <Route path="/tags/new" element={<TagEditPage />} />
-                <Route path="/tags/edit/:id" element={<TagEditPage />} />
-              </>
-            )}
-            <Route path="/settings" element={<SettingsPage />} />
-            {incomeCardsEnabled && (
-              <>
-                <Route path="/sources" element={<CardsPage />} />
-                <Route path="/sources/new" element={<CardEditPage />} />
-                <Route path="/sources/edit/:id" element={<CardEditPage />} />
-                <Route path="/incomes" element={<IncomesPage />} />
-              </>
-            )}
-          </Route>
-
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-
-        {/* Footer acts as a spacer in the scroll view for mobile, or real footer on desktop */}
-        {!isTauriMobile() && !isPublicAuthPage && (
-          <div className={isPublicPage ? 'mt-auto' : 'mt-auto pt-10'}>
-            {renderFooter()}
-          </div>
+      {/* Protected Routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<HomePage />} />
+        <Route path="/payments" element={<PaymentsPage />} />
+        <Route path="/payments/new" element={<PaymentEditPage />} />
+        <Route path="/payments/edit/:id" element={<PaymentEditPage />} />
+        {canManageCategories && (
+          <>
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/categories/new" element={<CategoryEditPage />} />
+            <Route path="/categories/edit/:id" element={<CategoryEditPage />} />
+            <Route path="/automation-rules" element={<AutomationRulesPage />} />
+          </>
         )}
-      </main>
+        {tagsEnabled && (
+          <>
+            <Route path="/tags" element={<TagsPage />} />
+            <Route path="/tags/new" element={<TagEditPage />} />
+            <Route path="/tags/edit/:id" element={<TagEditPage />} />
+          </>
+        )}
+        <Route path="/settings" element={<SettingsPage />} />
+        {incomeCardsEnabled && (
+          <>
+            <Route path="/sources" element={<CardsPage />} />
+            <Route path="/sources/new" element={<CardEditPage />} />
+            <Route path="/sources/edit/:id" element={<CardEditPage />} />
+            <Route path="/incomes" element={<IncomesPage />} />
+          </>
+        )}
+      </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  );
+
+  const mainContent = (
+    <div className="relative flex min-h-0 w-full flex-1 flex-col">
+    <main
+      ref={setMainScrollEl}
+      className={`${mainClasses} motion-reduce:scroll-auto`}
+      key={isPublicPage ? location.pathname : undefined}
+    >
+      {routes}
+
+      {/* Footer acts as a spacer in the scroll view for mobile, or real footer on desktop */}
+      {showFooter && (
+        <div className={isPublicPage ? 'mt-auto' : 'mt-auto pt-10'}>
+          {renderFooter()}
+        </div>
+      )}
+    </main>
+    <OverlayScrollbar target={mainScrollEl} />
+    </div>
+  );
+
+  return (
+    <UiSurfaceContext.Provider value={isAppUi ? 'app' : 'public'}>
+    <div className={layoutClasses}>
+      <PublicLocaleSync />
+
+      {showSidebar ? (
+        <>
+          <AppSidebar />
+          {/* Рабочая область: на десктопе — приподнятая панель с тонкой рамкой */}
+          <div className="flex min-w-0 flex-1 flex-col md:py-2 md:pr-2">
+            {renderAppMobileHeader()}
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:rounded-lg md:border md:border-[var(--ui-border)] md:bg-[var(--ui-surface)] md:shadow-sm">
+              <VerificationBanner />
+              {mainContent}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {showPublicHeader && (
+            <div className="shrink-0 border-b border-gray-200/80 dark:border-white/10">
+              <div className="public-container">
+                <LandingTopBar showSignIn={!isPublicAuthPage} />
+              </div>
+            </div>
+          )}
+          <VerificationBanner />
+          {mainContent}
+        </>
+      )}
 
       {/* Global Modals */}
       <NotificationOnboardingModal
@@ -1043,6 +793,7 @@ function App() {
         gesturesEnabled={showHeader}
       />
     </div>
+    </UiSurfaceContext.Provider>
   );
 }
 

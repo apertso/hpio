@@ -32,20 +32,21 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           unstyled
         />
         <span
-          className={`w-7 h-7 md:w-5 md:h-5 border-2 rounded flex items-center justify-center transition-all flex-shrink-0 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500 ${
+          className={`size-5 md:size-4 border rounded-[4px] flex items-center justify-center transition-all flex-shrink-0 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500 ${
             checked
-              ? "border-blue-600 dark:border-blue-500 bg-blue-600 dark:bg-blue-500"
-              : "border-gray-400 dark:border-gray-500"
+              ? "border-indigo-600 bg-indigo-600 dark:border-indigo-500 dark:bg-indigo-500"
+              : "border-gray-300 bg-white group-hover:border-gray-400 dark:border-white/20 dark:bg-transparent"
           }`}
         >
           <CheckIcon
-            className={`w-5 h-5 md:w-3.5 md:h-3.5 text-white transition-transform ${
+            strokeWidth={3}
+            className={`size-3.5 md:size-3 text-white transition-transform ${
               checked ? "scale-100" : "scale-0"
             }`}
           />
         </span>
         {label && (
-          <div className="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200">
+          <div className="ml-2.5 text-sm text-gray-800 dark:text-gray-200">
             {label}
           </div>
         )}

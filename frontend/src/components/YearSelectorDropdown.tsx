@@ -27,7 +27,7 @@ export const YearSelectorDropdown: React.FC<YearSelectorDropdownProps> = ({
     <div className="relative inline-block text-left" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-9 min-w-20 items-center justify-center rounded-xl bg-gray-100 dark:bg-[#111316] text-gray-800 dark:text-white border border-gray-300 dark:border-transparent pl-4 pr-3 focus:outline-none cursor-pointer"
+        className="flex h-8 min-w-20 items-center justify-center rounded-md bg-white dark:bg-white/[0.04] text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-white/10 shadow-sm pl-3 pr-2 hover:bg-gray-50 dark:hover:bg-white/[0.08] transition-colors focus:outline-none cursor-pointer"
         style={{ boxShadow: "none", border: "none" }}
         type="button"
       >
@@ -56,7 +56,7 @@ export const YearSelectorDropdown: React.FC<YearSelectorDropdownProps> = ({
                     onChange(year);
                     setIsOpen(false);
                   }}
-                  className={`px-2 py-1 rounded text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
+                  className={`px-2 h-7 rounded-md text-sm tabular-nums text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer ${
                     year === selectedYear
                       ? "bg-gray-200 dark:bg-gray-700 font-bold"
                       : ""

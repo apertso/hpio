@@ -169,52 +169,52 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
 
   const renderContent = (variant: ContentVariant) => (
     <div
-      className={`bg-white dark:bg-gray-900 shadow-2xl overflow-hidden ${
-        variant === "mobile" ? "rounded-xl" : "rounded-2xl w-full max-w-md"
+      className={`bg-[var(--ui-surface)] border border-[var(--ui-border)] shadow-2xl overflow-hidden ${
+        variant === "mobile" ? "rounded-lg" : "rounded-lg w-full max-w-md"
       }`}
     >
-      <div className="border-b border-violet-400/50 bg-slate-900 p-6">
+      <div className="border-b border-[var(--ui-border)] px-5 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-50">
               {t("Новый платёж обнаружен")}
             </h2>
-            <p className="text-slate-200 text-sm mt-1">
+            <p className="text-xs tabular-nums text-gray-500 dark:text-gray-400 mt-0.5">
               {currentIndex + 1}{t(" из ")}{suggestions.length}
             </p>
           </div>
           <button
             onClick={handleClose}
             disabled={isProcessing}
-            className="p-2 rounded-full hover:bg-white/20 transition-colors disabled:opacity-50"
+            className="-mr-1.5 flex size-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors disabled:opacity-50 cursor-pointer"
           >
-            <XMarkIcon className="w-6 h-6 text-white" />
+            <XMarkIcon className="size-4" />
           </button>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
+      <div className="p-5 space-y-5">
+        <div className="rounded-lg border border-[var(--ui-border)] divide-y divide-[var(--ui-border)]">
+          <div className="flex items-center justify-between gap-4 px-3 h-10">
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
               {t("Продавец")}
             </span>
-            <span className="text-lg font-semibold text-gray-900 dark:text-white">
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
               {currentSuggestion?.merchantName || "—"}
             </span>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4 px-3 h-10">
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
               {t("Сумма")}
             </span>
-            <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+            <span className="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-50">
               {formatMoney(Math.abs(currentSuggestion?.amount || 0), locale)}
             </span>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
             {t("Выберите категорию")}
           </label>
           <Select
@@ -243,19 +243,19 @@ const SuggestionModal: React.FC<SuggestionModalProps> = ({
         )}
       </div>
 
-      <div className="px-6 pb-6 space-y-3">
+      <div className="px-5 pb-5 space-y-1">
         <button
           onClick={handleAccept}
           disabled={isProcessing}
-          className="primary-action w-full cursor-pointer font-semibold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          className="primary-action w-full cursor-pointer text-sm font-medium h-9 px-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
         >
-          <CheckIcon className="w-5 h-5" />
+          <CheckIcon className="size-4" />
           {isProcessing ? t("Обработка...") : t("Добавить платёж")}
         </button>
         <button
           onClick={handleDismiss}
           disabled={isProcessing}
-          className="w-full text-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 py-2 transition-colors disabled:opacity-50"
+          className="w-full h-9 rounded-md text-center text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors disabled:opacity-50 cursor-pointer"
         >
           {t("Пропустить")}
         </button>

@@ -15,9 +15,9 @@ const TableSkeleton: React.FC<TableSkeletonProps> = ({ columns, rows = 6 }) => {
           {colArray.map((__, cIdx) => (
             <td
               key={`skeleton-cell-${rIdx}-${cIdx}`}
-              className="px-6 py-4 whitespace-nowrap"
+              className="px-4 h-11 whitespace-nowrap"
             >
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+              <div className="h-3 bg-gray-100 dark:bg-white/[0.06] rounded-sm w-3/4" />
             </td>
           ))}
         </tr>

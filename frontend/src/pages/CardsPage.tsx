@@ -1,4 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
+import { PageContent } from "../components/layout/Page";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PageMeta from "../components/PageMeta";
@@ -88,10 +89,10 @@ const MobileActionsOverlay: React.FC<{
               action.handler();
               onClose();
             }}
-            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
           >
-            <action.icon className="h-6 w-6" />
-            <span className="text-sm">{action.label}</span>
+            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
+            <span className="text-xs font-medium">{action.label}</span>
           </button>
         ))}
       </div>
@@ -877,22 +878,19 @@ const CardsPage: React.FC = () => {
   return (
     <>
       <PageMeta {...metadata} title={t("Источники")} />
-      <div className="max-w-5xl mx-auto pb-20 dark:text-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {t("Источники")}
-          </h2>
-        </div>
+      <div className="dark:text-gray-100">
+        <h1 className="sr-only hidden md:block">{t("Источники")}</h1>
+        <PageContent width="form">
 
-        <div className="space-y-6">
-          <section className="card-base p-6">
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
-                  <BanknotesIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+        <div className="space-y-4">
+          <section className="card-base p-5">
+            <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+                  <BanknotesIcon className="size-4" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h3 className="ui-heading">
                     {t("Наличные")}
                   </h3>
                 </div>
@@ -911,13 +909,13 @@ const CardsPage: React.FC = () => {
                 <Spinner />
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {cashBalances.map((balance) => {
                   const isSelected = selectedCashCurrency === balance.currency;
                   const isEditing = editingCashCurrency === balance.currency;
                   const canDelete = balance.currency !== baseCashCurrency;
                   const amountClassName =
-                    "text-2xl font-semibold text-gray-900 dark:text-gray-100";
+                    "text-lg font-semibold tabular-nums tracking-tight text-gray-900 dark:text-gray-50";
                   const amountValue = formatCashAmountValue(balance.amount);
                   const currencySymbol = getCurrencySymbol(balance.currency, locale);
 
@@ -926,10 +924,10 @@ const CardsPage: React.FC = () => {
                       key={balance.currency}
                       data-cash-block={balance.currency}
                       onClick={() => handleCashBlockSelect(balance)}
-                      className={`relative flex items-center justify-between rounded-xl border bg-gray-50 px-4 py-3 transition-colors cursor-pointer dark:bg-gray-800/50 dark:border-gray-700/50 ${
+                      className={`relative flex items-center justify-between rounded-lg border bg-[var(--ui-surface)] px-3.5 py-3 transition-colors cursor-pointer ${
                         isSelected
-                          ? "ring-1 ring-indigo-500/20 border-indigo-200/80 dark:border-indigo-500/30"
-                          : "border-gray-100 hover:border-gray-200 dark:hover:border-gray-600"
+                          ? "ring-1 ring-indigo-500/20 border-indigo-300 dark:border-indigo-500/40"
+                          : "border-[var(--ui-border)] hover:border-[var(--ui-border-strong)]"
                       }`}
                     >
                       <div className="flex items-baseline gap-2">
@@ -961,7 +959,7 @@ const CardsPage: React.FC = () => {
                               event.stopPropagation();
                               startCashEdit(balance);
                             }}
-                            className="p-1.5 rounded-full bg-white/80 text-gray-500 hover:text-gray-700 hover:bg-white shadow-sm dark:bg-gray-900/70 dark:text-gray-300 dark:hover:text-gray-100"
+                            className="flex size-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors cursor-pointer"
                             aria-label={t("Изменить сумму {1}", balance.currency)}
                           >
                             <PencilSolidIcon
@@ -981,7 +979,7 @@ const CardsPage: React.FC = () => {
                                   balance.currency
                                 );
                               }}
-                              className="p-1.5 rounded-full bg-white/80 text-gray-500 hover:text-red-600 hover:bg-white shadow-sm dark:bg-gray-900/70 dark:text-gray-300 dark:hover:text-red-400"
+                              className="flex size-7 items-center justify-center rounded-md text-gray-500 hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors cursor-pointer"
                               aria-label={t("Удалить {1}", balance.currency)}
                             >
                               <TrashSolidIcon className="w-4 h-4" />
@@ -996,14 +994,14 @@ const CardsPage: React.FC = () => {
             )}
           </section>
 
-          <section className="card-base p-6">
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-12 h-12 accent-icon rounded-full flex items-center justify-center">
-                  <CreditCardIcon className="w-6 h-6" />
+          <section className="card-base p-5">
+            <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+                  <CreditCardIcon className="size-4" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h3 className="ui-heading">
                     {t("Карты")}
                   </h3>
                 </div>
@@ -1021,7 +1019,7 @@ const CardsPage: React.FC = () => {
                 <Spinner />
               </div>
             ) : cards.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+              <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
                 {t("Нет добавленных карт")}
               </div>
             ) : (
@@ -1048,7 +1046,7 @@ const CardsPage: React.FC = () => {
                               e.stopPropagation();
                               handleDeleteCard(card);
                             }}
-                            className="absolute top-2 right-2 p-2 bg-black/30 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                            className="absolute top-2 right-2 flex size-7 items-center justify-center bg-black/40 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                             title={t("Удалить")}
                           >
                             <TrashSolidIcon className="w-4 h-4" />
@@ -1088,9 +1086,9 @@ const CardsPage: React.FC = () => {
                                     onClick={() =>
                                       handleOpenEditCardBalance(card, balance)
                                     }
-                                    className="w-full flex items-center justify-between rounded-lg border bg-gray-50 px-3 py-2 text-left transition-colors cursor-pointer dark:bg-gray-800/50 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600"
+                                    className="w-full flex items-center justify-between rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 h-9 text-left transition-colors cursor-pointer hover:border-[var(--ui-border-strong)] hover:bg-[var(--ui-surface-hover)]"
                                   >
-                                    <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                    <span className="ui-heading">
                                       {formatCardBalanceAmount(balance.amount)}
                                     </span>
                                     <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -1166,9 +1164,9 @@ const CardsPage: React.FC = () => {
                                     onClick={() =>
                                       handleOpenEditCardBalance(card, balance)
                                     }
-                                    className="w-full flex items-center justify-between rounded-lg border bg-gray-50 px-3 py-2 text-left transition-colors cursor-pointer dark:bg-gray-800/50 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600"
+                                    className="w-full flex items-center justify-between rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 h-9 text-left transition-colors cursor-pointer hover:border-[var(--ui-border-strong)] hover:bg-[var(--ui-surface-hover)]"
                                   >
-                                    <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                    <span className="ui-heading">
                                       {formatCardBalanceAmount(balance.amount)}
                                     </span>
                                     <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -1188,14 +1186,14 @@ const CardsPage: React.FC = () => {
             )}
           </section>
 
-          <section className="card-base p-6">
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                  <CurrencyDollarIcon className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+          <section className="card-base p-5">
+            <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+                  <CurrencyDollarIcon className="size-4" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h3 className="ui-heading">
                     {t("Криптовалюты")}
                   </h3>
                 </div>
@@ -1213,11 +1211,11 @@ const CardsPage: React.FC = () => {
                 <Spinner />
               </div>
             ) : cryptoBalances.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+              <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
                 {t("Нет добавленных активов")}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {cryptoBalances.map((balance) => {
                   const isSelected = selectedCryptoId === balance.id;
 
@@ -1226,16 +1224,16 @@ const CardsPage: React.FC = () => {
                       key={balance.id}
                       data-crypto-block={balance.id}
                       onClick={() => handleCryptoBlockSelect(balance)}
-                      className={`relative flex flex-col justify-between rounded-xl border bg-gray-50 px-4 py-3 transition-colors cursor-pointer dark:bg-gray-800/50 dark:border-gray-700/50 group ${
+                      className={`relative flex flex-col justify-between rounded-lg border bg-[var(--ui-surface)] px-3.5 py-3 transition-colors cursor-pointer group ${
                         isSelected
-                          ? "ring-1 ring-orange-500/20 border-orange-200/80 dark:border-orange-500/30"
-                          : "border-gray-100 hover:border-gray-200 dark:hover:border-gray-600"
+                          ? "ring-1 ring-indigo-500/20 border-indigo-300 dark:border-indigo-500/40"
+                          : "border-[var(--ui-border)] hover:border-[var(--ui-border-strong)]"
                       }`}
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex flex-col min-w-0 pr-14">
                           <div className="flex items-baseline gap-2">
-                            <span className="font-bold text-gray-900 dark:text-gray-100">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-50">
                               {balance.name}
                             </span>
                             {balance.walletAddress && (
@@ -1266,7 +1264,7 @@ const CardsPage: React.FC = () => {
                         </div>
 
                         <div className="text-right">
-                          <div className="font-bold text-gray-900 dark:text-gray-100 text-lg leading-tight">
+                          <div className="font-semibold tabular-nums text-gray-900 dark:text-gray-50 text-base leading-tight">
                             {new Intl.NumberFormat(locale, {
                               style: "currency",
                               currency: balance.currency.toUpperCase(),
@@ -1277,13 +1275,13 @@ const CardsPage: React.FC = () => {
 
                       <div className="absolute right-2 top-2 hidden md:flex items-center gap-1">
                         {/* Removed inline editing buttons since we now use modal */}
-                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-transparent dark:border-gray-600/50">
+                        <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--ui-surface)] rounded-md p-0.5 shadow-sm border border-[var(--ui-border)]">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               startCryptoEdit(balance);
                             }}
-                            className="p-1.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-indigo-400 dark:hover:bg-slate-800 transition-colors"
+                            className="flex size-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors cursor-pointer"
                           >
                             <PencilSolidIcon className="w-4 h-4" />
                           </button>
@@ -1292,7 +1290,7 @@ const CardsPage: React.FC = () => {
                               e.stopPropagation();
                               handleDeleteCrypto(balance.id, balance.name);
                             }}
-                            className="p-1.5 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+                            className="flex size-7 items-center justify-center rounded-md text-gray-500 hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors cursor-pointer"
                           >
                             <TrashSolidIcon className="w-4 h-4" />
                           </button>
@@ -1318,11 +1316,11 @@ const CardsPage: React.FC = () => {
         >
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
                 {t("Актив")}
               </label>
               {selectedCryptoAsset ? (
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <div className="flex items-center justify-between p-3 border border-[var(--ui-border)] rounded-lg">
                   <div className="flex items-center gap-3">
                     <img
                       src={selectedCryptoAsset.image}
@@ -1340,7 +1338,7 @@ const CardsPage: React.FC = () => {
                   </div>
                   <button
                     onClick={() => setSelectedCryptoAsset(null)}
-                    className="text-indigo-600 dark:text-indigo-400 text-sm hover:underline"
+                    className="text-indigo-600 dark:text-indigo-400 text-sm font-medium hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     {t("Изменить")}
                   </button>
@@ -1566,7 +1564,7 @@ const CardsPage: React.FC = () => {
                   startCashEdit(activeCashBalance);
                   setShouldCloseCashPanel(true);
                 }}
-                className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+                className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
               >
                 <PencilSolidIcon className="h-6 w-6" />
                 <span className="text-sm">{t("Изменить")}</span>
@@ -1577,7 +1575,7 @@ const CardsPage: React.FC = () => {
                     handleRequestDeleteCashCurrency(activeCashBalance.currency);
                     setShouldCloseCashPanel(true);
                   }}
-                  className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+                  className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
                 >
                   <TrashSolidIcon className="h-6 w-6" />
                   <span className="text-sm">{t("Удалить")}</span>
@@ -1601,7 +1599,7 @@ const CardsPage: React.FC = () => {
                   startCryptoEdit(activeCryptoBalance);
                   setShouldCloseCryptoPanel(true);
                 }}
-                className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+                className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
               >
                 <PencilSolidIcon className="h-6 w-6" />
                 <span className="text-sm">{t("Изменить")}</span>
@@ -1614,7 +1612,7 @@ const CardsPage: React.FC = () => {
                   );
                   setShouldCloseCryptoPanel(true);
                 }}
-                className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+                className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
               >
                 <TrashSolidIcon className="h-6 w-6" />
                 <span className="text-sm">{t("Удалить")}</span>
@@ -1757,6 +1755,7 @@ const CardsPage: React.FC = () => {
           onEdit={handleEditCard}
           onDelete={handleDeleteCard}
         />
+        </PageContent>
       </div>
     </>
   );

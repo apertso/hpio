@@ -143,26 +143,27 @@ Text links (navigation links, footer links, etc.) should use opacity-based hover
 
 #### Icon Button Links
 
-Icon button links (GitHub icon, theme switcher, feedback widget, etc.) should combine background hover effects with opacity for a smooth transition without layout shifts:
+Icon buttons in the app UI (row actions, header actions, close buttons, theme switcher, etc.) are small square buttons with a subtle background on hover, following the Linear-inspired style:
 
 ```tsx
-// ✅ Good - icon button with background + opacity
+// ✅ Good - square icon button with subtle hover background
 <button
   onClick={handleClick}
-  className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+  className="flex size-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors cursor-pointer"
   aria-label="Action"
 >
-  <Icon className="h-5 w-5" />
+  <Icon className="size-4" />
 </button>
 ```
 
 **Key Principles:**
 
-1. **No Layout Shifts**: Hover effects should never cause elements to shift position (prefer opacity/background over borders)
-2. **Consistent Opacity**: Use `hover:opacity-80` for the opacity effect
-3. **Smooth Transitions**: Use `transition-opacity` for text links or `transition-all` for combined effects
-4. **Background Circles**: Icon buttons use rounded backgrounds (`rounded-full`) with hover background colors
+1. **No Layout Shifts**: Hover effects should never cause elements to shift position (prefer color/background over borders)
+2. **Square, Not Round**: Icon buttons use `rounded-md` squares (`size-7`/`size-8`, or `size-9` in mobile headers) with `size-4` icons; avoid `rounded-full` circles in the app UI
+3. **Hover Feedback**: Darken the icon color and add a subtle background (`hover:bg-gray-100` / `dark:hover:bg-white/[0.06]`); destructive actions use `hover:bg-red-50 hover:text-red-600`
+4. **Smooth Transitions**: Use `transition-opacity` for text links or `transition-colors` for icon buttons
 5. **Logo Reference**: The KhochuPlachu logo uses `hover:opacity-80 transition-opacity` as the standard reference
+6. **Public pages**: Indexed public pages (landing, about, blog, download, legal) keep their own design and are not affected by these rules
 
 ### Empty States
 

@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useCallback,
   useRef,
+  startTransition,
 } from "react";
 import axiosInstance from "../api/axiosInstance"; // Ваш настроенный экземпляр axios
 import { useNavigate } from "react-router-dom";
@@ -74,12 +75,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = useCallback(() => {
     localStorage.removeItem("jwtToken");
     localStorage.removeItem(USER_STORAGE_KEY);
-    setToken(null);
-    setUser(null);
     delete axiosInstance.defaults.headers.common["Authorization"]; // Удаляем заголовок Authorization
     logger.info("Logout successful");
-    // Перенаправляем на страницу входа
-    navigate("/login");
+    // Сброс состояния и переход на вход — одной транзицией: иначе, пока грузится
+    // ленивая страница входа, на защищённом адресе мелькает гостевая шапка
+    startTransition(() => {
+      setToken(null);
+      setUser(null);
+      navigate("/login");
+    });
   }, [navigate]); // Зависимость от navigate
 
   // Эффект для проверки токена при загрузке приложения и настройки Axios

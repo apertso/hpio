@@ -32,26 +32,32 @@ const VerificationBanner: React.FC = () => {
 
   return (
     <div
-      className="bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 p-4"
+      className="flex shrink-0 items-start gap-3 border-b border-[var(--ui-border)] bg-amber-50/60 px-4 py-2.5 dark:bg-amber-400/[0.06] md:items-center md:px-6"
       role="alert"
     >
-      <div className="flex items-center">
-        <ExclamationTriangleIcon className="h-6 w-6 mr-3" />
-        <div className="flex-grow">
-          <p className="font-bold">{t("Подтвердите свой email")}</p>
-          <p className="text-sm">
+      <ExclamationTriangleIcon className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400 md:mt-0" />
+      <div className="min-w-0 flex-grow text-sm">
+        <p className="text-gray-900 dark:text-gray-100">
+          <span className="font-medium">{t("Подтвердите свой email")}</span>
+          <span className="hidden text-gray-500 dark:text-gray-400 md:inline">
+            {" — "}
             {t("Пожалуйста, проверьте свой почтовый ящик и перейдите по ссылке для подтверждения, чтобы обезопасить свой аккаунт и иметь возможность восстановить пароль.")}
-          </p>
-          {message && <p className="text-sm mt-1">{t(message)}</p>}
-        </div>
-        <button
-          onClick={handleResend}
-          disabled={isLoading}
-          className="ml-4 px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 flex items-center min-w-32 justify-center"
-        >
-          {isLoading ? <Spinner size="sm" /> : t("Отправить снова")}
-        </button>
+          </span>
+        </p>
+        <p className="mt-0.5 text-gray-500 dark:text-gray-400 md:hidden">
+          {t("Пожалуйста, проверьте свой почтовый ящик и перейдите по ссылке для подтверждения, чтобы обезопасить свой аккаунт и иметь возможность восстановить пароль.")}
+        </p>
+        {message && (
+          <p className="mt-0.5 text-gray-600 dark:text-gray-300">{t(message)}</p>
+        )}
       </div>
+      <button
+        onClick={handleResend}
+        disabled={isLoading}
+        className="flex h-7 min-w-28 shrink-0 items-center justify-center rounded-md border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] px-2.5 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50 dark:text-gray-100 dark:hover:bg-white/[0.06] cursor-pointer"
+      >
+        {isLoading ? <Spinner size="sm" /> : t("Отправить снова")}
+      </button>
     </div>
   );
 };

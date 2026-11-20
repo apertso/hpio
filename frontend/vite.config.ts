@@ -14,6 +14,22 @@ export default defineConfig(({ mode }) => ({
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(packageJson.version),
   },
+  server: {
+    watch: {
+      // Сборки Tauri/Android (десятки тысяч файлов, ~20 ГБ) не относятся к фронтенду:
+      // без исключения watcher обходит их при старте и dev-сервер «висит» минутами
+      ignored: [
+        "**/src-tauri/**",
+        "**/dist/**",
+        "**/storybook-static/**",
+        "**/*.log",
+      ],
+    },
+    // Заранее трансформируем точку входа, чтобы первая загрузка страницы была быстрее
+    warmup: {
+      clientFiles: ["./src/main.tsx", "./src/App.tsx", "./src/index.css"],
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

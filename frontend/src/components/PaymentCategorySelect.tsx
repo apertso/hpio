@@ -42,7 +42,7 @@ function PaymentCategorySelect({
   if (isLoading) {
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+        <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
           {t("Категория")}
         </label>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -55,10 +55,10 @@ function PaymentCategorySelect({
   if (error) {
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+        <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
           {t("Категория")}
         </label>
-        <p className="mt-1 text-sm text-red-600">{error.message}</p>
+        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error.message}</p>
       </div>
     );
   }
@@ -73,7 +73,7 @@ function PaymentCategorySelect({
       <Tooltip content={resolvedLockReason}>
         <button
           type="button"
-          className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+          className="p-1 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
           aria-label={t("Пояснение к полю категории")}
         >
           <InformationIcon className="h-[16px] w-[16px]" />

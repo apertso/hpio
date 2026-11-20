@@ -1,4 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
+import { PageContent, PageToolbar } from "../components/layout/Page";
 import { usePreferredCurrency } from "../context/AuthContext";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import PageMeta from "../components/PageMeta";
@@ -192,7 +193,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
       {formError && (
         <div
-          className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg"
+          className="ui-alert-error"
           role="alert"
         >
           {t(formError)}
@@ -356,10 +357,10 @@ const MobileActionsOverlay: React.FC<{
               action.handler();
               onClose();
             }}
-            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
           >
-            <action.icon className="h-6 w-6" />
-            <span className="text-sm">{action.label}</span>
+            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
+            <span className="text-xs font-medium">{action.label}</span>
           </button>
         ))}
       </div>
@@ -377,16 +378,16 @@ const IncomeListItem: React.FC<{
   <button
     type="button"
     data-mobile-list-item-id={income.id}
-    className={`w-full text-left card-base card-hover p-4 ${className || ""}`}
+    className={`w-full text-left card-base card-hover p-3.5 ${className || ""}`}
   >
     <div className="flex justify-between items-center">
       <div>
-        <div className="font-bold dark:text-white">
+        <div className="text-sm font-medium text-gray-900 dark:text-gray-50">
           {income.transactionCategory
             ? localizedCategoryName(income.transactionCategory, language)
             : t("Без категории")}
         </div>
-        <div className="text-sm text-gray-500">
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
           {formatDateForDisplay(parseCalendarDate(income.date), locale)} ·{" "}
           {t(METHOD_LABELS[income.method] || income.method)}
           {income.card && ` · ${income.card.name}`}
@@ -395,7 +396,7 @@ const IncomeListItem: React.FC<{
           <div className="text-xs text-gray-400 mt-1">{income.comment}</div>
         )}
       </div>
-      <div className="font-bold text-green-600">
+      <div className="text-sm font-semibold tabular-nums text-green-700 dark:text-green-400">
         +
         {new Intl.NumberFormat(locale, {
           style: "currency",
@@ -447,9 +448,9 @@ const IncomesPage: React.FC = () => {
           setEditingIncome(null);
           setIsModalOpen(true);
         }}
-        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer"
+        className="flex size-9 items-center justify-center rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
       >
-        <PlusIcon className="w-6 h-6" />
+        <PlusIcon className="size-5" />
       </button>
     );
 
@@ -599,18 +600,18 @@ const IncomesPage: React.FC = () => {
   return (
     <>
       <PageMeta {...metadata} title={t("Доходы")} />
-      <div className="max-w-4xl mx-auto pb-20 dark:text-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {t("Доходы")}
-          </h2>
-          <Button
-            icon={<PlusIcon className="w-4 h-4" />}
-            label={t("Добавить доход")}
-            onClick={handleAddIncome}
-            className="hidden md:inline-flex"
-          />
-        </div>
+      <div className="dark:text-gray-100">
+        <h1 className="sr-only hidden md:block">{t("Доходы")}</h1>
+        <PageToolbar className="hidden md:flex">
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              icon={<PlusIcon className="w-4 h-4" />}
+              label={t("Добавить доход")}
+              onClick={handleAddIncome}
+            />
+          </div>
+        </PageToolbar>
+        <PageContent width="form">
 
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
@@ -619,24 +620,24 @@ const IncomesPage: React.FC = () => {
         ) : (
           <>
             {/* Desktop/Tablet View */}
-            <div className="hidden md:block space-y-3">
+            <div className="hidden md:block card-base overflow-hidden divide-y divide-[var(--ui-border)]">
               {incomes.length === 0 ? (
-                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-10">
                   {t("Нет записей о доходах")}
                 </div>
               ) : (
                 incomes.map((inc) => (
                   <div
                     key={inc.id}
-                    className="card-base p-4 flex justify-between items-center group"
+                    className="px-4 py-2.5 min-h-14 flex justify-between items-center group hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                   >
                     <div>
-                      <div className="font-bold dark:text-white">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-50">
                         {inc.transactionCategory
                           ? localizedCategoryName(inc.transactionCategory, language)
                           : t("Без категории")}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {formatDateForDisplay(parseCalendarDate(inc.date), locale)} ·{" "}
                         {t(METHOD_LABELS[inc.method] || inc.method)}
                         {inc.card && ` · ${inc.card.name}`}
@@ -647,8 +648,8 @@ const IncomesPage: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="font-bold text-green-600">
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-semibold tabular-nums text-green-700 dark:text-green-400">
                         +
                         {new Intl.NumberFormat(locale, {
                           style: "currency",
@@ -658,17 +659,17 @@ const IncomesPage: React.FC = () => {
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleEditIncome(inc)}
-                          className="p-2 text-gray-400 hover:text-indigo-500 transition-colors"
+                          className="flex size-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors cursor-pointer"
                           title={t("Редактировать")}
                         >
-                          <PencilSolidIcon className="w-5 h-5" />
+                          <PencilSolidIcon className="size-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteIncome(inc)}
-                          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                          className="flex size-7 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors cursor-pointer"
                           title={t("Удалить")}
                         >
-                          <TrashSolidIcon className="w-5 h-5" />
+                          <TrashSolidIcon className="size-4" />
                         </button>
                       </div>
                     </div>
@@ -684,7 +685,7 @@ const IncomesPage: React.FC = () => {
               className="block md:hidden space-y-2"
             >
               {incomes.length === 0 ? (
-                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-10">
                   {t("Нет записей о доходах")}
                 </div>
               ) : (
@@ -746,6 +747,7 @@ const IncomesPage: React.FC = () => {
           onEdit={handleEditIncome}
           onDelete={handleDeleteIncome}
         />
+        </PageContent>
       </div>
     </>
   );

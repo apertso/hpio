@@ -19,6 +19,7 @@ import CryptoBalance from "./CryptoBalance";
 import CashBalance from "./CashBalance";
 import FundSnapshot from "./FundSnapshot";
 import CardBalance from "./CardBalance";
+import ExchangeRateSnapshot from "./ExchangeRateSnapshot";
 
 const sequelizeConfig: Options = {
   host: config.database.host,
@@ -70,6 +71,7 @@ interface Db {
   CashBalance: Model & Associate;
   FundSnapshot: Model & Associate;
   CardBalance: Model & Associate;
+  ExchangeRateSnapshot: Model;
   // Add other models here with & Associate if they have an associate method
   [key: string]: any; // Allow indexing with strings for other potential properties
 }
@@ -95,6 +97,7 @@ const db = {
   CashBalance: CashBalance(sequelize, DataTypes),
   FundSnapshot: FundSnapshot(sequelize, DataTypes),
   CardBalance: CardBalance(sequelize, DataTypes),
+  ExchangeRateSnapshot: ExchangeRateSnapshot(sequelize, DataTypes),
   // Сюда же можно добавить Notification и другие модели
 };
 

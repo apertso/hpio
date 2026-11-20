@@ -148,13 +148,13 @@ const CardDisplay: React.FC<CardDisplayProps> = ({
         ${sizeClasses[size]}
         ${colors.bg}
         ${colors.text}
-        rounded-2xl
+        rounded-lg
         p-4
         flex flex-col justify-between
         shadow-lg
         ${
           onClick
-            ? "cursor-pointer hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
+            ? "cursor-pointer hover:scale-[1.02] transition-all duration-200"
             : ""
         }
         ${className}

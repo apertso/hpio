@@ -1,6 +1,23 @@
 // src/pages/HomePage.tsx
 import { useLanguage } from "../context/LanguageContext";
-import { DEFAULT_CURRENCY, formatMoney } from "../utils/currencies";
+import { useAuth, usePreferredCurrency } from "../context/AuthContext";
+import PaymentRowList from "../components/PaymentRowList";
+import { PageContent, Panel } from "../components/layout/Page";
+import CumulativeSpendingChart from "../components/dashboard/CumulativeSpendingChart";
+import CategoryBreakdown from "../components/dashboard/CategoryBreakdown";
+import DashboardInsights from "../components/dashboard/DashboardInsights";
+import {
+  getInsightRangePeriod,
+  getPreviousInsightPeriod,
+  getSavedInsightRange,
+  INSIGHT_RANGES,
+  saveInsightRange,
+  type InsightRange,
+} from "../utils/dashboardInsights";
+import DashboardHero from "../components/dashboard/DashboardHero";
+import Money from "../components/dashboard/Money";
+import { formatCurrencyTotals, formatMoney } from "../utils/currencies";
+import { calculateStatsFromPayments, previousCompletedTotal, ratesNoteKey, type DashboardStats } from "../utils/dashboardStats";
 import React, {
   useState,
   useEffect,
@@ -8,19 +25,16 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import PaymentCard from "../components/PaymentCard"; // Для отображения карточек
-import PaymentListCard from "../components/PaymentListCard";
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import axiosInstance from "../api/axiosInstance"; // Для получения данных
 import logger from "../utils/logger";
 import useApi from "../hooks/useApi"; // Import useApi
 import { useTheme } from "../context/ThemeContext"; // Import useTheme
-import { Button } from "../components/Button";
 import { DropdownButton } from "../components/DropdownButton";
-import CategoryDistributionBars from "../components/CategoryDistributionBars";
 import DatePicker from "../components/DatePicker";
 
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRightIcon, CheckCircleIcon as CheckCircleOutlineIcon } from "@heroicons/react/24/outline";
 import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal"; // Import ConfirmCompletionDateModal
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
@@ -43,88 +57,6 @@ import {
   parseCalendarDate,
   isHourlyDateString,
 } from "../utils/dateUtils";
-// Icons for list items are handled inside PaymentListCard
-// import { ArrowPathIcon, CalendarDaysIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
-
-const formatUpcomingDateHeading = (dateString: string, locale: string): string => {
-  const targetDate = parseCalendarDate(dateString);
-  if (Number.isNaN(targetDate.getTime())) {
-    return dateString;
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const normalizedTarget = new Date(targetDate);
-  normalizedTarget.setHours(0, 0, 0, 0);
-
-  const diffInMs = normalizedTarget.getTime() - today.getTime();
-  const diffInDays = Math.round(diffInMs / (24 * 60 * 60 * 1000));
-
-  if (Math.abs(diffInDays) <= 1) {
-    const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(diffInDays, "day");
-    return relative.charAt(0).toUpperCase() + relative.slice(1);
-  }
-
-  return normalizedTarget.toLocaleDateString(locale, { day: "numeric", month: "long" });
-};
-
-// Define color palettes for charts
-const categoryColorsLight = [
-  "#FF6384", // Red
-  "#36A2EB", // Blue
-  "#FFCE56", // Yellow
-  "#4BC0C0", // Teal/Green
-  "#9966FF", // Purple
-  "#FF9F40", // Orange
-  "#9CA3AF", // Gray
-  "#EC4899", // Pink
-  "#10B981", // Emerald
-  "#6366F1", // Indigo
-];
-
-const categoryColorsDark = [
-  "#ef4444", // red-500
-  "#f97316", // orange-500
-  "#eab308", // yellow-500
-  "#84cc16", // lime-500
-  "#22c55e", // green-500
-  "#10b981", // emerald-500
-  "#14b8a6", // teal-500
-  "#06b6d4", // cyan-500
-  "#3b82f6", // blue-500
-  "#6366f1", // indigo-500
-  "#8b5cf6", // violet-500
-  "#d946ef", // fuchsia-500
-  "#ec4899", // pink-500
-];
-
-// Green color palette for income charts
-const incomeColorsLight = [
-  "#10B981", // Emerald-500
-  "#059669", // Emerald-600
-  "#047857", // Emerald-700
-  "#34D399", // Emerald-400
-  "#6EE7B7", // Emerald-300
-  "#14B8A6", // Teal-500
-  "#0D9488", // Teal-600
-  "#0F766E", // Teal-700
-  "#22C55E", // Green-500
-  "#16A34A", // Green-600
-];
-
-const incomeColorsDark = [
-  "#34D399", // Emerald-400
-  "#10B981", // Emerald-500
-  "#059669", // Emerald-600
-  "#6EE7B7", // Emerald-300
-  "#A7F3D0", // Emerald-200
-  "#2DD4BF", // Teal-400
-  "#14B8A6", // Teal-500
-  "#0D9488", // Teal-600
-  "#4ADE80", // Green-400
-  "#22C55E", // Green-500
-];
-
 const getInitialTimeRange = (): TimeRangeOption => {
   if (typeof window === "undefined") {
     return "1d";
@@ -143,6 +75,13 @@ const getInitialTimeRange = (): TimeRangeOption => {
   return "1d";
 };
 
+// Подписи периодов блока «Наблюдения»
+const insightRangeLabels: Record<InsightRange, string> = {
+  "1w": "Эта неделя",
+  "1m": "Этот месяц",
+  "1y": "Этот год",
+};
+
 const dashboardTimeRangeOptions: SegmentedControlOption<TimeRangeOption>[] = [
   { value: "1d", label: "День" },
   { value: "1w", label: "Неделя" },
@@ -150,35 +89,12 @@ const dashboardTimeRangeOptions: SegmentedControlOption<TimeRangeOption>[] = [
   { value: "1y", label: "Год" },
 ];
 
-import CustomDailySpendingChart from "../components/CustomDailySpendingChart";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { usePageTitle } from "../context/PageTitleContext";
 import { isIncomeAndCardsEnabled } from "../utils/featureFlags";
 import TotalFundsWidget from "../components/TotalFundsWidget"; // <-- New
 import FundsTrendWidget from "../components/FundsTrendWidget"; // <-- New
-// Интерфейс для данных статистики, получаемых с бэкенда
-interface DashboardStats {
-  month: string; // Например, '2023-11'
-  totalUpcomingAmount: string; // Строка, т.к. DECIMAL с бэкенда
-  totalCompletedAmount: string; // Строка
-  totalIncomeAmount?: string; // Income total
-  categoriesDistribution: {
-    id?: string;
-    name: string;
-    nameEn?: string | null;
-    amount: number;
-  }[]; // id is optional for "No Category"
-  incomeCategoriesDistribution?: {
-    id?: string;
-    name: string;
-    nameEn?: string | null;
-    amount: number;
-  }[]; // Income by category
-  dailyPaymentLoad: { date: string; amount: number }[];
-  allPaymentsInMonth: PaymentData[]; // Add this field
-}
-
 // Define the raw API fetch function for upcoming payments
 const fetchUpcomingPaymentsApi = async (
   days: number
@@ -195,12 +111,9 @@ import {
   TrashIcon,
   PlusIcon,
 } from "@heroicons/react/24/solid";
-import { ChevronDownIcon } from "../components/ChevronDownIcon";
-import { ChevronUpIcon } from "../components/ChevronUpIcon";
 import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 import MobilePanel from "../components/MobilePanel";
 
-// Recurrence and status formatting moved to PaymentListCard
 
 // Inside HomePage component, before UpcomingPaymentListItem
 const MobileActionsOverlay: React.FC<{
@@ -240,10 +153,10 @@ const MobileActionsOverlay: React.FC<{
               action.handler();
               onClose();
             }}
-            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
           >
-            <action.icon className="h-6 w-6" />
-            <span className="text-sm">{action.label}</span>
+            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
+            <span className="text-xs font-medium">{action.label}</span>
           </button>
         ))}
       </div>
@@ -251,113 +164,28 @@ const MobileActionsOverlay: React.FC<{
   );
 };
 
-// Deprecated: UpcomingPaymentListItem replaced by generic PaymentListCard
+interface DashboardDemo {
+  upcoming: PaymentData[];
+  completed: PaymentData[];
+  today: Date;
+  currency: string;
+}
 
-// Helper function to calculate stats from offline payments
-const calculateStatsFromPayments = (
-  payments: PaymentData[],
-  startDate: Date,
-  endDate: Date
-): DashboardStats => {
-  // Filter payments within the date range
-  const filteredPayments = payments.filter((p) => {
-    const paymentDate =
-      p.status === "completed" && p.completedAt
-        ? new Date(p.completedAt)
-        : parseCalendarDate(p.dueDate);
-    return paymentDate >= startDate && paymentDate <= endDate;
-  });
-
-  // Calculate total amounts
-  const totalUpcomingAmount = filteredPayments
-    .filter((p) => p.status === "upcoming" || p.status === "overdue")
-    .reduce(
-      (sum, p) =>
-        sum + (typeof p.amount === "string" ? parseFloat(p.amount) : p.amount),
-      0
-    );
-
-  const totalCompletedAmount = filteredPayments
-    .filter((p) => p.status === "completed")
-    .reduce(
-      (sum, p) =>
-        sum + (typeof p.amount === "string" ? parseFloat(p.amount) : p.amount),
-      0
-    );
-
-  // Calculate categories distribution
-  const categoryMap = new Map<
-    string,
-    { id?: string; name: string; nameEn?: string | null; amount: number }
-  >();
-  filteredPayments.forEach((p) => {
-    const amount =
-      typeof p.amount === "string" ? parseFloat(p.amount) : p.amount;
-    if (p.transactionCategory) {
-      const existing = categoryMap.get(p.transactionCategory.id);
-      if (existing) {
-        existing.amount += amount;
-      } else {
-        categoryMap.set(p.transactionCategory.id, {
-          id: p.transactionCategory.id,
-          name: p.transactionCategory.name,
-          nameEn: p.transactionCategory.nameEn,
-          amount: amount,
-        });
-      }
-    } else {
-      const existing = categoryMap.get("no-category");
-      if (existing) {
-        existing.amount += amount;
-      } else {
-        categoryMap.set("no-category", {
-          name: "Без категории",
-          amount: amount,
-        });
-      }
-    }
-  });
-  const categoriesDistribution = Array.from(categoryMap.values());
-
-  // Calculate daily payment load
-  const dailyMap = new Map<string, number>();
-  filteredPayments.forEach((p) => {
-    const dateKey =
-      p.status === "completed" && p.completedAt
-        ? new Date(p.completedAt).toISOString().split("T")[0]
-        : p.dueDate;
-    const amount =
-      typeof p.amount === "string" ? parseFloat(p.amount) : p.amount;
-    dailyMap.set(dateKey, (dailyMap.get(dateKey) || 0) + amount);
-  });
-
-  const dailyPaymentLoad = Array.from(dailyMap.entries())
-    .map(([date, amount]) => ({ date, amount }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  return {
-    month: `${startDate.getFullYear()}-${String(
-      startDate.getMonth() + 1
-    ).padStart(2, "0")}`,
-    totalUpcomingAmount: totalUpcomingAmount.toString(),
-    totalCompletedAmount: totalCompletedAmount.toString(),
-    categoriesDistribution,
-    dailyPaymentLoad,
-    allPaymentsInMonth: filteredPayments,
-  };
-};
-
-const HomePage: React.FC = () => {
+const HomePage: React.FC<{ demo?: DashboardDemo }> = ({ demo }) => {
   const { t, locale } = useLanguage();
+  const { user } = useAuth();
+  const preferredCurrency = usePreferredCurrency();
   const { resolvedTheme } = useTheme(); // Access the theme
   const { showToast } = useToast(); // Import useToast
   const { resetKey } = useReset();
   const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("dashboard");
+  const currency = demo?.currency ?? preferredCurrency;
+  const incomeAndCardsEnabled = !demo && isIncomeAndCardsEnabled();
 
   useEffect(() => {
-    setPageTitle(t("Главная"));
-  }, [setPageTitle, t]);
+    if (!demo) setPageTitle(t("Главная"));
+  }, [demo, setPageTitle, t]);
 
   const [upcomingDays, setUpcomingDays] = useState<3 | 7 | 10 | 14 | 21>(10);
 
@@ -369,12 +197,15 @@ const HomePage: React.FC = () => {
   } = useApi(fetchUpcomingPaymentsApi);
 
   // State for transformed upcoming payments data
-  const [upcomingPayments, setUpcomingPayments] = useState<PaymentData[]>([]);
+  const [fetchedUpcomingPayments, setUpcomingPayments] = useState<PaymentData[]>([]);
+  const upcomingPayments = demo?.upcoming ?? fetchedUpcomingPayments;
   // Отслеживаем первую успешную загрузку, чтобы избежать мигания «Нет данных» до получения первых данных
-  const [hasLoadedPaymentsOnce, setHasLoadedPaymentsOnce] = useState(false);
+  const [hasFetchedPayments, setHasLoadedPaymentsOnce] = useState(false);
+  const hasLoadedPaymentsOnce = Boolean(demo) || hasFetchedPayments;
 
   // Effect to transform data when raw upcoming payments data changes
   useEffect(() => {
+    if (demo) return;
     if (rawUpcomingPayments) {
       // Преобразуем amount из string (DECIMAL) в number при получении
       let payments = rawUpcomingPayments.map((p) => ({
@@ -405,25 +236,24 @@ const HomePage: React.FC = () => {
       // Не помечаем как loaded на null (ошибка/отмена) - чтобы не показать "нет данных" ложно
       setUpcomingPayments([]); // Clear payments if raw data is null (e.g., on error)
     }
-  }, [rawUpcomingPayments, upcomingDays]);
+  }, [demo, rawUpcomingPayments, upcomingDays]);
 
   // Effect to trigger the fetch on mount and when upcomingDays changes
   useEffect(() => {
-    executeFetchUpcomingPayments(upcomingDays);
+    if (!demo) executeFetchUpcomingPayments(upcomingDays);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [upcomingDays, resetKey]); // Removed executeFetchUpcomingPayments to prevent infinite loop
+  }, [demo, upcomingDays, resetKey]); // Removed executeFetchUpcomingPayments to prevent infinite loop
 
   // --- Состояние для данных дашборда ---
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [fetchedStats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(!demo);
   const [errorStats, setErrorStats] = useState<string | null>(null);
   // TODO: Состояние для фильтров дашборда (если будет реализовано)
   // const [filterMonth, setFilterMonth] = useState(new Date()); // Текущий месяц по умолчанию
-  // const { user } = useAuth(); // Получаем данные пользователя, если нужно (не напрямую для API, а для логирования/отображения)
 
   // НОВОЕ: Состояние для выбора периода статистики с сегментированным контролом
   const [timeRange, setTimeRange] = useState<TimeRangeOption>(() =>
-    getInitialTimeRange()
+    demo ? "1m" : getInitialTimeRange()
   );
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
   const lastChangeFromSegmentedControl = useRef(false);
@@ -472,93 +302,33 @@ const HomePage: React.FC = () => {
   const selectedMobilePaymentId = mobileActionsPayment?.id ?? null;
   const mobileListRef = useRef<HTMLDivElement | null>(null);
 
-  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  // Какое распределение показывать в блоке категорий
+  const [breakdownType, setBreakdownType] = useState<"expense" | "income">("expense");
 
-  const mobilePaymentsToRender = useMemo(() => {
-    return showAllUpcoming ? upcomingPayments : upcomingPayments.slice(0, 5);
-  }, [showAllUpcoming, upcomingPayments]);
-
-  const desktopPaymentsToRender = useMemo(() => {
-    return showAllUpcoming ? upcomingPayments : upcomingPayments.slice(0, 10);
-  }, [showAllUpcoming, upcomingPayments]);
-
-  const groupedDesktopPayments = useMemo(() => {
-    const groups: {
-      key: string;
-      label: string;
-      payments: PaymentData[];
-    }[] = [];
-    const groupIndexMap = new Map<string, number>();
-
-    desktopPaymentsToRender.forEach((payment) => {
-      const dateKey = payment.dueDate;
-      const existingIndex = groupIndexMap.get(dateKey);
-
-      if (existingIndex !== undefined) {
-        groups[existingIndex].payments.push(payment);
-        return;
+  // Фильтр списка ближайших: "overdue" или конкретная дата YYYY-MM-DD
+  const [dueFilter, setDueFilter] = useState<string | null>(null);
+  const filteredUpcoming = useMemo(() => {
+    if (!dueFilter) return upcomingPayments;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return upcomingPayments.filter((p) => {
+      const due = parseCalendarDate(p.dueDate);
+      if (dueFilter === "overdue") {
+        return p.status === "overdue" || due < todayStart;
       }
-
-      const label = formatUpcomingDateHeading(dateKey, locale);
-      groupIndexMap.set(dateKey, groups.length);
-      groups.push({
-        key: dateKey,
-        label,
-        payments: [payment],
-      });
+      return p.status !== "overdue" && formatDateToLocal(due) === dueFilter;
     });
+  }, [dueFilter, upcomingPayments]);
 
-    return groups;
-  }, [desktopPaymentsToRender, locale]);
-
-  const groupedMobilePayments = useMemo(() => {
-    const groups: {
-      key: string;
-      label: string;
-      year: number | null;
-      payments: PaymentData[];
-    }[] = [];
-    const groupIndexMap = new Map<string, number>();
-
-    mobilePaymentsToRender.forEach((payment) => {
-      const dateKey = payment.dueDate;
-
-      const existingIndex = groupIndexMap.get(dateKey);
-
-      if (existingIndex !== undefined) {
-        groups[existingIndex].payments.push(payment);
-        return;
-      }
-
-      const label = formatUpcomingDateHeading(dateKey, locale);
-      const targetDate = parseCalendarDate(dateKey);
-      const year = Number.isNaN(targetDate.getTime())
-        ? null
-        : targetDate.getFullYear();
-
-      groupIndexMap.set(dateKey, groups.length);
-      groups.push({
-        key: dateKey,
-        label,
-        year,
-        payments: [payment],
-      });
-    });
-
-    return groups;
-  }, [mobilePaymentsToRender, locale]);
-
-  const hasMultipleYears = useMemo(() => {
-    const uniqueYears = new Set<number>();
-    groupedMobilePayments.forEach(({ year }) => {
-      if (year !== null) {
-        uniqueYears.add(year);
-      }
-    });
-    return uniqueYears.size > 1;
-  }, [groupedMobilePayments]);
 
   const { startDate, endDate } = useMemo(() => {
+    if (demo) {
+      // Демо: календарный месяц, как при выбранном периоде «Месяц»
+      const { today } = demo;
+      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return { startDate, endDate };
+    }
     let startDate, endDate;
     const now = new Date();
 
@@ -619,6 +389,7 @@ const HomePage: React.FC = () => {
     }
     return { startDate, endDate };
   }, [
+    demo,
     timeRange,
     periodType,
     year,
@@ -627,6 +398,112 @@ const HomePage: React.FC = () => {
     customDateFrom,
     customDateTo,
   ]);
+
+  // Демо: как и сервер, учитываем в плане предстоящие платежи периода
+  const demoStats = useMemo(
+    () => demo ? calculateStatsFromPayments([...demo.completed, ...demo.upcoming], startDate, endDate, demo.currency) : null,
+    [demo, startDate, endDate],
+  );
+  // Данные, загруженные для другой валюты профиля, не показываем под новой подписью.
+  const stats = demoStats ?? (fetchedStats?.currency === currency ? fetchedStats : null);
+
+  // --- Наблюдения: свой период, независимый от статистики ---
+  const [insightsRange, setInsightsRange] = useState<InsightRange>(() =>
+    demo ? "1m" : getSavedInsightRange()
+  );
+  const insightsPeriod = useMemo(
+    () => getInsightRangePeriod(insightsRange, demo?.today ?? new Date()),
+    [insightsRange, demo],
+  );
+  const insightsPreviousPeriod = useMemo(
+    () => getPreviousInsightPeriod(insightsRange, insightsPeriod.startDate, insightsPeriod.endDate),
+    [insightsRange, insightsPeriod],
+  );
+  const [fetchedInsightsStats, setInsightsStats] = useState<DashboardStats | null>(null);
+  const [fetchedInsightsPreviousTotal, setInsightsPreviousTotal] = useState<number | null>(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(!demo);
+  const insightsAbortControllerRef = useRef<AbortController | null>(null);
+
+  // Демо: наблюдения и итог прошлого периода считаем по тем же демо-данным
+  const demoInsights = useMemo(() => {
+    if (!demo) return null;
+    return {
+      stats: calculateStatsFromPayments([...demo.completed, ...demo.upcoming], insightsPeriod.startDate, insightsPeriod.endDate, demo.currency),
+      previousTotal: insightsPreviousPeriod
+        ? Number(calculateStatsFromPayments(demo.completed, insightsPreviousPeriod.startDate, insightsPreviousPeriod.endDate, demo.currency).totalCompletedAmount)
+        : null,
+    };
+  }, [demo, insightsPeriod, insightsPreviousPeriod]);
+  const insightsStats = demoInsights
+    ? demoInsights.stats
+    : fetchedInsightsStats?.currency === currency ? fetchedInsightsStats : null;
+  const insightsPreviousTotal = demoInsights ? demoInsights.previousTotal : fetchedInsightsPreviousTotal;
+
+  const handleInsightsRangeChange = useCallback((range: InsightRange): void => {
+    setInsightsRange(range);
+    if (!demo) saveInsightRange(range);
+  }, [demo]);
+
+  // Загрузка данных для наблюдений: текущий период и итог предыдущего для сравнения
+  const fetchInsightsStats = useCallback(async (): Promise<void> => {
+    insightsAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    insightsAbortControllerRef.current = controller;
+    setIsLoadingInsights(true);
+
+    const toParams = (period: { startDate: Date; endDate: Date }): { startDate: string; endDate: string } => ({
+      startDate: formatDateToLocal(period.startDate),
+      endDate: formatDateToLocal(period.endDate),
+    });
+
+    try {
+      const [currentResult, previousResult] = await Promise.allSettled([
+        axiosInstance.get<DashboardStats>("/stats", { params: toParams(insightsPeriod), signal: controller.signal }),
+        insightsPreviousPeriod
+          ? axiosInstance.get<DashboardStats>("/stats", { params: toParams(insightsPreviousPeriod), signal: controller.signal })
+          : Promise.resolve(null),
+      ]);
+      if (controller.signal.aborted) return;
+      if (currentResult.status === "rejected") throw currentResult.reason;
+      setInsightsStats(currentResult.value.data);
+      // Итог прошлого периода сервер уже пересчитал по курсам на даты оплат.
+      setInsightsPreviousTotal(
+        previousResult.status === "fulfilled" && previousResult.value
+          ? previousCompletedTotal(previousResult.value.data, currency)
+          : null
+      );
+    } catch (error: unknown) {
+      if (controller.signal.aborted) return;
+      logger.error("Failed to fetch insights stats:", error instanceof Error ? error.message : String(error));
+      // Без сети считаем наблюдения по офлайн-данным
+      try {
+        const { syncService } = await import("../utils/syncService");
+        const offlineData = await syncService.getOfflineData();
+        if (controller.signal.aborted) return;
+        const payments = offlineData.payments ?? [];
+        setInsightsStats(calculateStatsFromPayments(payments, insightsPeriod.startDate, insightsPeriod.endDate, currency));
+        setInsightsPreviousTotal(insightsPreviousPeriod
+          ? previousCompletedTotal(calculateStatsFromPayments(payments, insightsPreviousPeriod.startDate, insightsPreviousPeriod.endDate, currency), currency)
+          : null);
+      } catch (offlineError) {
+        logger.error("Failed to calculate insights from offline data:", offlineError);
+        setInsightsStats(null);
+        setInsightsPreviousTotal(null);
+      }
+    } finally {
+      if (insightsAbortControllerRef.current === controller) {
+        insightsAbortControllerRef.current = null;
+        setIsLoadingInsights(false);
+      }
+    }
+  }, [insightsPeriod, insightsPreviousPeriod, currency]);
+
+  useEffect(() => {
+    if (!demo) fetchInsightsStats();
+  }, [demo, fetchInsightsStats]);
+
+  // Отменяем запрос наблюдений при размонтировании
+  useEffect(() => () => insightsAbortControllerRef.current?.abort(), []);
 
   const handleStatsRangeChange = useCallback(
     ([nextStart, nextEnd]: [Date | null, Date | null]) => {
@@ -651,7 +528,8 @@ const HomePage: React.FC = () => {
         endDate: formatDateToLocal(endDate),
       };
 
-      const rangeKey = `${params.startDate}_${params.endDate}`;
+      // Валюта и пользователь входят в ключ: при их смене тот же период загружается заново.
+      const rangeKey = `${user?.id}_${currency}_${params.startDate}_${params.endDate}`;
       const isSameRangeInFlight =
         statsRequestKeyRef.current === rangeKey &&
         statsAbortControllerRef.current !== null;
@@ -677,17 +555,13 @@ const HomePage: React.FC = () => {
       setErrorStats(null);
 
       try {
-        const res = await axiosInstance.get("/stats", {
-          params,
-          signal: controller.signal,
-        });
+        const res = await axiosInstance.get<DashboardStats>("/stats", { params, signal: controller.signal });
+        if (controller.signal.aborted) return;
 
         const formattedStats = {
           ...res.data,
-          totalUpcomingAmount: parseFloat(res.data.totalUpcomingAmount),
-          totalCompletedAmount: parseFloat(res.data.totalCompletedAmount),
           allPaymentsInMonth:
-            res.data.allPaymentsInMonth?.map((p: PaymentData) => ({
+            res.data.allPaymentsInMonth?.map((p) => ({
               ...p,
               amount:
                 typeof p.amount === "string" ? parseFloat(p.amount) : p.amount,
@@ -698,6 +572,7 @@ const HomePage: React.FC = () => {
         lastSuccessfulStatsKeyRef.current = rangeKey;
         logger.info("Successfully fetched dashboard stats.");
       } catch (error: unknown) {
+        if (controller.signal.aborted) return;
         const isAbortError =
           (error instanceof DOMException && error.name === "AbortError") ||
           (typeof error === "object" &&
@@ -722,12 +597,14 @@ const HomePage: React.FC = () => {
           logger.info("Attempting to calculate stats from offline data...");
           const { syncService } = await import("../utils/syncService");
           const offlineData = await syncService.getOfflineData();
+          if (controller.signal.aborted) return;
 
           if (offlineData.payments && offlineData.payments.length > 0) {
             const calculatedStats = calculateStatsFromPayments(
               offlineData.payments,
               startDate,
-              endDate
+              endDate,
+              currency
             );
             setStats(calculatedStats);
             setErrorStats(null);
@@ -742,6 +619,7 @@ const HomePage: React.FC = () => {
         }
 
         setErrorStats(t("Не удалось загрузить статистику."));
+        setStats(null);
       } finally {
         if (statsAbortControllerRef.current === controller) {
           statsAbortControllerRef.current = null;
@@ -754,18 +632,19 @@ const HomePage: React.FC = () => {
         }
       }
     },
-    [startDate, endDate, t]
+    [startDate, endDate, currency, user?.id, t]
   );
 
   // --- Эффекты для загрузки и сброса статистики ---
 
   // Эффект для загрузки статистики при изменении фильтров
   useEffect(() => {
-    fetchDashboardStats();
-  }, [fetchDashboardStats]);
+    if (!demo) fetchDashboardStats();
+  }, [demo, fetchDashboardStats]);
 
   // Эффект для сброса фильтров на текущую дату при монтировании или по триггеру сброса
   useEffect(() => {
+    if (demo) return;
     if (!hasAppliedInitialResetRef.current) {
       hasAppliedInitialResetRef.current = true;
       return;
@@ -781,14 +660,21 @@ const HomePage: React.FC = () => {
     // TODO: Should be reseted as well, but they don't work properly
     // setCustomDateFrom(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
     // setCustomDateTo(new Date());
-  }, [resetKey]); // Зависимость только от resetKey
+  }, [demo, resetKey]);
 
-  // Эффект для загрузки timeRange из localStorage при монтировании
   // Эффект для синхронизации timeRange с periodType (для обратной совместимости с advanced filters)
+  const periodSyncKey = `${periodType}|${year}|${month}|${customDateFrom.getTime()}|${customDateTo.getTime()}`;
+  const initialPeriodSyncKeyRef = useRef<string | null>(periodSyncKey);
   useEffect(() => {
     // Пропускаем синхронизацию если изменение пришло от segmented control
     if (lastChangeFromSegmentedControl.current) {
       return;
+    }
+    // При первом рендере период берётся из сохранённого timeRange — не перезаписываем его
+    // значениями по умолчанию (иначе сначала грузится один период, а потом другой)
+    if (initialPeriodSyncKeyRef.current !== null) {
+      if (initialPeriodSyncKeyRef.current === periodSyncKey) return;
+      initialPeriodSyncKeyRef.current = null;
     }
 
     // Определяем соответствующий timeRange на основе текущего periodType
@@ -825,12 +711,12 @@ const HomePage: React.FC = () => {
     if (derivedTimeRange !== timeRange) {
       setTimeRange(derivedTimeRange);
     }
-  }, [periodType, year, month, customDateFrom, customDateTo, timeRange]);
+  }, [periodType, year, month, customDateFrom, customDateTo, timeRange, periodSyncKey]);
 
   // Эффект для сохранения timeRange в localStorage при изменении
   useEffect(() => {
-    localStorage.setItem("dashboard-time-range", timeRange);
-  }, [timeRange]);
+    if (!demo) localStorage.setItem("dashboard-time-range", timeRange);
+  }, [demo, timeRange]);
 
   const navigate = useNavigate();
 
@@ -842,7 +728,7 @@ const HomePage: React.FC = () => {
     navigate(`/payments/edit/${paymentId}`);
   };
 
-  // File download for attachments shown in PaymentListCard
+  // Скачивание вложений из списка платежей
   const handleDownloadFile = async (paymentId: string, fileName: string) => {
     try {
       const res = await axiosInstance.get(`/files/payment/${paymentId}`, {
@@ -901,37 +787,21 @@ const HomePage: React.FC = () => {
     setShouldCloseMobilePanel(false);
   };
 
-  const handleMobileListClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!(event.target instanceof HTMLElement)) return;
-
-    const itemElement = event.target.closest<HTMLElement>(
-      "[data-mobile-list-item-id]"
-    );
-
-    if (itemElement?.dataset.mobileListItemId) {
-      const { mobileListItemId } = itemElement.dataset;
-
-      if (selectedMobilePaymentId === mobileListItemId) {
-        closeMobilePanel();
-        return;
-      }
-
-      const nextPayment = upcomingPayments.find(
-        (paymentItem) => paymentItem.id === mobileListItemId
-      );
-
-      if (!nextPayment || nextPayment.isVirtual) {
-        return;
-      }
-
-      setShouldCloseMobilePanel(false);
-      setMobileActionsPayment(nextPayment);
+  // Открытие платежа из списка ближайших: на тач-экранах — панель действий, на десктопе — редактирование
+  const handleUpcomingOpen = (paymentId: string): void => {
+    const isTouchLayout = window.matchMedia("(max-width: 767px)").matches;
+    if (!isTouchLayout) {
+      handleEditPayment(paymentId);
       return;
     }
-
-    if (event.target === event.currentTarget && selectedMobilePaymentId) {
+    if (selectedMobilePaymentId === paymentId) {
       closeMobilePanel();
+      return;
     }
+    const nextPayment = upcomingPayments.find((p) => p.id === paymentId);
+    if (!nextPayment || nextPayment.isVirtual) return;
+    setShouldCloseMobilePanel(false);
+    setMobileActionsPayment(nextPayment);
   };
 
   // --- Обработчики действий для карточек платежей ---
@@ -945,6 +815,7 @@ const HomePage: React.FC = () => {
       showToast(t("Платеж выполнен."), "success");
       executeFetchUpcomingPayments(upcomingDays);
       fetchDashboardStats({ force: true });
+      fetchInsightsStats();
     } catch (error) {
       logger.error(`Failed to complete payment ${paymentId}:`, error);
       showToast(
@@ -985,6 +856,7 @@ const HomePage: React.FC = () => {
         showToast(t("Платеж перемещен в архив."), "info");
         executeFetchUpcomingPayments(upcomingDays);
         fetchDashboardStats({ force: true });
+        fetchInsightsStats();
       } catch (error: unknown) {
         showToast(t("Ошибка удаления: {1}", t(getErrorMessage(error))), "error");
       } finally {
@@ -1011,6 +883,7 @@ const HomePage: React.FC = () => {
       showToast(t("Платеж перемещен в архив."), "info");
       executeFetchUpcomingPayments(upcomingDays);
       fetchDashboardStats({ force: true });
+      fetchInsightsStats();
     } catch (error: unknown) {
       showToast(t("Ошибка удаления: {1}", t(getErrorMessage(error))), "error");
     } finally {
@@ -1029,6 +902,7 @@ const HomePage: React.FC = () => {
       showToast(t("Серия платежей была деактивирована."), "success");
       executeFetchUpcomingPayments(upcomingDays);
       fetchDashboardStats({ force: true });
+      fetchInsightsStats();
     } catch (error: unknown) {
       showToast(t("Ошибка удаления серии: {1}", t(getErrorMessage(error))), "error");
     } finally {
@@ -1061,7 +935,7 @@ const HomePage: React.FC = () => {
   };
 
   // --- Данные для графика (НОВАЯ, УПРОЩЕННАЯ ВЕРСИЯ) ---
-  const { chartData, chartLabels, chartRawDates, isHourly } = useMemo(() => {
+  const { isHourly } = useMemo(() => {
     if (!stats?.dailyPaymentLoad || stats.dailyPaymentLoad.length === 0) {
       return {
         chartData: [],
@@ -1104,13 +978,7 @@ const HomePage: React.FC = () => {
     };
   }, [stats, locale]);
 
-  const noDailyData = useMemo(() => {
-    return (
-      !chartData || chartData.length === 0 || chartData.every((v) => v === 0)
-    );
-  }, [chartData]);
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const dayOptions = [
     { label: t("3 дня"), value: 3 },
@@ -1120,251 +988,8 @@ const HomePage: React.FC = () => {
     { label: t("21 день"), value: 21 },
   ];
 
-  let lastRenderedMobileYear: number | null = null;
-
-  return (
-    <>
-      <PageMeta {...metadata} />
-
-      <div className="dark:text-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
-              {t("Ближайшие платежи")}
-            </h2>
-            <DropdownButton
-              className="text-sm font-medium text-gray-500 dark:text-gray-400"
-              label={dayOptions.find((o) => o.value === upcomingDays)!.label}
-              options={dayOptions.map((opt) => ({
-                label: opt.label,
-                value: opt.value,
-                onClick: () =>
-                  setUpcomingDays(opt.value as 3 | 7 | 10 | 14 | 21),
-              }))}
-              selectedValue={upcomingDays}
-            />
-          </div>
-          <Button
-            onClick={handleAddPayment}
-            label={t("Добавить платеж")}
-            icon={<PlusIcon className="w-4 h-4" />}
-            className="hidden md:inline-flex"
-          />
-        </div>
-
-        {/* Отображение состояния загрузки или ошибки */}
-        {isLoadingPayments && (
-          // Стабильный скелетон фиксированной высоты, чтобы не было скачков и "нет данных" до загрузки
-          <div className="w-full">
-            <div className="hidden md:block">
-              <div className="flex gap-4 pb-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex-shrink-0 w-72 h-40 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-pulse"
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="block md:hidden space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-full h-24 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-pulse"
-                />
-              ))}
-            </div>
-          </div>
-        )}
-        {errorPayments && hasLoadedPaymentsOnce && (
-          <div
-            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
-            role="alert"
-          >
-            <span className="block sm:inline">{errorPayments.message}</span>
-          </div>
-        )}
-
-        {/* Горизонтальная лента платежей */}
-        {/* Не рендерим пустое состояние, пока не было хотя бы одной успешной загрузки */}
-        {!isLoadingPayments && !errorPayments && hasLoadedPaymentsOnce && (
-          <>
-            {upcomingPayments.length > 0 ? (
-              <>
-                {/* Desktop horizontal scroll */}
-                <div className="hidden md:block">
-                  <div className="relative">
-                    <div
-                      ref={scrollContainerRef}
-                      className="flex overflow-x-auto p-4 pb-10 gap-x-8"
-                    >
-                      {groupedDesktopPayments.map((group) => (
-                        <div
-                          key={group.key}
-                          className="flex-shrink-0 flex flex-col gap-3"
-                        >
-                          <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            {group.label}
-                          </h4>
-                          <div className="flex gap-4">
-                            {group.payments.map((payment) => (
-                              <div
-                                key={payment.id}
-                                className="flex-shrink-0 w-72"
-                              >
-                                <PaymentCard
-                                  payment={payment}
-                                  onEdit={() => handleEditPayment(payment.id)}
-                                  onComplete={() =>
-                                    handleCompletePayment(payment)
-                                  }
-                                  onDelete={() => handleDeletePayment(payment)}
-                                  hideDate
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                      {upcomingPayments.length > 10 && (
-                        <div className="flex-shrink-0 flex flex-col gap-3">
-                          <div className="h-5" aria-hidden="true"></div>
-                          <div className="w-72 h-40">
-                            <button
-                              onClick={() =>
-                                setShowAllUpcoming((prev) => !prev)
-                              }
-                              className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors w-full h-full font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer flex items-center justify-center gap-2"
-                            >
-                              {showAllUpcoming ? t("Свернуть") : t("Показать больше")}
-                              {showAllUpcoming ? (
-                                <ChevronUpIcon />
-                              ) : (
-                                <ChevronDownIcon />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mobile vertical list */}
-                <div
-                  ref={mobileListRef}
-                  onClick={handleMobileListClick}
-                  className="block md:hidden space-y-3"
-                >
-                  {groupedMobilePayments.map(
-                    ({ key, label, year, payments }) => {
-                      const shouldRenderYearHeader =
-                        hasMultipleYears &&
-                        year !== null &&
-                        year !== lastRenderedMobileYear;
-
-                      if (shouldRenderYearHeader) {
-                        lastRenderedMobileYear = year;
-                      }
-
-                      return (
-                        <div key={key} className="space-y-2">
-                          {shouldRenderYearHeader && (
-                            <div className="pt-4 text-xs font-semibold uppercase text-gray-400 dark:text-gray-500">
-                              {year}
-                            </div>
-                          )}
-                          <div className="text-sm font-semibold text-gray-500 dark:text-gray-400 pl-4">
-                            {label}
-                          </div>
-                          {payments.map((payment) => {
-                            const isSelected =
-                              selectedMobilePaymentId === payment.id;
-                            const cardStateClasses = [
-                              "transition-all duration-200",
-                              isSelected
-                                ? "border-gray-400 shadow-md relative z-50"
-                                : "",
-                            ]
-                              .filter((cls) => cls)
-                              .join(" ");
-                            return (
-                              <PaymentListCard
-                                key={payment.id}
-                                payment={payment}
-                                context="home"
-                                onDownloadFile={handleDownloadFile}
-                                className={cardStateClasses}
-                                hideDate
-                              />
-                            );
-                          })}
-                        </div>
-                      );
-                    }
-                  )}
-                  {upcomingPayments.length > 5 && (
-                    <button
-                      onClick={() => setShowAllUpcoming((prev) => !prev)}
-                      className="w-full mt-1 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      {showAllUpcoming ? t("Свернуть") : t("Показать больше")}
-                      {showAllUpcoming ? (
-                        <ChevronUpIcon />
-                      ) : (
-                        <ChevronDownIcon />
-                      )}
-                    </button>
-                  )}
-                </div>
-              </>
-            ) : hasLoadedPaymentsOnce ? (
-              // Показ "нет данных" только после подтвержденной успешной загрузки
-              <div className="w-full h-44 pb-4 text-gray-700 dark:text-gray-300 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-center text-center sm:text-left">
-                <span className="text-lg font-medium sm:mr-6">
-                  {t("Нет предстоящих или просроченных платежей.")}
-                </span>
-              </div>
-            ) : null}
-          </>
-        )}
-
-        {/* --- New Total Funds and Trend Section --- */}
-        {isIncomeAndCardsEnabled() && (
-          <div className="mt-8 mb-8">
-            <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-6">
-              {t("Обзор финансов")}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <TotalFundsWidget />
-              <FundsTrendWidget timeRange={timeRange} />
-            </div>
-          </div>
-        )}
-
-        {/* --- Блок Дашборда (из Dashboard.tsx) --- */}
-        <div className="mt-8">
-          {" "}
-          {/* Добавляем отступ сверху */}
-          <h2 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 dark:text-white mb-6">
-            {t("Статистика")}
-          </h2>
-          {/* НОВЫЙ БЛОК ВЫБОРА ПЕРИОДА */}
-          <div className="flex flex-nowrap items-center gap-2 md:gap-6 mb-6">
-            <DatePicker
-              mode="range"
-              startDate={startDate}
-              endDate={endDate}
-              onRangeChange={handleStatsRangeChange}
-              variant="compact"
-              label={t("Период")}
-            />
-            <SegmentedControl
-              className="flex-shrink-0"
-              options={dashboardTimeRangeOptions.map((option) => ({ ...option, label: t(option.label) }))}
-              optionClassName="!px-1.5 md:!px-4"
-              selected={timeRange}
-              onChange={(option) => {
+  // Переключение периода статистики (день/неделя/месяц/год)
+  const handleTimeRangeChange = (option: TimeRangeOption): void => {
                 const now = new Date();
                 lastChangeFromSegmentedControl.current = true;
                 setTimeRange(option);
@@ -1415,241 +1040,373 @@ const HomePage: React.FC = () => {
                 setTimeout(() => {
                   lastChangeFromSegmentedControl.current = false;
                 }, 0);
-              }}
-            />
-          </div>
-          {/* Состояния загрузки или ошибки для статистики */}
-          {isLoadingStats && (
-            // Стабильный скелетон для блока статистики чтобы избежать мигания
-            <div className="space-y-2 md:space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-28 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-800 animate-pulse"
-                  />
-                ))}
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-800 animate-pulse" />
-                <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-800 animate-pulse" />
-              </div>
-            </div>
-          )}
-          {errorStats && (
-            <div
-              className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
-              role="alert"
-            >
-              {" "}
-              {errorStats}{" "}
-            </div>
-          )}
-          {/* Отображение статистики, если данные загружены */}
-          {!isLoadingStats && !errorStats && stats && (
-            <div className="space-y-2 md:space-y-6">
-              {/* Блоки с общими суммами */}
-              <div
-                className={`grid gap-2 md:gap-6 ${
-                  isIncomeAndCardsEnabled()
-                    ? "grid-cols-2 md:grid-cols-4"
-                    : "grid-cols-2"
-                }`}
-              >
-                {/* Ожидаемые расходы - платежи со статусом upcoming/overdue */}
-                <div className="card-base p-4 md:p-6">
-                  <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
-                    <span className="md:hidden">{t("Ожидается")}</span>
-                    <span className="hidden md:inline">{t("Ожидаемые расходы")}</span>
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
-                    {t("Предстоящие платежи")}
-                  </p>
-                  <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-orange-600 dark:text-orange-400">
-                    {/* shortcut: итог складывает числа без курса и подписан рублём; разные валюты считать отдельно */}
-                    {formatMoney(
-                      parseFloat(stats.totalUpcomingAmount),
-                      locale,
-                      DEFAULT_CURRENCY
-                    )}
-                  </p>
-                </div>
+  };
 
-                {/* Фактические расходы - выполненные платежи */}
-                <div className="card-base p-4 md:p-6">
-                  <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
-                    <span className="md:hidden">{t("Потрачено")}</span>
-                    <span className="hidden md:inline">
-                      {t("Фактические расходы")}
-                    </span>
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
-                    {t("Выполненные платежи")}
-                  </p>
-                  <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-red-600 dark:text-red-400">
-                    {formatMoney(
-                      parseFloat(stats.totalCompletedAmount),
-                      locale,
-                      DEFAULT_CURRENCY
-                    )}
-                  </p>
-                </div>
+  return (
+    <>
+      {!demo && <PageMeta {...metadata} />}
 
-                {isIncomeAndCardsEnabled() && (
+      <div className="dark:text-gray-100">
+        {!demo && <h1 className="sr-only hidden md:block">{t("Главная")}</h1>}
+
+        <PageContent>
+          {/* Центрированная область: с планшета — основная колонка и боковая справа */}
+          <div className="mx-auto max-w-[1080px] space-y-12 md:pt-2 md:pb-8">
+            {/* Сумма к оплате, ближайшие платежи и наблюдения справа */}
+            <div className="grid grid-cols-1 items-start gap-x-6 gap-y-12 md:grid-cols-[minmax(0,1fr)_220px] app-lg:gap-x-10 app-lg:grid-cols-[minmax(0,1fr)_300px]">
+              <div className="order-1 md:col-start-1 md:row-start-1">
+              {/* Сумма к оплате */}
+              <DashboardHero
+                upcoming={upcomingPayments}
+                windowLabel={dayOptions.find((o) => o.value === upcomingDays)!.label}
+                currency={currency}
+                activeFilter={dueFilter}
+                onFilter={setDueFilter}
+                onOpenPayment={handleEditPayment}
+                isLoading={!hasLoadedPaymentsOnce && !errorPayments}
+              />
+              </div>
+              {/* Наблюдения: начинаются вровень с суммой к оплате и идут рядом со списком */}
+              <div className="order-3 md:col-start-2 md:row-span-2 md:row-start-1 md:self-center">
+                <DashboardInsights
+                  stats={insightsStats}
+                  startDate={insightsPeriod.startDate}
+                  endDate={insightsPeriod.endDate}
+                  previousPeriod={insightsPreviousPeriod}
+                  previousTotal={insightsPreviousTotal}
+                  timezone={demo ? undefined : user?.timezone}
+                  currency={currency}
+                  theme={resolvedTheme}
+                  onOpenPayment={handleEditPayment}
+                  isLoading={isLoadingInsights}
+                  actions={
+                    <DropdownButton
+                      className="h-6 rounded-md px-1.5 text-xs font-medium text-gray-500 hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors"
+                      aria-label={t("Период наблюдений")}
+                      label={t(insightRangeLabels[insightsRange])}
+                      options={INSIGHT_RANGES.map((range) => ({
+                        label: t(insightRangeLabels[range]),
+                        value: range,
+                        onClick: () => handleInsightsRangeChange(range),
+                      }))}
+                      selectedValue={insightsRange}
+                    />
+                  }
+                />
+              </div>
+              {/* Ближайшие платежи */}
+              <Panel
+                className="order-2 md:col-start-1 md:row-start-2"
+                variant="plain"
+                title={t("Ближайшие платежи")}
+                actions={
                   <>
-                    {/* Фактические доходы - полученные доходы за период */}
-                    <div className="card-base p-4 md:p-6">
-                      <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
-                        <span className="md:hidden">{t("Получено")}</span>
-                        <span className="hidden md:inline">
-                          {t("Фактические доходы")}
-                        </span>
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
-                        {t("Полученные доходы")}
-                      </p>
-                      <p className="mt-1 md:mt-2 text-xl md:text-3xl font-bold text-green-600 dark:text-green-400">
-                        {formatMoney(
-                          parseFloat(stats.totalIncomeAmount || "0"),
-                          locale,
-                          DEFAULT_CURRENCY
-                        )}
-                      </p>
-                    </div>
-
-                    {/* Баланс за период */}
-                    <div className="card-base p-4 md:p-6">
-                      <p className="text-sm md:text-lg font-medium text-gray-600 dark:text-gray-300">
-                        <span className="md:hidden">{t("Баланс")}</span>
-                        <span className="hidden md:inline">{t("Баланс периода")}</span>
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hidden md:block">
-                        {t("Доходы − Расходы")}
-                      </p>
-                      {(() => {
-                        const income = parseFloat(
-                          stats.totalIncomeAmount || "0"
-                        );
-                        const expenses = parseFloat(stats.totalCompletedAmount);
-                        const balance = income - expenses;
-                        const isPositive = balance >= 0;
-                        return (
-                          <p
-                            className={`mt-1 md:mt-2 text-xl md:text-3xl font-bold ${
-                              isPositive
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-red-600 dark:text-red-400"
-                            }`}
-                          >
-                            {isPositive ? "+" : ""}
-                            {formatMoney(balance, locale, DEFAULT_CURRENCY)}
-                          </p>
-                        );
-                      })()}
-                    </div>
+                    <DropdownButton
+                      className="h-7 rounded-md px-2 text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors"
+                      label={dayOptions.find((o) => o.value === upcomingDays)!.label}
+                      options={dayOptions.map((opt) => ({
+                        label: opt.label,
+                        value: opt.value,
+                        onClick: () =>
+                          setUpcomingDays(opt.value as 3 | 7 | 10 | 14 | 21),
+                      }))}
+                      selectedValue={upcomingDays}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddPayment}
+                      className="hidden h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 md:inline-flex cursor-pointer"
+                    >
+                      <PlusIcon className="size-3.5" />
+                      {t("Добавить")}
+                    </button>
+                    <Link
+                      to="/payments"
+                      className="hidden h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 md:inline-flex cursor-pointer"
+                    >
+                      {t("Все платежи")}
+                      <ArrowRightIcon className="size-3" />
+                    </Link>
                   </>
+                }
+              >
+                {dueFilter && (
+                  <div className="mb-2 flex h-9 items-center justify-between gap-2 rounded-md bg-gray-50 px-3 text-xs dark:bg-white/[0.03]">
+                    <span className="text-gray-600 dark:text-gray-300">
+                      {dueFilter === "overdue"
+                        ? t("Показаны просроченные платежи")
+                        : t("Показаны платежи на сегодня")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDueFilter(null)}
+                      className="font-medium text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 cursor-pointer"
+                    >
+                      {t("Показать все")}
+                    </button>
+                  </div>
                 )}
-              </div>
-              {/* Блоки с графиками */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Распределение расходов по категориям */}
-                <div
-                  className={`${
-                    isIncomeAndCardsEnabled()
-                      ? "lg:col-span-2"
-                      : "lg:col-span-2"
-                  } card-base p-6 flex flex-col min-h-80`}
-                >
-                  <p className="text-base font-medium text-gray-900 dark:text-white mb-2">
-                    {isIncomeAndCardsEnabled()
-                      ? t("Расходы по категориям")
-                      : t("Распределение по категориям")}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                    {t("Распределение платежей по категориям")}
-                  </p>
-                  <CategoryDistributionBars
-                    data={stats.categoriesDistribution}
-                    colors={
-                      resolvedTheme === "dark"
-                        ? categoryColorsDark
-                        : categoryColorsLight
-                    }
-                  />
-                </div>
+                {!hasLoadedPaymentsOnce && !errorPayments && (
+                  <div className="ui-skeleton-delayed">
+                    <PaymentRowList payments={[]} mode="active" inset="plain" isLoading emptyMessage="" onOpen={handleEditPayment} />
+                  </div>
+                )}
+                {errorPayments && !isLoadingPayments && (
+                  <div className="md:p-4">
+                    <div className="ui-alert-error" role="alert">
+                      <span className="block sm:inline">{errorPayments.message}</span>
+                    </div>
+                  </div>
+                )}
 
-                {/* Распределение доходов по категориям (только если включена функция доходов) */}
-                {isIncomeAndCardsEnabled() && (
-                  <div className="lg:col-span-2 card-base p-6 flex flex-col min-h-80">
-                    <p className="text-base font-medium text-gray-900 dark:text-white mb-2">
-                      {t("Доходы по категориям")}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                      {t("Распределение доходов по категориям")}
-                    </p>
-                    {stats.incomeCategoriesDistribution &&
-                    stats.incomeCategoriesDistribution.length > 0 ? (
-                      <CategoryDistributionBars
-                        data={stats.incomeCategoriesDistribution}
-                        colors={
-                          resolvedTheme === "dark"
-                            ? incomeColorsDark
-                            : incomeColorsLight
-                        }
-                      />
+                {/* Не рендерим пустое состояние, пока не было хотя бы одной успешной загрузки */}
+                {!errorPayments && hasLoadedPaymentsOnce && (
+                  <div className={`ui-fade-in ui-dim-transition ${isLoadingPayments ? "ui-refreshing" : ""}`}>
+                    {upcomingPayments.length > 0 ? (
+                      // Один список для всех экранов: строки, сгруппированные по сроку
+                      <div ref={mobileListRef}>
+                        <PaymentRowList
+                          payments={filteredUpcoming}
+                          groupLimit={dueFilter ? undefined : 3}
+                          mode="active"
+                          inset="plain"
+                          emptyMessage={t("Нет предстоящих или просроченных платежей.")}
+                          onOpen={handleUpcomingOpen}
+                          onComplete={handleCompletePayment}
+                          onDelete={handleDeletePayment}
+                          onDownloadFile={handleDownloadFile}
+                          selectedId={selectedMobilePaymentId}
+                        />
+                      </div>
                     ) : (
-                      <div className="flex items-center justify-center flex-1 text-center text-gray-500 dark:text-gray-400 text-sm">
-                        {t("Нет данных о доходах за этот период.")}
+                      <div className="flex h-40 flex-col items-center justify-center gap-1 px-6 text-center">
+                        <CheckCircleOutlineIcon className="mb-1 size-6 text-gray-300 dark:text-gray-600" />
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {t("Нет предстоящих или просроченных платежей.")}
+                        </p>
                       </div>
                     )}
                   </div>
                 )}
+              </Panel>
+              {/* Высота блока совпадает с высотой списка слева */}
+            </div>
 
-                {/* График платежной нагрузки по дням/часам */}
-                <div
-                  className={`${
-                    isIncomeAndCardsEnabled()
-                      ? "lg:col-span-5"
-                      : "lg:col-span-3"
-                  } card-base p-6 flex flex-col h-full min-h-80 max-h-[360px]`}
-                >
-                  <div className="mb-6">
-                    <p className="text-base font-medium text-gray-900 dark:text-white">
-                      {t("Платежная нагрузка ")}{isHourly ? t("по часам") : t("по дням")}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {t("Кликните на точку на графике, чтобы увидеть детали")}
-                    </p>
-                  </div>
-                  {noDailyData ? (
-                    <div className="flex items-center justify-center flex-1 text-center text-gray-500 dark:text-gray-400 text-sm">
-                      {t("Нет данных о платежной нагрузке за этот период.")}
-                    </div>
-                  ) : (
-                    <div className="relative flex-1 w-full min-h-[200px] max-h-[360px] min-h-0">
-                      <CustomDailySpendingChart
-                        data={chartData}
-                        labels={chartLabels}
-                        theme={resolvedTheme}
-                        rawDates={chartRawDates}
-                        onPointClick={handleChartPointClick}
-                        startDate={startDate}
-                        endDate={endDate}
-                      />
-                    </div>
-                  )}
+            {/* Статистика за выбранный период */}
+            <section className="space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                  {t("Статистика")}
+                </h2>
+                <div className="flex w-full flex-nowrap items-center gap-2 sm:w-auto">
+                  <DatePicker
+                    mode="range"
+                    startDate={startDate}
+                    endDate={endDate}
+                    onRangeChange={handleStatsRangeChange}
+                    variant="compact"
+                    label={t("Период")}
+                  />
+                  <SegmentedControl
+                    className="flex-shrink-0"
+                    options={dashboardTimeRangeOptions.map((option) => ({ ...option, label: t(option.label) }))}
+                    optionClassName="!px-1.5 md:!px-2.5"
+                    selected={timeRange}
+                    onChange={handleTimeRangeChange}
+                  />
                 </div>
               </div>
-              {/* TODO: Добавить другие блоки статистики/графиков */}
-            </div>
-          )}
-          {/* Сообщение, если данных нет после загрузки */}
-          {!isLoadingStats && !errorStats && !stats && (
-            <div className="text-center text-gray-700 dark:text-gray-300">
-              {t("Нет данных статистики для отображения.")}
-            </div>
-          )}
-        </div>
+
+              {stats && !stats.conversionUnavailable && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {t(ratesNoteKey(stats), currency)}
+                </p>
+              )}
+
+              {errorStats && (
+                <div className="ui-alert-error" role="alert">
+                  {errorStats}
+                </div>
+              )}
+
+              {stats?.conversionUnavailable ? (
+                <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300" role="status">
+                  <p>{t("Пересчёт в {1} недоступен. Показаны суммы в исходных валютах.", currency)}</p>
+                  <p className="flex flex-wrap gap-x-2"><span>{t("Расходы за период")}:</span><span className="tabular-nums">{formatCurrencyTotals(stats.originalTotals.completed, locale) || "—"}</span></p>
+                  <p className="flex flex-wrap gap-x-2"><span>{t("К оплате")}:</span><span className="tabular-nums">{formatCurrencyTotals(stats.originalTotals.upcoming, locale) || "—"}</span></p>
+                  {incomeAndCardsEnabled && <p className="flex flex-wrap gap-x-2"><span>{t("Доходы")}:</span><span className="tabular-nums">{formatCurrencyTotals(stats.originalTotals.income, locale) || "—"}</span></p>}
+                </div>
+              ) : (
+              <div className="grid grid-cols-1 gap-x-6 gap-y-12 md:grid-cols-[minmax(0,1fr)_220px] app-lg:gap-x-10 app-lg:grid-cols-[minmax(0,1fr)_300px]">
+                {/* Расходы: итоги периода и график */}
+                <Panel variant="plain">
+                  {!stats ? (
+                    !errorStats && (
+                      <div className="ui-skeleton-delayed" aria-busy="true">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t("Расходы за период")}</p>
+                        <div className="mt-0.5 flex h-8 items-center">
+                          <div className="h-6 w-60 rounded-sm bg-gray-100 animate-pulse dark:bg-white/[0.06]" />
+                        </div>
+                        <div className="mt-3 h-1 w-64 max-w-full rounded-full bg-gray-100 dark:bg-white/[0.07]" />
+                        <div className="mt-6 h-60 rounded-md bg-gray-100/70 animate-pulse dark:bg-white/[0.03] md:h-64" />
+                      </div>
+                    )
+                  ) : (
+                    <div className={`ui-fade-in ui-dim-transition ${isLoadingStats ? "ui-refreshing" : ""}`}>
+                      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {t("Расходы за период")}
+                          </p>
+                          <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+                            <Money
+                              amount={Number(stats.totalCompletedAmount)}
+                              currency={currency}
+                              className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50"
+                            />
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {t("из")}{" "}
+                              {formatMoney(
+                                Number(stats.totalCompletedAmount) + Number(stats.totalUpcomingAmount),
+                                locale,
+                                currency
+                              )}{" "}
+                              {t("запланировано")}
+                            </span>
+                          </p>
+                          {(() => {
+                            const paid = Number(stats.totalCompletedAmount) || 0;
+                            const planned = paid + (Number(stats.totalUpcomingAmount) || 0);
+                            const share = planned > 0 ? (paid / planned) * 100 : 0;
+                            return (
+                              <div className="mt-3 h-1 w-64 max-w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.07]">
+                                <div
+                                  className="h-full rounded-full bg-indigo-600 dark:bg-indigo-500"
+                                  style={{ width: `${share}%` }}
+                                />
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        {incomeAndCardsEnabled && (
+                          <div className="flex flex-wrap gap-x-6 gap-y-2 pb-0.5">
+                            <div className="min-w-0">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{t("Доходы")}</p>
+                              {stats.totalIncomeAmount === null ? (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">{t("Нет данных о доходах за этот период.")}</span>
+                              ) : <Money
+                                amount={Number(stats.totalIncomeAmount)}
+                                currency={currency}
+                                className="mt-0.5 block text-sm font-semibold text-gray-900 dark:text-gray-50"
+                              />}
+                            </div>
+                            {(() => {
+                              if (stats.totalIncomeAmount === null) return null;
+                              const balance =
+                                Number(stats.totalIncomeAmount) -
+                                Number(stats.totalCompletedAmount);
+                              return (
+                                <div className="min-w-0">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">{t("Баланс")}</p>
+                                  <Money
+                                    amount={balance}
+                                    signed
+                                    currency={currency}
+                                    className={`mt-0.5 block text-sm font-semibold ${balance >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+                                  />
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-6 h-60 md:h-64">
+                        {!stats.allPaymentsInMonth || stats.allPaymentsInMonth.length === 0 ? (
+                          <div className="flex h-full items-center justify-center rounded-md border border-dashed border-[var(--ui-border-strong)] text-sm text-gray-500 dark:text-gray-400">
+                            {t("Нет данных о платежной нагрузке за этот период.")}
+                          </div>
+                        ) : (
+                          <CumulativeSpendingChart
+                            className="h-full"
+                            payments={stats.allPaymentsInMonth}
+                            startDate={startDate}
+                            endDate={endDate}
+                            currency={currency}
+                            onSelectDate={handleChartPointClick}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </Panel>
+
+                {/* Распределение по категориям */}
+                <Panel
+                  variant="plain"
+                  title={t("По категориям")}
+                  actions={
+                    incomeAndCardsEnabled ? (
+                      <SegmentedControl
+                        options={[
+                          { value: "expense", label: t("Расходы") },
+                          { value: "income", label: t("Доходы") },
+                        ]}
+                        selected={breakdownType}
+                        onChange={(value) => setBreakdownType(value as "expense" | "income")}
+                        optionClassName="!h-6 !px-2 !text-xs"
+                      />
+                    ) : undefined
+                  }
+                  bodyClassName="pt-2"
+                >
+                  {!stats ? (
+                    !errorStats && (
+                      <div className="ui-skeleton-delayed" aria-busy="true">
+                        <div className="h-2 rounded-full bg-gray-100 animate-pulse dark:bg-white/[0.06]" />
+                        <ul className="mt-3">
+                          {Array.from({ length: 6 }).map((_, i) => (
+                            <li key={i} className="flex h-8 items-center gap-2.5">
+                              <span className="size-2 rounded-[3px] bg-gray-200 dark:bg-white/[0.08]" />
+                              <span className="h-3 w-28 rounded-sm bg-gray-100 animate-pulse dark:bg-white/[0.06]" />
+                              <span className="ml-auto h-3 w-20 rounded-sm bg-gray-100 animate-pulse dark:bg-white/[0.06]" />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  ) : (
+                    <div className={`ui-fade-in ui-dim-transition ${isLoadingStats ? "ui-refreshing" : ""}`}>
+                    <CategoryBreakdown
+                      data={
+                        breakdownType === "income"
+                          ? stats.incomeCategoriesDistribution
+                          : stats.categoriesDistribution
+                      }
+                      currency={currency}
+                      theme={resolvedTheme}
+                      emptyMessage={
+                        breakdownType === "income"
+                          ? t("Нет данных о доходах за этот период.")
+                          : t("Нет данных по категориям за этот период.")
+                      }
+                    />
+                    </div>
+                  )}
+                </Panel>
+              </div>
+              )}
+
+              {/* Обзор средств (при включённых доходах и источниках) */}
+              {incomeAndCardsEnabled && (
+                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-4">
+                  <TotalFundsWidget />
+                  <FundsTrendWidget timeRange={timeRange} />
+                </div>
+              )}
+            </section>
+          </div>
+        </PageContent>
       </div>
       <ConfirmCompletionDateModal
         isOpen={completionDateModalState.isOpen}
@@ -1710,26 +1467,26 @@ const HomePage: React.FC = () => {
             className="hidden md:flex"
           >
             {dailyPaymentsModal.payments.length > 0 ? (
-              <ul className="space-y-3">
+              <ul className="space-y-1.5">
                 {dailyPaymentsModal.payments.map((p) => (
                   <li
                     key={p.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md"
+                    className="flex items-center justify-between gap-3 px-3 h-11 rounded-md border border-[var(--ui-border)]"
                   >
                     <div className="flex items-center gap-3">
                       <PaymentIconDisplay payment={p} sizeClass="h-6 w-6" />
-                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                      <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
                         {p.title}
                       </span>
                     </div>
-                    <span className="font-bold text-gray-900 dark:text-gray-100">
+                    <span className="text-sm font-medium tabular-nums text-gray-900 dark:text-gray-100">
                       {formatMoney(p.amount, locale, p.currency)}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t("Нет платежей на эту дату.")}
               </p>
             )}
@@ -1757,26 +1514,26 @@ const HomePage: React.FC = () => {
                 : "")}
           >
             {dailyPaymentsModal.payments.length > 0 ? (
-              <ul className="space-y-3">
+              <ul className="space-y-1.5">
                 {dailyPaymentsModal.payments.map((p) => (
                   <li
                     key={p.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md"
+                    className="flex items-center justify-between gap-3 px-3 h-11 rounded-md border border-[var(--ui-border)]"
                   >
                     <div className="flex items-center gap-3">
                       <PaymentIconDisplay payment={p} sizeClass="h-6 w-6" />
-                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                      <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
                         {p.title}
                       </span>
                     </div>
-                    <span className="font-bold text-gray-900 dark:text-gray-100">
+                    <span className="text-sm font-medium tabular-nums text-gray-900 dark:text-gray-100">
                       {formatMoney(p.amount, locale, p.currency)}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t("Нет платежей на эту дату.")}
               </p>
             )}

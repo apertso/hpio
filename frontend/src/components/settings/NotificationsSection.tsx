@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { BellAlertIcon } from "@heroicons/react/24/outline";
 import SettingsSection from "../SettingsSection";
 import ToggleSwitch from "../ToggleSwitch";
-import { TextInputField } from "../Input";
+import TimeInput from "../TimeInput";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { isTauriMobile } from "../../utils/platform";
@@ -147,16 +147,16 @@ const NotificationsSection: React.FC = () => {
     <div className="space-y-8">
       {/* App Notifications Section (Android only) */}
 
-      <SettingsSection className="card-base p-6">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-            <BellAlertIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+      <SettingsSection className="card-base p-5">
+        <div className="flex items-start gap-3 mb-5">
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <BellAlertIcon className="size-4" />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h3 className="ui-heading mb-0.5">
               {t("Уведомления приложения")}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Получайте напоминания о предстоящих платежах и уведомления о новых предложениях автоплатежей")}
             </p>
           </div>
@@ -237,13 +237,11 @@ const NotificationsSection: React.FC = () => {
 
           {(emailNotifications || pushNotifications) && (
             <div>
-              <TextInputField
+              <TimeInput
                 label={t("Напоминать в")}
-                inputId="notificationTime"
-                type="time"
+                id="notificationTime"
                 value={notificationTime}
-                onChange={(e) => handleNotificationTimeChange(e.target.value)}
-                disabled={isUpdatingPreferences}
+                onChange={handleNotificationTimeChange}
               />
             </div>
           )}

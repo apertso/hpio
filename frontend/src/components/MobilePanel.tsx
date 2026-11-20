@@ -58,21 +58,23 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
       <div
         className={`fixed inset-0 z-40 transition-opacity duration-300 ${
           isVisible ? "bg-black/40" : "bg-black/0"
-        } ${enableBackdropClick ? "backdrop-blur-sm" : "pointer-events-none"}`}
+        } ${enableBackdropClick ? "" : "pointer-events-none"}`}
         onClick={enableBackdropClick ? handleBackdropClick : undefined}
         aria-hidden="true"
       />
 
       <div
         data-mobile-panel-content
-        className={`fixed flex flex-col bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 p-4 rounded-t-2xl shadow-lg max-h-full transform transition-transform duration-300 ease-out safe-area-top safe-area-bottom ${
+        className={`fixed flex flex-col bottom-0 left-0 right-0 z-50 bg-[var(--ui-surface)] dark:bg-gray-800 border-t border-[var(--ui-border)] px-4 pb-4 pt-2 rounded-t-xl shadow-lg max-h-full transform transition-transform duration-300 ease-out safe-area-top safe-area-bottom ${
           isVisible ? "translate-y-0" : "translate-y-full"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Индикатор листа */}
+        <div className="mx-auto mb-3 h-1 w-9 shrink-0 rounded-full bg-gray-300 dark:bg-white/15" aria-hidden="true" />
         {title && (
           <div className="flex items-center justify-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-50">
               {title}
             </h3>
           </div>

@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import db from "../models";
 import { IncomeInstance } from "../models/Income";
 export const createIncome = async (
@@ -58,3 +59,12 @@ export const deleteIncome = async (
   return true;
 };
 
+
+export const getIncomesForPeriod = async (
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<IncomeInstance[]> => db.Income.findAll({
+  where: { userId, date: { [Op.between]: [startDate, endDate] } },
+  include: [{ model: db.TransactionCategory, as: "transactionCategory" }],
+});

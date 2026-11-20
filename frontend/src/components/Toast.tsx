@@ -27,10 +27,11 @@ const icons: Record<ToastType, React.ElementType> = {
   info: InformationCircleIcon,
 };
 
+// Цвет иконки статуса — единственный цветной элемент тоста
 const colors: Record<ToastType, string> = {
-  success: "bg-green-500 dark:bg-green-600",
-  error: "bg-red-500 dark:bg-red-600",
-  info: "bg-blue-500 dark:bg-blue-600",
+  success: "text-green-600 dark:text-green-400",
+  error: "text-red-600 dark:text-red-400",
+  info: "text-indigo-600 dark:text-indigo-400",
 };
 
 const Toast: React.FC<ToastProps> = ({
@@ -160,9 +161,9 @@ const Toast: React.FC<ToastProps> = ({
 
   const getOverlayColor = (type: ToastType): string => {
     const colors: Record<ToastType, string> = {
-      success: "#7CB342", // Мятный зелёный (inspir. PANTONE 361 C)
-      error: "#B71C1C", // Тёмно-красный для контраста (inspir. PANTONE 18-1664)
-      info: "#64B5F6", // Небесно-голубой (inspir. PANTONE 286 C)
+      success: "var(--color-green-500)",
+      error: "var(--color-red-500)",
+      info: "var(--color-indigo-500)",
     };
     return colors[type];
   };
@@ -177,7 +178,7 @@ const Toast: React.FC<ToastProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={`relative flex items-center w-full max-w-sm p-4 text-white rounded-2xl shadow-lg touch-pan-y select-none overflow-hidden cursor-pointer ${colors[type]}`}
+      className="relative flex items-center w-full max-w-sm min-h-11 px-3 py-2.5 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] dark:bg-gray-800 text-gray-900 dark:text-gray-50 shadow-lg touch-pan-y select-none overflow-hidden cursor-pointer"
       style={{
         transform: `translateX(${translateX}px) scale(${scale})`,
         opacity: isSwipingAway ? 0 : isVisible ? 1 : 0,
@@ -190,18 +191,18 @@ const Toast: React.FC<ToastProps> = ({
     >
       {/* Фоновая полоса прогресса, заполняющаяся слева направо */}
       <div
-        className="absolute inset-0 transition-all duration-50 ease-linear"
+        className="absolute bottom-0 left-0 h-0.5 transition-all duration-50 ease-linear"
         style={{
           backgroundColor: getOverlayColor(type),
           width: `${progress}%`,
-          opacity: 0.3,
+          opacity: 0.6,
         }}
       />
 
-      <div className="flex-shrink-0 w-6 h-6 mr-3 relative z-10">
+      <div className={`flex-shrink-0 size-4 mr-2.5 relative z-10 ${colors[type]}`}>
         <Icon />
       </div>
-      <div className="flex-1 text-sm font-medium relative z-10">{t(message)}</div>
+      <div className="flex-1 text-sm relative z-10">{t(message)}</div>
       {action && (
         <button
           onClick={(e) => {
@@ -209,7 +210,7 @@ const Toast: React.FC<ToastProps> = ({
             action.onClick();
             dismiss();
           }}
-          className="py-1 px-2.5 ml-3 text-sm font-semibold bg-white/20 rounded-md hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white relative z-10 cursor-pointer"
+          className="h-7 px-2 ml-3 text-sm font-medium text-gray-900 dark:text-gray-50 border border-[var(--ui-border)] rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 relative z-10 cursor-pointer"
         >
           {t(action.label)}
         </button>
@@ -219,10 +220,10 @@ const Toast: React.FC<ToastProps> = ({
           e.stopPropagation();
           dismiss();
         }}
-        className="hidden md:block p-1 -mr-2 -my-2 ml-auto text-white rounded-full hover:bg-white/20 hover:opacity-80 transition-all focus:outline-none focus:ring-2 focus:ring-white relative z-10 cursor-pointer"
+        className="hidden md:flex size-6 items-center justify-center -mr-1 ml-2 text-gray-400 rounded-md hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 relative z-10 cursor-pointer"
         aria-label="Close"
       >
-        <XMarkIcon className="w-5 h-5" />
+        <XMarkIcon className="size-3.5" />
       </button>
     </div>
   );

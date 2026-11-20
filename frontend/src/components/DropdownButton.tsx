@@ -17,11 +17,15 @@ export interface DropdownButtonProps
   selectedValue?: string | number;
 }
 
+// Пункт выпадающего меню — общий вид для всех меню приложения
+const MENU_ITEM_CLASS =
+  "w-full text-left px-2 h-8 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] flex items-center gap-2 cursor-pointer [&_svg]:size-4 [&_svg]:text-gray-400";
+
 export const DropdownButton: React.FC<DropdownButtonProps> = ({
   label,
   icon,
   options,
-  className = "h-9 min-w-20 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 pl-4 pr-3 text-sm text-gray-700 dark:text-gray-200",
+  className = "h-8 min-w-20 rounded-md bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/10 shadow-sm pl-3 pr-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.08] transition-colors",
   selectedValue,
   ...rest
 }) => {
@@ -42,11 +46,11 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
         <span className="flex-1 text-center">{label}</span>
         {icon && <span>{icon}</span>}
         <span
-          className={`transition-transform ml-2 flex items-center ${
+          className={`transition-transform ml-1 flex items-center text-gray-400 ${
             isOpen ? "rotate-180" : ""
           }`}
         >
-          <svg width="16" height="16" fill="none" viewBox="0 0 20 20">
+          <svg width="14" height="14" fill="none" viewBox="0 0 20 20">
             <path
               d="M6 8l4 4 4-4"
               stroke="currentColor"
@@ -65,15 +69,15 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
       >
         <div
           ref={optionsRef}
-          className="relative max-h-60 overflow-y-auto"
+          className="relative max-h-60 overflow-y-auto p-1"
           style={{ position: "relative" }}
         >
           {options.map((option, idx) => (
             <button
               key={option.label + idx}
-              className={`w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 cursor-pointer ${
+              className={`whitespace-nowrap ${MENU_ITEM_CLASS} ${
                 option.value !== undefined && option.value === selectedValue
-                  ? "bg-gray-200 dark:bg-gray-700 font-bold"
+                  ? "bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-gray-50 font-medium"
                   : ""
               }`}
               onClick={() => {

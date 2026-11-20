@@ -1,7 +1,7 @@
 // frontend/src/components/Select.tsx
 import React, { useState, useRef, useEffect, useCallback, useId } from "react";
 import ReactDOM from "react-dom";
-import { ChevronDownIcon } from "@heroicons/react/24/solid";
+import { ChevronUpDownIcon as ChevronDownIcon } from "@heroicons/react/20/solid";
 import { TextField } from "./Input";
 
 export interface SelectOption {
@@ -100,10 +100,10 @@ const Select: React.FC<SelectProps> = ({
   const selectedOption = options.find((opt) => opt.value === value);
 
   const baseClasses =
-    "relative block w-full min-w-[12em] max-w-[64em] rounded-xl bg-white px-3 py-2.5 text-base text-gray-900 placeholder:text-gray-500 shadow-sm border border-gray-200 focus:outline-none focus:ring-3 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500 text-left flex items-center justify-between cursor-pointer transition-colors";
-  const errorClasses = error ? "focus:ring-3 focus:ring-red-500" : "";
+    "relative block w-full min-w-0 max-w-[64em] rounded-md bg-white px-2.5 h-9 md:h-8 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm border border-gray-200 hover:border-gray-300 focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-500/25 dark:bg-white/[0.03] dark:border-white/10 dark:hover:border-white/20 dark:text-gray-100 dark:placeholder:text-gray-500 text-left flex items-center justify-between gap-2 cursor-pointer transition-colors";
+  const errorClasses = error ? "border-red-500 dark:border-red-500 focus-visible:ring-red-500/25" : "";
   const disabledClasses = disabled
-    ? "cursor-not-allowed opacity-70 bg-gray-100 text-gray-500 dark:bg-gray-900 dark:text-gray-500"
+    ? "cursor-not-allowed opacity-60 bg-gray-50 text-gray-500 dark:text-gray-500"
     : "";
 
   return (
@@ -133,12 +133,12 @@ const Select: React.FC<SelectProps> = ({
           aria-invalid={Boolean(error)}
         >
           <span
-            className={selectedOption ? "" : "text-gray-400 dark:text-gray-500"}
+            className={`truncate ${selectedOption ? "" : "text-gray-400 dark:text-gray-500"}`}
           >
             {selectedOption?.label || placeholder}
           </span>
           <ChevronDownIcon
-            className={`h-5 w-5 text-gray-400 transition-transform ${
+            className={`size-4 shrink-0 text-gray-400 transition-transform ${
               isOpen ? "rotate-180" : ""
             }`}
           />
@@ -150,20 +150,20 @@ const Select: React.FC<SelectProps> = ({
         ReactDOM.createPortal(
           <div
             data-select-dropdown
-            className="fixed z-[9999] rounded-xl bg-white dark:bg-gray-800 shadow-xl border border-gray-100 dark:border-gray-700 max-h-60 overflow-y-auto"
+            className="fixed z-[9999] mt-1 rounded-lg bg-[var(--ui-surface)] dark:bg-gray-800 shadow-lg border border-[var(--ui-border)] max-h-60 overflow-y-auto"
             style={{
               top: dropdownPosition.top,
               left: dropdownPosition.left,
               width: dropdownPosition.width,
             }}
           >
-            <ul className="py-1">
+            <ul className="p-1">
               {options.map((option) => (
                 <li
                   key={option.value || "null-option"}
-                  className={`px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer ${
+                  className={`flex items-center px-2 h-8 rounded-md text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] cursor-pointer ${
                     value === option.value
-                      ? "bg-slate-100 dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-medium"
+                      ? "bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-gray-50 font-medium"
                       : ""
                   }`}
                   onClick={() => handleSelect(option.value)}

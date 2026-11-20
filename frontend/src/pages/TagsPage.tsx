@@ -1,4 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
+import { PageContent, PageToolbar } from "../components/layout/Page";
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,11 +11,9 @@ import {
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
 import { Button } from "../components/Button";
-import { InformationIcon } from "../components/InformationIcon";
 import useApi from "../hooks/useApi";
 import { useToast } from "../context/ToastContext";
 import ConfirmModal from "../components/ConfirmModal";
-import { Tooltip } from "../components";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import MobilePanel from "../components/MobilePanel";
@@ -80,10 +79,10 @@ const MobileActionsOverlay: React.FC<{
               action.handler();
               onClose();
             }}
-            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24 cursor-pointer"
+            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer cursor-pointer"
           >
-            <action.icon className="h-6 w-6" />
-            <span className="text-sm">{action.label}</span>
+            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
+            <span className="text-xs font-medium">{action.label}</span>
           </button>
         ))}
       </div>
@@ -94,24 +93,12 @@ const MobileActionsOverlay: React.FC<{
 const TagsPage: React.FC = () => {
   const { t } = useLanguage();
   const { showToast } = useToast();
-  const { setPageTitle, setHeaderAction } = usePageTitle();
+  const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("tags");
 
   useEffect(() => {
     setPageTitle(t("Теги"));
   }, [setPageTitle, t]);
-
-  useEffect(() => {
-    setHeaderAction(
-      <Tooltip content={t("Используйте теги, чтобы отмечать похожие платежи. Это упрощает поиск и помогает собирать статистику по отдельным группам платежей.")}>
-        <button className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
-          <InformationIcon className="h-[16px] w-[16px]" />
-        </button>
-      </Tooltip>
-    );
-
-    return () => setHeaderAction(null);
-  }, [setHeaderAction, t]);
 
   const {
     data: tags,
@@ -311,7 +298,7 @@ const TagsPage: React.FC = () => {
     <form onSubmit={handleSubmit(onSubmitTagForm)} noValidate>
       {tagFormError && (
         <div
-          className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-6"
+          className="ui-alert-error mb-6"
           role="alert"
         >
           <span className="block sm:inline">{tagFormError}</span>
@@ -354,48 +341,41 @@ const TagsPage: React.FC = () => {
     <>
       <PageMeta {...metadata} />
 
-      <div className="max-w-4xl mx-auto pb-20 dark:text-gray-100">
-        <div className="flex justify-between items-center md:mb-6">
-          <div className="flex items-center gap-2">
-            <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {t("Управление тегами")}
-            </h2>
-            <Tooltip content={t("Используйте теги, чтобы отмечать похожие платежи. Это упрощает поиск и помогает собирать статистику по отдельным группам платежей.")}>
-              <div className="hidden md:block p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer">
-                <InformationIcon className="h-[16px] w-[16px]" />
-              </div>
-            </Tooltip>
+      <div className="dark:text-gray-100">
+        <h1 className="sr-only hidden md:block">{t("Теги")}</h1>
+        <PageToolbar className="hidden md:flex">
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              onClick={handleAddTag}
+              label={t("Добавить тег")}
+              icon={<PlusIcon className="w-4 h-4" />}
+            />
           </div>
-          <Button
-            onClick={handleAddTag}
-            label={t("Добавить тег")}
-            icon={<PlusIcon className="w-4 h-4" />}
-            className="hidden md:inline-flex"
-          />
-        </div>
+        </PageToolbar>
+        <PageContent>
 
         {isLoadingTags ? (
           <div className="flex justify-center items-center py-12">
             <Spinner />
           </div>
         ) : tags && tags.length > 0 ? (
-          <div ref={chipsRef} className="flex flex-wrap gap-3">
+          <div ref={chipsRef} className="flex flex-wrap gap-2">
             {tags.map((tag) => {
               const isSelected =
                 isMobileViewport && mobileActionsTag?.id === tag.id;
               return (
                 <div
                   key={tag.id}
-                  className={`flex items-stretch rounded-full border bg-white dark:bg-gray-900 transition-all ${
+                  className={`group/tag flex items-stretch h-7 rounded-md border bg-[var(--ui-surface)] shadow-sm transition-colors ${
                     isSelected
-                      ? "border-indigo-400 dark:border-indigo-500 shadow-sm"
-                      : "border-gray-200 dark:border-gray-700"
+                      ? "border-indigo-400 dark:border-indigo-500"
+                      : "border-[var(--ui-border)] hover:border-[var(--ui-border-strong)]"
                   }`}
                 >
                   <button
                     type="button"
                     onClick={() => handleTagPress(tag)}
-                    className="px-3 py-1 text-sm text-gray-700 dark:text-gray-200 hover:opacity-80 transition-opacity cursor-pointer"
+                    className="px-2 text-sm text-gray-800 dark:text-gray-200 hover:opacity-80 transition-opacity cursor-pointer"
                     aria-label={
                       isMobileViewport
                         ? t("Открыть действия для тега {1}", tag.name)
@@ -405,22 +385,22 @@ const TagsPage: React.FC = () => {
                     {tag.name}
                   </button>
                   {!isMobileViewport && (
-                    <div className="flex items-center gap-1 self-stretch rounded-r-full bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 px-1">
+                    <div className="flex items-center self-stretch border-l border-[var(--ui-border)] px-0.5">
                       <button
                         type="button"
                         onClick={() => handleEditTag(tag.id)}
-                        className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+                        className="p-0.5 rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
                         aria-label={t("Редактировать тег {1}", tag.name)}
                       >
-                        <PencilSolidIcon className="h-4 w-4" />
+                        <PencilSolidIcon className="size-3.5" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteTag(tag.id, tag.name)}
-                        className="p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 hover:opacity-80 transition-all cursor-pointer"
+                        className="p-0.5 rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
                         aria-label={t("Удалить тег {1}", tag.name)}
                       >
-                        <TrashSolidIcon className="h-4 w-4" />
+                        <TrashSolidIcon className="size-3.5" />
                       </button>
                     </div>
                   )}
@@ -433,6 +413,7 @@ const TagsPage: React.FC = () => {
             {t("Нет тегов.")}
           </div>
         )}
+        </PageContent>
       </div>
       {isMobileViewport ? (
         <MobilePanel

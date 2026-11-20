@@ -83,28 +83,28 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const ext = parts.length > 1 ? "." + parts.pop()?.toLowerCase() : "";
 
     if ([".jpg", ".jpeg", ".png", ".gif", ".bmp"].includes(ext)) {
-      return <PhotoIcon className="h-5 w-5 text-indigo-500" />;
+      return <PhotoIcon className="size-4 text-gray-500 dark:text-gray-400" />;
     }
     if (ext === ".pdf") {
-      return <DocumentIcon className="h-5 w-5 text-red-500" />;
+      return <DocumentIcon className="size-4 text-gray-500 dark:text-gray-400" />;
     }
     if ([".doc", ".docx", ".xls", ".xlsx"].includes(ext)) {
-      return <DocumentIcon className="h-5 w-5 text-blue-500" />;
+      return <DocumentIcon className="size-4 text-gray-500 dark:text-gray-400" />;
     }
-    return <DocumentIcon className="h-5 w-5 text-gray-400" />;
+    return <DocumentIcon className="size-4 text-gray-400" />;
   }, []);
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+      <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
         {t("Прикрепить файл")}
       </label>
 
       {/* File Preview Card */}
       {file && !isUploading ? (
-        <div className="group relative flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+        <div className="group relative flex items-center justify-between px-3 py-2.5 bg-[var(--ui-surface)] rounded-lg border border-[var(--ui-border)] shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-full border border-gray-200 dark:border-gray-600">
+            <div className="flex-shrink-0 size-8 flex items-center justify-center bg-gray-50 dark:bg-white/[0.04] rounded-md border border-[var(--ui-border)]">
               {getFileIcon(file.fileName)}
             </div>
             <div className="flex flex-col min-w-0">
@@ -130,7 +130,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               handleDeleteFile();
             }}
             disabled={isDeleting || isSubmitting}
-            className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            className="flex size-7 items-center justify-center text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50 cursor-pointer"
             title={isDeleting ? t("Удаление...") : t("Удалить файл")}
           >
             {isDeleting ? (
@@ -167,15 +167,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
           {isUploading ? (
             // Loading State
-            <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
+            <div className="border border-dashed border-[var(--ui-border-strong)] rounded-lg p-6 text-center">
               <div className="flex flex-col items-center justify-center py-2">
                 <Spinner />
                 <p className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                   {t("Загрузка файла...")}
                 </p>
-                <div className="w-full max-w-xs bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 mt-3 overflow-hidden">
+                <div className="w-full max-w-xs bg-gray-100 rounded-full h-1 dark:bg-white/10 mt-3 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-slate-700 dark:bg-slate-400 transition-all duration-300 ease-out"
+                    className="h-full rounded-full bg-indigo-600 dark:bg-indigo-400 transition-all duration-300 ease-out"
                     style={{ width: `${uploadProgress}%` }}
                   ></div>
                 </div>
@@ -184,17 +184,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
           ) : (
             <>
               {/* Mobile: Compact Button Style */}
-              <div className="md:hidden w-full flex items-center justify-center gap-2 p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm active:bg-gray-50 dark:active:bg-gray-700">
-                <ArrowUpTrayIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <div className="md:hidden w-full flex items-center justify-center gap-2 h-10 bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-md shadow-sm active:bg-gray-50 dark:active:bg-white/[0.04]">
+                <ArrowUpTrayIcon className="size-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                   {t("Загрузить файл")}
                 </span>
               </div>
 
               {/* Desktop: Full Dropzone */}
-              <div className="hidden md:flex flex-col items-center justify-center py-1 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 bg-gray-50/50 dark:bg-gray-800/50">
-                <div className="mb-3 p-2 bg-white dark:bg-gray-700 rounded-full shadow-sm border border-gray-200 dark:border-gray-600">
-                  <PaperClipIcon className="h-6 w-6 text-gray-400 dark:text-gray-300" />
+              <div className="hidden md:flex flex-col items-center justify-center border border-dashed border-[var(--ui-border-strong)] rounded-lg px-6 py-5 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors">
+                <div className="mb-2.5 flex size-8 items-center justify-center rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] shadow-sm">
+                  <PaperClipIcon className="size-4 text-gray-400 dark:text-gray-500" />
                 </div>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {isDragActive

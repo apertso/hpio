@@ -1,3 +1,4 @@
+import { usePreferredCurrency } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import React, { useEffect, useState } from "react";
 import { fundsApi, FundsSummary } from "../api/fundsApi";
@@ -13,34 +14,41 @@ import Spinner from "./Spinner";
 
 const TotalFundsWidget: React.FC = () => {
   const { t, locale } = useLanguage();
+  const preferredCurrency = usePreferredCurrency();
   const [summary, setSummary] = useState<FundsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    const fetchSummary = async () => {
+    let canceled = false;
+    setSummary(null);
+    setIsLoading(true);
+    const fetchSummary = async (): Promise<void> => {
       try {
         const data = await fundsApi.getSummary();
-        setSummary(data);
+        if (!canceled) setSummary(data);
       } catch (error) {
         console.error("Failed to fetch funds summary", error);
       } finally {
-        setIsLoading(false);
+        if (!canceled) setIsLoading(false);
       }
     };
 
     fetchSummary();
-  }, []);
+    return () => { canceled = true; };
+  }, [preferredCurrency]);
 
   if (isLoading) {
     return (
-      <div className="card-base p-6 flex justify-center items-center h-40">
+      <div className="card-base p-5 flex justify-center items-center h-40">
         <Spinner />
       </div>
     );
   }
 
-  if (!summary) return null;
+  if (!summary || summary.currency !== preferredCurrency) return (
+    <p className="text-sm text-gray-500 dark:text-gray-400">{t("Не удалось загрузить баланс в {1}.", preferredCurrency)}</p>
+  );
 
   const { totalAmount, currency, changeAmount } = summary;
   const currencySymbol = getCurrencySymbol(currency, locale);
@@ -61,14 +69,14 @@ const TotalFundsWidget: React.FC = () => {
     : "—";
 
   return (
-    <div className="card-base p-6 flex flex-col gap-2">
+    <div className="card-base p-5 flex flex-col gap-2">
       <div className="flex justify-between items-start">
         <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {t("Общий баланс")}
         </span>
         <button
           onClick={() => setIsVisible(!isVisible)}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
         >
           {isVisible ? (
             <EyeIcon className="w-4 h-4" />
@@ -79,7 +87,7 @@ const TotalFundsWidget: React.FC = () => {
       </div>
 
       <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold text-gray-900 dark:text-white">
+        <span className="text-2xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-gray-50">
           {isVisible ? formattedTotal : "••••••"}
         </span>
         <span className="text-xl font-medium text-gray-500 dark:text-gray-400">

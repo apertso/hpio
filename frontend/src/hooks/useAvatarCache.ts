@@ -18,11 +18,37 @@ interface UseAvatarCacheResult {
   refreshAvatar: () => Promise<void>;
 }
 
+/**
+ * Читает актуальный аватар из localStorage (data: URL) или возвращает null,
+ * если кэша нет, он устарел или относится к другому фото.
+ */
+function readCachedAvatar(photoPath: string): string | null {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+
+    const cache: AvatarCache = JSON.parse(cached);
+    const isExpired = Date.now() - cache.timestamp > CACHE_DURATION;
+    if (isExpired || cache.photoPath !== photoPath || !cache.data) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return cache.data;
+  } catch (error) {
+    logger.error("Failed to parse cached avatar:", error);
+    localStorage.removeItem(CACHE_KEY);
+    return null;
+  }
+}
+
 export function useAvatarCache(
   photoPath: string | null | undefined,
   token: string | null
 ): UseAvatarCacheResult {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  // Синхронно берём аватар из кэша, чтобы при перезагрузке не мелькали инициалы
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() =>
+    photoPath && token ? readCachedAvatar(photoPath) : null
+  );
   const [isLoading, setIsLoading] = useState(false);
   const blobUrlRef = useRef<string | null>(null);
 
@@ -78,47 +104,19 @@ export function useAvatarCache(
     }
   }, [photoPath, token, cleanupBlobUrl]);
 
-  const loadFromCache = useCallback(() => {
+  const loadFromCache = useCallback((): boolean => {
     if (!photoPath || !token) {
       setAvatarUrl(null);
       return false;
     }
 
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (!cached) return false;
+    const cachedData = readCachedAvatar(photoPath);
+    if (!cachedData) return false;
 
-      const cache: AvatarCache = JSON.parse(cached);
-      const now = Date.now();
-      const isExpired = now - cache.timestamp > CACHE_DURATION;
-      const photoChanged = cache.photoPath !== photoPath;
-
-      if (isExpired || photoChanged) {
-        localStorage.removeItem(CACHE_KEY);
-        return false;
-      }
-
-      // Конвертируем base64 обратно в blob URL
-      fetch(cache.data)
-        .then((res) => res.blob())
-        .then((blob) => {
-          cleanupBlobUrl();
-          const url = URL.createObjectURL(blob);
-          blobUrlRef.current = url;
-          setAvatarUrl(url);
-          logger.info("Avatar loaded from cache");
-        })
-        .catch((error) => {
-          logger.error("Failed to load cached avatar:", error);
-          localStorage.removeItem(CACHE_KEY);
-        });
-
-      return true;
-    } catch (error) {
-      logger.error("Failed to parse cached avatar:", error);
-      localStorage.removeItem(CACHE_KEY);
-      return false;
-    }
+    // data: URL отображается напрямую — без асинхронной конвертации в blob
+    cleanupBlobUrl();
+    setAvatarUrl(cachedData);
+    return true;
   }, [photoPath, token, cleanupBlobUrl]);
 
   const refreshAvatar = useCallback(async () => {

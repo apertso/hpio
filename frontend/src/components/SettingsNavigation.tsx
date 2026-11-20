@@ -70,7 +70,7 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
   if (isMobile) {
     // Мобильные вкладки
     return (
-      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+      <div className="flex border-b border-[var(--ui-border)] -mt-1">
         {sections.map((section) => {
           const Icon = section.icon;
           const isActive = activeSection === section.id;
@@ -78,13 +78,13 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
             <button
               key={section.id}
               onClick={() => onSectionChange(section.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-3 px-2 text-xs font-medium transition-colors cursor-pointer ${
+              className={`-mb-px flex-1 flex flex-col items-center justify-center py-2.5 px-2 text-xs font-medium border-b-2 transition-colors cursor-pointer ${
                 isActive
-                  ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  ? "text-gray-900 dark:text-gray-50 border-gray-900 dark:border-gray-100"
+                  : "text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-200"
               }`}
             >
-              <Icon className="w-5 h-5 mb-1" />
+              <Icon className="size-4 mb-1" />
               {t(section.label)}
             </button>
           );
@@ -95,8 +95,8 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
 
   // Боковая панель для десктопа
   return (
-    <div className="w-64 pr-8 border-r border-gray-100 dark:border-gray-800">
-      <nav className="space-y-2">
+    <div className="w-52 shrink-0 pr-6">
+      <nav className="flex flex-col gap-px">
         {sections.map((section) => {
           const Icon = section.icon;
           const isActive = activeSection === section.id;
@@ -104,13 +104,13 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
             <button
               key={section.id}
               onClick={() => onSectionChange(section.id)}
-              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-xl transition-colors cursor-pointer ${
+              className={`w-full flex items-center gap-2.5 px-2 h-8 text-sm font-medium rounded-md transition-colors cursor-pointer ${
                 isActive
-                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
+                  ? "bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-gray-50"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.03] hover:text-gray-900 dark:hover:text-gray-100"
               }`}
             >
-              <Icon className="w-5 h-5 mr-3" />
+              <Icon className={`size-4 ${isActive ? "text-gray-700 dark:text-gray-200" : "text-gray-400"}`} />
               {t(section.label)}
             </button>
           );

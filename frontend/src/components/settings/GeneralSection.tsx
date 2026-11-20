@@ -107,16 +107,16 @@ const GeneralSection: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <SettingsSection className="card-base p-6">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="flex-shrink-0 w-12 h-12 bg-gray-100 dark:bg-gray-800/50 rounded-full flex items-center justify-center">
-            <CogIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+      <SettingsSection className="card-base p-5">
+        <div className="flex items-start gap-3 mb-5">
+          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
+            <CogIcon className="size-4" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h2 className="ui-heading mb-0.5">
               {t("Общие настройки")}
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("Настройте внешний вид приложения и основные параметры отображения данных")}
             </p>
           </div>
@@ -124,7 +124,7 @@ const GeneralSection: React.FC = () => {
 
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
               {t("Язык интерфейса")}
             </label>
             <Select
@@ -134,7 +134,7 @@ const GeneralSection: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
               {t("Тема приложения")}
             </label>
             <Select
@@ -144,7 +144,7 @@ const GeneralSection: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
               {t("Основная валюта")}
             </label>
             <Select

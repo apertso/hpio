@@ -87,7 +87,7 @@ const ResetPasswordPage: React.FC = () => {
         </h1>
         {error && (
           <div
-            className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300"
+            className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-300"
             role="alert"
           >
             <span className="block sm:inline">{t(error)}</span>
@@ -95,7 +95,7 @@ const ResetPasswordPage: React.FC = () => {
         )}
         {success && (
           <div
-            className="mt-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950 dark:bg-indigo-400/10 dark:text-indigo-100"
+            className="mt-4 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950 dark:bg-indigo-400/10 dark:text-indigo-100"
             role="status"
           >
             <span className="block sm:inline">{t("Пароль успешно изменен.")}</span>

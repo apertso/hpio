@@ -1,8 +1,49 @@
 @import 'tailwindcss';
 @import './public-pages.css';
+@import './app-ui.css';
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Брейкпоинты sm/md не срабатывают внутри телефонного предпросмотра приложения
+ * на публичных страницах ([data-phone-preview]): там разметка должна оставаться
+ * мобильной даже на широком экране.
+ */
+@custom-variant sm {
+  @media (width >= 40rem) {
+    &:not(:where([data-phone-preview] *)) {
+      @slot;
+    }
+  }
+}
+@custom-variant md {
+  @media (width >= 48rem) {
+    &:not(:where([data-phone-preview] *)) {
+      @slot;
+    }
+  }
+}
+
+/*
+ * Брейкпоинты lg/xl для экранов приложения, которые не срабатывают внутри
+ * предпросмотров приложения на публичных страницах ([data-app-preview]): там разметка
+ * должна оставаться планшетной или мобильной даже на широком экране.
+ */
+@custom-variant app-lg {
+  @media (width >= 64rem) {
+    &:not(:where([data-app-preview] *)) {
+      @slot;
+    }
+  }
+}
+@custom-variant app-xl {
+  @media (width >= 80rem) {
+    &:not(:where([data-app-preview] *)) {
+      @slot;
+    }
+  }
+}
 
 @theme {
   --font-sans: 'Roboto', 'Segoe UI', 'Tahoma', 'Arial', 'Helvetica', sans-serif;
@@ -15,7 +56,8 @@
 }
 
 @layer utilities {
-  .text-sm {
+  /* Старый мелкий размер text-sm сохраняется только вне рабочего интерфейса */
+  :where(html:not(.app-ui)) .text-sm:not(:where([data-app-preview] *)) {
     font-size: 11px;
     line-height: 16px;
   }
@@ -393,4 +435,77 @@ input.number-field-input::-webkit-inner-spin-button {
 
 input.number-field-input[type='number'] {
   -moz-appearance: textfield;
+}
+
+/*
+ * Тонкая полоса прокрутки поверх контента (см. OverlayScrollbar.tsx).
+ * Нативная полоса у контейнера скрыта и не занимает место в раскладке.
+ */
+html .overlay-scroll {
+  scrollbar-width: none;
+}
+
+html .overlay-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.overlay-scrollbar {
+  position: absolute;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  width: 12px;
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity 240ms ease;
+}
+
+.overlay-scrollbar[data-scrollable='false'] {
+  display: none;
+}
+
+.overlay-scrollbar[data-visible='true'],
+.overlay-scrollbar[data-dragging='true'],
+.overlay-scrollbar:hover {
+  opacity: 1;
+  transition-duration: 80ms;
+}
+
+.overlay-scrollbar__thumb {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 4px;
+  border-radius: 2px;
+  background-color: rgba(16, 17, 20, 0.22);
+  cursor: pointer;
+  will-change: transform;
+  transition:
+    width 120ms ease,
+    background-color 120ms ease;
+}
+
+.overlay-scrollbar:hover .overlay-scrollbar__thumb,
+.overlay-scrollbar[data-dragging='true'] .overlay-scrollbar__thumb {
+  width: 6px;
+  background-color: rgba(16, 17, 20, 0.38);
+}
+
+.dark .overlay-scrollbar__thumb {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.dark .overlay-scrollbar:hover .overlay-scrollbar__thumb,
+.dark .overlay-scrollbar[data-dragging='true'] .overlay-scrollbar__thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+@media (pointer: coarse) {
+  /* На тач-устройствах полоса только индикатор, без захвата */
+  .overlay-scrollbar {
+    pointer-events: none;
+  }
 }

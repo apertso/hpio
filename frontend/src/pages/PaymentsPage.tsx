@@ -1,15 +1,16 @@
-import { createDateDisplayFormatter, parseCalendarDate } from "../utils/dateUtils";
+import { parseCalendarDate } from "../utils/dateUtils";
+import PaymentRowList from "../components/PaymentRowList";
+import ToolbarSearch from "../components/ToolbarSearch";
+import { Panel } from "../components/layout/Page";
 import { localizedCategoryName } from "../utils/categoryLabel";
 // src/pages/PaymentsPage.tsx
 import { useLanguage } from "../context/LanguageContext";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import axiosInstance from "../api/axiosInstance";
 import logger from "../utils/logger";
-import PaymentListCard from "../components/PaymentListCard";
 import useApi from "../hooks/useApi";
 import { Button } from "../components/Button";
 import { PaymentData } from "../types/paymentData";
-import PaymentsTable from "../components/PaymentsTable";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
 import ConfirmCompletionDateModal from "../components/ConfirmCompletionDateModal";
@@ -26,15 +27,10 @@ import {
   CheckCircleIcon as CheckSolidIcon,
   TrashIcon as TrashSolidIcon,
   ArrowPathIcon as ArrowPathSolidIcon,
-  PlusIcon,
-  MagnifyingGlassIcon,
-  FunnelIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/solid";
+import { AdjustmentsHorizontalIcon, PlusIcon } from "@heroicons/react/24/outline";
 import MobilePanel from "../components/MobilePanel";
 import { usePageTitle } from "../context/PageTitleContext";
-import ArchiveTable from "../components/ArchiveTable";
-import { Input } from "../components/Input";
 import AdvancedFiltersPanel from "../components/AdvancedFiltersPanel";
 import Select from "../components/Select";
 import useCategories from "../hooks/useCategories";
@@ -67,7 +63,7 @@ const initialFilterState: FilterState = {
 const PAYMENTS_STATE_STORAGE_KEY = "paymentsPageState";
 const NO_CATEGORY_FILTER_VALUE = "__NO_CATEGORY__";
 const DESKTOP_MEDIA_QUERY = "(min-width: 48rem)";
-const PAYMENT_BATCH_SIZE = 24;
+const PAYMENT_BATCH_SIZE = 48;
 
 const isBooleanFilterValue = (
   value: unknown
@@ -202,10 +198,10 @@ const MobileActionsOverlay = ({
               action.handler();
               onClose();
             }}
-            className="flex flex-col items-center justify-center gap-2 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors w-24"
+            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
           >
-            <action.icon className="h-6 w-6" />
-            <span className="text-sm">{action.label}</span>
+            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
+            <span className="text-xs font-medium">{action.label}</span>
           </button>
         ))}
       </div>
@@ -227,9 +223,9 @@ const fetchArchivedPaymentsApi = async (
 };
 
 const PaymentsPage: React.FC = () => {
-  const { t, language, locale } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
-  const { setPageTitle, setHeaderRightAction } = usePageTitle();
+  const { setPageTitle } = usePageTitle();
   const metadata = getPageMetadata("payments");
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as PaymentTabType) || "active";
@@ -260,56 +256,15 @@ const PaymentsPage: React.FC = () => {
 
   const debouncedSearch = useDebounce(activeFilters.search, 500);
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (activeFilters.categoryId) count++;
-    if (activeFilters.isRecurring !== "all") count++;
-    if (activeFilters.hasFile !== "all") count++;
-    return count;
-  }, [activeFilters]);
+  const activeFilterCount = [
+    activeFilters.categoryId,
+    activeFilters.isRecurring !== "all",
+    activeFilters.hasFile !== "all",
+  ].filter(Boolean).length;
 
   useEffect(() => {
     setPageTitle(t("Платежи"));
   }, [setPageTitle, t]);
-
-  useEffect(() => {
-    const filterIndicatorCount = [
-      activeFilters.categoryId,
-      activeFilters.isRecurring !== "all",
-      activeFilters.hasFile !== "all",
-    ].filter(Boolean).length;
-
-    setHeaderRightAction(
-      <>
-        <button
-          type="button"
-          onClick={() => setIsSearchVisible((prev) => !prev)}
-          className={`p-2 rounded-full transition-colors ${
-            isSearchVisible
-              ? "bg-gray-100 dark:bg-gray-800 text-indigo-600 dark:text-indigo-400"
-              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-          } cursor-pointer`}
-        >
-          <MagnifyingGlassIcon className="w-6 h-6" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setDraftFilters(activeFilters);
-            setIsFilterPanelOpen(true);
-          }}
-          className="p-2 rounded-full text-gray-500 dark:text-gray-400 relative cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          <FunnelIcon className="w-6 h-6" />
-          {filterIndicatorCount > 0 && (
-            <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-indigo-500 rounded-full ring-2 ring-white dark:ring-gray-900" />
-          )}
-        </button>
-      </>
-    );
-
-    return () => setHeaderRightAction(null);
-  }, [activeFilters, isSearchVisible, setHeaderRightAction]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -463,15 +418,19 @@ const PaymentsPage: React.FC = () => {
     }
   }, [rawArchivedPayments]);
 
+  // Очистка поиска применяется сразу, ввод — с задержкой
+  const effectiveSearch = activeFilters.search ? debouncedSearch : "";
+  const { categoryId, isRecurring, hasFile } = activeFilters;
+
+  // Зависим только от примитивов: новый объект фильтров с теми же значениями не должен вызывать повторный запрос
   const fetchParams = useMemo(() => {
     const params: Record<string, string> = {};
-    if (debouncedSearch) params.search = debouncedSearch;
-    if (activeFilters.categoryId) params.categoryId = activeFilters.categoryId;
-    if (activeFilters.isRecurring !== "all")
-      params.isRecurring = activeFilters.isRecurring;
-    if (activeFilters.hasFile !== "all") params.hasFile = activeFilters.hasFile;
+    if (effectiveSearch) params.search = effectiveSearch;
+    if (categoryId) params.categoryId = categoryId;
+    if (isRecurring !== "all") params.isRecurring = isRecurring;
+    if (hasFile !== "all") params.hasFile = hasFile;
     return params;
-  }, [debouncedSearch, activeFilters]);
+  }, [effectiveSearch, categoryId, isRecurring, hasFile]);
 
   useEffect(() => {
     executeFetchActivePayments(fetchParams);
@@ -494,28 +453,6 @@ const PaymentsPage: React.FC = () => {
   );
   const trashCount = trashPayments.length;
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const hasItems = activeTab === "trash" ? trashCount > 0 : false;
-    window.dispatchEvent(
-      new CustomEvent("payments:trash-state", { detail: { hasItems } })
-    );
-  }, [activeTab, trashCount]);
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("payments:trash-state", {
-            detail: { hasItems: false },
-          })
-        );
-      }
-    };
-  }, []);
-
   const displayedPayments = useMemo(() => {
     switch (activeTab) {
       case "all":
@@ -537,6 +474,15 @@ const PaymentsPage: React.FC = () => {
       : activeTab === "active"
       ? isLoadingActive
       : isLoadingArchived;
+
+  // Скелетон показываем только при первой загрузке, чтобы при обновлении данных список не прыгал
+  const hasLoadedData =
+    activeTab === "all"
+      ? rawActivePayments !== null && rawArchivedPayments !== null
+      : activeTab === "active"
+      ? rawActivePayments !== null
+      : rawArchivedPayments !== null;
+  const showLoadingSkeleton = isLoading && !hasLoadedData;
 
   const error =
     activeTab === "all"
@@ -566,7 +512,10 @@ const PaymentsPage: React.FC = () => {
       ([entry]) => {
         if (entry?.isIntersecting) showMorePayments();
       },
-      { root: target.closest("main"), rootMargin: "240px 0px" }
+      // Подгружаем следующую порцию заранее, примерно за два экрана до конца списка.
+      // При малом запасе нижний край панели успевал показаться при быстрой прокрутке
+      // до отрисовки новых строк — на мгновение мелькала тёмная полоса фона страницы.
+      { root: target.closest("main"), rootMargin: "0px 0px 1600px 0px" }
     );
     observer.observe(target);
     return () => observer.disconnect();
@@ -785,22 +734,6 @@ const PaymentsPage: React.FC = () => {
     });
   }, [trashCount, performClearTrash, t]);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || activeTab !== "trash") {
-      return;
-    }
-
-    const handler = () => {
-      handleClearTrashRequest();
-    };
-
-    window.addEventListener("payments:clear-trash-request", handler);
-
-    return () => {
-      window.removeEventListener("payments:clear-trash-request", handler);
-    };
-  }, [activeTab, handleClearTrashRequest]);
-
   const handleAddPayment = () => {
     if (activeTab === "archive") {
       navigate("/payments/new?markAsCompleted=true");
@@ -846,35 +779,16 @@ const PaymentsPage: React.FC = () => {
     setShouldCloseMobilePanel(false);
   };
 
-  const handleMobileListClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!(event.target instanceof HTMLElement)) return;
-
-    const itemElement = event.target.closest<HTMLElement>(
-      "[data-mobile-list-item-id]"
-    );
-
-    if (itemElement?.dataset.mobileListItemId) {
-      const { mobileListItemId } = itemElement.dataset;
-
-      if (selectedMobilePaymentId === mobileListItemId) {
-        closeMobilePanel();
-        return;
-      }
-
-      const nextPayment = displayedPayments.find(
-        (paymentItem) => paymentItem.id === mobileListItemId
-      );
-
-      if (nextPayment) {
-        setShouldCloseMobilePanel(false);
-        setMobileActionsPayment(nextPayment);
-      }
+  // Тап по карточке на мобильных: открывает панель действий (повторный тап — закрывает)
+  const handleMobileOpen = (paymentId: string): void => {
+    if (selectedMobilePaymentId === paymentId) {
+      closeMobilePanel();
       return;
     }
-
-    if (event.target === event.currentTarget && selectedMobilePaymentId) {
-      closeMobilePanel();
-    }
+    const nextPayment = displayedPayments.find((p) => p.id === paymentId);
+    if (!nextPayment) return;
+    setShouldCloseMobilePanel(false);
+    setMobileActionsPayment(nextPayment);
   };
 
   const handleDownloadFile = async (paymentId: string, fileName: string) => {
@@ -906,9 +820,6 @@ const PaymentsPage: React.FC = () => {
   };
 
   const isArchiveOrTrash = activeTab === "archive" || activeTab === "trash";
-  const formatMobileDate = isDesktopViewport
-    ? undefined
-    : createDateDisplayFormatter(locale);
 
   const getEmptyMessage = () => {
     switch (activeTab) {
@@ -930,59 +841,50 @@ const PaymentsPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <div className="flex flex-col gap-4 mb-6">
-          <div className="flex items-center justify-between">
-            <h2 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {t("Платежи")}
-            </h2>
-            <div className="hidden md:flex items-center gap-4 flex-1 justify-end">
-              <div className="relative max-w-xs w-full">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-                </div>
-                <Input
-                  placeholder={t("Поиск...")}
-                  className="pl-9 py-2 text-sm w-full"
-                  value={activeFilters.search}
-                  onChange={(e) =>
-                    setActiveFilters((prev) => ({
-                      ...prev,
-                      search: e.target.value,
-                    }))
-                  }
-                />
-                {activeFilters.search && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveFilters((prev) => ({ ...prev, search: "" }))
-                    }
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+        <h1 className="sr-only hidden md:block">{t("Платежи")}</h1>
+
+        <div className="flex flex-wrap items-end gap-x-4 border-b border-[var(--ui-border)] md:px-6">
+          <SegmentedControl
+            variant="tabs"
+            ariaLabel={t("Статус")}
+            options={paymentFilterOptions.map((option) => ({ ...option, label: t(option.label) }))}
+            selected={activeTab}
+            onChange={handleTabChange}
+            className="min-h-11 w-full border-b border-[var(--ui-border)] px-3 md:min-h-[3.375rem] md:w-auto md:border-b-0 md:px-0"
+          />
+          <div className="ml-auto flex min-h-12 w-full max-w-full flex-wrap items-center justify-end gap-2 px-3 py-2 md:min-h-[3.375rem] md:w-auto md:flex-nowrap md:px-0 md:py-0">
+            <ToolbarSearch
+              value={activeFilters.search}
+              onChange={(search) => setActiveFilters((prev) => ({ ...prev, search }))}
+              expanded={isSearchVisible}
+              onExpandedChange={setIsSearchVisible}
+              placeholder={t("Поиск по названию...")}
+            />
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setDraftFilters(activeFilters);
                   setIsFilterPanelOpen(true);
                 }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors cursor-pointer ${
-                  activeFilterCount > 0
-                    ? "border-violet-300 bg-slate-100 text-indigo-700 dark:border-violet-400/50 dark:bg-slate-800 dark:text-indigo-300"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                aria-label={activeFilterCount ? `${t("Фильтры")} (${activeFilterCount})` : t("Фильтры")}
+                aria-haspopup="dialog"
+                aria-expanded={isFilterPanelOpen}
+                title={t("Фильтры")}
+                className={`flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
+                  activeFilterCount > 0 || isFilterPanelOpen
+                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100"
                 }`}
               >
-                <FunnelIcon className="w-4 h-4" />
-                {t("Фильтры")}
+                <AdjustmentsHorizontalIcon className="size-4" aria-hidden="true" />
               </button>
+              <span className="mx-0.5 h-4 w-px bg-[var(--ui-border)]" aria-hidden="true" />
               {activeTab === "trash" ? (
                 <Button
                   onClick={handleClearTrashRequest}
                   label={t("Очистить корзину")}
-                  icon={<TrashSolidIcon className="w-4 h-4" />}
+                  icon={<TrashSolidIcon />}
                   variant="destructive"
                   disabled={isClearingTrash || trashCount === 0}
                 />
@@ -990,130 +892,65 @@ const PaymentsPage: React.FC = () => {
                 <Button
                   onClick={handleAddPayment}
                   label={t("Добавить платеж")}
-                  icon={<PlusIcon className="w-4 h-4" />}
+                  icon={<PlusIcon />}
                 />
               )}
             </div>
           </div>
-          {isSearchVisible && (
-            <div className="md:hidden relative transition-all">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-              </div>
-              <Input
-                autoFocus
-                placeholder={t("Поиск по названию...")}
-                className="pl-9 py-2 text-sm w-full"
-                value={activeFilters.search}
-                onChange={(e) =>
-                  setActiveFilters((prev) => ({
-                    ...prev,
-                    search: e.target.value,
-                  }))
-                }
-              />
-              {activeFilters.search && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveFilters((prev) => ({ ...prev, search: "" }))
-                  }
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 cursor-pointer"
-                >
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          )}
-          <div className="flex justify-center md:justify-start">
-            <SegmentedControl
-              options={paymentFilterOptions.map((option) => ({ ...option, label: t(option.label) }))}
-              selected={activeTab}
-              onChange={handleTabChange}
-              className="w-full md:w-auto"
-              optionClassName="flex-1 md:flex-none justify-center"
-            />
-          </div>
         </div>
 
         {error && (
-          <div
-            className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-500/30 text-red-700 dark:text-red-400 px-4 py-3 rounded relative mb-4"
-            role="alert"
-          >
-            <span className="block sm:inline">{error.message}</span>
+          <div className="px-3 pt-4 md:px-6">
+            <div className="ui-alert-error" role="alert">
+              <span className="block sm:inline">{error.message}</span>
+            </div>
           </div>
         )}
 
         {!error && (
           <>
             {isDesktopViewport && (
-              <div className="overflow-x-auto card-base">
-                {isArchiveOrTrash ? (
-                  <ArchiveTable
-                    data={visiblePayments}
-                    isLoading={isLoading}
-                    onEdit={handleEditPayment}
+              <div className="px-6 pt-5">
+                <Panel>
+                  <PaymentRowList
+                    payments={visiblePayments}
+                    mode={activeTab === "archive" ? "archive" : activeTab === "trash" ? "trash" : activeTab === "all" ? "all" : "active"}
+                    isLoading={showLoadingSkeleton}
+                    emptyMessage={getEmptyMessage()}
+                    onOpen={handleEditPayment}
+                    onComplete={handleCompletePayment}
+                    onDelete={handleDeletePayment}
                     onRestore={handleRestorePayment}
                     onPermanentDelete={handlePermanentDeletePayment}
                     onDownloadFile={handleDownloadFile}
-                    emptyMessage={getEmptyMessage()}
-                    completedOrDeletedHeader={
-                      activeTab === "trash" ? t("Удален") : t("Выполнен")
-                    }
+                    inset="panel"
+                    showColumnHeader
+                    groupLimit={isArchiveOrTrash ? undefined : 5}
                   />
-                ) : (
-                  <PaymentsTable
-                    data={visiblePayments}
-                    isLoading={isLoading}
-                    onEdit={handleEditPayment}
-                    onComplete={handleCompletePayment}
-                    onDelete={handleDeletePayment}
-                    onDownloadFile={handleDownloadFile}
-                    emptyMessage={getEmptyMessage()}
-                  />
-                )}
+                </Panel>
               </div>
             )}
-            {!isDesktopViewport && !isLoading && (
-              <div
-                ref={mobileListRef}
-                onClick={handleMobileListClick}
-                className="space-y-2"
-              >
-                {visiblePayments.length === 0 ? (
-                  <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                    {getEmptyMessage()}
-                  </div>
-                ) : (
-                  visiblePayments.map((payment) => {
-                    const isSelected = selectedMobilePaymentId === payment.id;
-                    const cardStateClasses = [
-                      "transition-all duration-200",
-                      isSelected
-                        ? "border-gray-400 shadow-md relative z-50"
-                        : "",
-                    ]
-                      .filter((cls) => cls)
-                      .join(" ");
-                    return (
-                      <PaymentListCard
-                        key={payment.id}
-                        payment={payment}
-                        context={isArchiveOrTrash ? "archive" : "payments"}
-                        onDownloadFile={handleDownloadFile}
-                        className={cardStateClasses}
-                        formatDate={formatMobileDate}
-                      />
-                    );
-                  })
-                )}
+            {!isDesktopViewport && (
+              // Мобильные: тот же список, что и на десктопе, в виде карточек
+              <div ref={mobileListRef} className="px-3 py-3">
+                <PaymentRowList
+                  payments={visiblePayments}
+                  mode={activeTab === "archive" ? "archive" : activeTab === "trash" ? "trash" : activeTab === "all" ? "all" : "active"}
+                  isLoading={showLoadingSkeleton}
+                  emptyMessage={getEmptyMessage()}
+                  onOpen={handleMobileOpen}
+                  onDownloadFile={handleDownloadFile}
+                  inset="plain"
+                  groupLimit={isArchiveOrTrash ? undefined : 5}
+                  selectedId={selectedMobilePaymentId}
+                />
               </div>
             )}
             {canShowMore && (
-              <div ref={loadMoreRef} className="mt-4 flex justify-center">
+              <div ref={loadMoreRef} className="py-4 flex justify-center">
                 <Button
-                  variant="secondary"
+                  variant="ghost"
+                  size="small"
                   label={t("Показать больше")}
                   onClick={showMorePayments}
                 />
@@ -1180,9 +1017,9 @@ const PaymentsPage: React.FC = () => {
         onClose={cancelDraftFilters}
         title={t("Фильтрация")}
       >
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
               {t("Категория")}
             </label>
             <Select
@@ -1202,7 +1039,7 @@ const PaymentsPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
               {t("Повторение")}
             </label>
             <SegmentedControl
@@ -1223,7 +1060,7 @@ const PaymentsPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1.5">
               {t("Наличие файла")}
             </label>
             <SegmentedControl
@@ -1260,12 +1097,12 @@ const PaymentsPage: React.FC = () => {
             <button
               type="button"
               onClick={resetDraftFilters}
-              className="mt-2 text-sm text-red-500 font-medium py-2 text-left"
+              className="mt-2 text-sm text-red-600 dark:text-red-400 font-medium py-2 text-left cursor-pointer"
             >
               {t("Сбросить все фильтры")}
             </button>
           </div>
-          <div className="hidden md:flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-800">
+          <div className="hidden md:flex justify-between items-center pt-4 border-t border-[var(--ui-border)]">
             <button
               type="button"
               onClick={resetDraftFilters}

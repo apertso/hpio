@@ -51,10 +51,8 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
         const timer = setTimeout(() => setDisplayState("idle"), 3000);
         return () => clearTimeout(timer);
       } else {
-        setDisplayState("success");
-        setResultMessage(t("Готово"));
-        const timer = setTimeout(() => setDisplayState("idle"), 3000);
-        return () => clearTimeout(timer);
+        // Успешная синхронизация не требует внимания — индикатор просто скрывается
+        setDisplayState("idle");
       }
     }
 
@@ -77,11 +75,11 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
        // Show simple pending state if idle but items exist
        return (
         <div
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ${className}`}
+          className={`flex h-6 items-center gap-1.5 px-2 rounded-md border border-[var(--ui-border)] text-gray-500 ${className}`}
           title={t("Ожидание синхронизации")}
         >
-           <CloudIcon className="h-4 w-4 text-gray-500" />
-           <span className="text-[10px] font-medium text-gray-500">
+           <CloudIcon className="size-3.5 text-gray-400" />
+           <span className="text-xs font-medium tabular-nums text-gray-500">
              {queueStats.total}
            </span>
         </div>
@@ -96,28 +94,28 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
         return {
           icon: CloudSlashIcon, // Using Solid Cloud as base, realistically would want a slash icon but this suffices for "solid" look or distinct
           text: t("Офлайн"),
-          style: "text-gray-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700",
+          style: "text-gray-500 dark:text-gray-400",
           iconStyle: "text-gray-400",
         };
       case "syncing":
         return {
           icon: CloudArrowUpIcon,
           text: t("Обновление"),
-          style: "text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800",
-          iconStyle: "animate-bounce text-blue-500",
+          style: "text-gray-600 dark:text-gray-300",
+          iconStyle: "animate-pulse text-indigo-500",
         };
       case "success":
         return {
           icon: CheckCircleIcon,
           text: resultMessage || t("Готово"),
-          style: "text-green-600 bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800",
+          style: "text-gray-600 dark:text-gray-300",
           iconStyle: "text-green-500",
         };
       case "error":
         return {
           icon: XCircleIcon,
           text: resultMessage || t("Ошибка"),
-          style: "text-red-600 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800",
+          style: "text-red-600 dark:text-red-400",
           iconStyle: "text-red-500",
         };
       default:
@@ -133,9 +131,9 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
 
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm transition-all duration-300 ${config.style} ${className}`}
+      className={`flex h-6 items-center gap-1.5 px-2 rounded-md border border-[var(--ui-border)] transition-colors duration-300 ${config.style} ${className}`}
     >
-      <Icon className={`h-4 w-4 ${config.iconStyle}`} />
+      <Icon className={`size-3.5 ${config.iconStyle}`} />
       <span className="text-xs font-medium hidden sm:inline-block">
         {config.text}
       </span>

@@ -10,6 +10,7 @@ import { ResetProvider } from "./context/ResetContext";
 import { OfflineProvider } from "./context/OfflineContext.tsx";
 import { PageTitleProvider } from "./context/PageTitleContext.tsx";
 import { LanguageProvider } from "./context/LanguageContext";
+import { AppUpdateProvider } from "./context/AppUpdateContext";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import { initializeErrorHandlers } from "./utils/errorHandlers";
 import { initializeFreezeDetector } from "./utils/freezeDetector";
@@ -27,6 +28,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <BrowserRouter>
             <AuthProvider>
               <ToastProvider>
+                <AppUpdateProvider>
                 <ResetProvider>
                   <OfflineProvider>
                     <PageTitleProvider>
@@ -34,6 +36,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     </PageTitleProvider>
                   </OfflineProvider>
                 </ResetProvider>
+                </AppUpdateProvider>
               </ToastProvider>
             </AuthProvider>
           </BrowserRouter>

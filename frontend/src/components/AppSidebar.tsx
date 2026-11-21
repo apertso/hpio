@@ -425,14 +425,7 @@ const AppSidebar: React.FC<{ demo?: boolean }> = ({ demo = false }) => {
         >
           <AppLogoMark className="size-3" />
           {!collapsed && (
-            <span className="truncate">
-              {t("Хочу Плачу")}
-              {import.meta.env.VITE_APP_VERSION && (
-                <span className="ml-1.5 tabular-nums">
-                  v{import.meta.env.VITE_APP_VERSION}
-                </span>
-              )}
-            </span>
+            <span className="truncate">{t("Хочу Плачу")}</span>
           )}
         </div>
       </div>

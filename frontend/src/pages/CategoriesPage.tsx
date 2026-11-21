@@ -1,14 +1,12 @@
 // src/pages/CategoriesPage.tsx
 import { useLanguage } from "../context/LanguageContext";
-import { PageToolbar, Panel } from "../components/layout/Page";
+import {
+  HeaderViewMenu,
+  PageHeader,
+  Panel,
+} from "../components/layout/Page";
 import React, { useEffect, useState, useRef } from "react";
 import axiosInstance from "../api/axiosInstance";
-import {
-  PencilIcon as PencilSolidIcon,
-  PlusIcon,
-  TrashIcon as TrashSolidIcon,
-} from "@heroicons/react/24/solid";
-import { Button } from "../components/Button"; // Import the Button component
 import useApi from "../hooks/useApi"; // Import useApi
 import getErrorMessage from "../utils/getErrorMessage";
 import { useNavigate } from "react-router-dom";
@@ -16,13 +14,18 @@ import { useToast } from "../context/ToastContext"; // Import useToast
 import ConfirmModal from "../components/ConfirmModal"; // Import ConfirmModal
 import PaymentIconDisplay from "../components/PaymentIconDisplay";
 import { CategoriesTable } from "../components";
-import SegmentedControl, {
-  SegmentedControlOption,
-} from "../components/SegmentedControl";
+import type { SegmentedControlOption } from "../components/SegmentedControl";
 import { BuiltinIcon } from "../utils/builtinIcons";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import MobilePanel from "../components/MobilePanel";
+import MobileActionBar from "../components/MobileActionBar";
+// Иконки меню действий на мобильных — единый контурный набор
+import {
+  PencilSquareIcon as PencilOutlineIcon,
+  TrashIcon as TrashOutlineIcon,
+} from "@heroicons/react/24/outline";
+
 import { usePageTitle } from "../context/PageTitleContext";
 import { localizedCategoryName } from "../utils/categoryLabel";
 
@@ -62,12 +65,13 @@ const MobileActionsOverlay: React.FC<{
   const actions = [
     {
       label: t("Изменить"),
-      icon: PencilSolidIcon,
+      icon: PencilOutlineIcon,
       handler: () => onEdit(category.id),
     },
     {
       label: t("Удалить"),
-      icon: TrashSolidIcon,
+      icon: TrashOutlineIcon,
+      tone: "destructive" as const,
       handler: () =>
         onDelete(category.id, localizedCategoryName(category, language)),
     },
@@ -81,21 +85,7 @@ const MobileActionsOverlay: React.FC<{
       shouldClose={shouldClose}
       enableBackdropClick={false}
     >
-      <div className="flex justify-around items-center">
-        {actions.map((action) => (
-          <button
-            key={action.label}
-            onClick={() => {
-              action.handler();
-              onClose();
-            }}
-            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-          >
-            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
-            <span className="text-xs font-medium">{action.label}</span>
-          </button>
-        ))}
-      </div>
+      <MobileActionBar actions={actions} onAfterSelect={onClose} />
     </MobilePanel>
   );
 };
@@ -284,27 +274,30 @@ const CategoriesPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <h1 className="sr-only hidden md:block">{t("Категории")}</h1>
-        <PageToolbar className="py-0 md:min-h-[3.375rem]">
-          <SegmentedControl
-            variant="tabs"
-            ariaLabel={t("Тип категории")}
-            options={categoryTabOptions.map((option) => ({ ...option, label: t(option.label) }))}
-            selected={activeCategoryType}
-            onChange={setActiveCategoryType}
-            className="min-h-11"
-          />
-          <div className="ml-auto hidden items-center gap-3 md:flex">
-            <span className="text-xs tabular-nums text-gray-500 dark:text-gray-400">
+        <h1 className="sr-only">{t("Категории")}</h1>
+        <PageHeader
+          breadcrumbs={[{ label: t("Категории") }]}
+          title={
+            <HeaderViewMenu
+              ariaLabel={t("Тип категории")}
+              options={categoryTabOptions.map((option) => ({
+                ...option,
+                label: t(option.label),
+              }))}
+              value={activeCategoryType}
+              onChange={setActiveCategoryType}
+            />
+          }
+          titleAddon={
+            <span className="ml-1 text-sm tabular-nums text-gray-400 dark:text-gray-500">
               {filteredCategories.length}
             </span>
-            <Button
-              onClick={handleAddCategory}
-              label={t("Добавить категорию")}
-              icon={<PlusIcon className="w-4 h-4" />}
-            />
-          </div>
-        </PageToolbar>
+          }
+          primaryAction={{
+            label: t("Добавить категорию"),
+            onClick: handleAddCategory,
+          }}
+        />
 
         <>
           {/* Desktop Table View */}

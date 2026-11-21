@@ -1,7 +1,12 @@
 import { useLanguage } from "../../context/LanguageContext";
 import React, { useState, useEffect } from "react";
-import { BellAlertIcon } from "@heroicons/react/24/outline";
-import SettingsSection from "../SettingsSection";
+import { Button } from "../Button";
+import {
+  SettingsCheckIcon,
+  SettingsGroup,
+  SettingsHeader,
+  SettingsRow,
+} from "./SettingsLayout";
 import ToggleSwitch from "../ToggleSwitch";
 import TimeInput from "../TimeInput";
 import { useToast } from "../../context/ToastContext";
@@ -144,109 +149,83 @@ const NotificationsSection: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      {/* App Notifications Section (Android only) */}
+    <div>
+      <SettingsHeader
+        title={t("Уведомления")}
+        description={t("Получайте напоминания о предстоящих платежах и уведомления о новых предложениях автоплатежей")}
+      />
 
-      <SettingsSection className="card-base p-5">
-        <div className="flex items-start gap-3 mb-5">
-          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
-            <BellAlertIcon className="size-4" />
-          </div>
-          <div className="flex-1">
-            <h3 className="ui-heading mb-0.5">
-              {t("Уведомления приложения")}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("Получайте напоминания о предстоящих платежах и уведомления о новых предложениях автоплатежей")}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
+      <div className="space-y-8">
+        <SettingsGroup title={t("Каналы")}>
           {isTauriMobile() && (
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t("Отображение уведомлений")}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {isCheckingAppPermission
-                    ? t("Проверка...")
-                    : appNotificationPermissionGranted
-                    ? t("Разрешено")
-                    : t("Не разрешено")}
-                </p>
-              </div>
-              {!appNotificationPermissionGranted &&
-                !isCheckingAppPermission && (
-                  <button
+            <SettingsRow
+              inline
+              label={t("Отображение уведомлений")}
+              description={
+                isCheckingAppPermission
+                  ? t("Проверка...")
+                  : appNotificationPermissionGranted
+                  ? t("Разрешено")
+                  : t("Не разрешено")
+              }
+              control={
+                isCheckingAppPermission ? null : appNotificationPermissionGranted ? (
+                  <SettingsCheckIcon label={t("Разрешено")} />
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    label={t("Настроить")}
                     onClick={handleOpenAppNotificationSettings}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-                  >
-                    {t("Настроить")}
-                  </button>
-                )}
-              {appNotificationPermissionGranted && (
-                <div className="text-green-600 dark:text-green-400">
-                  <svg
-                    className="w-6 h-6"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              )}
-            </div>
+                  />
+                )
+              }
+            />
           )}
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {t("Email уведомления")}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t("Получать напоминания о платежах по email")}
-              </p>
-            </div>
-            <ToggleSwitch
-              checked={emailNotifications}
-              onChange={handleEmailNotificationsChange}
-              disabled={isUpdatingPreferences}
-            />
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {t("Push уведомления")}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t("Получать push-уведомления в приложении")}
-              </p>
-            </div>
-            <ToggleSwitch
-              checked={pushNotifications}
-              onChange={handlePushNotificationsChange}
-              disabled={isUpdatingPreferences}
-            />
-          </div>
-
-          {(emailNotifications || pushNotifications) && (
-            <div>
-              <TimeInput
-                label={t("Напоминать в")}
-                id="notificationTime"
-                value={notificationTime}
-                onChange={handleNotificationTimeChange}
+          <SettingsRow
+            inline
+            label={t("Email уведомления")}
+            description={t("Получать напоминания о платежах по email")}
+            control={
+              <ToggleSwitch
+                checked={emailNotifications}
+                onChange={handleEmailNotificationsChange}
+                disabled={isUpdatingPreferences}
               />
-            </div>
-          )}
-        </div>
-      </SettingsSection>
+            }
+          />
+          <SettingsRow
+            inline
+            label={t("Push уведомления")}
+            description={t("Получать push-уведомления в приложении")}
+            control={
+              <ToggleSwitch
+                checked={pushNotifications}
+                onChange={handlePushNotificationsChange}
+                disabled={isUpdatingPreferences}
+              />
+            }
+          />
+        </SettingsGroup>
+
+        {(emailNotifications || pushNotifications) && (
+          <SettingsGroup title={t("Расписание")}>
+            <SettingsRow
+              inline
+              label={t("Напоминать в")}
+              description={t("Время ежедневного напоминания о платежах")}
+              htmlFor="notificationTime-hours"
+              control={
+                <TimeInput
+                  id="notificationTime"
+                  value={notificationTime}
+                  onChange={handleNotificationTimeChange}
+                />
+              }
+            />
+          </SettingsGroup>
+        )}
+      </div>
     </div>
   );
 };

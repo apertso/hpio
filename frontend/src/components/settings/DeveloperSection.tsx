@@ -2,8 +2,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import React, { useState } from "react";
 import ToggleSwitch from "../ToggleSwitch";
 import Select from "../Select";
-import SettingsSection from "../SettingsSection";
-import { CodeBracketIcon } from "@heroicons/react/24/outline";
+import { Button } from "../Button";
+import { SettingsGroup, SettingsHeader, SettingsRow } from "./SettingsLayout";
 import { useToast } from "../../context/ToastContext";
 import { isTauriMobile } from "../../utils/platform";
 import {
@@ -229,206 +229,166 @@ const DeveloperSection: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <SettingsSection className="card-base p-5">
-        <div className="flex items-start gap-3 mb-5">
-          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
-            <CodeBracketIcon className="size-4" />
-          </div>
-          <div className="flex-1">
-            <h2 className="ui-heading mb-0.5">
-              {t("Разработка")}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("Инструменты для разработчиков и тестирования функциональности приложения")}
-            </p>
-          </div>
-        </div>
+    <div>
+      <SettingsHeader
+        title={t("Разработка")}
+        description={t("Инструменты для разработчиков и тестирования функциональности приложения")}
+      />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t("Мобильный режим")}
-            </label>
-            <Select
-              options={[
-                { label: "-", value: "-" },
-                { label: t("Включен"), value: "on" },
-                { label: t("Выключен"), value: "off" },
-              ]}
-              value={mobileOverride}
-              onChange={handleMobileOverrideChange}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {t("Принудительно включает/выключает мобильный интерфейс для тестирования")}
-            </p>
-          </div>
+      <div className="space-y-8">
+        <SettingsGroup title={t("Интерфейс")}>
+          <SettingsRow
+            label={t("Мобильный режим")}
+            description={t("Принудительно включает/выключает мобильный интерфейс для тестирования")}
+            htmlFor="dev-mobile-override"
+            control={
+              <Select
+                id="dev-mobile-override"
+                options={[
+                  { label: "-", value: "-" },
+                  { label: t("Включен"), value: "on" },
+                  { label: t("Выключен"), value: "off" },
+                ]}
+                value={mobileOverride}
+                onChange={handleMobileOverrideChange}
+              />
+            }
+          />
+          <SettingsRow
+            label={t("Показать onboarding уведомлений")}
+            description={t("Принудительно показывает/скрывает onboarding автоматизации уведомлений")}
+            htmlFor="dev-notification-onboarding"
+            control={
+              <Select
+                id="dev-notification-onboarding"
+                options={[
+                  { label: "-", value: "-" },
+                  { label: t("Показать"), value: "on" },
+                  { label: t("Скрыть"), value: "off" },
+                ]}
+                value={notificationOnboardingOverride}
+                onChange={handleNotificationOnboardingOverride}
+              />
+            }
+          />
+        </SettingsGroup>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t("Показать onboarding уведомлений")}
-            </label>
-            <Select
-              options={[
-                { label: "-", value: "-" },
-                { label: t("Показать"), value: "on" },
-                { label: t("Скрыть"), value: "off" },
-              ]}
-              value={notificationOnboardingOverride}
-              onChange={handleNotificationOnboardingOverride}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {t("Принудительно показывает/скрывает onboarding автоматизации уведомлений")}
-            </p>
-          </div>
-
-          <div className="md:col-span-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t("Показать отладочные уведомления")}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {t("Показывает техническую информацию о обработке уведомлений платежей")}
-                </p>
-              </div>
+        <SettingsGroup title={t("Функции")}>
+          <SettingsRow
+            inline
+            label={t("Показать отладочные уведомления")}
+            description={t("Показывает техническую информацию о обработке уведомлений платежей")}
+            control={
               <ToggleSwitch
                 checked={showDebugToasts}
                 onChange={handleDebugToastsToggle}
               />
-            </div>
-          </div>
-
-          <div className="md:col-span-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t("Доходы и источники (экспериментально)")}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {t("Включает разделы \"Доходы\" и \"Источники\" и метод оплаты в платежах")}
-                </p>
-              </div>
+            }
+          />
+          <SettingsRow
+            inline
+            label={t("Доходы и источники (экспериментально)")}
+            description={t("Включает разделы \"Доходы\" и \"Источники\" и метод оплаты в платежах")}
+            control={
               <ToggleSwitch
                 checked={incomeAndCardsEnabled}
                 onChange={handleIncomeAndCardsToggle}
               />
-            </div>
-          </div>
-          <div className="md:col-span-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t("Теги и категории")}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {t("Включено для всех по умолчанию")}
-                </p>
-              </div>
+            }
+          />
+          <SettingsRow
+            inline
+            label={t("Теги и категории")}
+            description={t("Включено для всех по умолчанию")}
+            control={
               <ToggleSwitch
                 checked={tagsAndCategoriesEnabled}
                 onChange={handleTagsAndCategoriesToggle}
                 disabled
               />
-            </div>
-          </div>
-        </div>
+            }
+          />
+        </SettingsGroup>
 
-        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-          <h4 className="ui-heading mb-3">
-            {t("Тестовое email-уведомление")}
-          </h4>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              {t("Отправляет письмо с контрольной фразой \"email notifications functionality check\" на ваш текущий email. Используйте для проверки SMTP-настроек.")}
-            </p>
-            <button
-              onClick={handleSendTestEmail}
-              disabled={isSendingTestEmail}
-              className="primary-action cursor-pointer px-4 py-2 text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSendingTestEmail
-                ? t("Отправка...")
-                : t("Отправить тестовое email-уведомление")}
-            </button>
-          </div>
-        </div>
+        <SettingsGroup title={t("Проверки")}>
+          <SettingsRow
+            label={t("Тестовое email-уведомление")}
+            description={t("Отправляет письмо с контрольной фразой \"email notifications functionality check\" на ваш текущий email. Используйте для проверки SMTP-настроек.")}
+            controlWidth="auto"
+            control={
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={handleSendTestEmail}
+                disabled={isSendingTestEmail}
+                label={isSendingTestEmail ? t("Отправка...") : t("Отправить")}
+              />
+            }
+          />
+          {isTauriMobile() && (
+            <SettingsRow
+              label={t("Симуляция уведомлений")}
+              description={t(" Симулирует получение уведомления от Райффайзен банка для проверки автоматической обработки платежей.").trim()}
+              controlWidth="auto"
+              control={
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={handleSimulateNotification}
+                  label={t("Симулировать")}
+                />
+              }
+            />
+          )}
+          <SettingsRow
+            label={t("Демонстрация Particle Notification")}
+            controlWidth="auto"
+            control={
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => setShowParticleNotification(true)}
+                label={t("Показать")}
+              />
+            }
+          />
+        </SettingsGroup>
 
-        {/* Notification Simulation Section */}
         {isTauriMobile() && (
-          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-            <h4 className="ui-heading mb-3">
-              {t("Симуляция уведомлений")}
-            </h4>
-            <div className="space-y-4">
-              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-900/30 rounded-lg">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>{t("Тестирование:")}</strong>{t(" Симулирует получение уведомления от Райффайзен банка для проверки автоматической обработки платежей.")}
-                </p>
-              </div>
-              <button
-                onClick={handleSimulateNotification}
-                className="primary-action cursor-pointer px-4 py-2 text-sm font-medium rounded-md transition-colors"
-              >
-                {t("Симулировать уведомление Райффайзен")}
-              </button>
-            </div>
-          </div>
+          <SettingsGroup
+            title={t("Логи приложения")}
+            description={t(" Все логи приложения за сегодня сохраняются в файл logs.txt. Вы можете скачать, скопировать или очистить этот файл.").trim()}
+          >
+            <SettingsRow
+              label={t("Файл логов")}
+              controlWidth="auto"
+              control={
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={handleDownloadLogs}
+                    label={t("Скачать")}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={handleCopyLogs}
+                    disabled={isCopyingLogs}
+                    label={isCopyingLogs ? t("Копирование...") : t("Копировать")}
+                  />
+                  <Button
+                    variant="destructive"
+                    size="small"
+                    onClick={() => setIsClearLogsModalOpen(true)}
+                    label={t("Очистить")}
+                  />
+                </div>
+              }
+            />
+          </SettingsGroup>
         )}
-
-        {/* Log Download Section */}
-        {isTauriMobile() && (
-          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-            <h4 className="ui-heading mb-3">
-              {t("Логи приложения")}
-            </h4>
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>{t("Файл логов:")}</strong>{t(" Все логи приложения за сегодня сохраняются в файл logs.txt. Вы можете скачать, скопировать или очистить этот файл.")}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={handleDownloadLogs}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
-                >
-                  {t("Скачать логи")}
-                </button>
-                <button
-                  onClick={handleCopyLogs}
-                  disabled={isCopyingLogs}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isCopyingLogs ? t("Копирование...") : t("Копировать в буфер")}
-                </button>
-                <button
-                  onClick={() => setIsClearLogsModalOpen(true)}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-                >
-                  {t("Очистить логи")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-          <div className="flex items-start gap-3 mb-4">
-            <h4 className="ui-heading">
-              {t("Демонстрация Particle Notification")}
-            </h4>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowParticleNotification(true)}
-              className="primary-action cursor-pointer px-4 py-2 text-sm font-medium rounded-md transition-colors"
-            >
-              {t("Показать тестовое уведомление")}
-            </button>
-          </div>
-        </div>
-      </SettingsSection>
+      </div>
 
       <ConfirmModal
         isOpen={isClearLogsModalOpen}

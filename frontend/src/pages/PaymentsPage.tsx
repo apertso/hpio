@@ -1,7 +1,12 @@
 import { parseCalendarDate } from "../utils/dateUtils";
 import PaymentRowList from "../components/PaymentRowList";
 import ToolbarSearch from "../components/ToolbarSearch";
-import { Panel } from "../components/layout/Page";
+import {
+  HeaderIconButton,
+  HeaderViewMenu,
+  PageHeader,
+  Panel,
+} from "../components/layout/Page";
 import { localizedCategoryName } from "../utils/categoryLabel";
 // src/pages/PaymentsPage.tsx
 import { useLanguage } from "../context/LanguageContext";
@@ -23,13 +28,19 @@ import SegmentedControl, {
   SegmentedControlOption,
 } from "../components/SegmentedControl";
 import {
-  PencilIcon as PencilSolidIcon,
-  CheckCircleIcon as CheckSolidIcon,
-  TrashIcon as TrashSolidIcon,
-  ArrowPathIcon as ArrowPathSolidIcon,
-} from "@heroicons/react/24/solid";
-import { AdjustmentsHorizontalIcon, PlusIcon } from "@heroicons/react/24/outline";
+  AdjustmentsHorizontalIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import MobilePanel from "../components/MobilePanel";
+import MobileActionBar from "../components/MobileActionBar";
+// Иконки меню действий на мобильных — единый контурный набор
+import {
+  CheckCircleIcon as CheckOutlineIcon,
+  PencilSquareIcon as PencilOutlineIcon,
+  ArrowUturnLeftIcon as RestoreOutlineIcon,
+  TrashIcon as TrashOutlineIcon,
+} from "@heroicons/react/24/outline";
+
 import { usePageTitle } from "../context/PageTitleContext";
 import AdvancedFiltersPanel from "../components/AdvancedFiltersPanel";
 import Select from "../components/Select";
@@ -150,34 +161,36 @@ const MobileActionsOverlay = ({
     ? [
         {
           label: t("Изменить"),
-          icon: PencilSolidIcon,
+          icon: PencilOutlineIcon,
           handler: () => onEdit(payment.id),
         },
         {
           label: t("Восстановить"),
-          icon: ArrowPathSolidIcon,
+          icon: RestoreOutlineIcon,
           handler: () => onRestore(payment),
         },
         {
           label: t("Удалить"),
-          icon: TrashSolidIcon,
+          icon: TrashOutlineIcon,
+          tone: "destructive" as const,
           handler: () => onPermanentDelete(payment.id),
         },
       ]
     : [
         {
           label: t("Изменить"),
-          icon: PencilSolidIcon,
+          icon: PencilOutlineIcon,
           handler: () => onEdit(payment.id),
         },
         {
           label: t("Выполнить"),
-          icon: CheckSolidIcon,
+          icon: CheckOutlineIcon,
           handler: () => onComplete(payment),
         },
         {
           label: t("Удалить"),
-          icon: TrashSolidIcon,
+          icon: TrashOutlineIcon,
+          tone: "destructive" as const,
           handler: () => onDelete(payment),
         },
       ];
@@ -190,21 +203,7 @@ const MobileActionsOverlay = ({
       shouldClose={shouldClose}
       enableBackdropClick={false}
     >
-      <div className="flex justify-around items-center">
-        {actions.map((action) => (
-          <button
-            key={action.label}
-            onClick={() => {
-              action.handler();
-              onClose();
-            }}
-            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-          >
-            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
-            <span className="text-xs font-medium">{action.label}</span>
-          </button>
-        ))}
-      </div>
+      <MobileActionBar actions={actions} onAfterSelect={onClose} />
     </MobilePanel>
   );
 };
@@ -841,63 +840,64 @@ const PaymentsPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <h1 className="sr-only hidden md:block">{t("Платежи")}</h1>
-
-        <div className="flex flex-wrap items-end gap-x-4 border-b border-[var(--ui-border)] md:px-6">
-          <SegmentedControl
-            variant="tabs"
-            ariaLabel={t("Статус")}
-            options={paymentFilterOptions.map((option) => ({ ...option, label: t(option.label) }))}
-            selected={activeTab}
-            onChange={handleTabChange}
-            className="min-h-11 w-full border-b border-[var(--ui-border)] px-3 md:min-h-[3.375rem] md:w-auto md:border-b-0 md:px-0"
-          />
-          <div className="ml-auto flex min-h-12 w-full max-w-full flex-wrap items-center justify-end gap-2 px-3 py-2 md:min-h-[3.375rem] md:w-auto md:flex-nowrap md:px-0 md:py-0">
-            <ToolbarSearch
-              value={activeFilters.search}
-              onChange={(search) => setActiveFilters((prev) => ({ ...prev, search }))}
-              expanded={isSearchVisible}
-              onExpandedChange={setIsSearchVisible}
-              placeholder={t("Поиск по названию...")}
+        <h1 className="sr-only">{t("Платежи")}</h1>
+        <PageHeader
+          breadcrumbs={[{ label: t("Платежи") }]}
+          title={
+            <HeaderViewMenu
+              ariaLabel={t("Статус")}
+              options={paymentFilterOptions.map((option) => ({
+                ...option,
+                label: t(option.label),
+              }))}
+              value={activeTab}
+              onChange={handleTabChange}
             />
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
+          }
+          actions={
+            <>
+              <ToolbarSearch
+                value={activeFilters.search}
+                onChange={(search) =>
+                  setActiveFilters((prev) => ({ ...prev, search }))
+                }
+                expanded={isSearchVisible}
+                onExpandedChange={setIsSearchVisible}
+                placeholder={t("Поиск по названию...")}
+              />
+              <HeaderIconButton
+                label={
+                  activeFilterCount
+                    ? `${t("Фильтры")} (${activeFilterCount})`
+                    : t("Фильтры")
+                }
+                icon={<AdjustmentsHorizontalIcon aria-hidden="true" />}
+                aria-haspopup="dialog"
+                aria-expanded={isFilterPanelOpen}
+                active={isFilterPanelOpen}
+                indicator={activeFilterCount > 0}
                 onClick={() => {
                   setDraftFilters(activeFilters);
                   setIsFilterPanelOpen(true);
                 }}
-                aria-label={activeFilterCount ? `${t("Фильтры")} (${activeFilterCount})` : t("Фильтры")}
-                aria-haspopup="dialog"
-                aria-expanded={isFilterPanelOpen}
-                title={t("Фильтры")}
-                className={`flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
-                  activeFilterCount > 0 || isFilterPanelOpen
-                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
-                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100"
-                }`}
-              >
-                <AdjustmentsHorizontalIcon className="size-4" aria-hidden="true" />
-              </button>
-              <span className="mx-0.5 h-4 w-px bg-[var(--ui-border)]" aria-hidden="true" />
-              {activeTab === "trash" ? (
-                <Button
-                  onClick={handleClearTrashRequest}
+              />
+              {activeTab === "trash" && (
+                <HeaderIconButton
                   label={t("Очистить корзину")}
-                  icon={<TrashSolidIcon />}
-                  variant="destructive"
+                  icon={<TrashIcon aria-hidden="true" />}
+                  tone="destructive"
+                  onClick={handleClearTrashRequest}
                   disabled={isClearingTrash || trashCount === 0}
                 />
-              ) : (
-                <Button
-                  onClick={handleAddPayment}
-                  label={t("Добавить платеж")}
-                  icon={<PlusIcon />}
-                />
               )}
-            </div>
-          </div>
-        </div>
+            </>
+          }
+          primaryAction={
+            activeTab === "trash"
+              ? null
+              : { label: t("Добавить платеж"), onClick: handleAddPayment }
+          }
+        />
 
         {error && (
           <div className="px-3 pt-4 md:px-6">

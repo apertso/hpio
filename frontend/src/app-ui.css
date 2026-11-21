@@ -560,3 +560,11 @@ html.app-ui ::-webkit-scrollbar-thumb:hover {
     animation: none;
   }
 }
+
+/* Общая шапка: если страница передала свой заголовок, запасной скрываем */
+.app-header-title:empty {
+  display: none;
+}
+.app-header-title:not(:empty) + .app-header-fallback {
+  display: none;
+}

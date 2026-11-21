@@ -1,10 +1,12 @@
 import { useLanguage } from "../../context/LanguageContext";
 import React, { useState, useEffect } from "react";
 import {
-  SparklesIcon,
-  ShieldCheckIcon,
-} from "@heroicons/react/24/outline";
-import SettingsSection from "../SettingsSection";
+  SettingsCheckIcon,
+  SettingsGroup,
+  SettingsHeader,
+  SettingsNotice,
+  SettingsRow,
+} from "./SettingsLayout";
 import ToggleSwitch from "../ToggleSwitch";
 import Spinner from "../Spinner";
 import { useToast } from "../../context/ToastContext";
@@ -261,306 +263,185 @@ const AutomationSection: React.FC = () => {
     }
   };
 
+  // Строка чеклиста: статус условия и кнопка перехода в системные настройки
+  const renderChecklistRow = (options: {
+    label: string;
+    tooltip: string;
+    isChecking: boolean;
+    isDone: boolean;
+    doneText: string;
+    pendingText: string;
+    onOpen: () => void;
+  }): React.ReactNode => (
+    <SettingsRow
+      inline
+      label={
+        <span className="inline-flex items-center gap-1">
+          {options.label}
+          <Tooltip content={options.tooltip}>
+            <button
+              type="button"
+              aria-label={options.tooltip}
+              className="flex size-6 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
+            >
+              <InformationIcon className="size-4" />
+            </button>
+          </Tooltip>
+        </span>
+      }
+      description={
+        options.isChecking
+          ? t("Проверка...")
+          : options.isDone
+          ? options.doneText
+          : options.pendingText
+      }
+      control={
+        options.isChecking ? (
+          <Spinner size="sm" />
+        ) : options.isDone ? (
+          <SettingsCheckIcon label={options.doneText} />
+        ) : (
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={options.onOpen}
+            label={t("Настроить")}
+          />
+        )
+      }
+    />
+  );
+
   return (
-    <div className="space-y-8">
-      {/* Automation Toggle */}
-      {isTauriMobile() && (
-        <SettingsSection className="card-base p-5">
-          <div className="flex items-start gap-3 mb-5">
-            <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
-              <SparklesIcon className="size-4" />
-            </div>
-            <div className="flex-1">
-              <h2 className="ui-heading mb-0.5">
-                {t("Автоматизация уведомлений")}
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {t("Автоматически создавайте записи о платежах на основе банковских уведомлений")}
-              </p>
-            </div>
-          </div>
+    <div>
+      <SettingsHeader
+        title={t("Автоматизация")}
+        description={t("Автоматически создавайте записи о платежах на основе банковских уведомлений")}
+      />
 
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {t("Включить автоматизацию")}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {t("Автоматически создавать платежи из уведомлений")}
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <ToggleSwitch
-                checked={automationEnabled}
-                onChange={handleAutomationToggle}
-                disabled={!prerequisitesReady}
-              />
-              {!prerequisitesReady && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t("Выполните действия ниже.")}
-                </p>
-              )}
-            </div>
-          </div>
-          {automationEnabled && (
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg mt-4">
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {t("Состояние сервиса")}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {serviceHeartbeat
+      {!isTauriMobile() ? (
+        <SettingsNotice>
+          {t("Эта функция доступна только в мобильном приложении")}
+        </SettingsNotice>
+      ) : (
+        <div className="space-y-8">
+          <SettingsGroup title={t("Автоматизация уведомлений")}>
+            <SettingsRow
+              inline
+              label={t("Включить автоматизацию")}
+              description={
+                prerequisitesReady
+                  ? t("Автоматически создавать платежи из уведомлений")
+                  : `${t("Автоматически создавать платежи из уведомлений")}. ${t("Выполните действия ниже.")}`
+              }
+              control={
+                <ToggleSwitch
+                  checked={automationEnabled}
+                  onChange={handleAutomationToggle}
+                  disabled={!prerequisitesReady}
+                />
+              }
+            />
+            {automationEnabled && (
+              <SettingsRow
+                inline
+                label={t("Состояние сервиса")}
+                description={
+                  serviceHeartbeat
                     ? t("Последний пинг: {1}", formatHeartbeatTime(serviceHeartbeat, locale))
-                    : t("Пинг пока не получен")}
-                </p>
-              </div>
-              {isCheckingServiceStatus || serviceActive === null ? (
-                <Spinner size="sm" />
-              ) : serviceActive ? (
-                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span className="text-sm font-medium">{t("Сервис активен")}</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm2.828-10.828a1 1 0 00-1.414-1.414L10 8.172 8.586 6.758a1 1 0 00-1.414 1.414L8.586 9.586 7.172 11a1 1 0 001.414 1.414L10 11.414l1.414 1.414A1 1 0 0012.828 11l-1.414-1.414 1.414-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span className="text-sm font-medium">{t("Сервис не активен")}</span>
-                </div>
-              )}
-            </div>
-          )}
-          {automationEnabled && serviceActive === false && (
-            <div className="mt-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-800 dark:text-red-200">
-                {t("Попробуйте отключить и заново включить разрешение «Чтение, ответ и управление уведомлениями» или перезапустите телефон.")}
-              </p>
-              {prerequisitesReady && isXiaomiDevice && (
-                <p className="mt-2 text-xs text-red-700 dark:text-red-300">
-                  {t("На Xiaomi/Poco режим «Ультраэкономия энергии» может полностью отключать сервис, и обойти это ограничение невозможно. Помогает только перезапустить телефон или снова включить разрешение на чтение уведомлений.")}
-                </p>
-              )}
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={handleOpenNotificationSettings}
-                  className="primary-action cursor-pointer px-4 py-2 text-sm font-medium rounded-md transition-colors"
-                >
-                  {t("Открыть настройки")}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-6">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
-                <ShieldCheckIcon className="size-4" />
-              </div>
-              <div className="flex-1">
-                <p className="text-base font-semibold text-gray-900 dark:text-white">
-                  {t("Чеклист перед запуском")}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {t("Настройте разрешения и питание, чтобы служба не останавливалась")}
-                </p>
-              </div>
-              <span
-                className={`px-3 py-1 text-xs font-medium rounded-full ${
-                  prerequisitesReady
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                    : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-200"
-                }`}
+                    : t("Пинг пока не получен")
+                }
+                control={
+                  isCheckingServiceStatus || serviceActive === null ? (
+                    <Spinner size="sm" />
+                  ) : serviceActive ? (
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
+                      <SettingsCheckIcon />
+                      {t("Сервис активен")}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                      {t("Сервис не активен")}
+                    </span>
+                  )
+                }
               >
-                {prerequisitesReady ? t("Все готово") : t("Нужно действие")}
-              </span>
-            </div>
-
-            {prerequisitesReady ? (
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
-                <p className="text-sm text-green-800 dark:text-green-200">
-                  {t("Все условия выполнены — можно включать автоматизацию. При необходимости вы всегда можете вернуться и проверить настройки.")}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="flex flex-col flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {t("Доступ к уведомлениям")}
-                        </p>
-                        <Tooltip content={t("Доступ к уведомлениям позволяет сервису считывать входящие уведомления от банков и запускать правила сразу после получения сообщения.")}>
-                          <button
-                            type="button"
-                            className="p-1 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
-                          >
-                            <InformationIcon className="h-[16px] w-[16px]" />
-                          </button>
-                        </Tooltip>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {isCheckingPermission
-                          ? t("Проверка...")
-                          : notificationPermissionGranted
-                          ? t("Предоставлен")
-                          : t("Не предоставлен")}
+                {serviceActive === false && (
+                  <SettingsNotice tone="danger" className="mt-3">
+                    <p>
+                      {t("Попробуйте отключить и заново включить разрешение «Чтение, ответ и управление уведомлениями» или перезапустите телефон.")}
+                    </p>
+                    {prerequisitesReady && isXiaomiDevice && (
+                      <p className="mt-2 text-xs">
+                        {t("На Xiaomi/Poco режим «Ультраэкономия энергии» может полностью отключать сервис, и обойти это ограничение невозможно. Помогает только перезапустить телефон или снова включить разрешение на чтение уведомлений.")}
                       </p>
-                    </div>
-                  </div>
-                  {!notificationPermissionGranted && !isCheckingPermission && (
-                    <Button
-                      variant="primary"
-                      onClick={handleOpenNotificationSettings}
-                      label={t("Настроить")}
-                    ></Button>
-                  )}
-                  {notificationPermissionGranted && (
-                    <div className="text-green-600 dark:text-green-400">
-                      <svg
-                        className="w-6 h-6"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="flex flex-col flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {t("Оптимизация батареи")}
-                        </p>
-                        <Tooltip content={t("Отключите оптимизацию батареи, чтобы служба автоматически обрабатывала уведомления даже когда приложение закрыто.")}>
-                          <button
-                            type="button"
-                            className="p-1 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
-                          >
-                            <InformationIcon className="h-[16px] w-[16px]" />
-                          </button>
-                        </Tooltip>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {isCheckingBatteryOptimization
-                          ? t("Проверка...")
-                          : batteryOptimizationDisabled
-                          ? t("Отключена")
-                          : t("Включена")}
-                      </p>
-                    </div>
-                  </div>
-                  {!batteryOptimizationDisabled &&
-                    !isCheckingBatteryOptimization && (
-                      <Button
-                        variant="primary"
-                        onClick={handleOpenBatteryOptimizationSettings}
-                        label={t("Настроить")}
-                      ></Button>
                     )}
-                  {batteryOptimizationDisabled && (
-                    <div className="text-green-600 dark:text-green-400">
-                      <svg
-                        className="w-6 h-6"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="flex flex-col flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {t("Автозапуск в фоне")}
-                        </p>
-                        <Tooltip content={t("Добавьте приложение в список автозапуска, чтобы система не выгружала сервис после очистки памяти.")}>
-                          <button
-                            type="button"
-                            className="p-1 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/[0.06] dark:hover:text-gray-200 transition-colors cursor-pointer"
-                          >
-                            <InformationIcon className="h-[16px] w-[16px]" />
-                          </button>
-                        </Tooltip>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {isCheckingAutostart
-                          ? t("Проверка...")
-                          : autostartEnabled
-                          ? t("Добавлено")
-                          : t("Не добавлено")}
-                      </p>
-                    </div>
-                  </div>
-                  {!autostartEnabled && !isCheckingAutostart && (
                     <Button
-                      variant="primary"
-                      onClick={handleOpenAutostartSettings}
-                      label={t("Настроить")}
-                    ></Button>
-                  )}
-                  {autostartEnabled && (
-                    <div className="text-green-600 dark:text-green-400">
-                      <svg
-                        className="w-6 h-6"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              </div>
+                      variant="secondary"
+                      size="small"
+                      className="mt-3"
+                      onClick={handleOpenNotificationSettings}
+                      label={t("Открыть настройки")}
+                    />
+                  </SettingsNotice>
+                )}
+              </SettingsRow>
             )}
+          </SettingsGroup>
 
-            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>{t("Конфиденциальность:")}</strong>{t(" Все уведомления обрабатываются только на вашем устройстве. Данные не передаются на сервер.")}
-              </p>
-            </div>
-          </div>
-        </SettingsSection>
+          <SettingsGroup
+            title={
+              <span className="flex items-center justify-between gap-3">
+                {t("Чеклист перед запуском")}
+                <span
+                  className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+                    prerequisitesReady
+                      ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300"
+                      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-200"
+                  }`}
+                >
+                  {prerequisitesReady ? t("Все готово") : t("Нужно действие")}
+                </span>
+              </span>
+            }
+            description={t("Настройте разрешения и питание, чтобы служба не останавливалась")}
+          >
+            {renderChecklistRow({
+              label: t("Доступ к уведомлениям"),
+              tooltip: t("Доступ к уведомлениям позволяет сервису считывать входящие уведомления от банков и запускать правила сразу после получения сообщения."),
+              isChecking: isCheckingPermission,
+              isDone: notificationPermissionGranted,
+              doneText: t("Предоставлен"),
+              pendingText: t("Не предоставлен"),
+              onOpen: handleOpenNotificationSettings,
+            })}
+            {renderChecklistRow({
+              label: t("Оптимизация батареи"),
+              tooltip: t("Отключите оптимизацию батареи, чтобы служба автоматически обрабатывала уведомления даже когда приложение закрыто."),
+              isChecking: isCheckingBatteryOptimization,
+              isDone: batteryOptimizationDisabled,
+              doneText: t("Отключена"),
+              pendingText: t("Включена"),
+              onOpen: handleOpenBatteryOptimizationSettings,
+            })}
+            {renderChecklistRow({
+              label: t("Автозапуск в фоне"),
+              tooltip: t("Добавьте приложение в список автозапуска, чтобы система не выгружала сервис после очистки памяти."),
+              isChecking: isCheckingAutostart,
+              isDone: autostartEnabled,
+              doneText: t("Добавлено"),
+              pendingText: t("Не добавлено"),
+              onOpen: handleOpenAutostartSettings,
+            })}
+          </SettingsGroup>
+
+          <SettingsNotice>
+            <strong>{t("Конфиденциальность:")}</strong>
+            {t(" Все уведомления обрабатываются только на вашем устройстве. Данные не передаются на сервер.")}
+          </SettingsNotice>
+        </div>
       )}
-
     </div>
   );
 };

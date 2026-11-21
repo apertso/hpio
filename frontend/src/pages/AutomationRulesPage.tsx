@@ -1,5 +1,10 @@
 import { useLanguage } from "../context/LanguageContext";
-import { PageContent, PageToolbar } from "../components/layout/Page";
+import {
+  HeaderIconButton,
+  PageContent,
+  PageHeader,
+  PageToolbar,
+} from "../components/layout/Page";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowPathIcon,
@@ -19,7 +24,6 @@ import {
 import useCategories from "../hooks/useCategories";
 import Select from "../components/Select";
 import Spinner from "../components/Spinner";
-import { Button } from "../components/Button";
 import ToolbarSearch from "../components/ToolbarSearch";
 import getErrorMessage from "../utils/getErrorMessage";
 import ConfirmModal from "../components/ConfirmModal";
@@ -392,7 +396,26 @@ const AutomationRulesPage: React.FC = () => {
     <>
       <PageMeta {...metadata} />
       <div className="dark:text-gray-100">
-        <h1 className="sr-only hidden md:block">{t("Автоматизация")}</h1>
+        <PageHeader
+          title={t("Автоматизация")}
+          actions={
+            <>
+              <ToolbarSearch
+                value={search}
+                onChange={setSearch}
+                expanded={isSearchVisible}
+                onExpandedChange={setIsSearchVisible}
+                placeholder={t("Поиск по мерчанту")}
+              />
+              <HeaderIconButton
+                label={t("Обновить")}
+                icon={<ArrowPathIcon aria-hidden="true" />}
+                onClick={loadData}
+                disabled={isPageLoading}
+              />
+            </>
+          }
+        />
         <PageToolbar>
           <div className="min-w-0 w-48">
             <label htmlFor="automation-category-filter" className="sr-only">
@@ -405,24 +428,6 @@ const AutomationRulesPage: React.FC = () => {
               onChange={(value) => setCategoryFilter(value)}
               disabled={isLoadingCategories || categoryOptions.length === 0}
               placeholder={t("Все категории")}
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <ToolbarSearch
-              value={search}
-              onChange={setSearch}
-              expanded={isSearchVisible}
-              onExpandedChange={setIsSearchVisible}
-              placeholder={t("Поиск по мерчанту")}
-            />
-            <Button
-              variant="ghost"
-              layout="icon-only"
-              icon={<ArrowPathIcon className="size-4" />}
-              aria-label={t("Обновить")}
-              title={t("Обновить")}
-              onClick={loadData}
-              disabled={isPageLoading}
             />
           </div>
         </PageToolbar>

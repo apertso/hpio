@@ -2,7 +2,12 @@
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth, usePreferredCurrency } from "../context/AuthContext";
 import PaymentRowList from "../components/PaymentRowList";
-import { PageContent, Panel } from "../components/layout/Page";
+import {
+  PageContent,
+  PageHeader,
+  Panel,
+  type PagePrimaryAction,
+} from "../components/layout/Page";
 import CumulativeSpendingChart from "../components/dashboard/CumulativeSpendingChart";
 import CategoryBreakdown from "../components/dashboard/CategoryBreakdown";
 import DashboardInsights from "../components/dashboard/DashboardInsights";
@@ -105,14 +110,16 @@ const fetchUpcomingPaymentsApi = async (
   return res.data;
 };
 
-import {
-  PencilIcon,
-  CheckCircleIcon,
-  TrashIcon,
-  PlusIcon,
-} from "@heroicons/react/24/solid";
 import DeleteRecurringPaymentModal from "../components/DeleteRecurringPaymentModal";
 import MobilePanel from "../components/MobilePanel";
+import MobileActionBar from "../components/MobileActionBar";
+// Иконки меню действий на мобильных — единый контурный набор
+import {
+  CheckCircleIcon as CheckOutlineIcon,
+  PencilSquareIcon as PencilOutlineIcon,
+  TrashIcon as TrashOutlineIcon,
+} from "@heroicons/react/24/outline";
+
 
 
 // Inside HomePage component, before UpcomingPaymentListItem
@@ -128,13 +135,13 @@ const MobileActionsOverlay: React.FC<{
   if (!payment) return null;
 
   const actions = [
-    { label: t("Изменить"), icon: PencilIcon, handler: () => onEdit(payment.id) },
+    { label: t("Изменить"), icon: PencilOutlineIcon, handler: () => onEdit(payment.id) },
     {
       label: t("Выполнить"),
-      icon: CheckCircleIcon,
+      icon: CheckOutlineIcon,
       handler: () => onComplete(payment),
     },
-    { label: t("Удалить"), icon: TrashIcon, handler: () => onDelete(payment) },
+    { label: t("Удалить"), icon: TrashOutlineIcon, tone: "destructive" as const, handler: () => onDelete(payment) },
   ];
 
   return (
@@ -145,21 +152,7 @@ const MobileActionsOverlay: React.FC<{
       shouldClose={shouldClose}
       enableBackdropClick={false}
     >
-      <div className="flex justify-around items-center">
-        {actions.map((action) => (
-          <button
-            key={action.label}
-            onClick={() => {
-              action.handler();
-              onClose();
-            }}
-            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-          >
-            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
-            <span className="text-xs font-medium">{action.label}</span>
-          </button>
-        ))}
-      </div>
+      <MobileActionBar actions={actions} onAfterSelect={onClose} />
     </MobilePanel>
   );
 };
@@ -184,7 +177,8 @@ const HomePage: React.FC<{ demo?: DashboardDemo }> = ({ demo }) => {
   const incomeAndCardsEnabled = !demo && isIncomeAndCardsEnabled();
 
   useEffect(() => {
-    if (!demo) setPageTitle(t("Главная"));
+    // На главной название страницы не показываем: раздел и так понятен по навигации
+    if (!demo) setPageTitle("");
   }, [demo, setPageTitle, t]);
 
   const [upcomingDays, setUpcomingDays] = useState<3 | 7 | 10 | 14 | 21>(10);
@@ -719,9 +713,11 @@ const HomePage: React.FC<{ demo?: DashboardDemo }> = ({ demo }) => {
   }, [demo, timeRange]);
 
   const navigate = useNavigate();
-
-  const handleAddPayment = () => {
-    navigate("/payments/new");
+  // Компактная главная на мобильных: блок «К оплате» обтекает кнопку меню
+  const wrapMenuButton = !demo;
+  const addPaymentAction: PagePrimaryAction = {
+    label: t("Добавить платеж"),
+    onClick: () => navigate("/payments/new"),
   };
 
   const handleEditPayment = (paymentId: string) => {
@@ -1047,7 +1043,18 @@ const HomePage: React.FC<{ demo?: DashboardDemo }> = ({ demo }) => {
       {!demo && <PageMeta {...metadata} />}
 
       <div className="dark:text-gray-100">
-        {!demo && <h1 className="sr-only hidden md:block">{t("Главная")}</h1>}
+        {!demo && (
+          <>
+            <h1 className="sr-only">{t("Главная")}</h1>
+            {/* Без заголовка и без полосы шапки: на мобильных кнопка меню остаётся слева сверху,
+                а блок «К оплате» обтекает её; на десктопе кнопка добавления — рядом с суммой. */}
+            <PageHeader
+              primaryAction={addPaymentAction}
+              desktopBar={false}
+              mobileBar={wrapMenuButton ? "floating" : "bar"}
+            />
+          </>
+        )}
 
         <PageContent>
           {/* Центрированная область: с планшета — основная колонка и боковая справа */}
@@ -1057,6 +1064,8 @@ const HomePage: React.FC<{ demo?: DashboardDemo }> = ({ demo }) => {
               <div className="order-1 md:col-start-1 md:row-start-1">
               {/* Сумма к оплате */}
               <DashboardHero
+                action={demo ? undefined : addPaymentAction}
+                wrapMenuButton={wrapMenuButton}
                 upcoming={upcomingPayments}
                 windowLabel={dayOptions.find((o) => o.value === upcomingDays)!.label}
                 currency={currency}
@@ -1112,14 +1121,6 @@ const HomePage: React.FC<{ demo?: DashboardDemo }> = ({ demo }) => {
                       }))}
                       selectedValue={upcomingDays}
                     />
-                    <button
-                      type="button"
-                      onClick={handleAddPayment}
-                      className="hidden h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 md:inline-flex cursor-pointer"
-                    >
-                      <PlusIcon className="size-3.5" />
-                      {t("Добавить")}
-                    </button>
                     <Link
                       to="/payments"
                       className="hidden h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.06] dark:hover:text-gray-100 md:inline-flex cursor-pointer"

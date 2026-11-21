@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { localizeHref } from "../i18n/localePath";
 import PageMeta from "../components/PageMeta";
+import { PageHeader } from "../components/layout/Page";
 import { getPageMetadata } from "../utils/pageMetadata";
 
 const NotFoundPage: React.FC = () => {
@@ -14,6 +15,8 @@ const NotFoundPage: React.FC = () => {
   return (
     <>
       <PageMeta {...metadata} />
+      {/* В приложении: только кнопка меню на мобильных, без полосы шапки на десктопе */}
+      <PageHeader desktopBar={false} />
 
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center px-4">
         <p className="mb-3 text-sm font-medium tabular-nums text-gray-400 dark:text-gray-500">404</p>

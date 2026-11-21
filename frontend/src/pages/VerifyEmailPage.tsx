@@ -7,6 +7,7 @@ import Spinner from "../components/Spinner";
 import { useAuth } from "../context/AuthContext";
 import getErrorMessage from "../utils/getErrorMessage";
 import PageMeta from "../components/PageMeta";
+import { PageHeader } from "../components/layout/Page";
 import { getPageMetadata } from "../utils/pageMetadata";
 
 const VerifyEmailPage: React.FC = () => {
@@ -50,6 +51,8 @@ const VerifyEmailPage: React.FC = () => {
   return (
     <>
       <PageMeta {...metadata} />
+      {/* В приложении: только кнопка меню на мобильных, без полосы шапки на десктопе */}
+      <PageHeader desktopBar={false} />
 
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center px-4">
         {status === "verifying" && (

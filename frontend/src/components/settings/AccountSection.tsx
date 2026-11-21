@@ -12,14 +12,11 @@ import {
   CheckBadgeIcon,
   ExclamationCircleIcon,
 } from "@heroicons/react/24/solid";
-import {
-  LockClosedIcon,
-  TrashIcon,
-  ExclamationTriangleIcon,
-} from "@heroicons/react/24/outline";
+import { LockClosedIcon, TrashIcon } from "@heroicons/react/24/outline";
 import userApi from "../../api/userApi";
 import { Input, TextField, PasswordField, TextInputField } from "../Input";
-import SettingsSection from "../SettingsSection";
+import { Button } from "../Button";
+import { SettingsGroup, SettingsHeader, SettingsRow } from "./SettingsLayout";
 import { useToast } from "../../context/ToastContext";
 import { useAvatarCache } from "../../hooks/useAvatarCache";
 import { timezones } from "../../utils/timezones";
@@ -28,11 +25,12 @@ import MobilePanel from "../MobilePanel";
 import { compressProfileImage } from "../../utils/imageCompression";
 import { submitFeedback } from "../../api/feedbackApi";
 import DeleteAccount from "../DeleteAccount";
+import ConfirmModal from "../ConfirmModal";
 
 // Схема для всех настроек профиля
 const settingsSchema = z.object({
-  name: z.string().min(1, "Имя обязательно для заполнения."),
-  email: z.string().email("Неверный формат email."),
+  name: z.string().trim().min(1, "Имя обязательно для заполнения."),
+  email: z.string().trim().email("Неверный формат email."),
   timezone: z.string().min(1, "Часовой пояс обязателен."),
 });
 
@@ -59,6 +57,8 @@ const passwordSchema = z
 type SettingsInputs = z.infer<typeof settingsSchema>;
 type PasswordInputs = z.infer<typeof passwordSchema>;
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ (до сжатия)
+
 const AccountSection: React.FC = () => {
   const { t } = useLanguage();
   const { user, refreshUser, logout, token } = useAuth();
@@ -71,6 +71,11 @@ const AccountSection: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
+  // Данные формы, ожидающие подтверждения смены email
+  const [pendingSettings, setPendingSettings] = useState<SettingsInputs | null>(
+    null
+  );
+  const [isConfirmingEmail, setIsConfirmingEmail] = useState(false);
 
   const {
     register: registerSettings,
@@ -80,6 +85,8 @@ const AccountSection: React.FC = () => {
     reset: resetSettingsForm,
   } = useForm<SettingsInputs>({
     resolver: zodResolver(settingsSchema),
+    mode: "onChange",
+    delayError: 1000,
   });
 
   const {
@@ -89,6 +96,8 @@ const AccountSection: React.FC = () => {
     reset: resetPasswordForm,
   } = useForm<PasswordInputs>({
     resolver: zodResolver(passwordSchema),
+    mode: "onChange",
+    delayError: 1000,
   });
 
   // Устанавливаем значения формы при получении данных пользователя
@@ -102,11 +111,10 @@ const AccountSection: React.FC = () => {
     }
   }, [user, resetSettingsForm]);
 
-  const onDrop = async (acceptedFiles: File[]) => {
+  const onDrop = async (acceptedFiles: File[]): Promise<void> => {
     if (!acceptedFiles.length) return;
     const file = acceptedFiles[0];
 
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ (до сжатия)
     if (file.size > MAX_FILE_SIZE) {
       showToast(
         t("Размер файла превышает {1} МБ. Пожалуйста, выберите файл меньшего размера.", MAX_FILE_SIZE / 1024 / 1024),
@@ -137,26 +145,20 @@ const AccountSection: React.FC = () => {
     }
   };
 
-  const onDropRejected = (rejections: FileRejection[]) => {
+  const onDropRejected = (rejections: FileRejection[]): void => {
     if (rejections.length === 0) return;
 
-    const rejection = rejections[0];
-    const errors = rejection.errors || [];
-
-    for (const error of errors) {
-      if (error.code === "file-invalid-type") {
-        showToast(
-          t("Пожалуйста, выберите изображение (JPEG, PNG или WEBP)."),
-          "error"
-        );
-        break;
-      } else if (error.code === "file-too-large") {
-        showToast(t("Размер файла превышает 10 МБ."), "error");
-        break;
-      } else {
-        showToast(t("Ошибка при выборе файла: {1}", error.message), "error");
-        break;
-      }
+    const error = rejections[0].errors?.[0];
+    if (!error) return;
+    if (error.code === "file-invalid-type") {
+      showToast(
+        t("Пожалуйста, выберите изображение (JPEG, PNG или WEBP)."),
+        "error"
+      );
+    } else if (error.code === "file-too-large") {
+      showToast(t("Размер файла превышает 10 МБ."), "error");
+    } else {
+      showToast(t("Ошибка при выборе файла: {1}", error.message), "error");
     }
   };
 
@@ -165,11 +167,12 @@ const AccountSection: React.FC = () => {
     onDropRejected,
     accept: { "image/jpeg": [], "image/png": [], "image/webp": [] },
     multiple: false,
-    maxSize: 10 * 1024 * 1024,
+    maxSize: MAX_FILE_SIZE,
     disabled: isCompressing || isUploading,
   });
 
-  const onSettingsSubmit: SubmitHandler<SettingsInputs> = async (data) => {
+  // Сохраняет профиль; вызывается напрямую или после подтверждения смены email
+  const saveSettings = async (data: SettingsInputs): Promise<void> => {
     try {
       const emailChanged = data.email !== user?.email;
       await userApi.updateProfile(data);
@@ -183,8 +186,28 @@ const AccountSection: React.FC = () => {
         showToast(t("Настройки успешно сохранены."), "success");
       }
     } catch (error) {
-      const message = getErrorMessage(error);
-      showToast(message, "error");
+      showToast(getErrorMessage(error), "error");
+    }
+  };
+
+  // Смена email сразу снимает подтверждение адреса и необратима без повторной
+  // верификации, поэтому перед сохранением запрашиваем подтверждение
+  const onSettingsSubmit: SubmitHandler<SettingsInputs> = async (data) => {
+    if (user?.email && data.email !== user.email) {
+      setPendingSettings(data);
+      return;
+    }
+    await saveSettings(data);
+  };
+
+  const handleConfirmEmailChange = async (): Promise<void> => {
+    if (!pendingSettings) return;
+    setIsConfirmingEmail(true);
+    try {
+      await saveSettings(pendingSettings);
+    } finally {
+      setIsConfirmingEmail(false);
+      setPendingSettings(null);
     }
   };
 
@@ -195,10 +218,10 @@ const AccountSection: React.FC = () => {
         currentPassword: data.currentPassword,
       });
       resetPasswordForm();
+      setExpandedSection(null);
       showToast(t("Пароль успешно изменен."), "success");
     } catch (error) {
-      const message = getErrorMessage(error);
-      showToast(message, "error");
+      showToast(getErrorMessage(error), "error");
     }
   };
 
@@ -206,18 +229,16 @@ const AccountSection: React.FC = () => {
     reason: string,
     feedback: string,
     file: File | null
-  ) => {
+  ): Promise<void> => {
     try {
       setIsDeleting(true);
       if (feedback.trim().length > 0 || file || reason !== "no_answer") {
         try {
           let description = feedback.trim();
           if (reason !== "no_answer") {
-            if (description) {
-              description = `Причина удаления: ${reason}\n\n${description}`;
-            } else {
-              description = `Причина удаления: ${reason}`;
-            }
+            description = description
+              ? `Причина удаления: ${reason}\n\n${description}`
+              : `Причина удаления: ${reason}`;
           }
           await submitFeedback(description, file || undefined);
         } catch {
@@ -239,32 +260,67 @@ const AccountSection: React.FC = () => {
     }
   };
 
+  // Поля формы смены пароля: общие для десктопа и мобильной панели
+  const passwordFields = (idSuffix: string): React.ReactNode => (
+    <>
+      <PasswordField
+        label={t("Текущий пароль")}
+        inputId={`currentPassword${idSuffix}`}
+        autoComplete="current-password"
+        {...registerPassword("currentPassword")}
+        error={passwordErrors.currentPassword?.message}
+        disabled={isPasswordSubmitting}
+        required
+      />
+      <PasswordField
+        label={t("Новый пароль")}
+        inputId={`newPassword${idSuffix}`}
+        autoComplete="new-password"
+        {...registerPassword("newPassword")}
+        error={passwordErrors.newPassword?.message}
+        disabled={isPasswordSubmitting}
+        required
+      />
+      <PasswordField
+        label={t("Подтвердите новый пароль")}
+        inputId={`confirmPassword${idSuffix}`}
+        autoComplete="new-password"
+        {...registerPassword("confirmPassword")}
+        error={passwordErrors.confirmPassword?.message}
+        disabled={isPasswordSubmitting}
+        required
+      />
+      <div className="flex justify-end">
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={isPasswordSubmitting}
+          label={
+            isPasswordSubmitting ? t("Сохранение...") : t("Сменить пароль")
+          }
+        />
+      </div>
+    </>
+  );
+
   return (
-    <div className="space-y-8">
-      {/* Profile Section */}
-      <form onSubmit={handleSettingsSubmit(onSettingsSubmit)}>
-        <SettingsSection className="card-base p-5">
-          <div className="flex items-start gap-3 mb-5">
-            <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
-              <UserIcon className="size-4" />
-            </div>
-            <div className="flex-1">
-              <h2 className="ui-heading mb-0.5">
-                {t("Профиль и уведомления")}
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {t("Управляйте своей личной информацией, настройками уведомлений и часовым поясом")}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-5">
-            {/* Avatar and Name on same line */}
-            <div className="flex items-center gap-4">
-              {/* Avatar Section - Modern UX Pattern with hover/drag overlay */}
-              <div className="flex-shrink-0">
+    <div>
+      <SettingsHeader
+        title={t("Аккаунт")}
+        description={t("Управляйте своей личной информацией, настройками уведомлений и часовым поясом")}
+      />
+
+      <div className="space-y-8">
+        <form onSubmit={handleSettingsSubmit(onSettingsSubmit)}>
+          <SettingsGroup title={t("Профиль")}>
+            <SettingsRow
+              inline
+              label={t("Фото профиля")}
+              description={t("JPEG, PNG или WEBP, до 10 МБ")}
+              control={
                 <div
                   {...getRootProps()}
-                  className={`relative flex-shrink-0 cursor-pointer group size-16 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  className={`relative flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-full transition-all duration-200 ${
                     isDragActive
                       ? "bg-indigo-50 ring-2 ring-indigo-500 dark:bg-indigo-500/10"
                       : "bg-gray-200 dark:bg-gray-700"
@@ -274,16 +330,16 @@ const AccountSection: React.FC = () => {
                     <img
                       src={avatarUrl}
                       alt="Avatar"
-                      className="w-full h-full rounded-full object-cover"
+                      className="h-full w-full rounded-full object-cover"
                     />
                   ) : (
-                    <UserIcon className="size-7 text-gray-400 dark:text-gray-500" />
+                    <UserIcon className="size-6 text-gray-400 dark:text-gray-500" />
                   )}
 
-                  {/* Edit Pencil Icon - Always visible in corner */}
-                  <div className="absolute -bottom-0.5 -right-0.5 size-6 bg-[var(--ui-surface)] border border-[var(--ui-border-strong)] rounded-full flex items-center justify-center shadow-sm">
+                  {/* Значок редактирования в углу */}
+                  <div className="absolute -bottom-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full border border-[var(--ui-border-strong)] bg-[var(--ui-surface)] shadow-sm">
                     <svg
-                      className="size-3 text-gray-600 dark:text-gray-300"
+                      className="size-2.5 text-gray-600 dark:text-gray-300"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -292,7 +348,7 @@ const AccountSection: React.FC = () => {
                   </div>
 
                   {(isCompressing || isUploading) && (
-                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center z-20">
+                    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-full bg-black/40">
                       <Spinner size="sm" />
                     </div>
                   )}
@@ -303,41 +359,45 @@ const AccountSection: React.FC = () => {
                     unstyled
                   />
                 </div>
-              </div>
-
-              <TextInputField
-                label={t("Имя")}
-                inputId="name"
-                error={settingsErrors.name?.message}
-                required
-                wrapperClassName="flex-grow"
-                disabled={isSettingsSubmitting}
-                {...registerSettings("name")}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              }
+            />
+            <SettingsRow
+              label={t("Имя")}
+              htmlFor="name"
+              controlWidth="lg"
+              control={
+                <TextInputField
+                  inputId="name"
+                  error={settingsErrors.name?.message}
+                  required
+                  disabled={isSettingsSubmitting}
+                  {...registerSettings("name")}
+                />
+              }
+            />
+            <SettingsRow
+              label="Email"
+              htmlFor="email"
+              controlWidth="lg"
+              description={
+                user?.isVerified ? (
+                  <span className="inline-flex items-center text-green-600 dark:text-green-400">
+                    <CheckBadgeIcon className="mr-1 size-3.5" />
+                    {t("Подтвержден")}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center text-yellow-600 dark:text-yellow-400">
+                    <ExclamationCircleIcon className="mr-1 size-3.5" />
+                    {t("Не подтвержден")}
+                  </span>
+                )
+              }
+              control={
                 <TextField
                   inputId="email"
                   error={settingsErrors.email?.message}
                   required
                 >
-                  <TextField.Label>
-                    <div className="flex items-center justify-between">
-                      <span>Email</span>
-                      {user?.isVerified ? (
-                        <span className="text-xs flex items-center text-green-600 dark:text-green-400">
-                          <CheckBadgeIcon className="h-4 w-4 mr-1" />
-                          {t("Подтвержден")}
-                        </span>
-                      ) : (
-                        <span className="text-xs flex items-center text-yellow-600 dark:text-yellow-400">
-                          <ExclamationCircleIcon className="h-4 w-4 mr-1" />
-                          {t("Не подтвержден")}
-                        </span>
-                      )}
-                    </div>
-                  </TextField.Label>
                   <TextField.Input
                     type="email"
                     autoComplete="email"
@@ -345,145 +405,94 @@ const AccountSection: React.FC = () => {
                     {...registerSettings("email")}
                   />
                 </TextField>
-              </div>
-              <Controller
-                name="timezone"
-                control={settingsControl}
-                defaultValue={user?.timezone || "UTC"}
-                render={({ field }) => (
-                  <Select
-                    label={t("Часовой пояс")}
-                    options={timezones.map((option) => ({ ...option, label: t(option.label) }))}
-                    value={field.value}
-                    onChange={field.onChange}
-                    error={settingsErrors.timezone?.message}
-                  />
-                )}
+              }
+            />
+            <SettingsRow
+              label={t("Часовой пояс")}
+              htmlFor="settings-timezone"
+              controlWidth="lg"
+              control={
+                <Controller
+                  name="timezone"
+                  control={settingsControl}
+                  defaultValue={user?.timezone || "UTC"}
+                  render={({ field }) => (
+                    <Select
+                      id="settings-timezone"
+                      options={timezones.map((option) => ({
+                        ...option,
+                        label: t(option.label),
+                      }))}
+                      value={field.value}
+                      onChange={field.onChange}
+                      error={settingsErrors.timezone?.message}
+                    />
+                  )}
+                />
+              }
+            />
+            <div className="flex justify-end px-4 py-3">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isSettingsSubmitting}
+                label={isSettingsSubmitting ? t("Сохранение...") : t("Сохранить")}
               />
             </div>
-          </div>
-          <div className="text-right mt-6">
-            <button
-              type="submit"
-              disabled={isSettingsSubmitting}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
-            >
-              {isSettingsSubmitting ? t("Сохранение...") : t("Сохранить")}
-            </button>
-          </div>
-        </SettingsSection>
-      </form>
+          </SettingsGroup>
+        </form>
 
-      {/* Password Section */}
-      <SettingsSection className="card-base p-5">
-        <div className="flex items-start gap-3 mb-5">
-          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
-            <LockClosedIcon className="size-4" />
-          </div>
-          <div className="flex-1">
-            <h2 className="ui-heading mb-0.5">
-              {t("Безопасность")}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("Управляйте паролем и настройками безопасности вашего аккаунта")}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex justify-end mb-4">
-          <button
-            type="button"
-            onClick={() =>
-              setExpandedSection(
-                expandedSection === "password" ? null : "password"
-              )
+        <SettingsGroup title={t("Безопасность")}>
+          <SettingsRow
+            inline
+            label={t("Пароль")}
+            description={t("Управляйте паролем и настройками безопасности вашего аккаунта")}
+            control={
+              <Button
+                variant="secondary"
+                size="small"
+                icon={<LockClosedIcon />}
+                label={t("Сменить пароль")}
+                aria-expanded={expandedSection === "password"}
+                onClick={() =>
+                  setExpandedSection(
+                    expandedSection === "password" ? null : "password"
+                  )
+                }
+              />
             }
-            className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-500"
           >
-            <LockClosedIcon className="w-5 h-5" />
-            <span>{t("Сменить пароль")}</span>
-          </button>
-        </div>
-        {/* Desktop Inline Form */}
-        <div
-          className={`hidden md:block overflow-hidden transition-all duration-300 ease-in-out ${
-            expandedSection === "password" ? "max-h-screen mt-6" : "max-h-0"
-          }`}
-        >
-          {expandedSection === "password" && (
-            <form
-              onSubmit={handlePasswordSubmit(onPasswordSubmit)}
-              className="space-y-4"
-            >
-              <PasswordField
-                label={t("Текущий пароль")}
-                inputId="currentPassword"
-                autoComplete="current-password"
-                {...registerPassword("currentPassword")}
-                error={passwordErrors.currentPassword?.message}
-                disabled={isPasswordSubmitting}
-                required
-              />
-              <PasswordField
-                label={t("Новый пароль")}
-                inputId="newPassword"
-                autoComplete="new-password"
-                {...registerPassword("newPassword")}
-                error={passwordErrors.newPassword?.message}
-                disabled={isPasswordSubmitting}
-                required
-              />
-              <PasswordField
-                label={t("Подтвердите новый пароль")}
-                inputId="confirmPassword"
-                autoComplete="new-password"
-                {...registerPassword("confirmPassword")}
-                error={passwordErrors.confirmPassword?.message}
-                disabled={isPasswordSubmitting}
-                required
-              />
-              <div className="text-right">
-                <button
-                  type="submit"
-                  disabled={isPasswordSubmitting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
-                >
-                  {isPasswordSubmitting ? t("Сохранение...") : t("Сменить пароль")}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </SettingsSection>
-      {/* Удаление аккаунта */}
-      <SettingsSection className="card-base p-5">
-        <div className="flex items-start gap-3 mb-5">
-          <div className="flex-shrink-0 size-8 rounded-md border border-[var(--ui-border)] bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400 flex items-center justify-center">
-            <ExclamationTriangleIcon className="size-4" />
-          </div>
-          <div className="flex-1">
-            <h2 className="ui-heading mb-0.5">
-              {t("Опасная зона")}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t("Действия, которые могут привести к потере доступа к аккаунту или удалению данных")}
-            </p>
-          </div>
-        </div>
+            {/* На десктопе форма раскрывается прямо в строке */}
+            {expandedSection === "password" && (
+              <form
+                onSubmit={handlePasswordSubmit(onPasswordSubmit)}
+                className="mt-4 hidden space-y-4 border-t border-[var(--ui-border)] pt-4 md:block"
+              >
+                {passwordFields("")}
+              </form>
+            )}
+          </SettingsRow>
+        </SettingsGroup>
 
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => setIsDeleteModalOpen(true)}
-            className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-500"
-          >
-            <TrashIcon className="w-5 h-5" />
-            <span>{t("Удалить аккаунт")}</span>
-          </button>
-        </div>
-      </SettingsSection>
+        <SettingsGroup title={t("Опасная зона")} tone="danger">
+          <SettingsRow
+            inline
+            label={t("Удалить аккаунт")}
+            description={t("Действия, которые могут привести к потере доступа к аккаунту или удалению данных")}
+            control={
+              <Button
+                variant="destructive"
+                size="small"
+                icon={<TrashIcon />}
+                label={t("Удалить")}
+                onClick={() => setIsDeleteModalOpen(true)}
+              />
+            }
+          />
+        </SettingsGroup>
+      </div>
 
-      {/* Mobile Panels */}
+      {/* На мобильных форма смены пароля открывается в панели */}
       <MobilePanel
         isOpen={expandedSection === "password"}
         onClose={() => setExpandedSection(null)}
@@ -493,44 +502,24 @@ const AccountSection: React.FC = () => {
           onSubmit={handlePasswordSubmit(onPasswordSubmit)}
           className="space-y-4"
         >
-          <PasswordField
-            label={t("Текущий пароль")}
-            inputId="currentPasswordMobile"
-            autoComplete="current-password"
-            {...registerPassword("currentPassword")}
-            error={passwordErrors.currentPassword?.message}
-            disabled={isPasswordSubmitting}
-            required
-          />
-          <PasswordField
-            label={t("Новый пароль")}
-            inputId="newPasswordMobile"
-            autoComplete="new-password"
-            {...registerPassword("newPassword")}
-            error={passwordErrors.newPassword?.message}
-            disabled={isPasswordSubmitting}
-            required
-          />
-          <PasswordField
-            label={t("Подтвердите новый пароль")}
-            inputId="confirmPasswordMobile"
-            autoComplete="new-password"
-            {...registerPassword("confirmPassword")}
-            error={passwordErrors.confirmPassword?.message}
-            disabled={isPasswordSubmitting}
-            required
-          />
-          <div className="text-right">
-            <button
-              type="submit"
-              disabled={isPasswordSubmitting}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md disabled:bg-blue-400 disabled:cursor-not-allowed"
-            >
-              {isPasswordSubmitting ? t("Сохранение...") : t("Сменить пароль")}
-            </button>
-          </div>
+          {passwordFields("Mobile")}
         </form>
       </MobilePanel>
+
+      <ConfirmModal
+        isOpen={pendingSettings !== null}
+        onClose={() => {
+          if (!isConfirmingEmail) setPendingSettings(null);
+        }}
+        onConfirm={handleConfirmEmailChange}
+        title={t("Сменить email?")}
+        message={t(
+          "Email будет сразу изменён на {1}, и его нужно будет подтвердить по ссылке из письма. До подтверждения адрес будет считаться неподтверждённым — даже если вы вернёте прежний email.",
+          pendingSettings?.email ?? ""
+        )}
+        confirmText="Сменить email"
+        isConfirming={isConfirmingEmail}
+      />
 
       <DeleteAccount
         isOpen={isDeleteModalOpen}

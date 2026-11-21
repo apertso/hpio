@@ -1,5 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
-import { PageContent, PageToolbar } from "../components/layout/Page";
+import { PageContent, PageHeader } from "../components/layout/Page";
 import { usePreferredCurrency } from "../context/AuthContext";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import PageMeta from "../components/PageMeta";
@@ -9,7 +9,6 @@ import { cardApi } from "../api/cardApi";
 import { IncomeData, CreateIncomeData } from "../types/incomeData";
 import { CardData } from "../types/cardData";
 import { Button } from "../components/Button";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import {
   PencilIcon as PencilSolidIcon,
   TrashIcon as TrashSolidIcon,
@@ -27,6 +26,13 @@ import { CryptoAsset } from "../api/cryptoApi";
 import { usePageTitle } from "../context/PageTitleContext";
 import ConfirmModal from "../components/ConfirmModal";
 import MobilePanel from "../components/MobilePanel";
+import MobileActionBar from "../components/MobileActionBar";
+// Иконки меню действий на мобильных — единый контурный набор
+import {
+  PencilSquareIcon as PencilOutlineIcon,
+  TrashIcon as TrashOutlineIcon,
+} from "@heroicons/react/24/outline";
+
 import Spinner from "../components/Spinner";
 import Select from "../components/Select";
 import { CURRENCY_OPTIONS as CURRENCY_OPTIONS } from "../utils/currencies";
@@ -331,12 +337,13 @@ const MobileActionsOverlay: React.FC<{
   const actions = [
     {
       label: t("Изменить"),
-      icon: PencilSolidIcon,
+      icon: PencilOutlineIcon,
       handler: () => onEdit(income),
     },
     {
       label: t("Удалить"),
-      icon: TrashSolidIcon,
+      icon: TrashOutlineIcon,
+      tone: "destructive" as const,
       handler: () => onDelete(income),
     },
   ];
@@ -349,21 +356,7 @@ const MobileActionsOverlay: React.FC<{
       shouldClose={shouldClose}
       enableBackdropClick={false}
     >
-      <div className="flex justify-around items-center">
-        {actions.map((action) => (
-          <button
-            key={action.label}
-            onClick={() => {
-              action.handler();
-              onClose();
-            }}
-            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-          >
-            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
-            <span className="text-xs font-medium">{action.label}</span>
-          </button>
-        ))}
-      </div>
+      <MobileActionBar actions={actions} onAfterSelect={onClose} />
     </MobilePanel>
   );
 };
@@ -417,7 +410,7 @@ const IncomesPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<IncomeData | null>(null);
   const { showToast } = useToast();
-  const { setPageTitle, setHeaderRightAction } = usePageTitle();
+  const { setPageTitle } = usePageTitle();
 
   // Mobile actions state
   const [mobileActionsIncome, setMobileActionsIncome] =
@@ -438,24 +431,6 @@ const IncomesPage: React.FC = () => {
   useEffect(() => {
     setPageTitle(t("Доходы"));
   }, [setPageTitle, t]);
-
-  // Set header right action (+ button for mobile)
-  useEffect(() => {
-    setHeaderRightAction(
-      <button
-        type="button"
-        onClick={() => {
-          setEditingIncome(null);
-          setIsModalOpen(true);
-        }}
-        className="flex size-9 items-center justify-center rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-      >
-        <PlusIcon className="size-5" />
-      </button>
-    );
-
-    return () => setHeaderRightAction(null);
-  }, [setHeaderRightAction]);
 
   useEffect(() => {
     cardApi
@@ -601,16 +576,10 @@ const IncomesPage: React.FC = () => {
     <>
       <PageMeta {...metadata} title={t("Доходы")} />
       <div className="dark:text-gray-100">
-        <h1 className="sr-only hidden md:block">{t("Доходы")}</h1>
-        <PageToolbar className="hidden md:flex">
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              icon={<PlusIcon className="w-4 h-4" />}
-              label={t("Добавить доход")}
-              onClick={handleAddIncome}
-            />
-          </div>
-        </PageToolbar>
+        <PageHeader
+          title={t("Доходы")}
+          primaryAction={{ label: t("Добавить доход"), onClick: handleAddIncome }}
+        />
         <PageContent width="form">
 
         {isLoading ? (

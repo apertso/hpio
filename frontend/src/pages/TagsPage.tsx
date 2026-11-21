@@ -1,5 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
-import { PageContent, PageToolbar } from "../components/layout/Page";
+import { PageContent, PageHeader } from "../components/layout/Page";
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,6 @@ import { z } from "zod";
 import axiosInstance from "../api/axiosInstance";
 import {
   PencilIcon as PencilSolidIcon,
-  PlusIcon,
   TrashIcon as TrashSolidIcon,
 } from "@heroicons/react/24/solid";
 import { Button } from "../components/Button";
@@ -17,6 +16,13 @@ import ConfirmModal from "../components/ConfirmModal";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import MobilePanel from "../components/MobilePanel";
+import MobileActionBar from "../components/MobileActionBar";
+// Иконки меню действий на мобильных — единый контурный набор
+import {
+  PencilSquareIcon as PencilOutlineIcon,
+  TrashIcon as TrashOutlineIcon,
+} from "@heroicons/react/24/outline";
+
 import { usePageTitle } from "../context/PageTitleContext";
 import Modal from "../components/Modal";
 import { TextInputField } from "../components/Input";
@@ -54,12 +60,13 @@ const MobileActionsOverlay: React.FC<{
   const actions = [
     {
       label: t("Редактировать"),
-      icon: PencilSolidIcon,
+      icon: PencilOutlineIcon,
       handler: () => onEdit(tag.id),
     },
     {
       label: t("Удалить"),
-      icon: TrashSolidIcon,
+      icon: TrashOutlineIcon,
+      tone: "destructive" as const,
       handler: () => onDelete(tag.id, tag.name),
     },
   ];
@@ -71,21 +78,7 @@ const MobileActionsOverlay: React.FC<{
       title=""
       enableBackdropClick={false}
     >
-      <div className="flex justify-around items-center">
-        {actions.map((action) => (
-          <button
-            key={action.label}
-            onClick={() => {
-              action.handler();
-              onClose();
-            }}
-            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer cursor-pointer"
-          >
-            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
-            <span className="text-xs font-medium">{action.label}</span>
-          </button>
-        ))}
-      </div>
+      <MobileActionBar actions={actions} onAfterSelect={onClose} />
     </MobilePanel>
   );
 };
@@ -342,16 +335,10 @@ const TagsPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <h1 className="sr-only hidden md:block">{t("Теги")}</h1>
-        <PageToolbar className="hidden md:flex">
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              onClick={handleAddTag}
-              label={t("Добавить тег")}
-              icon={<PlusIcon className="w-4 h-4" />}
-            />
-          </div>
-        </PageToolbar>
+        <PageHeader
+          title={t("Теги")}
+          primaryAction={{ label: t("Добавить тег"), onClick: handleAddTag }}
+        />
         <PageContent>
 
         {isLoadingTags ? (

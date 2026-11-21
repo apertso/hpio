@@ -7,6 +7,10 @@ import { parseCalendarDate } from "../../utils/dateUtils";
 import { formatCurrencyTotals, groupCurrencyTotals } from "../../utils/currencies";
 import { PaymentStatusIcon } from "../PaymentRowList";
 import Money from "./Money";
+import {
+  PrimaryActionButton,
+  type PagePrimaryAction,
+} from "../layout/AppHeader";
 
 interface DashboardHeroProps {
   /** Ближайшие и просроченные платежи */
@@ -20,6 +24,13 @@ interface DashboardHeroProps {
   onOpenPayment: (id: string) => void;
   /** Данные ещё не пришли: показываем заглушку того же размера вместо «0 ₽» */
   isLoading?: boolean;
+  /** Основное действие (добавить платёж) — на десктопе стоит справа, вровень с суммой */
+  action?: PagePrimaryAction;
+  /**
+   * На мобильных кнопка меню плавает слева сверху: подпись «К оплате» встаёт
+   * на одну строку с ней, а сумма идёт ниже от обычного края
+   */
+  wrapMenuButton?: boolean;
 }
 
 const DAY_MS = 86400000;
@@ -40,6 +51,8 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
   onFilter,
   onOpenPayment,
   isLoading = false,
+  action,
+  wrapMenuButton = false,
 }) => {
   const { t, locale } = useLanguage();
   const now = new Date();
@@ -65,14 +78,37 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
       ? "border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900"
       : "border-[var(--ui-border)] bg-[var(--ui-surface)] text-gray-700 hover:border-[var(--ui-border-strong)] dark:text-gray-300";
 
+  // Весь блок обтекает кнопку меню: сдвинут вправо на ширину кнопки с зазором,
+  // а подпись стоит на одной высоте с кнопкой (size-9 в полосе h-14)
+  const sectionInset = wrapMenuButton ? "pl-10 md:pl-0" : "";
+  const labelClass = `text-xs font-medium text-gray-500 dark:text-gray-400 ${
+    wrapMenuButton ? "-mt-1.5 flex min-h-9 items-center md:mt-0 md:block md:min-h-0" : ""
+  }`;
+  const amountRowGap = "mt-1";
+  const topRowClass = "flex items-end justify-between gap-4";
+
+  // Кнопка только для десктопа: на мобильных её роль выполняет плавающая кнопка
+  const actionButton = action ? (
+    <PrimaryActionButton
+      action={action}
+      size="md"
+      className="mb-1 hidden md:inline-flex"
+    />
+  ) : null;
+
   if (isLoading) {
     return (
-      <section aria-busy="true" className="ui-skeleton-delayed">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-          {t("К оплате")} · {windowLabel}
-        </p>
-        <div className="mt-1 flex h-[2.6rem] items-center">
-          <div className="h-9 w-56 rounded-md bg-gray-100 animate-pulse dark:bg-white/[0.06]" />
+      <section aria-busy="true" className={`ui-skeleton-delayed ${sectionInset}`}>
+        <div className={topRowClass}>
+          <div>
+            <p className={labelClass}>
+              {t("К оплате")} · {windowLabel}
+            </p>
+            <div className={`${amountRowGap} flex h-[2.6rem] items-center`}>
+              <div className="h-9 w-56 rounded-md bg-gray-100 animate-pulse dark:bg-white/[0.06]" />
+            </div>
+          </div>
+          {actionButton}
         </div>
         <div className="mt-4 flex gap-2">
           <div className="h-7 w-44 rounded-md bg-gray-100 animate-pulse dark:bg-white/[0.06]" />
@@ -83,13 +119,15 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
   }
 
   return (
-    <section className="ui-fade-in">
+    <section className={`ui-fade-in ${sectionInset}`}>
       {/* Сумма к оплате и срочные платежи */}
       <div className="min-w-0">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <div className={topRowClass}>
+        <div className="min-w-0">
+        <p className={labelClass}>
           {t("К оплате")} · {windowLabel}
         </p>
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-2">
+        <div className={`${amountRowGap} flex flex-wrap items-baseline gap-x-3 gap-y-2`}>
           {(totals.length ? totals : [{ amount: 0, currency }]).map((total, index) => (
             <React.Fragment key={total.currency}>
               {index > 0 && <span className="text-xl text-gray-400">+</span>}
@@ -101,6 +139,9 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
               />
             </React.Fragment>
           ))}
+        </div>
+        </div>
+        {actionButton}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">

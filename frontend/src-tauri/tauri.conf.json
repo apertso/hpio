@@ -1,6 +1,7 @@
 {
   "productName": "Хочу Плачу",
   "identifier": "com.hochuplachu.hpio",
+  "version": "../package.json",
   "build": {
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",

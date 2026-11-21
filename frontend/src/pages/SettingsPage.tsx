@@ -1,6 +1,7 @@
 import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
 import PageMeta from "../components/PageMeta";
+import { PageHeader } from "../components/layout/Page";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { usePageTitle } from "../context/PageTitleContext";
 import SettingsNavigation, {
@@ -74,7 +75,7 @@ const SettingsPage: React.FC = () => {
       <PageMeta {...metadata} />
 
       <div className="dark:text-gray-100">
-        <h1 className="sr-only hidden md:block">{t("Настройки")}</h1>
+        <PageHeader title={t("Настройки")} />
         <div className="w-full max-w-5xl px-3 py-4 md:px-6 md:py-6">
           <div className="flex flex-col md:flex-row gap-6 md:gap-10">
             {/* Навигация по разделам настроек */}

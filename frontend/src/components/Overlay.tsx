@@ -9,6 +9,8 @@ interface OverlayProps {
   anchorRef?: React.RefObject<HTMLElement | null>;
   offset?: number;
   className?: string;
+  /** Выравнивание по горизонтали относительно триггера при показе снизу/сверху */
+  align?: "center" | "start" | "end";
 }
 
 const Overlay: React.FC<OverlayProps> = ({
@@ -18,6 +20,7 @@ const Overlay: React.FC<OverlayProps> = ({
   anchorRef,
   offset = 8,
   className = "",
+  align = "center",
 }) => {
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const [style, setStyle] = useState<React.CSSProperties>({
@@ -59,15 +62,21 @@ const Overlay: React.FC<OverlayProps> = ({
       let transformOrigin: string;
 
       const anchorCenter = a.left + a.width / 2;
+      const alignedLeft =
+        align === "start"
+          ? a.left
+          : align === "end"
+          ? a.right - o.width
+          : anchorCenter - o.width / 2;
       const anchorVerticalCenter = a.top + a.height / 2;
 
       if (fitsBelow) {
         top = a.bottom + offset;
-        left = anchorCenter - o.width / 2;
+        left = alignedLeft;
         transformOrigin = "top center";
       } else if (fitsAbove) {
         top = a.top - o.height - offset;
-        left = anchorCenter - o.width / 2;
+        left = alignedLeft;
         transformOrigin = "bottom center";
       } else if (fitsLeft) {
         top = anchorVerticalCenter - o.height / 2;
@@ -115,7 +124,7 @@ const Overlay: React.FC<OverlayProps> = ({
       window.removeEventListener("resize", compute);
       window.removeEventListener("scroll", compute, true);
     };
-  }, [isOpen, anchorRef, offset, children]);
+  }, [isOpen, anchorRef, offset, children, align]);
 
   if (!isOpen) return null;
 

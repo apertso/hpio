@@ -78,14 +78,16 @@ const SettingsNavigation: React.FC<SettingsNavigationProps> = ({
             <button
               key={section.id}
               onClick={() => onSectionChange(section.id)}
-              className={`-mb-px flex-1 flex flex-col items-center justify-center py-2.5 px-2 text-xs font-medium border-b-2 transition-colors cursor-pointer ${
+              // Подпись не показываем: заголовок раздела виден внутри открытой вкладки
+              aria-label={t(section.label)}
+              title={t(section.label)}
+              className={`-mb-px flex-1 flex items-center justify-center py-3 px-2 border-b-2 transition-colors cursor-pointer ${
                 isActive
                   ? "text-gray-900 dark:text-gray-50 border-gray-900 dark:border-gray-100"
                   : "text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-200"
               }`}
             >
-              <Icon className="size-4 mb-1" />
-              {t(section.label)}
+              <Icon className="size-6" />
             </button>
           );
         })}

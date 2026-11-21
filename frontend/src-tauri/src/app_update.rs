@@ -53,7 +53,7 @@ fn call_helper(
         .map_err(|e| format!("Failed to decode {} result: {:?}", method, e))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fetch_latest_github_release() -> Result<String, String> {
     #[cfg(target_os = "android")]
     {
@@ -65,7 +65,7 @@ pub fn fetch_latest_github_release() -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn android_device_arch() -> Result<String, String> {
     #[cfg(target_os = "android")]
     {
@@ -77,7 +77,7 @@ pub fn android_device_arch() -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn install_github_release_apk(url: String) -> Result<String, String> {
     #[cfg(target_os = "android")]
     {

@@ -1,6 +1,13 @@
 // src/App.tsx
 import { useLanguage } from './context/LanguageContext';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   Routes,
   Route,
@@ -22,8 +29,15 @@ import SyncStatusIndicator from './components/SyncStatusIndicator';
 import OverlayScrollbar from './components/OverlayScrollbar';
 import AppSidebar from './components/AppSidebar';
 import { UiSurfaceContext } from './context/UiSurfaceContext';
+import {
+  AppHeaderSlotsContext,
+  HEADER_ICON_BUTTON_CLASS,
+} from './components/layout/AppHeader';
 import MobileNavigationDrawer from './components/MobileNavigationDrawer';
-import VerificationBanner from './components/VerificationBanner';
+import VerificationBanner, {
+  VerificationIndicator,
+} from './components/VerificationBanner';
+import AppUpdateBanner from './components/AppUpdateBanner';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { LandingTopBar } from './components/LandingTopBar';
 import PublicLocaleSync from './components/PublicLocaleSync';
@@ -34,11 +48,7 @@ import {
 } from './i18n/localePath';
 
 // Icons
-import {
-  ArrowLeftIcon,
-  Bars3Icon,
-  PlusIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, Bars3Icon } from '@heroicons/react/24/outline';
 
 // Utilities & API
 import axiosInstance from './api/axiosInstance';
@@ -99,7 +109,30 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
-  const { pageTitle, headerAction, headerRightAction } = usePageTitle();
+  const { pageTitle, setPageTitle, headerAction, headerRightAction } =
+    usePageTitle();
+  // Узлы общей шапки, в которые страницы переносят заголовок, действия и кнопку «+»
+  const [headerTitleSlot, setHeaderTitleSlot] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const [headerActionsSlot, setHeaderActionsSlot] =
+    useState<HTMLDivElement | null>(null);
+  const [fabSlot, setFabSlot] = useState<HTMLDivElement | null>(null);
+  const [hasFab, setHasFab] = useState(false);
+  const [hideDesktopHeader, setHideDesktopHeader] = useState(false);
+  // Плавающая шапка на мобильных: без полосы, только кнопки поверх содержимого
+  const [floatingMobileHeader, setFloatingMobileHeader] = useState(false);
+  const headerSlots = useMemo(
+    () => ({
+      title: headerTitleSlot,
+      actions: headerActionsSlot,
+      fab: fabSlot,
+      setHasFab,
+      setHideDesktopBar: setHideDesktopHeader,
+      setFloatingMobileBar: setFloatingMobileHeader,
+    }),
+    [headerTitleSlot, headerActionsSlot, fabSlot],
+  );
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
 
   const incomeCardsEnabled = isIncomeAndCardsEnabled();
@@ -414,27 +447,11 @@ function App() {
     };
   }, [isAuthenticated, navigate]);
 
-  // --- Mobile Floating Action Logic ---
-  let mobileAddAction: (() => void) | null = null;
-  let mobileActionIcon: React.ReactNode | null = null;
-  let mobileActionAriaLabel: string | null = null;
-
-  if (isAuthenticated) {
-    if (location.pathname === '/dashboard') {
-      mobileAddAction = () => navigate('/payments/new');
-      mobileActionIcon = <PlusIcon className="h-6 w-6" />;
-      mobileActionAriaLabel = 'Добавить';
-    } else if (location.pathname === '/categories' && canManageCategories) {
-      mobileAddAction = () => navigate('/categories/new');
-      mobileActionIcon = <PlusIcon className="h-6 w-6" />;
-      mobileActionAriaLabel = 'Добавить';
-    } else if (location.pathname === '/tags') {
-      mobileAddAction = () =>
-        window.dispatchEvent(new CustomEvent('tags:create-request'));
-      mobileActionIcon = <PlusIcon className="h-6 w-6" />;
-      mobileActionAriaLabel = 'Тег';
-    }
-  }
+  // Сбрасываем заголовок при смене страницы до того, как новая страница задаст свой
+  // (эффекты макета выполняются раньше обычных), чтобы в шапке не оставалось чужое название
+  useLayoutEffect(() => {
+    setPageTitle('');
+  }, [location.pathname, setPageTitle]);
 
   useEffect(() => {
     setIsMobileDrawerOpen(false);
@@ -490,33 +507,63 @@ function App() {
 
   // --- Render Helpers ---
 
-  const headerIconButtonClass =
-    'flex size-9 items-center justify-center rounded-md text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 disabled:opacity-40 cursor-pointer';
-
-  // Мобильная шапка авторизованного приложения
-  const renderAppMobileHeader = (): React.JSX.Element => (
-    <header className="md:hidden z-30 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[var(--ui-border)] bg-[var(--ui-bg)] px-1.5">
-      <div className="flex min-w-0 items-center gap-1">
+  // Общая шапка рабочего интерфейса: на мобильных и на десктопе.
+  // Заголовок, действия и кнопку «+» страница передаёт через <PageHeader>.
+  // Плавающий режим (главная на мобильных): полосы нет, кнопка меню остаётся на своём
+  // обычном месте слева сверху, а содержимое страницы поднимается и обтекает её.
+  // Полупрозрачная подложка совпадает с фоном страницы и видна только при прокрутке.
+  const floatingButtonClass = 'bg-[var(--ui-bg)]/80 backdrop-blur-md';
+  const renderAppHeader = (): React.JSX.Element => (
+    <header
+      className={
+        floatingMobileHeader
+          ? 'pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 items-center gap-1 px-2 md:hidden'
+          : `relative z-30 flex h-14 shrink-0 items-center gap-1 bg-[var(--ui-bg)] px-2 ${hideDesktopHeader ? 'md:hidden' : 'md:flex'} md:h-12 md:gap-2 md:border-b md:border-[var(--ui-border)] md:bg-[var(--ui-surface)] md:px-6`
+      }
+    >
+      <div
+        className={`flex shrink-0 md:hidden ${
+          floatingMobileHeader ? 'pointer-events-auto' : ''
+        }`}
+      >
         {isEditPage ? (
           <button
+            type="button"
             onClick={() => navigate(-1)}
-            className={headerIconButtonClass}
+            className={`${HEADER_ICON_BUTTON_CLASS} [&_svg]:size-5`}
             aria-label={t('Назад')}
+            title={t('Назад')}
           >
-            <ArrowLeftIcon className="size-5" />
+            <ArrowLeftIcon />
           </button>
         ) : (
           <button
+            type="button"
             onClick={() => setIsMobileDrawerOpen(true)}
-            className={headerIconButtonClass}
+            className={`${HEADER_ICON_BUTTON_CLASS} [&_svg]:size-5 ${
+              floatingMobileHeader ? floatingButtonClass : ''
+            }`}
             aria-label={t('Меню')}
+            title={t('Меню')}
           >
-            <Bars3Icon className="size-5" />
+            <Bars3Icon />
           </button>
         )}
+      </div>
+
+      <div
+        className={`min-w-0 flex-1 items-center gap-2 pl-1.5 md:pl-0 ${
+          floatingMobileHeader ? 'hidden' : 'flex'
+        }`}
+      >
+        <div
+          ref={setHeaderTitleSlot}
+          className="app-header-title flex min-w-0 items-center"
+        />
+        {/* Запасной заголовок для страниц без собственной шапки */}
         {pageTitle && (
-          <div className="flex min-w-0 items-center gap-2">
-            <h1 className="truncate text-base font-semibold text-gray-900 dark:text-gray-50">
+          <div className="app-header-fallback flex min-w-0 items-center gap-2">
+            <h1 className="truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50 md:text-sm">
               {pageTitle}
             </h1>
             {headerAction}
@@ -524,18 +571,21 @@ function App() {
         )}
       </div>
 
-      <div className="flex items-center gap-1">
+      <div
+        className={`flex shrink-0 items-center gap-0.5 md:gap-1 ${
+          floatingMobileHeader ? 'pointer-events-auto ml-auto' : ''
+        }`}
+      >
         <SyncStatusIndicator />
+        {/* Напоминание о подтверждении почты на мобильных — иконка, а не полоса */}
+        <VerificationIndicator
+          className={`md:hidden ${floatingMobileHeader ? floatingButtonClass : ''}`}
+        />
+        <div
+          ref={setHeaderActionsSlot}
+          className="flex items-center gap-0.5 empty:hidden md:gap-1"
+        />
         {headerRightAction}
-        {mobileAddAction && mobileActionIcon && (
-          <button
-            onClick={mobileAddAction}
-            className={headerIconButtonClass}
-            aria-label={mobileActionAriaLabel || t('Действие')}
-          >
-            {mobileActionIcon}
-          </button>
-        )}
       </div>
     </header>
   );
@@ -726,12 +776,17 @@ function App() {
 
   const mainContent = (
     <div className="relative flex min-h-0 w-full flex-1 flex-col">
+      {/* Плавающая шапка — поверх области прокрутки */}
+      {showSidebar && floatingMobileHeader && renderAppHeader()}
     <main
       ref={setMainScrollEl}
       className={`${mainClasses} motion-reduce:scroll-auto`}
       key={isPublicPage ? location.pathname : undefined}
     >
       {routes}
+
+      {/* Запас снизу, чтобы плавающая кнопка не закрывала последние строки */}
+      {hasFab && <div className="h-24 shrink-0 md:hidden" aria-hidden="true" />}
 
       {/* Footer acts as a spacer in the scroll view for mobile, or real footer on desktop */}
       {showFooter && (
@@ -753,13 +808,22 @@ function App() {
         <>
           <AppSidebar />
           {/* Рабочая область: на десктопе — приподнятая панель с тонкой рамкой */}
-          <div className="flex min-w-0 flex-1 flex-col md:py-2 md:pr-2">
-            {renderAppMobileHeader()}
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:rounded-lg md:border md:border-[var(--ui-border)] md:bg-[var(--ui-surface)] md:shadow-sm">
-              <VerificationBanner />
-              {mainContent}
+          <AppHeaderSlotsContext.Provider value={headerSlots}>
+            <div className="flex min-w-0 flex-1 flex-col md:py-2 md:pr-2">
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:rounded-lg md:border md:border-[var(--ui-border)] md:bg-[var(--ui-surface)] md:shadow-sm">
+                {!floatingMobileHeader && renderAppHeader()}
+                {/* На десктопе — полоса над содержимым; на мобильных — иконка в шапке */}
+                <VerificationBanner className="hidden md:flex" />
+                <AppUpdateBanner />
+                {mainContent}
+                {/* Плавающая кнопка основного действия страницы (только мобильные) */}
+                <div
+                  ref={setFabSlot}
+                  className="pointer-events-none absolute bottom-5 right-4 z-20 empty:hidden md:hidden"
+                />
+              </div>
             </div>
-          </div>
+          </AppHeaderSlotsContext.Provider>
         </>
       ) : (
         <>

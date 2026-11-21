@@ -1,5 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
-import { PageContent } from "../components/layout/Page";
+import { PageContent, PageHeader } from "../components/layout/Page";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PageMeta from "../components/PageMeta";
@@ -26,6 +26,13 @@ import { usePageTitle } from "../context/PageTitleContext";
 import ConfirmModal from "../components/ConfirmModal";
 import Modal from "../components/Modal";
 import MobilePanel from "../components/MobilePanel";
+import MobileActionBar from "../components/MobileActionBar";
+// Иконки меню действий на мобильных — единый контурный набор
+import {
+  PencilSquareIcon as PencilOutlineIcon,
+  TrashIcon as TrashOutlineIcon,
+} from "@heroicons/react/24/outline";
+
 import Spinner from "../components/Spinner";
 import CardDisplay from "../components/CardDisplay";
 import Select from "../components/Select";
@@ -63,12 +70,13 @@ const MobileActionsOverlay: React.FC<{
   const actions = [
     {
       label: t("Изменить"),
-      icon: PencilSolidIcon,
+      icon: PencilOutlineIcon,
       handler: () => onEdit(card),
     },
     {
       label: t("Удалить"),
-      icon: TrashSolidIcon,
+      icon: TrashOutlineIcon,
+      tone: "destructive" as const,
       handler: () => onDelete(card),
     },
   ];
@@ -81,21 +89,7 @@ const MobileActionsOverlay: React.FC<{
       shouldClose={shouldClose}
       enableBackdropClick={false}
     >
-      <div className="flex justify-around items-center">
-        {actions.map((action) => (
-          <button
-            key={action.label}
-            onClick={() => {
-              action.handler();
-              onClose();
-            }}
-            className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-          >
-            <action.icon className="size-5 text-gray-500 dark:text-gray-400" />
-            <span className="text-xs font-medium">{action.label}</span>
-          </button>
-        ))}
-      </div>
+      <MobileActionBar actions={actions} onAfterSelect={onClose} />
     </MobilePanel>
   );
 };
@@ -879,7 +873,7 @@ const CardsPage: React.FC = () => {
     <>
       <PageMeta {...metadata} title={t("Источники")} />
       <div className="dark:text-gray-100">
-        <h1 className="sr-only hidden md:block">{t("Источники")}</h1>
+        <PageHeader title={t("Источники")} />
         <PageContent width="form">
 
         <div className="space-y-4">
@@ -1558,30 +1552,29 @@ const CardsPage: React.FC = () => {
           enableBackdropClick={false}
         >
           {activeCashBalance && (
-            <div className="flex justify-around items-center">
-              <button
-                onClick={() => {
-                  startCashEdit(activeCashBalance);
-                  setShouldCloseCashPanel(true);
-                }}
-                className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-              >
-                <PencilSolidIcon className="h-6 w-6" />
-                <span className="text-sm">{t("Изменить")}</span>
-              </button>
-              {activeCashBalance.currency !== baseCashCurrency && (
-                <button
-                  onClick={() => {
-                    handleRequestDeleteCashCurrency(activeCashBalance.currency);
-                    setShouldCloseCashPanel(true);
-                  }}
-                  className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-                >
-                  <TrashSolidIcon className="h-6 w-6" />
-                  <span className="text-sm">{t("Удалить")}</span>
-                </button>
-              )}
-            </div>
+            <MobileActionBar
+              onAfterSelect={() => setShouldCloseCashPanel(true)}
+              actions={[
+                {
+                  label: t("Изменить"),
+                  icon: PencilOutlineIcon,
+                  handler: () => startCashEdit(activeCashBalance),
+                },
+                ...(activeCashBalance.currency !== baseCashCurrency
+                  ? [
+                      {
+                        label: t("Удалить"),
+                        icon: TrashOutlineIcon,
+                        tone: "destructive" as const,
+                        handler: () =>
+                          handleRequestDeleteCashCurrency(
+                            activeCashBalance.currency
+                          ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           )}
         </MobilePanel>
 
@@ -1593,31 +1586,26 @@ const CardsPage: React.FC = () => {
           enableBackdropClick={false}
         >
           {activeCryptoBalance && (
-            <div className="flex justify-around items-center">
-              <button
-                onClick={() => {
-                  startCryptoEdit(activeCryptoBalance);
-                  setShouldCloseCryptoPanel(true);
-                }}
-                className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-              >
-                <PencilSolidIcon className="h-6 w-6" />
-                <span className="text-sm">{t("Изменить")}</span>
-              </button>
-              <button
-                onClick={() => {
-                  handleDeleteCrypto(
-                    activeCryptoBalance.id,
-                    activeCryptoBalance.name
-                  );
-                  setShouldCloseCryptoPanel(true);
-                }}
-                className="flex flex-col items-center justify-center gap-1.5 p-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors w-24 cursor-pointer"
-              >
-                <TrashSolidIcon className="h-6 w-6" />
-                <span className="text-sm">{t("Удалить")}</span>
-              </button>
-            </div>
+            <MobileActionBar
+              onAfterSelect={() => setShouldCloseCryptoPanel(true)}
+              actions={[
+                {
+                  label: t("Изменить"),
+                  icon: PencilOutlineIcon,
+                  handler: () => startCryptoEdit(activeCryptoBalance),
+                },
+                {
+                  label: t("Удалить"),
+                  icon: TrashOutlineIcon,
+                  tone: "destructive" as const,
+                  handler: () =>
+                    handleDeleteCrypto(
+                      activeCryptoBalance.id,
+                      activeCryptoBalance.name
+                    ),
+                },
+              ]}
+            />
           )}
         </MobilePanel>
 

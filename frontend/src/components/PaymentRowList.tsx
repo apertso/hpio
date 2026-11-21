@@ -141,13 +141,19 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
       return next;
     });
   const padX = inset === "panel" ? "px-4" : inset === "plain" ? "px-2" : "px-6";
-  // Отступы строк только для десктопа: на мобильных строки превращаются в карточки
+  // Отступы строк для десктопа; на мобильных строки идут по фону страницы без карточек
   const mdPadX = inset === "panel" ? "md:px-4" : inset === "plain" ? "md:px-2" : "md:px-6";
   const isPlain = inset === "plain";
-  // Список: на мобильных — карточки с промежутками, на десктопе — строки с разделителями
-  const listClass = `space-y-1.5 md:space-y-0 md:divide-y md:divide-[var(--ui-border)] ${
+  // Мобильная строка: на всю ширину экрана (компенсируем боковой отступ страницы),
+  // чтобы зона нажатия и подсветка были во всю ширину, а текст остался на месте
+  const mobileRowX = "-mx-3 px-4 md:mx-0";
+  // Список: на мобильных — плоские строки с едва заметными разделителями,
+  // на десктопе — строки с разделителями цвета рамки
+  const listClass = `divide-y divide-black/[0.06] dark:divide-white/[0.05] md:divide-[var(--ui-border)] ${
     isPlain ? "" : "md:border-b md:border-[var(--ui-border)]"
   }`;
+  // Группы (Просрочено, Сегодня, Позже) отделены чуть большим отступом
+  const groupGap = "[&>section+section]:mt-7 md:[&>section+section]:mt-5";
   const { t, locale, language } = useLanguage();
   const today = startOfDay(new Date());
 
@@ -236,7 +242,7 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
   if (isLoading) {
     return (
       // Заглушка повторяет форму списка: заголовки групп и строки, чтобы при появлении данных ничего не прыгало
-      <div className={isPlain ? "md:-mx-2 [&>section+section]:mt-5" : ""} aria-busy="true">
+      <div className={isPlain ? `md:-mx-2 ${groupGap}` : groupGap} aria-busy="true">
         {[3, 2].map((rowCount, g) => (
           <section key={g}>
             {!hideGroupHeaders && (
@@ -248,7 +254,7 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
               {Array.from({ length: rowCount }).map((_, i) => (
                 <div
                   key={i}
-                  className={`flex h-[66px] items-center gap-3 rounded-lg border border-[var(--ui-border)] px-3 md:h-11 md:rounded-none md:border-0 ${mdPadX}`}
+                  className={`flex h-[68px] items-center gap-3 ${mobileRowX} md:h-11 ${mdPadX}`}
                 >
                   <div className="size-3.5 rounded-full bg-gray-100 dark:bg-white/[0.06] animate-pulse" />
                   <div
@@ -277,10 +283,10 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
     <div
       className={
         isPlain
-          ? "@container md:-mx-2 [&>section:last-child>ul]:border-b-0 [&>section+section]:mt-5"
+          ? `@container md:-mx-2 [&>section:last-child>ul]:border-b-0 ${groupGap}`
           : inset === "panel"
-            ? "@container [&>section:last-child>ul]:border-b-0"
-            : "@container"
+            ? `@container [&>section:last-child>ul]:border-b-0 ${groupGap}`
+            : `@container ${groupGap}`
       }
     >
       {showColumnHeader && (
@@ -303,11 +309,11 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
           <section key={group.key}>
             {!hideGroupHeaders && (
               <div
-                className={`flex min-h-8 flex-wrap items-center gap-2 px-1 py-1 text-xs ${mdPadX} ${
+                className={`flex min-h-8 flex-wrap items-center gap-2 px-1 py-1 text-sm md:text-xs ${mdPadX} ${
                   isPlain
                     ? "text-gray-500 dark:text-gray-400"
                     : "border-b border-[var(--ui-border)] bg-gray-50/80 dark:bg-white/[0.025]"
-                } ${inset === "flush" ? "sticky top-12 z-10 backdrop-blur" : ""}`}
+                } ${inset === "flush" ? "sticky top-0 z-10 backdrop-blur" : ""}`}
               >
                 <span className="font-medium text-gray-900 dark:text-gray-100">
                   {group.label}
@@ -369,15 +375,14 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
                     aria-selected={isSelected || undefined}
                     className={[
                       "group cursor-pointer text-sm transition-colors",
-                      // Мобильные: карточка с тонкой рамкой и удобной зоной нажатия
-                      "rounded-lg border px-3 py-3 active:bg-gray-50 dark:active:bg-white/[0.04]",
+                      // Мобильные: плоская строка по фону страницы с крупной зоной нажатия
+                      "py-3.5 active:bg-black/[0.03] dark:active:bg-white/[0.04]",
+                      mobileRowX,
                       // Десктоп: строка списка
-                      "md:flex md:h-11 md:items-center md:gap-3 md:border-0 md:py-0 md:hover:bg-gray-50 md:dark:hover:bg-white/[0.025]",
+                      "md:flex md:h-11 md:items-center md:gap-3 md:py-0 md:hover:bg-gray-50 md:dark:hover:bg-white/[0.025]",
                       mdPadX,
-                      isPlain ? "md:rounded-md" : "md:rounded-none",
-                      isSelected
-                        ? "border-gray-300 bg-gray-50 dark:border-white/20 dark:bg-white/[0.04]"
-                        : "border-[var(--ui-border)] bg-[var(--ui-surface)] md:bg-transparent",
+                      isPlain ? "md:rounded-md" : "",
+                      isSelected ? "bg-black/[0.04] dark:bg-white/[0.05]" : "",
                     ].join(" ")}
                   >
                     {/* Мобильная карточка: название и сумма, ниже — тип, категория и срок */}
@@ -458,7 +463,7 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
                       type="button"
                       onClick={() => toggleGroup(group.key)}
                       aria-expanded={isExpanded}
-                      className={`flex min-h-10 w-full flex-wrap items-center gap-2 rounded-lg px-3 py-1 text-left text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.025] dark:hover:text-gray-100 cursor-pointer md:min-h-9 md:rounded-none ${mdPadX}`}
+                      className={`flex min-h-11 w-[calc(100%+1.5rem)] flex-wrap items-center gap-2 -mx-3 px-4 py-1 text-left text-xs text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.025] dark:hover:text-gray-100 cursor-pointer md:mx-0 md:min-h-9 md:w-full ${mdPadX}`}
                     >
                       <ChevronDownIcon className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                       <span className="font-medium">

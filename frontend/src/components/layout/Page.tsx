@@ -1,61 +1,16 @@
 // src/components/layout/Page.tsx
 import React from "react";
-import { Link } from "react-router-dom";
-import { ChevronRightIcon } from "@heroicons/react/20/solid";
-
-export interface PageBreadcrumb {
-  label: string;
-  to?: string;
-}
-
-interface PageHeaderProps {
-  /** Заголовок текущей страницы */
-  title: React.ReactNode;
-  /** Цепочка родительских страниц перед заголовком */
-  breadcrumbs?: PageBreadcrumb[];
-  /** Дополнительный элемент сразу после заголовка (подсказка, бейдж) */
-  titleAddon?: React.ReactNode;
-  /** Действия в правой части шапки */
-  actions?: React.ReactNode;
-}
-
-/**
- * Шапка страницы рабочего интерфейса: на всю ширину панели, с нижней границей.
- * На мобильных скрыта — там заголовок и действия выводятся в шапке приложения.
- */
-export const PageHeader: React.FC<PageHeaderProps> = ({
-  title,
-  breadcrumbs,
-  titleAddon,
-  actions,
-}) => (
-  <header className="sticky top-0 z-20 hidden md:flex h-12 shrink-0 items-center justify-between gap-4 border-b border-[var(--ui-border)] bg-[var(--ui-surface)] px-6">
-    <div className="flex min-w-0 items-center gap-1.5 text-sm">
-      {breadcrumbs?.map((crumb) => (
-        <React.Fragment key={crumb.label}>
-          {crumb.to ? (
-            <Link
-              to={crumb.to}
-              className="truncate text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 cursor-pointer"
-            >
-              {crumb.label}
-            </Link>
-          ) : (
-            <span className="truncate text-gray-500 dark:text-gray-400">
-              {crumb.label}
-            </span>
-          )}
-          <ChevronRightIcon className="size-3.5 shrink-0 text-gray-300 dark:text-gray-600" />
-        </React.Fragment>
-      ))}
-      <h1 className="truncate font-semibold text-gray-900 dark:text-gray-50">
-        {title}
-      </h1>
-      {titleAddon}
-    </div>
-    {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
-  </header>
-);
+export {
+  PageHeader,
+  HeaderIconButton,
+  HeaderViewMenu,
+  PrimaryActionButton,
+} from "./AppHeader";
+export type {
+  PageBreadcrumb,
+  PagePrimaryAction,
+  HeaderViewOption,
+} from "./AppHeader";
 
 interface PageToolbarProps {
   children: React.ReactNode;

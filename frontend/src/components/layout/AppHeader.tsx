@@ -379,7 +379,7 @@ export const PrimaryActionButton: React.FC<{
  * Плавающая кнопка основного действия — только на мобильных,
  * в зоне досягаемости большого пальца.
  */
-const FloatingActionButton: React.FC<{ action: PagePrimaryAction }> = ({
+export const FloatingActionButton: React.FC<{ action: PagePrimaryAction }> = ({
   action,
 }) => (
   <button

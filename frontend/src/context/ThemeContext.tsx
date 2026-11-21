@@ -52,8 +52,34 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   // Эффект для применения класса темы к элементу <html>
   useEffect(() => {
     const root = window.document.documentElement;
+    if (root.classList.contains(resolvedTheme)) {
+      return;
+    }
+
+    // Временно отключаем все CSS-переходы, иначе элементы с transition-colors/transition-all
+    // перекрашиваются с разной скоростью и страница "мигает" при смене темы
+    const style = document.createElement("style");
+    style.appendChild(
+      document.createTextNode(
+        "*,*::before,*::after{-webkit-transition:none!important;transition:none!important}"
+      )
+    );
+    document.head.appendChild(style);
+
     root.classList.remove("light", "dark"); // Удаляем старые классы
     root.classList.add(resolvedTheme); // Добавляем текущую фактическую тему
+
+    // Принудительный пересчёт стилей, чтобы новая тема применилась без анимации
+    void window.getComputedStyle(document.body).opacity;
+
+    // Возвращаем переходы сразу после применения стилей
+    // (setTimeout, а не requestAnimationFrame: rAF не срабатывает в фоновых вкладках)
+    const timeout = window.setTimeout(() => style.remove(), 1);
+
+    return () => {
+      window.clearTimeout(timeout);
+      style.remove();
+    };
   }, [resolvedTheme]);
 
   // Функция для изменения темы пользователем

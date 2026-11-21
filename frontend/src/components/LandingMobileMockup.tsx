@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactElement } from "react";
-import { Bars3Icon, PlusIcon } from "@heroicons/react/24/outline";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { Bars3Icon } from "@heroicons/react/24/outline";
+import { FloatingActionButton, HEADER_ICON_BUTTON_CLASS } from "./layout/AppHeader";
 import { useLanguage } from "../context/LanguageContext";
 import { UiSurfaceContext } from "../context/UiSurfaceContext";
 import { useLandingDashboardDemo } from "../hooks/useLandingDashboardDemo";
@@ -40,14 +41,17 @@ function usePhonePreviewZoom(screenRef: React.RefObject<HTMLDivElement | null>):
 export function LandingMobileMockup(): ReactElement {
   const { t } = useLanguage();
   const demo = useLandingDashboardDemo();
+  const phoneDemo = useMemo(() => ({ ...demo, floatingMenuButton: true }), [demo]);
   const screenRef = useRef<HTMLDivElement>(null);
   const zoom = usePhonePreviewZoom(screenRef);
 
+  // isolate: z-index внутренних слоёв макета (шапка z-30, кнопка «+» z-20) не выходит наружу
+  // и не перекрывает выпадающие меню верхней панели страницы
   return (
     <div
       role="group"
       aria-label={t("Интерфейс Хочу Плачу на телефоне")}
-      className="landing-hero-phone relative mx-auto aspect-[10/21] w-full max-w-[288px] rounded-4xl bg-gray-950 shadow-lg ring-1 ring-gray-950/10 dark:ring-white/10"
+      className="landing-hero-phone relative isolate mx-auto aspect-[10/21] w-full max-w-[288px] rounded-4xl bg-gray-950 shadow-lg ring-1 ring-gray-950/10 dark:ring-white/10"
     >
       <div
         ref={screenRef}
@@ -57,31 +61,32 @@ export function LandingMobileMockup(): ReactElement {
           Мобильная разметка приложения: data-phone-preview отключает sm/md брейкпоинты,
           data-app-preview — app-lg/app-xl и даёт токены приложения.
           Пока масштаб не измерен, содержимое скрыто, чтобы не мелькала неуменьшенная панель.
+          Высота h-full: процентная высота под zoom считается от высоты экрана макета,
+          поэтому плавающая кнопка «+» остаётся внизу экрана.
         */}
         <div
           data-app-preview=""
           data-phone-preview=""
           className={`flex h-full flex-col font-sans text-gray-900 dark:text-gray-100 tracking-[-0.003em] ${zoom === null ? "invisible" : ""}`}
-          style={{ width: `${PHONE_WIDTH_REM}rem`, zoom: zoom ?? 1, height: zoom ? `${100 / zoom}%` : undefined }}
+          style={{ width: `${PHONE_WIDTH_REM}rem`, zoom: zoom ?? 1 }}
           inert
         >
           <UiSurfaceContext.Provider value="app">
-            {/* Повторяет мобильную шапку приложения из App.tsx */}
-            <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[var(--ui-border)] bg-[var(--ui-bg)] px-1.5">
-              <div className="flex min-w-0 items-center gap-1">
-                <span className="flex size-9 items-center justify-center text-gray-700 dark:text-gray-200">
-                  <Bars3Icon className="size-5" />
+            {/*
+              Повторяет мобильную оболочку главной из App.tsx: полосы шапки нет,
+              кнопка меню плавает слева сверху, а блок «К оплате» обтекает её;
+              кнопка добавления платежа — плавающая внизу справа.
+            */}
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 items-center gap-1 px-2">
+                <span className={`${HEADER_ICON_BUTTON_CLASS} bg-[var(--ui-bg)]/80 backdrop-blur-md [&_svg]:size-5`}>
+                  <Bars3Icon />
                 </span>
-                <span className="truncate text-base font-semibold text-gray-900 dark:text-gray-50">
-                  {t("Главная")}
-                </span>
+              </header>
+              <HomePage demo={phoneDemo} />
+              <div className="pointer-events-none absolute bottom-5 right-4 z-20">
+                <FloatingActionButton action={{ label: t("Добавить платеж"), onClick: () => {} }} />
               </div>
-              <span className="flex size-9 items-center justify-center text-gray-700 dark:text-gray-200">
-                <PlusIcon className="size-5" />
-              </span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <HomePage demo={demo} />
             </div>
           </UiSurfaceContext.Provider>
         </div>

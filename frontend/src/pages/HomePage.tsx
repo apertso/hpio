@@ -162,6 +162,11 @@ interface DashboardDemo {
   completed: PaymentData[];
   today: Date;
   currency: string;
+  /**
+   * Предпросмотр в макете телефона: блок «К оплате» обтекает плавающую кнопку меню,
+   * как в мобильном приложении (кнопку рисует сам макет).
+   */
+  floatingMenuButton?: boolean;
 }
 
 const HomePage: React.FC<{ demo?: DashboardDemo }> = ({ demo }) => {
@@ -714,7 +719,7 @@ const HomePage: React.FC<{ demo?: DashboardDemo }> = ({ demo }) => {
 
   const navigate = useNavigate();
   // Компактная главная на мобильных: блок «К оплате» обтекает кнопку меню
-  const wrapMenuButton = !demo;
+  const wrapMenuButton = !demo || Boolean(demo.floatingMenuButton);
   const addPaymentAction: PagePrimaryAction = {
     label: t("Добавить платеж"),
     onClick: () => navigate("/payments/new"),

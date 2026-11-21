@@ -23,24 +23,53 @@ fn call_helper(
         ),
         None => None,
     };
-    let result = match &url_arg {
-        Some(value) => {
-            let class = env
-                .find_class("com/hochuplachu/hpio/AppUpdateHelper")
-                .map_err(|e| format!("Failed to find AppUpdateHelper: {:?}", e))?;
-            env.call_static_method(
-                class,
-                method,
-                signature,
-                &[JValue::Object(&context), JValue::Object(value)],
-            )
-        }
-        None => {
-            let class = env
-                .find_class("com/hochuplachu/hpio/AppUpdateHelper")
-                .map_err(|e| format!("Failed to find AppUpdateHelper: {:?}", e))?;
-            env.call_static_method(class, method, signature, &[])
-        }
+    let outcome = invoke_helper(&mut env, &context, method, signature, url_arg.as_ref());
+    if outcome.is_err() {
+        // Незакрытое Java-исключение при отсоединении потока роняет весь процесс,
+        // поэтому сбрасываем его и возвращаем ошибку во фронтенд
+        let _ = env.exception_clear();
+    }
+    outcome
+}
+
+#[cfg(target_os = "android")]
+fn invoke_helper(
+    env: &mut jni::JNIEnv,
+    context: &jni::objects::JObject,
+    method: &str,
+    signature: &str,
+    url_arg: Option<&jni::objects::JString>,
+) -> Result<String, String> {
+    use jni::objects::{JClass, JValue};
+
+    // Команды async выполняются в фоновом потоке Rust: FindClass там видит только
+    // системный загрузчик, поэтому класс приложения грузим через ClassLoader контекста
+    let class_loader = env
+        .call_method(context, "getClassLoader", "()Ljava/lang/ClassLoader;", &[])
+        .and_then(|value| value.l())
+        .map_err(|e| format!("Failed to get app ClassLoader: {:?}", e))?;
+    let class_name = env
+        .new_string("com.hochuplachu.hpio.AppUpdateHelper")
+        .map_err(|e| format!("Failed to create class name string: {:?}", e))?;
+    let class: JClass = env
+        .call_method(
+            &class_loader,
+            "loadClass",
+            "(Ljava/lang/String;)Ljava/lang/Class;",
+            &[JValue::Object(&class_name)],
+        )
+        .and_then(|value| value.l())
+        .map_err(|e| format!("Failed to load AppUpdateHelper: {:?}", e))?
+        .into();
+
+    let result = match url_arg {
+        Some(value) => env.call_static_method(
+            &class,
+            method,
+            signature,
+            &[JValue::Object(context), JValue::Object(value)],
+        ),
+        None => env.call_static_method(&class, method, signature, &[]),
     }
     .map_err(|e| format!("Failed to call {}: {:?}", method, e))?;
 

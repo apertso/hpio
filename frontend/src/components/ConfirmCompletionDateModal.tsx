@@ -1,5 +1,5 @@
 import { useLanguage } from "../context/LanguageContext";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Modal from "./Modal";
 import DatePicker from "./DatePicker";
 import MobilePanel from "./MobilePanel";
@@ -12,6 +12,15 @@ interface ConfirmCompletionDateModalProps {
   onConfirm: (selectedDate: Date) => void;
   dueDate: Date;
   isConfirming?: boolean;
+  /**
+   * Сколько платежей отмечается разом (пропущенные периоды серии).
+   * Если больше одного, «По дате платежа» отмечает каждый платеж датой его срока.
+   */
+  paymentsCount?: number;
+  /** Срок последнего из отмечаемых платежей — для подписи диапазона */
+  lastDueDate?: Date;
+  /** Вызывается вместо onConfirm, когда выбран вариант «по датам платежей» */
+  onConfirmDueDates?: () => void;
 }
 
 type ContentOptions = {
@@ -32,11 +41,25 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
   onConfirm,
   dueDate,
   isConfirming,
+  paymentsCount = 1,
+  lastDueDate,
+  onConfirmDueDates,
 }) => {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<Date | null>(
     () => new Date()
   );
+  // Несколько платежей: каждый отмечается своей датой срока
+  const [useDueDates, setUseDueDates] = useState(false);
+  const isBulk = paymentsCount > 1 && Boolean(onConfirmDueDates);
+
+  // При каждом открытии начинаем с «Сегодня», а не с прошлого выбора
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate(new Date());
+      setUseDueDates(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -48,37 +71,62 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
     { value: "today", label: t("Сегодня") },
     {
       value: "due",
-      label: t("По дате платежа"),
+      label: isBulk ? t("По датам платежей") : t("По дате платежа"),
     },
   ];
 
-  const segmentSelection: SegmentValue | undefined = normalizedSelected
+  // Для нескольких платежей «по датам» — отдельный режим, а не совпадение с датой первого платежа
+  const segmentSelection: SegmentValue | undefined = isBulk && useDueDates
+    ? "due"
+    : normalizedSelected
     ? normalizedSelected.getTime() === today.getTime()
       ? "today"
-      : normalizedSelected.getTime() === normalizedDueDate.getTime()
+      : !isBulk && normalizedSelected.getTime() === normalizedDueDate.getTime()
       ? "due"
       : undefined
     : undefined;
 
   const handleSegmentChange = (value: SegmentValue): void => {
     if (value === "today") {
+      setUseDueDates(false);
       setSelectedDate(normalizeDate(new Date()));
+      return;
+    }
+    if (isBulk) {
+      // У каждого платежа своя дата — поле даты очищаем
+      setUseDueDates(true);
+      setSelectedDate(null);
       return;
     }
     setSelectedDate(normalizeDate(dueDate));
   };
 
   const handleDateChange = (date: Date | null): void => {
+    setUseDueDates(false);
     setSelectedDate(date);
   };
 
   const handleConfirm = (): void => {
+    if (isBulk && useDueDates) {
+      onConfirmDueDates?.();
+      return;
+    }
     if (selectedDate) {
       onConfirm(selectedDate);
     }
   };
 
-  const isConfirmDisabled = !selectedDate || isConfirming;
+  const isConfirmDisabled =
+    (!selectedDate && !(isBulk && useDueDates)) || isConfirming;
+
+  const rangeFormatter = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const rangeText = lastDueDate
+    ? `${rangeFormatter.format(dueDate)} — ${rangeFormatter.format(lastDueDate)}`
+    : rangeFormatter.format(dueDate);
 
   const renderContent = ({ showHeadingSpacing }: ContentOptions) => (
     <div
@@ -86,16 +134,22 @@ const ConfirmCompletionDateModal: React.FC<ConfirmCompletionDateModalProps> = ({
         showHeadingSpacing ? "" : "mt-2"
       }`}
     >
-      <p>
-        {t("Дата выполнения платежа отличается от сегодняшней. Пожалуйста, выберите, какой датой отметить платеж как выполненный.")}
-      </p>
+      {isBulk ? (
+        <p>
+          {t("Будут отмечены выполненными все пропущенные платежи серии: {1} шт. ({2}). Выберите дату выполнения или отметьте каждый платеж датой его срока.", paymentsCount, rangeText)}
+        </p>
+      ) : (
+        <p>
+          {t("Дата выполнения платежа отличается от сегодняшней. Пожалуйста, выберите, какой датой отметить платеж как выполненный.")}
+        </p>
+      )}
 
       <div className="flex flex-row items-center gap-4">
         <DatePicker
           mode="single"
           selected={selectedDate}
           onSingleChange={handleDateChange}
-          placeholder={t("Выберите дату")}
+          placeholder={isBulk && useDueDates ? t("По датам платежей") : t("Выберите дату")}
           label={t("Дата выполнения")}
           variant="compact"
         />

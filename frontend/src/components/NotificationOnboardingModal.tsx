@@ -15,6 +15,7 @@ import {
 } from "../api/notificationPermission";
 import { useToast } from "../context/ToastContext";
 import MobilePanel from "./MobilePanel";
+import { useBackHandler } from "../hooks/useBackHandler";
 import { Button } from "./Button";
 import logger from "../utils/logger";
 
@@ -34,6 +35,9 @@ const NotificationOnboardingModal: React.FC<
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(1);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
+
+  // «Назад» на втором шаге возвращает к первому, а не закрывает онбординг
+  useBackHandler(isOpen && currentStep === 2, () => setCurrentStep(1));
 
   if (!isOpen) return null;
 

@@ -55,6 +55,9 @@ import axiosInstance from './api/axiosInstance';
 import { isTauri, isTauriMobile } from './utils/platform';
 import logger from './utils/logger';
 import { trackNavigation } from './utils/breadcrumbs';
+import { useAndroidBackButton } from './hooks/useAndroidBackButton';
+import { useGoBack } from './hooks/useGoBack';
+import { getDetailParentPath } from './utils/routeBack';
 import {
   getPendingNotifications,
   clearPendingNotifications,
@@ -122,6 +125,12 @@ function App() {
   const [hideDesktopHeader, setHideDesktopHeader] = useState(false);
   // Плавающая шапка на мобильных: без полосы, только кнопки поверх содержимого
   const [floatingMobileHeader, setFloatingMobileHeader] = useState(false);
+  // Главная скрывает полосу шапки на десктопе и делает её плавающей на мобильных.
+  // Страница загружается лениво и сообщает об этом только после монтирования,
+  // поэтому для её маршрута режим задаётся сразу — иначе при обновлении шапка мелькает.
+  const isDashboardRoute = location.pathname === '/dashboard';
+  const isDesktopHeaderHidden = hideDesktopHeader || isDashboardRoute;
+  const isMobileHeaderFloating = floatingMobileHeader || isDashboardRoute;
   const headerSlots = useMemo(
     () => ({
       title: headerTitleSlot,
@@ -134,6 +143,13 @@ function App() {
     [headerTitleSlot, headerActionsSlot, fabSlot],
   );
   const githubUrl = import.meta.env.VITE_GITHUB_URL;
+
+  // Системная кнопка/жест «Назад» на Android: слои → родительский экран → свернуть
+  useAndroidBackButton(isAuthenticated);
+  // Кнопка «Назад» в шапке экрана редактирования: туда, откуда пришли, иначе к списку
+  const goBackFromEditPage = useGoBack(
+    getDetailParentPath(location.pathname) ?? '/dashboard',
+  );
 
   const incomeCardsEnabled = isIncomeAndCardsEnabled();
   const tagsAndCategoriesEnabled = isTagsAndCategoriesEnabled();
@@ -516,20 +532,20 @@ function App() {
   const renderAppHeader = (): React.JSX.Element => (
     <header
       className={
-        floatingMobileHeader
+        isMobileHeaderFloating
           ? 'pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 items-center gap-1 px-2 md:hidden'
-          : `relative z-30 flex h-14 shrink-0 items-center gap-1 bg-[var(--ui-bg)] px-2 ${hideDesktopHeader ? 'md:hidden' : 'md:flex'} md:h-12 md:gap-2 md:border-b md:border-[var(--ui-border)] md:bg-[var(--ui-surface)] md:px-6`
+          : `relative z-30 flex h-14 shrink-0 items-center gap-1 bg-[var(--ui-bg)] px-2 ${isDesktopHeaderHidden ? 'md:hidden' : 'md:flex'} md:h-12 md:gap-2 md:border-b md:border-[var(--ui-border)] md:bg-[var(--ui-surface)] md:px-6`
       }
     >
       <div
         className={`flex shrink-0 md:hidden ${
-          floatingMobileHeader ? 'pointer-events-auto' : ''
+          isMobileHeaderFloating ? 'pointer-events-auto' : ''
         }`}
       >
         {isEditPage ? (
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={goBackFromEditPage}
             className={`${HEADER_ICON_BUTTON_CLASS} [&_svg]:size-5`}
             aria-label={t('Назад')}
             title={t('Назад')}
@@ -541,7 +557,7 @@ function App() {
             type="button"
             onClick={() => setIsMobileDrawerOpen(true)}
             className={`${HEADER_ICON_BUTTON_CLASS} [&_svg]:size-5 ${
-              floatingMobileHeader ? floatingButtonClass : ''
+              isMobileHeaderFloating ? floatingButtonClass : ''
             }`}
             aria-label={t('Меню')}
             title={t('Меню')}
@@ -553,7 +569,7 @@ function App() {
 
       <div
         className={`min-w-0 flex-1 items-center gap-2 pl-1.5 md:pl-0 ${
-          floatingMobileHeader ? 'hidden' : 'flex'
+          isMobileHeaderFloating ? 'hidden' : 'flex'
         }`}
       >
         <div
@@ -573,13 +589,13 @@ function App() {
 
       <div
         className={`flex shrink-0 items-center gap-0.5 md:gap-1 ${
-          floatingMobileHeader ? 'pointer-events-auto ml-auto' : ''
+          isMobileHeaderFloating ? 'pointer-events-auto ml-auto' : ''
         }`}
       >
         <SyncStatusIndicator />
         {/* Напоминание о подтверждении почты на мобильных — иконка, а не полоса */}
         <VerificationIndicator
-          className={`md:hidden ${floatingMobileHeader ? floatingButtonClass : ''}`}
+          className={`md:hidden ${isMobileHeaderFloating ? floatingButtonClass : ''}`}
         />
         <div
           ref={setHeaderActionsSlot}
@@ -777,7 +793,7 @@ function App() {
   const mainContent = (
     <div className="relative flex min-h-0 w-full flex-1 flex-col">
       {/* Плавающая шапка — поверх области прокрутки */}
-      {showSidebar && floatingMobileHeader && renderAppHeader()}
+      {showSidebar && isMobileHeaderFloating && renderAppHeader()}
     <main
       ref={setMainScrollEl}
       className={`${mainClasses} motion-reduce:scroll-auto`}
@@ -811,7 +827,7 @@ function App() {
           <AppHeaderSlotsContext.Provider value={headerSlots}>
             <div className="flex min-w-0 flex-1 flex-col md:py-2 md:pr-2">
               <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:rounded-lg md:border md:border-[var(--ui-border)] md:bg-[var(--ui-surface)] md:shadow-sm">
-                {!floatingMobileHeader && renderAppHeader()}
+                {!isMobileHeaderFloating && renderAppHeader()}
                 {/* На десктопе — полоса над содержимым; на мобильных — иконка в шапке */}
                 <VerificationBanner className="hidden md:flex" />
                 <AppUpdateBanner />

@@ -17,8 +17,9 @@ import { useLanguage } from "./LanguageContext";
 
 // Версия, которую пользователь отложил кнопкой «Позже»
 const DISMISSED_VERSION_KEY = "app_update_dismissed_version";
-// Не чаще одного запроса к GitHub в час (лимит API без токена — 60 в час)
-const CHECK_INTERVAL_MS = 60 * 60 * 1000;
+// Кэш результата проверки: не чаще одного запроса к GitHub раз в 5 минут
+// (лимит API без токена — 60 запросов в час)
+const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 interface AppUpdateContextValue {
   /** Доступное обновление или null */
@@ -31,6 +32,8 @@ interface AppUpdateContextValue {
   install: () => Promise<void>;
   /** Скрыть баннер до выхода следующей версии */
   dismiss: () => void;
+  /** Проверить обновление, если кэш результата устарел */
+  checkForUpdate: () => Promise<void>;
 }
 
 const AppUpdateContext = createContext<AppUpdateContextValue | null>(null);
@@ -61,6 +64,7 @@ export const AppUpdateProvider: React.FC<{ children: React.ReactNode }> = ({
   const isCheckingRef = useRef(false);
 
   const checkForUpdate = useCallback(async (): Promise<void> => {
+    if (!isTauri() || !isTauriMobile()) return;
     if (isCheckingRef.current) return;
     if (Date.now() - lastCheckRef.current < CHECK_INTERVAL_MS) return;
     isCheckingRef.current = true;
@@ -133,8 +137,9 @@ export const AppUpdateProvider: React.FC<{ children: React.ReactNode }> = ({
       isDismissed: Boolean(update && dismissedVersion === update.version),
       install,
       dismiss,
+      checkForUpdate,
     }),
-    [update, isInstalling, dismissedVersion, install, dismiss],
+    [update, isInstalling, dismissedVersion, install, dismiss, checkForUpdate],
   );
 
   return (

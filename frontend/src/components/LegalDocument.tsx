@@ -1,11 +1,12 @@
 import type { ReactElement, ReactNode } from "react";
 import { useEffect } from "react";
 import { ArrowLeftIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import type { Language } from "../i18n/translate";
 import { formatDateForDisplay, parseCalendarDate } from "../utils/dateUtils";
 import { isTauriMobile } from "../utils/platform";
+import { useGoBack } from "../hooks/useGoBack";
 
 export type LegalSection = { id: string } & Record<Language, { title: string; body: ReactNode }>;
 
@@ -20,7 +21,8 @@ export default function LegalDocument({
 }): ReactElement {
   const { t, language, locale } = useLanguage();
   const { state, hash } = useLocation();
-  const navigate = useNavigate();
+  // «/» сам перенаправит на главную или на вход — если экран открыт без истории
+  const goBack = useGoBack("/");
   const localizedSections = sections.map(({ id, ...copy }) => ({ id, ...copy[language] }));
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function LegalDocument({
     <div className="public-container public-section">
       <div className="mx-auto max-w-3xl md:max-w-none">
         {isTauriMobile() ? (
-          <button type="button" className={backClass} onClick={() => navigate(-1)}>
+          <button type="button" className={backClass} onClick={goBack}>
             {backIcon}
             {t("Назад")}
           </button>

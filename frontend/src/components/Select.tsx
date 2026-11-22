@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback, useId } from "react";
 import ReactDOM from "react-dom";
 import { ChevronUpDownIcon as ChevronDownIcon } from "@heroicons/react/20/solid";
 import { TextField } from "./Input";
+import { useBackHandler } from "../hooks/useBackHandler";
 
 export interface SelectOption {
   value: string | null;
@@ -70,6 +71,9 @@ const Select: React.FC<SelectProps> = ({
       setIsOpen(!isOpen);
     }
   };
+
+  // «Назад» на Android закрывает раскрытый список
+  useBackHandler(isOpen, () => setIsOpen(false));
 
   const handleSelect = (optionValue: string | null) => {
     onChange(optionValue);

@@ -1,5 +1,11 @@
 // src/components/layout/AppHeader.tsx
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import ReactDOM from "react-dom";
 import { Link } from "react-router-dom";
 import {
@@ -267,15 +273,16 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   }, [hasFab, setHasFab]);
 
   // Страница может убрать полосу шапки на десктопе (например, главная)
+  // useLayoutEffect — режим шапки применяется до отрисовки, без мелькания полосы
   const setHideDesktopBar = slots?.setHideDesktopBar;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!setHideDesktopBar || desktopBar) return;
     setHideDesktopBar(true);
     return () => setHideDesktopBar(false);
   }, [desktopBar, setHideDesktopBar]);
 
   const setFloatingMobileBar = slots?.setFloatingMobileBar;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!setFloatingMobileBar || mobileBar !== "floating") return;
     setFloatingMobileBar(true);
     return () => setFloatingMobileBar(false);
@@ -350,21 +357,19 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 };
 
 /**
- * Основное действие на десктопе: компактная залитая кнопка без рамки.
+ * Основное действие на десктопе: залитая кнопка без рамки, одной высоты (h-8)
+ * с иконками шапки — одинаковая в шапке и на главной.
  * Используется в шапке и внутри страниц (например, на главной рядом с суммой к оплате).
  */
 export const PrimaryActionButton: React.FC<{
   action: PagePrimaryAction;
   className?: string;
-  size?: "sm" | "md";
-}> = ({ action, className = "", size = "sm" }) => (
+}> = ({ action, className = "" }) => (
   <button
     type="button"
     onClick={action.onClick}
     disabled={action.disabled}
-    className={`shrink-0 items-center gap-1.5 rounded-md bg-indigo-600 font-medium text-white shadow-[0_1px_1px_rgba(16,17,20,0.1)] transition-colors hover:bg-indigo-700 active:bg-indigo-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-400 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
-      size === "md" ? "h-8 pl-2.5 pr-3 text-sm" : "h-7 pl-2 pr-2.5 text-[13px]"
-    } ${className}`.trim()}
+    className={`shrink-0 items-center gap-1.5 rounded-md bg-indigo-600 font-medium text-white shadow-[0_1px_1px_rgba(16,17,20,0.1)] transition-colors hover:bg-indigo-700 active:bg-indigo-800 disabled:pointer-events-none disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-400 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 h-8 pl-2.5 pr-3 text-sm ${className}`.trim()}
   >
     {action.icon ? (
       <span className="flex [&_svg]:size-3.5">{action.icon}</span>

@@ -11,6 +11,8 @@ import {
   updatePayment,
   deletePayment, // Логическое удаление
   completePayment,
+  completeOverdueSeriesPayments,
+  mergeOverdueSeriesPayments,
   permanentDeletePaymentAutoCreated, // Безвозвратное удаление для autoCreated платежей
   // TODO: Импортировать getArchivedPayments, restorePayment, permanentDeletePayment (Часть 17)
 } from "../services/paymentService";
@@ -62,7 +64,7 @@ const normalizeQueryParam = (value: QueryParam): string | undefined => {
 
 router.get("/list", async (req: Request, res: Response) => {
   try {
-    const { status, search, categoryId, isRecurring, hasFile } = req.query;
+    const { status, search, categoryId, isRecurring, hasFile, includeMissed } = req.query;
     const filterParams: PaymentFilterParams = {
       status: normalizeQueryParam(status),
       search: normalizeQueryParam(search),
@@ -72,6 +74,7 @@ router.get("/list", async (req: Request, res: Response) => {
         | "false"
         | undefined,
       hasFile: normalizeQueryParam(hasFile) as "true" | "false" | undefined,
+      includeMissed: normalizeQueryParam(includeMissed) === "true",
     };
     const payments = await getFilteredPayments(
       req.user!.id,
@@ -156,6 +159,65 @@ router.put("/:id/complete", async (req: Request, res: Response) => {
       error
     );
     res.status(400).json({ message: error.message }); // 400 для ошибок логики (например, уже завершен)
+  }
+});
+
+// PUT /api/payments/:id/complete-overdue - Отметить выполненными все пропущенные периоды серии
+router.put("/:id/complete-overdue", async (req: Request, res: Response) => {
+  try {
+    const { completionDate, useDueDates } = req.body ?? {};
+    if (completionDate !== undefined && typeof completionDate !== "string") {
+      return res.status(400).json({ message: "Некорректная дата выполнения." });
+    }
+    const completedCount = await completeOverdueSeriesPayments(
+      req.params.id,
+      req.user!.id,
+      { completionDate, useDueDates: useDueDates === true }
+    );
+    if (completedCount === null) {
+      return res.status(404).json({
+        message: "Платеж не найден, нет прав или его нельзя завершить.",
+      });
+    }
+    res.json({ completedCount });
+  } catch (error: unknown) {
+    logger.error(
+      `Error in PUT /api/payments/${req.params.id}/complete-overdue:`,
+      error
+    );
+    const message = error instanceof Error ? error.message : "Unknown error";
+    res.status(400).json({ message });
+  }
+});
+
+// PUT /api/payments/:id/merge-overdue - Объединить пропущенные периоды серии в один платеж
+router.put("/:id/merge-overdue", async (req: Request, res: Response) => {
+  try {
+    const { untilDate, completedAt, ...fields } = req.body ?? {};
+    if (typeof untilDate !== "string") {
+      return res.status(400).json({ message: "Не указана дата последнего пропущенного платежа." });
+    }
+    if (completedAt !== undefined && completedAt !== null && typeof completedAt !== "string") {
+      return res.status(400).json({ message: "Некорректная дата выполнения." });
+    }
+    const payment = await mergeOverdueSeriesPayments(req.params.id, req.user!.id, {
+      untilDate,
+      completedAt,
+      fields,
+    });
+    if (!payment) {
+      return res.status(404).json({
+        message: "Платеж не найден, нет прав или его нельзя изменить.",
+      });
+    }
+    res.json(payment);
+  } catch (error: unknown) {
+    logger.error(
+      `Error in PUT /api/payments/${req.params.id}/merge-overdue:`,
+      error
+    );
+    const message = error instanceof Error ? error.message : "Unknown error";
+    res.status(400).json({ message });
   }
 });
 

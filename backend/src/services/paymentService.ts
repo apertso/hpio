@@ -107,6 +107,8 @@ export interface PaymentFilterParams {
   categoryId?: string;
   isRecurring?: "true" | "false";
   hasFile?: "true" | "false";
+  /** Добавить пропущенные периоды просроченных серий виртуальными платежами */
+  includeMissed?: boolean;
 }
 
 const getWhereWithSearch = (
@@ -189,6 +191,117 @@ export const getUncategorizedAutoCreatedMerchants = async (): Promise<
 
 // --- Функции для горизонтальной ленты и полного списка ---
 
+// Предел пропущенных периодов одной серии, которые показываем и закрываем за раз
+const MAX_MISSED_OCCURRENCES = 1000;
+
+// Дата YYYY-MM-DD по часам сервера — так же сравниваются даты при смене статуса на overdue
+const toServerDateString = (date: Date): string =>
+  normalizeDateToUTC(date).toISOString().slice(0, 10);
+
+// Значение DATEONLY-поля (строка или Date) в виде YYYY-MM-DD
+const toDateOnlyString = (value: unknown): string =>
+  value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+
+/**
+ * Пропущенные периоды просроченных серий в виде виртуальных платежей.
+ * У серии в БД хранится только самый старый неоплаченный экземпляр; периоды после него
+ * и до сегодняшнего дня возвращаем виртуальными со статусом overdue.
+ */
+const buildMissedOccurrences = async (
+  userId: string,
+  payments: PaymentInstance[]
+): Promise<Record<string, unknown>[]> => {
+  const todayStr = toServerDateString(new Date());
+  // Реальный просроченный платеж по каждой серии
+  const overdueBySeries = new Map<string, PaymentInstance>();
+  const existingDatesBySeries = new Map<string, Set<string>>();
+  for (const p of payments) {
+    if (!p.seriesId) continue;
+    const dueStr = String(p.dueDate);
+    if (!existingDatesBySeries.has(p.seriesId)) {
+      existingDatesBySeries.set(p.seriesId, new Set<string>());
+    }
+    existingDatesBySeries.get(p.seriesId)!.add(dueStr);
+    if (
+      (p.status === "overdue" || p.status === "upcoming") &&
+      dueStr < todayStr &&
+      !overdueBySeries.has(p.seriesId)
+    ) {
+      overdueBySeries.set(p.seriesId, p);
+    }
+  }
+  if (overdueBySeries.size === 0) return [];
+
+  const seriesList = await getActiveRecurringSeries(userId);
+  const missed: Record<string, unknown>[] = [];
+  for (const series of seriesList) {
+    const overduePayment = overdueBySeries.get(series.id);
+    if (!overduePayment || !series.recurrenceRule) continue;
+    try {
+      // Начинаем со следующего дня после границы генерации (не раньше просроченного платежа)
+      const boundaryStr = [series.generatedUntil, toDateOnlyString(overduePayment.dueDate)]
+        .filter((v): v is string => Boolean(v))
+        .map(toDateOnlyString)
+        .sort()
+        .pop()!;
+      const start = new Date(boundaryStr);
+      start.setUTCDate(start.getUTCDate() + 1);
+      const yesterday = new Date(`${todayStr}T00:00:00.000Z`);
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      if (start > yesterday) continue;
+
+      const options = RRule.parseString(series.recurrenceRule);
+      options.dtstart = normalizeDateToUTC(new Date(series.startDate));
+      const hits = new RRule(options).between(start, yesterday, true);
+      const endStr = series.recurrenceEndDate
+        ? toDateOnlyString(series.recurrenceEndDate)
+        : null;
+      const existing = existingDatesBySeries.get(series.id) ?? new Set<string>();
+
+      let count = 0;
+      for (const d of hits) {
+        const dStr = d.toISOString().slice(0, 10);
+        if (existing.has(dStr) || (endStr && dStr > endStr)) continue;
+        if (count >= MAX_MISSED_OCCURRENCES) {
+          logger.warn(
+            `Series ${series.id} has more than ${MAX_MISSED_OCCURRENCES} missed occurrences; list truncated`
+          );
+          break;
+        }
+        count++;
+        missed.push({
+          id: `virtual:${series.id}:${dStr}`,
+          userId,
+          title: series.title,
+          amount: Number(series.amount),
+          dueDate: dStr,
+          status: "overdue",
+          remind: series.remind,
+          seriesId: series.id,
+          categoryId: overduePayment.categoryId,
+          builtinIconName: series.builtinIconName,
+          currency: normalizePaymentCurrency(overduePayment.currency),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isVirtual: true,
+          series: {
+            id: series.id,
+            title: series.title,
+            amount: Number(series.amount),
+            recurrenceRule: series.recurrenceRule,
+            recurrenceEndDate: series.recurrenceEndDate,
+            builtinIconName: series.builtinIconName,
+            isActive: series.isActive,
+          },
+        });
+      }
+    } catch (e) {
+      logger.warn(`Failed to compute missed occurrences for series ${series.id}`, e);
+    }
+  }
+  return missed;
+};
+
 // Получить активные предстоящие платежи для горизонтальной ленты (2.2)
 // Включает upcoming и overdue
 export const getUpcomingPayments = async (
@@ -266,6 +379,19 @@ export const getUpcomingPayments = async (
     // Границы окна отбора
     const windowStart = new Date(now);
     const windowEnd = new Date(daysFromNow);
+    const todayStr = toServerDateString(now);
+
+    // Серии, у которых есть реальный просроченный платеж. У такой серии в БД хранится
+    // только самый старый пропущенный экземпляр, поэтому пропущенные после него
+    // периоды (до сегодняшнего дня) показываем виртуальными просроченными платежами,
+    // чтобы сумма к оплате соответствовала действительности.
+    const overdueSeriesIds = new Set<string>();
+    for (const p of payments) {
+      if (!p.seriesId) continue;
+      if (p.status === "overdue" || String(p.dueDate) < todayStr) {
+        overdueSeriesIds.add(p.seriesId);
+      }
+    }
 
     // Получаем активные серии пользователя
     const seriesList = await getActiveRecurringSeries(userId);
@@ -282,8 +408,13 @@ export const getUpcomingPayments = async (
         boundary.setHours(0, 0, 0, 0);
         boundary.setDate(boundary.getDate() + 1);
 
+        // Для просроченной серии начинаем сразу после границы генерации,
+        // чтобы захватить пропущенные периоды; для остальных — с сегодняшнего дня
+        const includeMissed = overdueSeriesIds.has(series.id);
         const effectiveStart =
-          boundary > windowStart ? new Date(boundary) : new Date(windowStart);
+          includeMissed || boundary > windowStart
+            ? new Date(boundary)
+            : new Date(windowStart);
 
         // Ограничиваем конец окном и концом серии, если задано
         let effectiveEnd = new Date(windowEnd);
@@ -309,16 +440,23 @@ export const getUpcomingPayments = async (
 
         const existing =
           existingDatesBySeries.get(series.id) || new Set<string>();
+        let missedCount = 0;
         for (const d of hits) {
           const dStr = d.toISOString().slice(0, 10);
           if (existing.has(dStr)) continue; // уже есть реальный платеж на эту дату
+          const isMissed = dStr < todayStr;
+          if (isMissed) {
+            // Защита от огромных списков (например, ежедневная серия, забытая на годы)
+            if (missedCount >= MAX_MISSED_OCCURRENCES) continue;
+            missedCount++;
+          }
           virtualPayments.push({
             id: `virtual:${series.id}:${dStr}`,
             userId: userId,
             title: series.title,
             amount: Number(series.amount),
             dueDate: dStr,
-            status: "upcoming",
+            status: isMissed ? "overdue" : "upcoming",
             remind: series.remind,
             seriesId: series.id,
             builtinIconName: series.builtinIconName,
@@ -338,6 +476,11 @@ export const getUpcomingPayments = async (
               generatedUntil: (series as any).generatedUntil || null,
             },
           });
+        }
+        if (missedCount >= MAX_MISSED_OCCURRENCES) {
+          logger.warn(
+            `Series ${series.id} has more than ${MAX_MISSED_OCCURRENCES} missed occurrences; list truncated`
+          );
         }
       } catch (e) {
         // Ошибку парсинга правил или генерации пропускаем, чтобы не ломать общий ответ
@@ -441,7 +584,19 @@ export const getFilteredPayments = async (
     logger.info(
       `Fetched ${payments.length} filtered payments for user ${userId}`
     );
-    return payments;
+    if (!filters.includeMissed) return payments;
+
+    const missed = await buildMissedOccurrences(userId, payments);
+    if (missed.length === 0) return payments;
+    logger.info(
+      `Added ${missed.length} missed recurring occurrences for user ${userId}`
+    );
+    // Виртуальные платежи не являются экземплярами модели — отдаем их вместе в JSON
+    return [...payments, ...missed].sort((a, b) =>
+      String((a as { dueDate: unknown }).dueDate).localeCompare(
+        String((b as { dueDate: unknown }).dueDate)
+      )
+    ) as unknown as PaymentInstance[];
   } catch (error) {
     logger.error(`Error fetching filtered payments for user ${userId}:`, error);
     throw new Error("Не удалось получить список платежей.");
@@ -1418,6 +1573,176 @@ export const completePayment = async (
     );
     throw new Error(error.message || "Failed to mark payment as completed.");
   }
+};
+
+/**
+ * Отметить выполненными все пропущенные периоды серии, начиная с указанного платежа.
+ * Закрывает платеж, после чего completePayment создает следующий экземпляр;
+ * пока он остается в прошлом (до сегодняшнего дня), закрываем и его.
+ * Останавливается на первом экземпляре с датой не раньше сегодняшней.
+ * @param useDueDates - отметить каждый платеж датой его срока вместо completionDate
+ * @returns число выполненных платежей или null, если исходный платеж не найден
+ */
+export const completeOverdueSeriesPayments = async (
+  paymentId: string,
+  userId: string,
+  options: { completionDate?: string; useDueDates?: boolean } = {}
+): Promise<number | null> => {
+  const { completionDate, useDueDates = false } = options;
+  logger.info(
+    `Attempting to complete all overdue payments starting from ${paymentId} (User: ${userId}, useDueDates: ${useDueDates})`
+  );
+
+  const first = await db.Payment.findOne({
+    where: {
+      id: paymentId,
+      userId,
+      status: { [Op.in]: ["upcoming", "overdue"] },
+    },
+  });
+  if (!first) {
+    logger.warn(
+      `Payment not found for bulk completion or invalid status (ID: ${paymentId}, User: ${userId})`
+    );
+    return null;
+  }
+
+  const todayStr = toServerDateString(new Date());
+  if (!first.seriesId || String(first.dueDate) >= todayStr) {
+    // Не серия или платеж не просрочен — закрываем только его
+    const completed = await completePayment(
+      first.id,
+      userId,
+      useDueDates ? String(first.dueDate) : completionDate
+    );
+    return completed ? 1 : 0;
+  }
+
+  const seriesId = first.seriesId;
+  let current: PaymentInstance | null = first;
+  let completedCount = 0;
+
+  while (current && completedCount < MAX_MISSED_OCCURRENCES) {
+    const completed = await completePayment(
+      current.id,
+      userId,
+      useDueDates ? String(current.dueDate) : completionDate
+    );
+    if (!completed) break;
+    completedCount++;
+
+    // Следующий активный экземпляр серии, если он все еще в прошлом
+    current = await db.Payment.findOne({
+      where: {
+        seriesId,
+        userId,
+        status: { [Op.in]: ["upcoming", "overdue"] },
+        dueDate: { [Op.lt]: todayStr },
+      },
+      order: [["dueDate", "ASC"]],
+    });
+  }
+
+  if (current && completedCount >= MAX_MISSED_OCCURRENCES) {
+    logger.warn(
+      `Stopped bulk completion for series ${seriesId} after ${MAX_MISSED_OCCURRENCES} payments`
+    );
+  }
+
+  logger.info(
+    `Completed ${completedCount} overdue payments in series ${seriesId} (User: ${userId})`
+  );
+  return completedCount;
+};
+
+/**
+ * Объединить пропущенные периоды серии в один платеж.
+ * Реальный просроченный платеж остается (с новыми полями из формы), а периоды серии
+ * до untilDate включительно считаются закрытыми им: граница генерации серии сдвигается
+ * на untilDate, поэтому пропущенные периоды больше не показываются. Серия не удаляется.
+ * Если передан completedAt, объединенный платеж сразу отмечается выполненным.
+ * @returns обновленный платеж или null, если платеж не найден
+ */
+export const mergeOverdueSeriesPayments = async (
+  paymentId: string,
+  userId: string,
+  options: {
+    untilDate: string;
+    completedAt?: string | null;
+    fields: Partial<PaymentData>;
+  }
+): Promise<PaymentInstance | null> => {
+  const { untilDate, completedAt, fields } = options;
+  logger.info(
+    `Attempting to merge overdue series payments into ${paymentId} until ${untilDate} (User: ${userId})`
+  );
+
+  const payment = await db.Payment.findOne({
+    where: {
+      id: paymentId,
+      userId,
+      status: { [Op.in]: ["upcoming", "overdue"] },
+    },
+  });
+  if (!payment) {
+    logger.warn(
+      `Payment not found for merge or invalid status (ID: ${paymentId}, User: ${userId})`
+    );
+    return null;
+  }
+  if (!payment.seriesId) {
+    throw new Error("Объединять можно только платежи повторяющейся серии.");
+  }
+
+  const todayStr = toServerDateString(new Date());
+  const dueStr = toDateOnlyString(payment.dueDate);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(untilDate) || untilDate < dueStr || untilDate >= todayStr) {
+    throw new Error("Некорректная дата последнего пропущенного платежа.");
+  }
+
+  const seriesId = payment.seriesId;
+
+  // Другие активные экземпляры серии в объединяемом периоде (обычно их нет) убираем в корзину
+  await db.Payment.update(
+    { status: "deleted" },
+    {
+      where: {
+        userId,
+        seriesId,
+        id: { [Op.ne]: payment.id },
+        status: { [Op.in]: ["upcoming", "overdue"] },
+        dueDate: { [Op.lte]: untilDate },
+      },
+    }
+  );
+
+  // Поля платежа меняются как при обычном редактировании; повторение и серию не трогаем
+  const safeFields: Partial<PaymentData> = { ...fields };
+  delete (safeFields as Record<string, unknown>).recurrenceRule;
+  delete (safeFields as Record<string, unknown>).recurrenceEndDate;
+  delete (safeFields as Record<string, unknown>).seriesId;
+  delete (safeFields as Record<string, unknown>).completedAt;
+  if (Object.keys(safeFields).length > 0) {
+    await updatePayment(payment.id, userId, safeFields);
+  }
+
+  // Периоды до untilDate закрыты объединенным платежом — сдвигаем границу генерации серии
+  const series = await getRecurringSeriesByIdInternal(seriesId);
+  const currentBoundary = series?.generatedUntil
+    ? toDateOnlyString(series.generatedUntil)
+    : null;
+  if (!currentBoundary || currentBoundary < untilDate) {
+    await updateSeriesGeneratedUntil(seriesId, untilDate);
+  }
+
+  if (completedAt) {
+    await completePayment(payment.id, userId, completedAt);
+  }
+
+  logger.info(
+    `Merged overdue payments of series ${seriesId} into payment ${payment.id} until ${untilDate}`
+  );
+  return db.Payment.findOne({ where: { id: payment.id, userId } });
 };
 
 // --- Генерация следующих экземпляров для всех активных серий (cron) ---

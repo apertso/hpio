@@ -1122,5 +1122,20 @@
   "Мы отправили ссылку для подтверждения на ваш новый email.": "We sent a confirmation link to your new email.",
   "Сменить email?": "Change email?",
   "Сменить email": "Change email",
-  "Email будет сразу изменён на {1}, и его нужно будет подтвердить по ссылке из письма. До подтверждения адрес будет считаться неподтверждённым — даже если вы вернёте прежний email.": "Your email will be changed to {1} right away, and you will need to verify it using the link we send. Until then your address stays unverified — even if you switch back to your previous email."
+  "Email будет сразу изменён на {1}, и его нужно будет подтвердить по ссылке из письма. До подтверждения адрес будет считаться неподтверждённым — даже если вы вернёте прежний email.": "Your email will be changed to {1} right away, and you will need to verify it using the link we send. Until then your address stays unverified — even if you switch back to your previous email.",
+  "Выполнить все ({1})": "Mark all complete ({1})",
+  "Пропущенные платежи: {1}": "Missed payments: {1}",
+  "Отметить все выполненными": "Mark all as complete",
+  "По датам платежей": "Use each due date",
+  "Будут отмечены выполненными все пропущенные платежи серии: {1} шт. ({2}). Выберите дату выполнения или отметьте каждый платеж датой его срока.": "All {1} missed payments in this series ({2}) will be marked as complete. Pick a completion date, or use each payment’s own due date.",
+  "Выполнено платежей: {1}": "Payments marked as complete: {1}",
+  "Платежи выполнены.": "Payments marked as complete.",
+  "Оплатить одним платежом": "Pay as one payment",
+  "Пропущенные платежи оплачены одним платежом.": "Missed payments were paid as one payment.",
+  "Пропущенные платежи объединены в один.": "Missed payments were combined into one.",
+  "Укажите дату выполнения.": "Enter the completion date.",
+  "Пропущенные платежи серии ({1}, {2}) будут заменены одним платежом. Отдельные платежи за эти периоды будут удалены, серия продолжится со следующего периода.": "The {1} missed payments in this series ({2}) will be replaced with one payment. The separate payments for these periods will be removed, and the series will continue from the next period.",
+  "Оплата пропущенных платежей: {1}": "Paying missed payments: {1}",
+  "Периоды {1} будут закрыты этим платежом: укажите фактическую сумму и дату оплаты. Серия не удаляется и продолжится со следующего периода.": "This payment will cover {1}. Enter the actual amount and payment date. The series is kept and continues from the next period.",
+  "Сразу отметить объединённый платёж выполненным": "Mark the combined payment as complete right away"
 }

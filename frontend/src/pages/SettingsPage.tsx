@@ -1,5 +1,6 @@
 import { useLanguage } from "../context/LanguageContext";
 import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import PageMeta from "../components/PageMeta";
 import { PageHeader } from "../components/layout/Page";
 import { getPageMetadata } from "../utils/pageMetadata";
@@ -13,45 +14,53 @@ import AutomationSection from "../components/settings/AutomationSection";
 import NotificationsSection from "../components/settings/NotificationsSection";
 import DeveloperSection from "../components/settings/DeveloperSection";
 
+const SETTINGS_SECTIONS: readonly SettingsSection[] = [
+  "general",
+  "account",
+  "automation",
+  "notifications",
+  "developer",
+];
+
+/** Вкладка настроек по hash адреса; по умолчанию — «Общие». */
+const sectionFromHash = (hash: string): SettingsSection => {
+  const id = hash.replace("#", "");
+  return SETTINGS_SECTIONS.find((section) => section === id) ?? "general";
+};
+
 const SettingsPage: React.FC = () => {
   const { t } = useLanguage();
   const { setPageTitle } = usePageTitle();
+  const navigate = useNavigate();
+  const location = useLocation();
   const metadata = getPageMetadata("settings");
 
-  // Get initial section from URL hash, default to "general"
-  const getInitialSection = (): SettingsSection => {
-    const hash = window.location.hash.replace("#", "");
-    if (
-      hash &&
-      [
-        "general",
-        "account",
-        "automation",
-        "notifications",
-        "developer",
-      ].includes(hash)
-    ) {
-      return hash as SettingsSection;
-    }
-    return "general";
-  };
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() =>
+    sectionFromHash(location.hash),
+  );
 
-  const [activeSection, setActiveSection] =
-    useState<SettingsSection>(getInitialSection);
+  // Переход на /settings#… при уже открытых настройках (например, из бокового меню)
+  // меняет только hash — переключаем вкладку вслед за ним
+  React.useEffect(() => {
+    setActiveSection(sectionFromHash(location.hash));
+  }, [location.hash]);
 
   React.useEffect(() => {
     setPageTitle(t("Настройки"));
   }, [setPageTitle, t]);
 
-  // Update URL hash when active section changes
+  // Синхронизируем hash в адресе с активной вкладкой. Запись истории заменяется,
+  // а не добавляется: вкладки — не экраны, и «Назад» не должен листать их по одной.
+  // Переход через роутер сохраняет его служебное состояние в history.state.
   React.useEffect(() => {
-    if (activeSection !== "general") {
-      window.location.hash = activeSection;
-    } else {
-      // Remove hash for general section to keep clean URLs
-      window.history.replaceState(null, "", window.location.pathname);
+    const nextHash = activeSection !== "general" ? `#${activeSection}` : "";
+    if (location.hash !== nextHash) {
+      navigate({ hash: nextHash }, { replace: true });
     }
-  }, [activeSection]);
+    // location.hash намеренно не в зависимостях: иначе эффект откатывал бы
+    // вкладку назад раньше, чем эффект выше успеет переключить её по новому hash
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, navigate]);
 
   const renderActiveSection = () => {
     switch (activeSection) {

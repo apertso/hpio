@@ -1,5 +1,5 @@
 import { useLanguage } from "../../context/LanguageContext";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Select from "../Select";
 import { Button } from "../Button";
 import { SettingsGroup, SettingsHeader, SettingsRow } from "./SettingsLayout";
@@ -23,7 +23,13 @@ const GeneralSection: React.FC = () => {
     update: appUpdate,
     isInstalling: isInstallingUpdate,
     install: handleAppUpdate,
+    checkForUpdate,
   } = useAppUpdate();
+
+  // При открытии настроек перепроверяем обновление (с учётом 5-минутного кэша)
+  useEffect(() => {
+    void checkForUpdate();
+  }, [checkForUpdate]);
 
   const handleLanguageChange = (value: string | null): void => {
     if (isLanguage(value)) setLanguage(value);

@@ -90,6 +90,14 @@ const paymentFormSchema = z.object({
 
 export type PaymentFormInputs = z.infer<typeof paymentFormSchema>;
 
+/** Пропущенные периоды серии, которые оплачиваются одним платежом */
+export interface MergeOverdueOptions {
+  /** Срок последнего пропущенного периода (YYYY-MM-DD) */
+  untilDate: string;
+  count: number;
+  total: number;
+}
+
 interface PaymentFormProps {
   paymentId?: string;
   onSuccess: (newPaymentId?: string) => void;
@@ -99,6 +107,8 @@ interface PaymentFormProps {
   isSeriesInactive?: boolean;
   markAsCompletedInitial?: boolean; // For archive page use case
   onRepeatChange?: (shouldRepeat: boolean) => void; // Callback when repeat toggle changes
+  /** Режим «оплатить одним платежом»: сумма всех пропущенных периодов серии */
+  mergeOverdue?: MergeOverdueOptions | null;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
@@ -110,8 +120,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   isSeriesInactive,
   markAsCompletedInitial = false,
   onRepeatChange,
+  mergeOverdue = null,
 }) => {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const isMergeMode = Boolean(mergeOverdue);
   const preferredCurrency = usePreferredCurrency();
   const isEditMode = !!paymentId;
   const { showToast } = useToast();
@@ -147,7 +159,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const { tags, isLoading: isLoadingTags } = useTags(tagsEnabled);
 
   const [markAsCompleted, setMarkAsCompleted] = useState(
-    markAsCompletedInitial
+    markAsCompletedInitial || Boolean(mergeOverdue)
   );
   const [shouldRepeat, setShouldRepeat] = useState<boolean>(
     !!initialData?.seriesId
@@ -213,6 +225,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           "cash",
         currency: initialData.currency || preferredCurrency,
       };
+      if (mergeOverdue) {
+        // Объединенный платеж: общая сумма, срок последнего периода, выполнен сейчас
+        const mergedDueDate = parseCalendarDate(mergeOverdue.untilDate);
+        dataToSet.amount = mergeOverdue.total;
+        if (!Number.isNaN(mergedDueDate.getTime())) dataToSet.dueDate = mergedDueDate;
+        dataToSet.completedAt = new Date();
+      }
       reset(dataToSet);
 
       setManualIconName(
@@ -245,7 +264,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       setPaymentStatus(null);
       setShouldRepeat(false);
     }
-  }, [initialData, editScope, isEditMode, preferredCurrency, reset]);
+  }, [initialData, editScope, isEditMode, preferredCurrency, reset, mergeOverdue]);
 
   const handleIconChange = useCallback((iconName: BuiltinIcon | null) => {
     setManualIconName(iconName);
@@ -273,7 +292,33 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     const tagIdsForPayload = shouldSendTags ? selectedTagIds : undefined;
 
     try {
-      if (isEditMode && paymentId) {
+      if (isEditMode && paymentId && mergeOverdue) {
+        // Пропущенные периоды закрываются этим платежом, серия продолжается
+        const payload: Record<string, unknown> = {
+          title: data.title,
+          amount: Number(data.amount),
+          dueDate: formatDateToLocal(data.dueDate),
+          categoryId: data.categoryId || null,
+          builtinIconName: builtinIconForPayload,
+          remind: data.remind || false,
+          currency: data.currency,
+          untilDate: mergeOverdue.untilDate,
+          completedAt:
+            markAsCompleted && data.completedAt ? data.completedAt.toISOString() : null,
+        };
+        if (shouldSendTags) {
+          payload.tagIds = tagIdsForPayload;
+        }
+        await axiosInstance.put(`/payments/${paymentId}/merge-overdue`, payload);
+        logger.info(`Overdue series payments merged into payment ${paymentId}`);
+        showToast(
+          markAsCompleted
+            ? t("Пропущенные платежи оплачены одним платежом.")
+            : t("Пропущенные платежи объединены в один."),
+          "success"
+        );
+        onSuccess(paymentId);
+      } else if (isEditMode && paymentId) {
         if (editScope === "single") {
           // Update a single payment
           const payload: Record<string, unknown> = {
@@ -397,6 +442,21 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   };
 
+  // Диапазон пропущенных периодов для подписи: «9 сентября — 9 ноября 2026 г.»
+  const mergeRangeText = (() => {
+    if (!mergeOverdue) return "";
+    const formatter = new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const first = initialData ? parseCalendarDate(initialData.dueDate) : null;
+    const last = parseCalendarDate(mergeOverdue.untilDate);
+    return first && !Number.isNaN(first.getTime())
+      ? `${formatter.format(first)} — ${formatter.format(last)}`
+      : formatter.format(last);
+  })();
+
   const handleFormSubmit: SubmitHandler<PaymentFormInputs> = async (data) => {
     setFormError(null);
 
@@ -412,6 +472,27 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
     if (!validationResult.success) {
       setFormError(t("Пожалуйста, проверьте правильность заполнения полей."));
+      return;
+    }
+
+    if (mergeOverdue) {
+      if (markAsCompleted && !data.completedAt) {
+        setFormError(t("Укажите дату выполнения."));
+        return;
+      }
+      // Объединение убирает отдельные пропущенные периоды — спрашиваем подтверждение
+      setConfirmModalState({
+        isOpen: true,
+        action: () => {
+          actualSubmit(data);
+        },
+        title: t("Оплатить одним платежом"),
+        message: t(
+          "Пропущенные платежи серии ({1}, {2}) будут заменены одним платежом. Отдельные платежи за эти периоды будут удалены, серия продолжится со следующего периода.",
+          mergeOverdue.count,
+          mergeRangeText
+        ),
+      });
       return;
     }
 
@@ -491,7 +572,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   // Определяем, показывать ли блок повторения
   useEffect(() => {
     const shouldSyncCompletion =
-      paymentStatus === "completed" || (markAsCompleted && !isEditMode);
+      paymentStatus === "completed" ||
+      (markAsCompleted && (!isEditMode || isMergeMode));
 
     if (!shouldSyncCompletion || !watchDueDate || watchCompletedAt) {
       return;
@@ -508,6 +590,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     paymentStatus,
     markAsCompleted,
     isEditMode,
+    isMergeMode,
     watchDueDate,
     watchCompletedAt,
     setValue,
@@ -526,6 +609,17 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         className="space-y-6"
         noValidate
       >
+        {mergeOverdue && (
+          <div className="rounded-lg border border-[var(--ui-border)] bg-gray-50/60 p-4 dark:bg-white/[0.02]">
+            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {t("Оплата пропущенных платежей: {1}", mergeOverdue.count)}
+            </h4>
+            <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+              {t("Периоды {1} будут закрыты этим платежом: укажите фактическую сумму и дату оплаты. Серия не удаляется и продолжится со следующего периода.", mergeRangeText)}
+            </p>
+          </div>
+        )}
+
         {formError && (
           <div
             className="ui-alert-error"
@@ -625,7 +719,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             )}
           </FormSection>
 
-          {(editScope === "single" || showRecurrence) && (
+          {!isMergeMode && (editScope === "single" || showRecurrence) && (
             <FormSection
               title={t("Повторение")}
               description={t("Настройте расписание для регулярных платежей")}
@@ -673,10 +767,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               }
             />
 
-            {!isEditMode && (
+            {(!isEditMode || isMergeMode) && (
               <SwitchRow
                 label={t("Отметить как выполненный")}
-                description={t("Создать платёж сразу выполненным")}
+                description={
+                  isMergeMode
+                    ? t("Сразу отметить объединённый платёж выполненным")
+                    : t("Создать платёж сразу выполненным")
+                }
                 control={
                   <ToggleSwitch
                     checked={markAsCompleted}
@@ -689,7 +787,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             )}
 
             {((paymentStatus === "completed" && editScope === "single") ||
-              (markAsCompleted && !isEditMode)) && (
+              (markAsCompleted && (!isEditMode || isMergeMode))) && (
               <DatePicker
                 id="completedAt"
                 mode="datetime"

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useBackHandler } from "./useBackHandler";
 
 export const useDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,6 +25,9 @@ export const useDropdown = () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, [isOpen, handleOutsideClick]);
+
+  // «Назад» на Android закрывает открытое меню, а не уходит со страницы
+  useBackHandler(isOpen, () => setIsOpen(false));
 
   return {
     isOpen,

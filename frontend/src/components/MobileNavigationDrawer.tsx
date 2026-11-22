@@ -16,6 +16,7 @@ import {
 import { User } from "../context/AuthContext";
 import { localizeHref } from "../i18n/localePath";
 import { useAvatarCache } from "../hooks/useAvatarCache";
+import { useBackHandler } from "../hooks/useBackHandler";
 
 type NavItem = {
   to: string;
@@ -85,6 +86,9 @@ const MobileNavigationDrawer: React.FC<MobileNavigationDrawerProps> = ({
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  // «Назад» на Android закрывает открытое меню
+  useBackHandler(isOpen, onClose);
 
   // Соответствие иконок элементам навигации
   const getNavIcon = (path: string) => {

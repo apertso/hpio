@@ -6,8 +6,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
-import android.view.MotionEvent
+import android.view.KeyEvent
 import android.webkit.WebView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import java.io.File
@@ -24,6 +25,17 @@ class MainActivity : TauriActivity() {
 
   private var webView: WebView? = null
 
+  // Системная кнопка/жест «Назад». При targetSdk 36 (Android 16) система больше не
+  // присылает KEYCODE_BACK в onKeyDown, поэтому обработчик WryActivity не срабатывает
+  // и приложение просто закрывается. Передаём нажатие в WebView: React закрывает
+  // верхний слой или переходит на родительский экран, а на корневом экране
+  // сообщает "exit" — тогда сворачиваем приложение.
+  private val backCallback = object : OnBackPressedCallback(true) {
+    override fun handleOnBackPressed() {
+      dispatchBackToWebView()
+    }
+  }
+
   private val notificationReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
       if (intent?.action == PaymentNotificationListenerService.ACTION_NEW_NOTIFICATION) {
@@ -39,6 +51,52 @@ class MainActivity : TauriActivity() {
     super.onCreate(savedInstanceState)
     logAppLifecycle("APP_START")
     registerNotificationReceiver()
+    onBackPressedDispatcher.addCallback(this, backCallback)
+  }
+
+  // На старых версиях Android KEYCODE_BACK приходит сюда, и WryActivity сам делает
+  // webView.goBack() в обход React. Направляем его в общий диспетчер «Назад».
+  override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+    if (keyCode == KeyEvent.KEYCODE_BACK) {
+      if (event == null || event.repeatCount == 0) {
+        onBackPressedDispatcher.onBackPressed()
+      }
+      return true
+    }
+    return super.onKeyDown(keyCode, event)
+  }
+
+  private fun dispatchBackToWebView() {
+    val view = webView
+    if (view == null) {
+      moveTaskToBack(true)
+      return
+    }
+
+    val script = """
+      (function() {
+        try {
+          return typeof window.__hpioHandleBack === 'function'
+            ? window.__hpioHandleBack()
+            : 'unavailable';
+        } catch (e) {
+          return 'unavailable';
+        }
+      })();
+    """.trimIndent()
+
+    view.evaluateJavascript(script) { rawResult ->
+      // evaluateJavascript возвращает JSON: строка приходит в кавычках
+      when (rawResult?.trim('"')) {
+        "handled" -> Unit
+        "exit" -> moveTaskToBack(true)
+        else -> {
+          // React ещё не загрузился — ведём себя как обычный браузер
+          Log.w(TAG, "Back handler unavailable in WebView, result=$rawResult")
+          if (view.canGoBack()) view.goBack() else moveTaskToBack(true)
+        }
+      }
+    }
   }
 
   override fun onWebViewCreate(webView: WebView) {

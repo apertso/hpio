@@ -2,6 +2,8 @@
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useBackHandler } from "../hooks/useBackHandler";
+import { isElementShown } from "../utils/backHandlers";
 
 interface ModalProps {
   isOpen: boolean;
@@ -21,9 +23,17 @@ const Modal: React.FC<ModalProps> = ({
   className,
 }) => {
   const openedAtRef = useRef<number>(0);
+  const backdropRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     openedAtRef.current = performance.now();
   }, []);
+
+  // «Назад» на Android закрывает модалку. Если она скрыта на этой ширине экрана
+  // (рядом рендерится мобильная панель), пропускаем нажатие к следующему слою.
+  useBackHandler(isOpen, () => {
+    if (!isElementShown(backdropRef.current)) return false;
+    onClose();
+  });
 
   if (!isOpen) return null;
 
@@ -41,6 +51,7 @@ const Modal: React.FC<ModalProps> = ({
   // Используем React Portal для рендеринга модального окна вне основного DOM-дерева
   return ReactDOM.createPortal(
     <div
+      ref={backdropRef}
       className={`fixed inset-0 bg-black/30 dark:bg-black/60 flex justify-center items-center z-50 ${
         className || ""
       }`}

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
+import { useBackHandler } from "../hooks/useBackHandler";
+import { isElementShown } from "../utils/backHandlers";
 
 interface MobilePanelProps {
   isOpen: boolean;
@@ -20,6 +22,7 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const openedAtRef = useRef<number>(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +46,14 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
     }
   }, [shouldClose, isOpen, handleClose]);
 
+  // «Назад» на Android закрывает панель с анимацией. На десктопной ширине панель
+  // скрыта (md:hidden) — тогда нажатие достаётся соседней модалке.
+  useBackHandler(isOpen, () => {
+    if (!isElementShown(contentRef.current)) return false;
+    // Панель уже закрывается (идёт анимация) — просто поглощаем повторное нажатие
+    if (isVisible) handleClose();
+  });
+
   const handleBackdropClick = useCallback(() => {
     const sinceOpenMs = performance.now() - openedAtRef.current;
     if (sinceOpenMs < 350) {
@@ -64,6 +75,7 @@ const MobilePanel: React.FC<MobilePanelProps> = ({
       />
 
       <div
+        ref={contentRef}
         data-mobile-panel-content
         className={`fixed flex flex-col bottom-0 left-0 right-0 z-50 bg-[var(--ui-surface)] dark:bg-gray-800 border-t border-[var(--ui-border)] px-4 pb-4 pt-3 rounded-t-xl shadow-lg max-h-full transform transition-transform duration-300 ease-out safe-area-top safe-area-bottom ${
           isVisible ? "translate-y-0" : "translate-y-full"

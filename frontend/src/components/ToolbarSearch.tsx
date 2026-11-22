@@ -3,6 +3,7 @@ import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useLanguage } from "../context/LanguageContext";
 import { Input } from "./Input";
 import { HeaderIconButton } from "./layout/AppHeader";
+import { useBackHandler } from "../hooks/useBackHandler";
 
 interface ToolbarSearchProps {
   value: string;
@@ -41,6 +42,9 @@ export default function ToolbarSearch({
     onExpandedChange(false);
     triggerRef.current?.focus();
   };
+
+  // «Назад» на Android сворачивает раскрытый поиск, как и Escape
+  useBackHandler(isOpen, closeSearch);
 
   return (
     <div

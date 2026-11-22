@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import {
   ArrowPathIcon,
+  ArrowsPointingInIcon,
   ChevronDownIcon,
   CheckCircleIcon,
   PaperClipIcon,
@@ -14,6 +15,7 @@ import { formatCurrencyTotals, formatMoney } from "../utils/currencies";
 import { formatRecurrenceRule } from "../utils/formatRecurrence";
 import { localizedCategoryName } from "../utils/categoryLabel";
 import { parseCalendarDate } from "../utils/dateUtils";
+import { groupOverdueBySeries, PaymentRowItem } from "../utils/groupOverduePayments";
 import { DropdownOption } from "./DropdownButton";
 import PaymentIconDisplay from "./PaymentIconDisplay";
 import { RowActions } from "./Table";
@@ -27,6 +29,10 @@ interface PaymentRowListProps {
   emptyMessage: string;
   onOpen: (id: string) => void;
   onComplete?: (payment: PaymentData) => void;
+  /** Выполнить все пропущенные периоды серии (строка «×N» в просроченных) */
+  onCompleteSeries?: (occurrences: PaymentData[]) => void;
+  /** Оплатить пропущенные периоды серии одним платежом (открывает форму платежа) */
+  onMergeSeries?: (occurrences: PaymentData[]) => void;
   onDelete?: (payment: PaymentData) => void;
   onRestore?: (payment: PaymentData) => void;
   onPermanentDelete?: (id: string) => void;
@@ -52,8 +58,14 @@ interface PaymentRowListProps {
 interface PaymentGroup {
   key: string;
   label: string;
+  /** Все платежи группы — для счетчика и суммы в заголовке */
   payments: PaymentData[];
+  /** Строки группы: просроченные платежи одной серии собраны в одну строку */
+  items: PaymentRowItem[];
 }
+
+const toSingleItems = (payments: PaymentData[]): PaymentRowItem[] =>
+  payments.map((payment) => ({ key: payment.id, payment, occurrences: [payment] }));
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -121,6 +133,8 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
   emptyMessage,
   onOpen,
   onComplete,
+  onCompleteSeries,
+  onMergeSeries,
   onDelete,
   onRestore,
   onPermanentDelete,
@@ -135,6 +149,15 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (key: string): void =>
     setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  // Раскрытые строки «×N» (пропущенные периоды серии)
+  const [expandedSeries, setExpandedSeries] = useState<Set<string>>(new Set());
+  const toggleSeries = (key: string): void =>
+    setExpandedSeries((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -165,6 +188,10 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
     () => new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
     [locale]
   );
+  const longDate = useMemo(
+    () => new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }),
+    [locale]
+  );
 
   const groups = useMemo<PaymentGroup[]>(() => {
     // Архив и корзина — по месяцам выполнения/удаления
@@ -179,20 +206,21 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
             key,
             label: label.charAt(0).toUpperCase() + label.slice(1),
             payments: [],
+            items: [],
           });
         }
         map.get(key)!.payments.push(p);
       });
-      return Array.from(map.values());
+      return Array.from(map.values()).map((g) => ({ ...g, items: toSingleItems(g.payments) }));
     }
 
     // Активные — по сроку относительно сегодняшнего дня
     const buckets: PaymentGroup[] = [
-      { key: "overdue", label: t("Просрочено"), payments: [] },
-      { key: "today", label: t("Сегодня"), payments: [] },
-      { key: "week", label: t("Ближайшие 7 дней"), payments: [] },
-      { key: "later", label: t("Позже"), payments: [] },
-      { key: "done", label: t("Выполнено"), payments: [] },
+      { key: "overdue", label: t("Просрочено"), payments: [], items: [] },
+      { key: "today", label: t("Сегодня"), payments: [], items: [] },
+      { key: "week", label: t("Ближайшие 7 дней"), payments: [], items: [] },
+      { key: "later", label: t("Позже"), payments: [], items: [] },
+      { key: "done", label: t("Выполнено"), payments: [], items: [] },
     ];
     payments.forEach((p) => {
       if (p.status === "completed" || p.status === "deleted") {
@@ -211,7 +239,13 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
       else if (diff <= 7) buckets[2].payments.push(p);
       else buckets[3].payments.push(p);
     });
-    return buckets.filter((g) => g.payments.length > 0);
+    return buckets
+      .filter((g) => g.payments.length > 0)
+      .map((g) => ({
+        ...g,
+        // Пропущенные периоды одной серии показываем одной строкой «×N»
+        items: g.key === "overdue" ? groupOverdueBySeries(g.payments) : toSingleItems(g.payments),
+      }));
   }, [payments, mode, t, today, monthFormatter]);
 
   const buildActions = (payment: PaymentData): DropdownOption[] => {
@@ -237,6 +271,290 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
       );
     }
     return options;
+  };
+
+  // Действия строки «×N»: выполнить все пропущенные периоды или открыть текущий платеж серии
+  const buildSeriesActions = (item: PaymentRowItem): DropdownOption[] => {
+    if (!onCompleteSeries && !onMergeSeries) return buildActions(item.payment);
+    const options: DropdownOption[] = [];
+    if (onMergeSeries) {
+      options.push({
+        label: t("Оплатить одним платежом"),
+        onClick: () => onMergeSeries(item.occurrences),
+        icon: <ArrowsPointingInIcon />,
+      });
+    }
+    if (onCompleteSeries) {
+      options.push({
+        label: t("Выполнить все ({1})", item.occurrences.length),
+        onClick: () => onCompleteSeries(item.occurrences),
+        icon: <CheckCircleIcon />,
+      });
+    }
+    options.push({ label: t("Редактировать"), onClick: () => onOpen(item.payment.id), icon: <PencilIcon /> });
+    if (onDelete) {
+      options.push({ label: t("Удалить"), onClick: () => onDelete(item.payment), icon: <TrashIcon /> });
+    }
+    return options;
+  };
+
+  // Раскрытая строка «×N»: пропущенные периоды по датам и кнопка «выполнить все».
+  // Действия доступны только у реального (самого раннего) платежа — периоды закрываются по порядку.
+  const seriesFooterButton = `flex min-h-11 w-[calc(100%+1.5rem)] items-center gap-3 -mx-3 px-4 text-left text-sm transition-colors hover:bg-gray-50 dark:hover:bg-white/[0.025] cursor-pointer md:mx-0 md:min-h-9 md:w-full md:text-xs ${mdPadX} ${
+    isPlain ? "md:rounded-md" : ""
+  }`;
+  const renderSeriesOccurrences = (item: PaymentRowItem, totalText: string): React.ReactNode => (
+    <li>
+      <ul aria-label={t("Пропущенные платежи: {1}", item.occurrences.length)}>
+        {item.occurrences.map((occurrence) => {
+          const isActionable = !occurrence.isVirtual;
+          const isOccurrenceSelected = selectedId === occurrence.id;
+          return (
+            <li
+              key={occurrence.id}
+              onClick={isActionable ? () => onOpen(occurrence.id) : undefined}
+              aria-selected={isOccurrenceSelected || undefined}
+              className={[
+                "group flex h-11 items-center gap-3 text-sm transition-colors md:h-9",
+                mobileRowX,
+                mdPadX,
+                isPlain ? "md:rounded-md" : "",
+                isActionable
+                  ? "cursor-pointer active:bg-black/[0.03] dark:active:bg-white/[0.04] md:hover:bg-gray-50 md:dark:hover:bg-white/[0.025]"
+                  : "",
+                isOccurrenceSelected ? "bg-black/[0.04] dark:bg-white/[0.05]" : "",
+              ].join(" ")}
+            >
+              {/* Линия под иконкой статуса связывает периоды с их серией */}
+              <span
+                aria-hidden="true"
+                className="relative w-3.5 shrink-0 self-stretch before:absolute before:inset-y-0 before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-gray-200 dark:before:bg-white/[0.08]"
+              />
+              <span aria-hidden="true" className="hidden size-4 shrink-0 md:block" />
+              <span
+                className={`min-w-0 flex-1 truncate tabular-nums ${
+                  isActionable ? "text-gray-800 dark:text-gray-200" : "text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                {longDate.format(parseCalendarDate(occurrence.dueDate))}
+              </span>
+              <span className="ml-auto flex shrink-0 items-center gap-4">
+                <span
+                  className={`text-right tabular-nums md:w-28 ${
+                    isActionable ? "text-gray-800 dark:text-gray-200" : "text-gray-500 dark:text-gray-400"
+                  }`}
+                >
+                  {formatMoney(occurrence.amount, locale, occurrence.currency)}
+                </span>
+                <span className="hidden w-7 md:block" onClick={(e) => e.stopPropagation()}>
+                  {isActionable && <RowActions options={buildActions(occurrence)} />}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+        {/* Основное действие — оплатить одним платежом; «выполнить все» — второстепенное */}
+        {onMergeSeries && (
+          <li>
+            <button
+              type="button"
+              onClick={() => onMergeSeries(item.occurrences)}
+              className={`${seriesFooterButton} font-medium text-indigo-600 dark:text-indigo-400`}
+            >
+              <span aria-hidden="true" className="w-3.5 shrink-0" />
+              <ArrowsPointingInIcon className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{t("Оплатить одним платежом")}</span>
+              <span className="shrink-0 tabular-nums">{totalText}</span>
+              <span className="hidden w-11 shrink-0 md:block" aria-hidden="true" />
+            </button>
+          </li>
+        )}
+        {onCompleteSeries && (
+          <li>
+            <button
+              type="button"
+              onClick={() => onCompleteSeries(item.occurrences)}
+              className={`${seriesFooterButton} text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100`}
+            >
+              <span aria-hidden="true" className="w-3.5 shrink-0" />
+              <CheckCircleIcon className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{t("Отметить все выполненными")}</span>
+            </button>
+          </li>
+        )}
+      </ul>
+    </li>
+  );
+
+  // Строка списка. Пропущенные периоды одной серии — одна строка «×N» с общей суммой,
+  // по нажатию раскрывается список дат
+  const renderItem = (item: PaymentRowItem, groupKey: string): React.ReactNode => {
+    const { payment, occurrences } = item;
+    const isSeriesGroup = occurrences.length > 1;
+    const expandKey = `${groupKey}:${item.key}`;
+    const isSeriesExpanded = isSeriesGroup && expandedSeries.has(expandKey);
+    const due = parseCalendarDate(occurrences[0].dueDate);
+    const isToday = startOfDay(due) === today;
+    const isClosed = payment.status === "completed" || payment.status === "deleted";
+    const isSelected = !isSeriesGroup && selectedId === payment.id;
+    const dateValue = isClosed
+      ? new Date(payment.completedAt || payment.updatedAt)
+      : due;
+    const amountText = isSeriesGroup
+      ? formatCurrencyTotals(occurrences, locale)
+      : formatMoney(payment.amount, locale, payment.currency);
+    const handleRowClick = (): void => {
+      if (isSeriesGroup) toggleSeries(expandKey);
+      else onOpen(payment.id);
+    };
+    const recurrence = payment.series?.recurrenceRule
+      ? t(formatRecurrenceRule(payment.series.recurrenceRule))
+      : null;
+    const category = payment.transactionCategory
+      ? localizedCategoryName(payment.transactionCategory, language)
+      : null;
+    const titleClass = isClosed
+      ? "text-gray-500 dark:text-gray-400"
+      : "text-gray-900 dark:text-gray-50";
+    const dateClass =
+      payment.status === "overdue"
+        ? "text-red-600 dark:text-red-400"
+        : "text-gray-500 dark:text-gray-400";
+    const attachment =
+      payment.filePath && payment.fileName && onDownloadFile ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownloadFile(payment.id, payment.fileName!);
+          }}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer md:size-auto"
+          title={payment.fileName}
+          aria-label={payment.fileName}
+        >
+          <PaperClipIcon className="size-3.5" />
+        </button>
+      ) : null;
+    const meta = [category, recurrence].filter(Boolean).join(" · ");
+    const seriesLabel = t("Пропущенные платежи: {1}", occurrences.length);
+    const seriesBadge = isSeriesGroup ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleSeries(expandKey);
+        }}
+        aria-expanded={isSeriesExpanded}
+        aria-label={seriesLabel}
+        title={seriesLabel}
+        className="inline-flex h-5 shrink-0 items-center gap-0.5 self-center rounded-sm bg-red-50 pl-1.5 pr-1 text-xs font-medium tabular-nums text-red-600 transition-colors hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 cursor-pointer"
+      >
+        ×{occurrences.length}
+        <ChevronDownIcon
+          className={`size-3 transition-transform ${isSeriesExpanded ? "rotate-180" : ""}`}
+        />
+      </button>
+    ) : null;
+
+    const row = (
+      <li
+        key={item.key}
+        onClick={handleRowClick}
+        aria-selected={isSelected || undefined}
+        className={[
+          "group cursor-pointer text-sm transition-colors",
+          // Мобильные: плоская строка по фону страницы с крупной зоной нажатия
+          "py-3.5 active:bg-black/[0.03] dark:active:bg-white/[0.04]",
+          mobileRowX,
+          // Десктоп: строка списка
+          "md:flex md:h-11 md:items-center md:gap-3 md:py-0 md:hover:bg-gray-50 md:dark:hover:bg-white/[0.025]",
+          mdPadX,
+          isPlain ? "md:rounded-md" : "",
+          isSelected ? "bg-black/[0.04] dark:bg-white/[0.05]" : "",
+          // Раскрытая серия не отделяется чертой от своих периодов
+          isSeriesExpanded ? "border-b-0" : "",
+        ].join(" ")}
+      >
+        {/* Мобильная карточка: название и сумма, ниже — тип, категория и срок */}
+        <div className="flex items-center gap-3 md:hidden">
+          <PaymentStatusIcon payment={payment} isToday={isToday} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-3">
+              <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+                <span className={`min-w-0 truncate font-medium ${titleClass}`}>
+                  {payment.title}
+                </span>
+                {seriesBadge}
+              </span>
+              <span className="shrink-0 font-medium tabular-nums text-gray-900 dark:text-gray-50">
+                {amountText}
+              </span>
+            </div>
+            <div className="mt-0.5 flex h-5 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <span className="flex size-3.5 shrink-0 items-center justify-center [&_svg]:size-3.5 [&_svg]:text-gray-400! dark:[&_svg]:text-gray-500!">
+                <PaymentIconDisplay payment={payment} sizeClass="size-3.5" />
+              </span>
+              {meta && <span className="min-w-0 truncate">{meta}</span>}
+              {attachment}
+              <span className={`ml-auto shrink-0 tabular-nums ${dateClass}`}>
+                {shortDate.format(dateValue)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Десктопная строка */}
+        <div className="hidden md:contents">
+          <PaymentStatusIcon payment={payment} isToday={isToday} />
+          <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:size-4 [&_svg]:text-gray-500! dark:[&_svg]:text-gray-400!">
+            <PaymentIconDisplay payment={payment} sizeClass="size-4" />
+          </span>
+          <span className={`min-w-0 truncate font-medium ${titleClass}`} title={payment.title}>
+            {payment.title}
+          </span>
+          {seriesBadge}
+          {recurrence && (
+            <span className="hidden shrink-0 items-center gap-1 text-xs text-gray-500 dark:text-gray-400 app-lg:inline-flex">
+              <ArrowPathIcon className="size-3" />
+              {recurrence}
+            </span>
+          )}
+          {payment.tags?.slice(0, 2).map((tag) => (
+            <span
+              key={tag.id}
+              className="hidden shrink-0 rounded-sm border border-[var(--ui-border)] px-1.5 text-xs leading-5 text-gray-600 dark:text-gray-400 app-xl:inline"
+            >
+              {tag.name}
+            </span>
+          ))}
+          <span className="ml-auto flex shrink-0 items-center gap-4">
+            {attachment}
+            {category && (
+              <span className="hidden w-40 truncate text-xs text-gray-500 dark:text-gray-400 @min-[40rem]:inline">
+                {category}
+              </span>
+            )}
+            <span className={`w-16 text-right text-xs tabular-nums ${dateClass}`}>
+              {shortDate.format(dateValue)}
+            </span>
+            <span className="w-28 text-right font-medium tabular-nums text-gray-900 dark:text-gray-50">
+              {amountText}
+            </span>
+            <span className="w-7" onClick={(e) => e.stopPropagation()}>
+              <RowActions options={isSeriesGroup ? buildSeriesActions(item) : buildActions(payment)} />
+            </span>
+          </span>
+        </div>
+      </li>
+    );
+
+    if (!isSeriesGroup) return row;
+    return (
+      <React.Fragment key={item.key}>
+        {row}
+        {isSeriesExpanded && renderSeriesOccurrences(item, amountText)}
+      </React.Fragment>
+    );
   };
 
   if (isLoading) {
@@ -329,134 +647,13 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
             )}
             <ul className={listClass}>
               {(groupLimit && !expandedGroups.has(group.key)
-                ? group.payments.slice(0, groupLimit)
-                : group.payments
-              ).map((payment) => {
-                const due = parseCalendarDate(payment.dueDate);
-                const isToday = startOfDay(due) === today;
-                const isClosed = payment.status === "completed" || payment.status === "deleted";
-                const isSelected = selectedId === payment.id;
-                const dateValue = isClosed
-                  ? new Date(payment.completedAt || payment.updatedAt)
-                  : due;
-                const recurrence = payment.series?.recurrenceRule
-                  ? t(formatRecurrenceRule(payment.series.recurrenceRule))
-                  : null;
-                const category = payment.transactionCategory
-                  ? localizedCategoryName(payment.transactionCategory, language)
-                  : null;
-                const titleClass = isClosed
-                  ? "text-gray-500 dark:text-gray-400"
-                  : "text-gray-900 dark:text-gray-50";
-                const dateClass =
-                  payment.status === "overdue"
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-gray-500 dark:text-gray-400";
-                const attachment =
-                  payment.filePath && payment.fileName && onDownloadFile ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDownloadFile(payment.id, payment.fileName!);
-                      }}
-                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer md:size-auto"
-                      title={payment.fileName}
-                      aria-label={payment.fileName}
-                    >
-                      <PaperClipIcon className="size-3.5" />
-                    </button>
-                  ) : null;
-                const meta = [category, recurrence].filter(Boolean).join(" · ");
-                return (
-                  <li
-                    key={payment.id}
-                    onClick={() => onOpen(payment.id)}
-                    aria-selected={isSelected || undefined}
-                    className={[
-                      "group cursor-pointer text-sm transition-colors",
-                      // Мобильные: плоская строка по фону страницы с крупной зоной нажатия
-                      "py-3.5 active:bg-black/[0.03] dark:active:bg-white/[0.04]",
-                      mobileRowX,
-                      // Десктоп: строка списка
-                      "md:flex md:h-11 md:items-center md:gap-3 md:py-0 md:hover:bg-gray-50 md:dark:hover:bg-white/[0.025]",
-                      mdPadX,
-                      isPlain ? "md:rounded-md" : "",
-                      isSelected ? "bg-black/[0.04] dark:bg-white/[0.05]" : "",
-                    ].join(" ")}
-                  >
-                    {/* Мобильная карточка: название и сумма, ниже — тип, категория и срок */}
-                    <div className="flex items-center gap-3 md:hidden">
-                      <PaymentStatusIcon payment={payment} isToday={isToday} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline gap-3">
-                          <span className={`min-w-0 flex-1 truncate font-medium ${titleClass}`}>
-                            {payment.title}
-                          </span>
-                          <span className="shrink-0 font-medium tabular-nums text-gray-900 dark:text-gray-50">
-                            {formatMoney(payment.amount, locale, payment.currency)}
-                          </span>
-                        </div>
-                        <div className="mt-0.5 flex h-5 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="flex size-3.5 shrink-0 items-center justify-center [&_svg]:size-3.5 [&_svg]:text-gray-400! dark:[&_svg]:text-gray-500!">
-                            <PaymentIconDisplay payment={payment} sizeClass="size-3.5" />
-                          </span>
-                          {meta && <span className="min-w-0 truncate">{meta}</span>}
-                          {attachment}
-                          <span className={`ml-auto shrink-0 tabular-nums ${dateClass}`}>
-                            {shortDate.format(dateValue)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Десктопная строка */}
-                    <div className="hidden md:contents">
-                      <PaymentStatusIcon payment={payment} isToday={isToday} />
-                      <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:size-4 [&_svg]:text-gray-500! dark:[&_svg]:text-gray-400!">
-                        <PaymentIconDisplay payment={payment} sizeClass="size-4" />
-                      </span>
-                      <span className={`min-w-0 truncate font-medium ${titleClass}`} title={payment.title}>
-                        {payment.title}
-                      </span>
-                      {recurrence && (
-                        <span className="hidden shrink-0 items-center gap-1 text-xs text-gray-500 dark:text-gray-400 app-lg:inline-flex">
-                          <ArrowPathIcon className="size-3" />
-                          {recurrence}
-                        </span>
-                      )}
-                      {payment.tags?.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="hidden shrink-0 rounded-sm border border-[var(--ui-border)] px-1.5 text-xs leading-5 text-gray-600 dark:text-gray-400 app-xl:inline"
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                      <span className="ml-auto flex shrink-0 items-center gap-4">
-                        {attachment}
-                        {category && (
-                          <span className="hidden w-40 truncate text-xs text-gray-500 dark:text-gray-400 @min-[40rem]:inline">
-                            {category}
-                          </span>
-                        )}
-                        <span className={`w-16 text-right text-xs tabular-nums ${dateClass}`}>
-                          {shortDate.format(dateValue)}
-                        </span>
-                        <span className="w-28 text-right font-medium tabular-nums text-gray-900 dark:text-gray-50">
-                          {formatMoney(payment.amount, locale, payment.currency)}
-                        </span>
-                        <span className="w-7" onClick={(e) => e.stopPropagation()}>
-                          <RowActions options={buildActions(payment)} />
-                        </span>
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-              {groupLimit && group.payments.length > groupLimit && (() => {
+                ? group.items.slice(0, groupLimit)
+                : group.items
+              ).map((item) => renderItem(item, group.key))}
+              {groupLimit && group.items.length > groupLimit && (() => {
                 const isExpanded = expandedGroups.has(group.key);
-                const hidden = group.payments.slice(groupLimit);
+                const hiddenItems = group.items.slice(groupLimit);
+                const hidden = hiddenItems.flatMap((i) => i.occurrences);
                 return (
                   <li>
                     <button
@@ -467,7 +664,7 @@ const PaymentRowList: React.FC<PaymentRowListProps> = ({
                     >
                       <ChevronDownIcon className={`size-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                       <span className="font-medium">
-                        {isExpanded ? t("Свернуть") : t("Ещё {1}", hidden.length)}
+                        {isExpanded ? t("Свернуть") : t("Ещё {1}", hiddenItems.length)}
                       </span>
                       {!isExpanded && (
                         <span className="ml-auto text-right tabular-nums">

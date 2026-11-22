@@ -91,7 +91,6 @@ const DashboardHero: React.FC<DashboardHeroProps> = ({
   const actionButton = action ? (
     <PrimaryActionButton
       action={action}
-      size="md"
       className="mb-1 hidden md:inline-flex"
     />
   ) : null;

@@ -1,4 +1,5 @@
-import { parseCalendarDate } from "../utils/dateUtils";
+import { formatDateToLocal, parseCalendarDate } from "../utils/dateUtils";
+import { buildMergeOverduePath } from "../utils/groupOverduePayments";
 import PaymentRowList from "../components/PaymentRowList";
 import ToolbarSearch from "../components/ToolbarSearch";
 import {
@@ -210,7 +211,10 @@ const MobileActionsOverlay = ({
 const fetchAllPaymentsApi = async (
   params?: Record<string, unknown>
 ): Promise<PaymentData[]> => {
-  const res = await axiosInstance.get("/payments/list", { params });
+  // Пропущенные периоды просроченных серий приходят виртуальными и показываются строкой «×N»
+  const res = await axiosInstance.get("/payments/list", {
+    params: { ...params, includeMissed: "true" },
+  });
   return res.data;
 };
 
@@ -319,6 +323,8 @@ const PaymentsPage: React.FC = () => {
   const [completionDateModalState, setCompletionDateModalState] = useState<{
     isOpen: boolean;
     payment: PaymentData | null;
+    /** Пропущенные периоды серии, если отмечаются все сразу */
+    occurrences?: PaymentData[];
   }>({ isOpen: false, payment: null });
   const [confirmModalState, setConfirmModalState] = useState<{
     isOpen: boolean;
@@ -531,7 +537,7 @@ const PaymentsPage: React.FC = () => {
     setIsCompleting(true);
     try {
       const payload = completionDate
-        ? { completionDate: completionDate.toISOString().split("T")[0] }
+        ? { completionDate: formatDateToLocal(completionDate) }
         : {};
       await axiosInstance.put(`/payments/${paymentId}/complete`, payload);
       showToast(t("Платеж выполнен."), "success");
@@ -544,6 +550,53 @@ const PaymentsPage: React.FC = () => {
       setIsCompleting(false);
       setCompletionDateModalState({ isOpen: false, payment: null });
     }
+  };
+
+  // Выполнить все пропущенные периоды серии: дата выполнения — выбранная или срок каждого платежа
+  const callCompleteSeriesApi = async (
+    paymentId: string,
+    options: { completionDate?: Date; useDueDates?: boolean }
+  ): Promise<void> => {
+    setIsCompleting(true);
+    try {
+      const payload = options.useDueDates
+        ? { useDueDates: true }
+        : options.completionDate
+          ? { completionDate: formatDateToLocal(options.completionDate) }
+          : {};
+      const res = await axiosInstance.put<{ completedCount?: number }>(
+        `/payments/${paymentId}/complete-overdue`,
+        payload
+      );
+      const completedCount = res.data?.completedCount;
+      showToast(
+        typeof completedCount === "number"
+          ? t("Выполнено платежей: {1}", completedCount)
+          : t("Платежи выполнены."),
+        "success"
+      );
+      refetchData();
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
+      logger.error(`Failed to complete overdue series payments from ${paymentId}:`, errorMessage);
+      showToast(t("Не удалось выполнить платеж: {1}", errorMessage), "error");
+    } finally {
+      setIsCompleting(false);
+      setCompletionDateModalState({ isOpen: false, payment: null });
+    }
+  };
+
+  // Оплатить пропущенные периоды серии одним платежом: форма платежа в режиме объединения
+  const handleMergeSeries = (occurrences: PaymentData[]): void => {
+    const path = buildMergeOverduePath(occurrences);
+    if (path) navigate(path);
+  };
+
+  const handleCompleteSeries = (occurrences: PaymentData[]): void => {
+    // Действия выполняются от реального (самого раннего) платежа серии
+    const payment = occurrences.find((p) => !p.isVirtual);
+    if (!payment) return;
+    setCompletionDateModalState({ isOpen: true, payment, occurrences });
   };
 
   const onConfirmAction = async () => {
@@ -919,6 +972,8 @@ const PaymentsPage: React.FC = () => {
                     emptyMessage={getEmptyMessage()}
                     onOpen={handleEditPayment}
                     onComplete={handleCompletePayment}
+                    onCompleteSeries={handleCompleteSeries}
+                    onMergeSeries={handleMergeSeries}
                     onDelete={handleDeletePayment}
                     onRestore={handleRestorePayment}
                     onPermanentDelete={handlePermanentDeletePayment}
@@ -939,6 +994,8 @@ const PaymentsPage: React.FC = () => {
                   isLoading={showLoadingSkeleton}
                   emptyMessage={getEmptyMessage()}
                   onOpen={handleMobileOpen}
+                  onCompleteSeries={handleCompleteSeries}
+                  onMergeSeries={handleMergeSeries}
                   onDownloadFile={handleDownloadFile}
                   inset="plain"
                   groupLimit={isArchiveOrTrash ? undefined : 5}
@@ -965,10 +1022,27 @@ const PaymentsPage: React.FC = () => {
           setCompletionDateModalState({ isOpen: false, payment: null })
         }
         onConfirm={(selectedDate) => {
-          if (completionDateModalState.payment) {
-            callCompleteApi(completionDateModalState.payment.id, selectedDate);
+          const { payment, occurrences } = completionDateModalState;
+          if (!payment) return;
+          if (occurrences && occurrences.length > 1) {
+            callCompleteSeriesApi(payment.id, { completionDate: selectedDate });
+          } else {
+            callCompleteApi(payment.id, selectedDate);
           }
         }}
+        onConfirmDueDates={() => {
+          if (completionDateModalState.payment) {
+            callCompleteSeriesApi(completionDateModalState.payment.id, { useDueDates: true });
+          }
+        }}
+        paymentsCount={completionDateModalState.occurrences?.length ?? 1}
+        lastDueDate={
+          completionDateModalState.occurrences && completionDateModalState.occurrences.length > 1
+            ? parseCalendarDate(
+                completionDateModalState.occurrences[completionDateModalState.occurrences.length - 1].dueDate
+              )
+            : undefined
+        }
         dueDate={
           completionDateModalState.payment
             ? parseCalendarDate(completionDateModalState.payment.dueDate)

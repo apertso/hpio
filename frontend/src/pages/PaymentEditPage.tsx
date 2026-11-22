@@ -1,8 +1,8 @@
 import { useLanguage } from "../context/LanguageContext";
 import { PageHeader, PageContent } from "../components/layout/Page";
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import PaymentForm from "../components/PaymentForm";
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import PaymentForm, { MergeOverdueOptions } from "../components/PaymentForm";
 import FormBlock from "../components/FormBlock";
 import axiosInstance from "../api/axiosInstance";
 import { PaymentData } from "../types/paymentData";
@@ -13,16 +13,30 @@ import SegmentedControl from "../components/SegmentedControl";
 import PageMeta from "../components/PageMeta";
 import { getPageMetadata } from "../utils/pageMetadata";
 import { usePageTitle } from "../context/PageTitleContext";
+import { useGoBack } from "../hooks/useGoBack";
 
 const PaymentEditPage: React.FC = () => {
   const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { setPageTitle } = usePageTitle();
   const [searchParams] = useSearchParams();
   const isEditMode = !!id;
   const metadata = getPageMetadata("payments"); // Используем метаданные платежей для страниц редактирования
   const markAsCompletedInitial = searchParams.get("markAsCompleted") === "true";
+  // Режим «оплатить одним платежом» для пропущенных периодов серии
+  const mergeUntil = searchParams.get("mergeUntil");
+  const mergeCount = Number(searchParams.get("mergeCount"));
+  const mergeTotal = Number(searchParams.get("mergeTotal"));
+  const mergeParams = useMemo<MergeOverdueOptions | null>(
+    () =>
+      mergeUntil &&
+      /^\d{4}-\d{2}-\d{2}$/.test(mergeUntil) &&
+      mergeCount > 1 &&
+      mergeTotal > 0
+        ? { untilDate: mergeUntil, count: mergeCount, total: mergeTotal }
+        : null,
+    [mergeUntil, mergeCount, mergeTotal]
+  );
 
   // Новое состояние
   const [initialData, setInitialData] = useState<PaymentData | null>(null);
@@ -53,31 +67,46 @@ const PaymentEditPage: React.FC = () => {
 
   // Устанавливаем заголовок страницы для мобильного заголовка
   useEffect(() => {
-    const headerText = isEditMode
+    const headerText = mergeParams
+      ? t("Оплатить одним платежом")
+      : isEditMode
       ? editScope === "single"
         ? t("Редактировать платеж")
         : t("Редактировать серию")
       : t("Добавить платеж");
     setPageTitle(headerText);
-  }, [isEditMode, editScope, setPageTitle, t]);
+  }, [isEditMode, editScope, mergeParams, setPageTitle, t]);
+
+  // После сохранения/отмены — туда, откуда открыли форму; если истории нет, к списку
+  const goBack = useGoBack("/payments");
 
   const handleSuccess = () => {
-    navigate(-1);
+    goBack();
   };
 
   const handleCancel = () => {
-    navigate(-1);
+    goBack();
   };
 
   const isSeriesPayment = !!initialData?.seriesId;
+  // Объединять можно только активный платеж серии
+  const mergeOverdue =
+    mergeParams &&
+    isSeriesPayment &&
+    (initialData?.status === "overdue" || initialData?.status === "upcoming")
+      ? mergeParams
+      : null;
 
   // Показывать заголовок области редактирования только когда:
   // 1. In edit mode AND
   // 2. Payment has a series AND
   // 3. Repeat is currently enabled (user hasn't toggled it off)
-  const showEditScopeHeader = isEditMode && isSeriesPayment && isRepeatEnabled;
+  const showEditScopeHeader =
+    isEditMode && isSeriesPayment && isRepeatEnabled && !mergeOverdue;
 
-  const headerText = isEditMode
+  const headerText = mergeOverdue
+    ? t("Оплатить одним платежом")
+    : isEditMode
     ? editScope === "single"
       ? t("Редактировать платеж")
       : t("Редактировать серию")
@@ -157,10 +186,11 @@ const PaymentEditPage: React.FC = () => {
                 onSuccess={handleSuccess}
                 onCancel={handleCancel}
                 initialData={initialData}
-                editScope={isSeriesPayment ? editScope : "single"}
+                editScope={isSeriesPayment && !mergeOverdue ? editScope : "single"}
                 isSeriesInactive={seriesInactive}
                 markAsCompletedInitial={markAsCompletedInitial}
                 onRepeatChange={setIsRepeatEnabled}
+                mergeOverdue={mergeOverdue}
               />
             </>
           )}
